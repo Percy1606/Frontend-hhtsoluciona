@@ -252,7 +252,7 @@ export default function LogisticaPage() {
           <div className="flex flex-wrap gap-2">
             <Select
               value={filtros.tipo}
-              onValueChange={(val) => setFiltros({ ...filtros, tipo: val })}
+              onValueChange={(val) => setFiltros({ ...filtros, tipo: val ?? "" })}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Tipo" />
@@ -268,7 +268,7 @@ export default function LogisticaPage() {
 
             <Select
               value={filtros.estado}
-              onValueChange={(val) => setFiltros({ ...filtros, estado: val })}
+              onValueChange={(val) => setFiltros({ ...filtros, estado: val ?? "" })}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Estado" />

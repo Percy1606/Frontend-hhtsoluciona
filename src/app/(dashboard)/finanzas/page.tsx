@@ -23,7 +23,7 @@ import {
   Receipt
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { CashFlowChart } from "@/components/finanzas/cash-flow-chart";
 
 const financeStatus: Record<string, string> = {
@@ -156,8 +156,8 @@ export default function FinanzasPage() {
                       <p className="text-[10px] text-muted-foreground truncate max-w-[200px] uppercase font-medium">{project?.id}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm font-bold text-slate-600">{inv.fechaEmision}</TableCell>
-                  <TableCell className="text-sm font-bold text-slate-600">{inv.fechaVencimiento}</TableCell>
+                  <TableCell className="text-sm font-bold text-slate-600">{formatDate(inv.fechaEmision)}</TableCell>
+                  <TableCell className="text-sm font-bold text-slate-600">{formatDate(inv.fechaVencimiento)}</TableCell>
                   <TableCell className="text-right font-black text-sm text-primary">
                     {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(inv.monto)}
                   </TableCell>

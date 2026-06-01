@@ -66,7 +66,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-xs font-black uppercase text-primary">Vincular Cliente</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="h-11 border-slate-200">
                       <SelectValue placeholder="Seleccionar cliente..." />
@@ -139,7 +139,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
             render={({ field }) => (
               <FormItem>
                 <FormLabel className="text-xs font-black uppercase text-primary">Estado</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
                     <SelectTrigger className="h-11 border-slate-200">
                       <SelectValue placeholder="Estado..." />

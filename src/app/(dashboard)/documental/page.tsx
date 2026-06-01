@@ -25,7 +25,7 @@ import {
   Folder
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -214,7 +214,7 @@ export default function DocumentalPage() {
           <div className="flex flex-wrap gap-2">
             <Select
               value={filtros.tipo}
-              onValueChange={(val) => setFiltros({ ...filtros, tipo: val })}
+              onValueChange={(val) => setFiltros({ ...filtros, tipo: val || "all" })}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Tipo" />
@@ -231,7 +231,7 @@ export default function DocumentalPage() {
 
             <Select
               value={filtros.estado}
-              onValueChange={(val) => setFiltros({ ...filtros, estado: val })}
+              onValueChange={(val) => setFiltros({ ...filtros, estado: val || "all" })}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Estado" />
@@ -248,7 +248,7 @@ export default function DocumentalPage() {
 
             <Select
               value={filtros.area}
-              onValueChange={(val) => setFiltros({ ...filtros, area: val })}
+              onValueChange={(val) => setFiltros({ ...filtros, area: val || "all" })}
             >
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Área" />
@@ -339,9 +339,9 @@ export default function DocumentalPage() {
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-col text-[10px]">
-                      <span className="text-muted-foreground">Subido: {doc.fechaSubida}</span>
+                      <span className="text-muted-foreground">Subido: {formatDate(doc.fechaSubida)}</span>
                       {doc.fechaAprobacion && (
-                        <span className="text-success">Aprobado: {doc.fechaAprobacion}</span>
+                        <span className="text-success">Aprobado: {formatDate(doc.fechaAprobacion)}</span>
                       )}
                     </div>
                   </TableCell>

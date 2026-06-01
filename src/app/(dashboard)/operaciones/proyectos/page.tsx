@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -15,21 +15,20 @@ import {
   Plus,
   Search,
   Briefcase,
-  Clock,
+  Activity,
+  Calendar,
   CheckCircle2,
   AlertCircle,
-  FileText,
   Eye,
-  MoreHorizontal,
-  Users,
-  Calendar,
-  TrendingUp,
-  Activity,
   Pencil,
-  X
+  X,
+  FolderKanban,
+  BarChart3,
+  Trash2,
+  FilterX
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -43,45 +42,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-
-// ============================================
-// TIPOS
-// ============================================
-
-interface Responsable {
-  id: string;
-  nombre: string;
-  area: string;
-  color: string;
-}
-
-interface Proyecto {
-  id: string;
-  clientId: string;
-  codigo: string;
-  nombre: string;
-  descripcion?: string;
-  estado: string;
-  semaforo: string;
-  prioridad: string;
-  fechaInicio: string;
-  fechaFinEstimada: string;
-  area: string;
-  responsablePrincipal: string;
-  responsablePrincipalData?: Responsable;
-  responsablesData?: Responsable[];
-  responsables?: string[];
-  avance: number;
-  avanceCalculado: number;
-  actividades: any[];
-}
-
-// ============================================
-// COMPONENTES AUXILIARES
-// ============================================
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProyectoDetail, StatsCard } from "@/components/operaciones/proyecto-detail";
+import { KPIPanel } from "@/components/operaciones/kpi-panel";
+import { useOperacionesStore } from "@/store/operaciones-store";
+import type { Proyecto, Actividad } from "@/lib/types";
 
 const statusColors: Record<string, string> = {
   "Planificación": "bg-blue-100 text-blue-700",
@@ -97,14 +66,6 @@ const prioridadColors: Record<string, string> = {
   "Crítica": "bg-red-100 text-red-700",
 };
 
-const tipoColors: Record<string, string> = {
-  "Técnica": "bg-purple-100 text-purple-700",
-  "Administrativa": "bg-blue-100 text-blue-700",
-  "Logística": "bg-yellow-100 text-yellow-700",
-  "Documental": "bg-green-100 text-green-700",
-  "Validación": "bg-red-100 text-red-700",
-};
-
 const semaforoColors: Record<string, string> = {
   "Verde": "bg-success",
   "Amarillo": "bg-warning",
@@ -112,88 +73,76 @@ const semaforoColors: Record<string, string> = {
 };
 
 const areaColors: Record<string, string> = {
-  "Steven": "bg-blue-500",
-  "Diego": "bg-purple-500",
-  "Guillermo": "bg-green-500",
-  "Mario": "bg-yellow-500",
+  "Logística y Recursos": "bg-blue-500",
+  "Ingeniería y Supervisión Técnica": "bg-green-500",
+  "Gestión Documentaria y Expedientes Técnicos": "bg-orange-500",
+  "Operaciones de Campo y Control de Obra": "bg-purple-500",
 };
 
-// ============================================
-// PÁGINA PRINCIPAL
-// ============================================
-
 export default function ProyectosPage() {
-  const [proyectos, setProyectos] = useState<Proyecto[]>([]);
-  const [responsables, setResponsables] = useState<Responsable[]>([]);
+  const {
+    proyectos,
+    responsables,
+    filtros,
+    setSearchQuery,
+    setEstado,
+    setArea,
+    setPrioridad,
+    setSemaforo,
+    setResponsable,
+    resetFiltros,
+    addProyecto,
+    updateProyecto,
+    deleteProyecto,
+    updateActividad,
+    bloquearChecklist,
+    desbloquearChecklist,
+    calcularKPIs,
+    fetchProyectos,
+    fetchResponsables,
+    getProyectosFiltrados,
+  } = useOperacionesStore();
+
   const [loading, setLoading] = useState(true);
   const [selectedProyecto, setSelectedProyecto] = useState<Proyecto | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState("proyectos");
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [projectToDelete, setProjectToDelete] = useState<Proyecto | null>(null);
   const [editingProyecto, setEditingProyecto] = useState<Proyecto | null>(null);
-  const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false);
 
-  const [newActivity, setNewActivity] = useState({
-    descripcion: "",
-    tipo: "Técnica",
-    prioridad: "Media",
-    estado: "Pendiente",
-    fechaVencimiento: "",
-    responsables: [] as string[],
-  });
-
-  const [newProject, setNewProject] = useState<Omit<Proyecto, 'id' | 'avanceCalculado' | 'actividades' | 'responsablesData' | 'responsablePrincipalData'>>({
-    clientId: "1",
-    codigo: "",
+  const [newProject, setNewProject] = useState({
+    clientId: "CLIENTE-NUEVO",
     nombre: "",
     descripcion: "",
     estado: "Planificación",
-    semaforo: "Verde",
     prioridad: "Media",
     fechaInicio: new Date().toISOString().split('T')[0],
     fechaFinEstimada: "",
-    area: "",
-    responsablePrincipal: "",
-    responsables: [],
-    avance: 0,
+    area: "Operaciones de Campo y Control de Obra",
+    responsablePrincipalId: "",
+    responsablesAdicionales: [],
   });
 
-  // Filtros
-  const [filtros, setFiltros] = useState({
-    search: "",
-    estado: "all",
-    area: "all",
-    prioridad: "all",
-    semaforo: "all",
-  });
+  const [periodoKPI, setPeriodoKPI] = useState<'semanal' | 'mensual' | 'anual'>('mensual');
 
-  // Cargar datos
   useEffect(() => {
-    fetchData();
-  }, [filtros]);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const params = new URLSearchParams();
-      if (filtros.search) params.append("search", filtros.search);
-      if (filtros.estado !== "all") params.append("estado", filtros.estado);
-      if (filtros.area !== "all") params.append("area", filtros.area);
-      if (filtros.prioridad !== "all") params.append("prioridad", filtros.prioridad);
-      if (filtros.semaforo !== "all") params.append("semaforo", filtros.semaforo);
-
-      const response = await fetch(`/api/operaciones?${params}`);
-      const data = await response.json();
-
-      setProyectos(data.proyectos || []);
-      setResponsables(data.responsables || []);
-    } catch (error) {
-      console.error("Error fetching proyectos:", error);
-    } finally {
+    const init = async () => {
+      await Promise.all([fetchProyectos(), fetchResponsables()]);
       setLoading(false);
+    };
+    init();
+  }, [fetchProyectos, fetchResponsables]);
+
+  // Set default responsable when they load
+  useEffect(() => {
+    if (responsables.length > 0 && !newProject.responsablePrincipalId) {
+      setNewProject(prev => ({ ...prev, responsablePrincipalId: responsables[0].id }));
     }
-  };
+  }, [responsables, newProject.responsablePrincipalId]);
 
   const handleOpenDetail = (proyecto: Proyecto) => {
     setSelectedProyecto(proyecto);
@@ -201,141 +150,132 @@ export default function ProyectosPage() {
   };
 
   const handleEditProyecto = (proyecto: Proyecto) => {
-    setEditingProyecto(proyecto);
+    setEditingProyecto({
+      ...proyecto,
+      fechaInicio: proyecto.fechaInicio ? proyecto.fechaInicio.split("T")[0] : "",
+      fechaFinEstimada: proyecto.fechaFinEstimada ? proyecto.fechaFinEstimada.split("T")[0] : "",
+    });
     setIsEditProjectModalOpen(true);
   };
 
-  const handleSaveNewProject = async () => {
-    try {
-      const projectData = {
-        ...newProject,
-        responsables: newProject.responsablePrincipal ? [newProject.responsablePrincipal] : [],
-      };
-      const response = await fetch('/api/operaciones', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(projectData),
-      });
+  const handleDeleteClick = (proyecto: Proyecto) => {
+    setProjectToDelete(proyecto);
+    setIsDeleteModalOpen(true);
+  };
 
-      if (response.ok) {
-        setIsNewProjectModalOpen(false);
-        setNewProject({
-          clientId: "1",
-          codigo: "",
-          nombre: "",
-          descripcion: "",
-          estado: "Planificación",
-          semaforo: "Verde",
-          prioridad: "Media",
-          fechaInicio: new Date().toISOString().split('T')[0],
-          fechaFinEstimada: "",
-          area: "",
-          responsablePrincipal: "",
-          responsables: [],
-          avance: 0,
-        });
-        fetchData();
-      }
-    } catch (error) {
-      console.error("Error creating proyecto:", error);
+  const confirmDelete = async () => {
+    if (projectToDelete) {
+      await deleteProyecto(projectToDelete.id);
+      setIsDeleteModalOpen(false);
+      setProjectToDelete(null);
     }
   };
 
-  const handleAddActivityToProyecto = () => {
-    if (!editingProyecto) return;
-    const newAct = {
-      id: `act_${Date.now()}`,
-      descripcion: newActivity.descripcion,
-      tipo: newActivity.tipo,
-      prioridad: newActivity.prioridad,
-      estado: newActivity.estado,
-      fechaCreacion: new Date().toISOString().split('T')[0],
-      fechaVencimiento: newActivity.fechaVencimiento,
-      responsables: newActivity.responsables,
-      progreso: 0,
-      orden: (editingProyecto.actividades?.length || 0) + 1,
-      validacionesRequeridas: [],
-      subtareas: [],
-    };
+  const handleSaveNewProject = async () => {
+    if (!newProject.nombre || !newProject.fechaFinEstimada) return;
 
-    const updatedActividades = [...(editingProyecto.actividades || []), newAct];
-    const avanceCalculado = Math.round(
-      (updatedActividades.filter((a: any) => a.progreso === 100).length / updatedActividades.length) * 100
-    );
-    setEditingProyecto({
-      ...editingProyecto,
-      actividades: updatedActividades,
-      avance: avanceCalculado,
-      avanceCalculado,
-    });
+    await addProyecto(newProject as any);
 
-    setIsNewActivityModalOpen(false);
-    setNewActivity({
+    setIsNewProjectModalOpen(false);
+    setNewProject({
+      clientId: "CLIENTE-NUEVO",
+      nombre: "",
       descripcion: "",
-      tipo: "Técnica",
+      estado: "Planificación",
       prioridad: "Media",
-      estado: "Pendiente",
-      fechaVencimiento: "",
-      responsables: [],
-    });
-  };
-
-  const handleRemoveActivity = (actividadId: string) => {
-    if (!editingProyecto) return;
-    const updatedActividades = editingProyecto.actividades?.filter(a => a.id !== actividadId) || [];
-    const avanceCalculado = updatedActividades.length > 0
-      ? Math.round((updatedActividades.filter((a: any) => a.progreso === 100).length / updatedActividades.length) * 100)
-      : 0;
-    setEditingProyecto({
-      ...editingProyecto,
-      actividades: updatedActividades,
-      avance: avanceCalculado,
-      avanceCalculado,
+      fechaInicio: new Date().toISOString().split('T')[0],
+      fechaFinEstimada: "",
+      area: "Operaciones de Campo y Control de Obra",
+      responsablePrincipalId: responsables.length > 0 ? responsables[0].id : "",
+      responsablesAdicionales: [],
     });
   };
 
   const handleSaveEditProject = async () => {
     if (!editingProyecto) return;
-    try {
-      const response = await fetch('/api/operaciones', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingProyecto),
-      });
+    await updateProyecto(editingProyecto);
+    setIsEditProjectModalOpen(false);
+    setEditingProyecto(null);
+  };
 
-      if (response.ok) {
-        setIsEditProjectModalOpen(false);
-        setEditingProyecto(null);
-        fetchData();
+  const handleUpdateActividad = (actividad: Actividad) => {
+    if (!selectedProyecto) return;
+    updateActividad(selectedProyecto.id, actividad);
+  };
+
+  const handleBloquearChecklist = (actividadId: string, motivo: string) => {
+    if (!selectedProyecto) return;
+    bloquearChecklist(selectedProyecto.id, actividadId, motivo);
+  };
+
+  const handleDesbloquearChecklist = (actividadId: string, motivo: string) => {
+    if (!selectedProyecto) return;
+    desbloquearChecklist(selectedProyecto.id, actividadId, motivo);
+  };
+
+  // Dinamically recalculate selected project to keep details view updated
+  const currentSelectedProyecto = selectedProyecto 
+    ? proyectos.find(p => p.id === selectedProyecto.id) || null
+    : null;
+
+  // Filtrar Proyectos
+  const proyectosFiltrados = useMemo(() => {
+    return proyectos.filter((p) => {
+      if (filtros.searchQuery && !p.nombre.toLowerCase().includes(filtros.searchQuery.toLowerCase()) &&
+          !p.codigo.toLowerCase().includes(filtros.searchQuery.toLowerCase())) {
+        return false;
       }
-    } catch (error) {
-      console.error("Error updating proyecto:", error);
-    }
-  };
+      if (filtros.estado !== "all" && p.estado !== filtros.estado) return false;
+      if (filtros.area !== "all" && p.area !== filtros.area) return false;
+      if (filtros.prioridad !== "all" && p.prioridad !== filtros.prioridad) return false;
+      if (filtros.semaforo !== "all" && p.semaforo !== filtros.semaforo) return false;
+      return true;
+    });
+  }, [proyectos, filtros]);
 
-  // Calcular estadísticas
-  const stats = {
+  // Estadísticas de Proyectos
+  const stats = useMemo(() => ({
     total: proyectos.length,
-    activos: proyectos.filter(p => p.estado === "En Ejecución").length,
-    planning: proyectos.filter(p => p.estado === "Planificación").length,
-    finalizados: proyectos.filter(p => p.estado === "Finalizado").length,
-    rojos: proyectos.filter(p => p.semaforo === "Rojo").length,
-  };
+    activos: proyectos.filter(p => p.estado === 'En Ejecución').length,
+    planification: proyectos.filter(p => p.estado === 'Planificación').length,
+    finalizados: proyectos.filter(p => p.estado === 'Finalizado').length,
+    detenidos: proyectos.filter(p => p.estado === 'Detenido').length,
+    verdes: proyectos.filter(p => p.semaforo === 'Verde').length,
+    amarillos: proyectos.filter(p => p.semaforo === 'Amarillo').length,
+    rojos: proyectos.filter(p => p.semaforo === 'Rojo').length,
+  }), [proyectos]);
+
+  // Estadísticas de Actividades
+  const actividadStats = useMemo(() => ({
+    total: proyectos.reduce((acc, p) => acc + (p.actividades?.length || 0), 0),
+    pendientes: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Pendiente").length || 0), 0),
+    enProgreso: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "En Progreso").length || 0), 0),
+    completadas: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Completada" || a.estado === "Validada").length || 0), 0),
+    bloqueadas: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Bloqueada").length || 0), 0),
+  }), [proyectos]);
+
+  // KPIs
+  const kpis = calcularKPIs(periodoKPI);
+
+  const getResponsableName = useCallback((id: string) => {
+    return responsables.find(r => r.id === id)?.nombre || "Sin asignar";
+  }, [responsables]);
+
+  const getResponsableColor = useCallback((id: string) => {
+    return responsables.find(r => r.id === id)?.color || "#666";
+  }, [responsables]);
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <FolderKanban className="w-6 h-6 text-primary" />
-            </div>
-            <h1 className="text-3xl font-black text-primary tracking-tight">Proyectos</h1>
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-lg">
+            <Briefcase className="w-6 h-6 text-primary" />
           </div>
-          <p className="text-muted-foreground mt-1 font-medium">Gestión integral de proyectos por área.</p>
+          <h1 className="text-3xl font-medium text-primary tracking-tight">Operaciones</h1>
         </div>
-        <Button 
+        <Button
           className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
           onClick={() => setIsNewProjectModalOpen(true)}
         >
@@ -343,367 +283,291 @@ export default function ProyectosPage() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <StatsCard
-          label="Total Proyectos"
-          value={stats.total}
-          icon={<Briefcase className="w-5 h-5" />}
-          color="text-primary"
-          bgColor="bg-primary/5"
-        />
-        <StatsCard
-          label="En Ejecución"
-          value={stats.activos}
-          icon={<Activity className="w-5 h-5" />}
-          color="text-orange-600"
-          bgColor="bg-orange-50"
-        />
-        <StatsCard
-          label="Planificación"
-          value={stats.planning}
-          icon={<Calendar className="w-5 h-5" />}
-          color="text-blue-600"
-          bgColor="bg-blue-50"
-        />
-        <StatsCard
-          label="Finalizados"
-          value={stats.finalizados}
-          icon={<CheckCircle2 className="w-5 h-5" />}
-          color="text-green-600"
-          bgColor="bg-green-50"
-        />
-        <StatsCard
-          label="Críticos"
-          value={stats.rojos}
-          icon={<AlertCircle className="w-5 h-5" />}
-          color="text-error"
-          bgColor="bg-red-50"
-        />
-      </div>
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="bg-white border">
+          <TabsTrigger value="proyectos" className="gap-2">
+            <FolderKanban className="w-4 h-4" /> Proyectos
+          </TabsTrigger>
+          <TabsTrigger value="kpis" className="gap-2">
+            <BarChart3 className="w-4 h-4" /> KPIs
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Filtros */}
-      <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col lg:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por código, nombre o cliente..."
-              className="pl-10 h-10 border-border"
-              value={filtros.search}
-              onChange={(e) => setFiltros({ ...filtros, search: e.target.value })}
+        <TabsContent value="proyectos" className="mt-4 space-y-4">
+          {/* Stats Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <StatsCard
+              label="Total Proyectos"
+              value={stats.total}
+              icon={<Briefcase className="w-5 h-5" />}
+              color="text-primary"
+              bgColor="bg-primary/5"
+            />
+            <StatsCard
+              label="En Ejecución"
+              value={stats.activos}
+              icon={<Activity className="w-5 h-5" />}
+              color="text-orange-600"
+              bgColor="bg-orange-50"
+            />
+            <StatsCard
+              label="Planificación"
+              value={stats.planification}
+              icon={<Calendar className="w-5 h-5" />}
+              color="text-blue-600"
+              bgColor="bg-blue-50"
+            />
+            <StatsCard
+              label="Finalizados"
+              value={stats.finalizados}
+              icon={<CheckCircle2 className="w-5 h-5" />}
+              color="text-green-600"
+              bgColor="bg-green-50"
+            />
+            <StatsCard
+              label="Críticos"
+              value={stats.rojos}
+              icon={<AlertCircle className="w-5 h-5" />}
+              color="text-error"
+              bgColor="bg-red-50"
             />
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Select
-              value={filtros.estado}
-              onValueChange={(val) => setFiltros({ ...filtros, estado: val })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los Estados</SelectItem>
-                <SelectItem value="Planificación">Planificación</SelectItem>
-                <SelectItem value="En Ejecución">En Ejecución</SelectItem>
-                <SelectItem value="Detenido">Detenido</SelectItem>
-                <SelectItem value="Finalizado">Finalizado</SelectItem>
-              </SelectContent>
-            </Select>
 
-            <Select
-              value={filtros.area}
-              onValueChange={(val) => setFiltros({ ...filtros, area: val })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Área" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las Áreas</SelectItem>
-                <SelectItem value="Steven">Steven</SelectItem>
-                <SelectItem value="Diego">Diego</SelectItem>
-                <SelectItem value="Guillermo">Guillermo</SelectItem>
-                <SelectItem value="Mario">Mario</SelectItem>
-              </SelectContent>
-            </Select>
+          {/* Filtros */}
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-6">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+              <Input 
+                placeholder="Buscar por código, cliente o nombre..." 
+                className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
+                value={filtros.searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
+              <div className="flex flex-col gap-2 min-w-[180px]">
+                <Select value={filtros.estado} onValueChange={(val) => setEstado(val ?? "")}>
+                  <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
+                    <SelectValue placeholder="Estado" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
+                    <SelectItem value="Planificación">Planificación</SelectItem>
+                    <SelectItem value="En Ejecución">En Ejecución</SelectItem>
+                    <SelectItem value="Detenido">Detenido</SelectItem>
+                    <SelectItem value="Finalizado">Finalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Select
-              value={filtros.prioridad}
-              onValueChange={(val) => setFiltros({ ...filtros, prioridad: val })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Prioridad" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas las Prioridades</SelectItem>
-                <SelectItem value="Baja">Baja</SelectItem>
-                <SelectItem value="Media">Media</SelectItem>
-                <SelectItem value="Alta">Alta</SelectItem>
-                <SelectItem value="Crítica">Crítica</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="flex flex-col gap-2 min-w-[220px]">
+                <Select value={filtros.responsable || "all"} onValueChange={(val) => setResponsable(val ?? "")}>
+                  <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
+                    <SelectValue placeholder="Responsable" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
+                    {responsables.map(r => (
+                      <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Select
-              value={filtros.semaforo}
-              onValueChange={(val) => setFiltros({ ...filtros, semaforo: val })}
-            >
-              <SelectTrigger className="w-36">
-                <SelectValue placeholder="Semáforo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos los Estados</SelectItem>
-                <SelectItem value="Verde">Verde</SelectItem>
-                <SelectItem value="Amarillo">Amarillo</SelectItem>
-                <SelectItem value="Rojo">Rojo</SelectItem>
-              </SelectContent>
-            </Select>
+              <div className="flex items-end self-end h-14 pb-0.5">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  onClick={resetFiltros} 
+                  className="h-14 w-14 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl"
+                  title="Limpiar filtros"
+                >
+                  <FilterX className="w-6 h-6" />
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Tabla de Proyectos */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
-        <Table>
-          <TableHeader className="bg-muted/50">
-            <TableRow>
-              <TableHead className="font-bold text-primary">CÓDIGO</TableHead>
-              <TableHead className="font-bold text-primary">PROYECTO</TableHead>
-              <TableHead className="font-bold text-primary">ÁREA</TableHead>
-              <TableHead className="font-bold text-primary">RESPONSABLE</TableHead>
-              <TableHead className="font-bold text-primary">FECHAS</TableHead>
-              <TableHead className="font-bold text-primary">AVANCE</TableHead>
-              <TableHead className="font-bold text-primary">ESTADO</TableHead>
-              <TableHead className="font-bold text-primary text-right">ACCIONES</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8">
-                  <div className="flex items-center justify-center gap-2">
-                    <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                    <span>Cargando proyectos...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : proyectos.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                  No se encontraron proyectos
-                </TableCell>
-              </TableRow>
-            ) : (
-              proyectos.map((proyecto) => (
-                <TableRow key={proyecto.id} className="hover:bg-muted/10 transition-colors group">
-                  <TableCell className="font-black text-xs text-primary">
-                    {proyecto.codigo}
-                  </TableCell>
-                  <TableCell>
-                    <div>
-                      <p className="font-bold text-sm text-primary group-hover:text-secondary transition-colors">
-                        {proyecto.nombre}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">
-                        {proyecto.descripcion || "Sin descripción"}
-                      </p>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge className={cn("text-[10px] font-bold uppercase", areaColors[proyecto.area] || "bg-gray-100")}>
-                      {proyecto.area}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
-                        style={{ backgroundColor: proyecto.responsablePrincipalData?.color || "#666" }}
-                      >
-                        {proyecto.responsablePrincipalData?.nombre?.charAt(0) || "?"}
-                      </div>
-                      <span className="text-sm font-bold text-slate-600">
-                        {proyecto.responsablePrincipalData?.nombre || "Sin asignar"}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-col text-[10px] font-black">
-                      <span className="text-muted-foreground uppercase">
-                        Inicio: {proyecto.fechaInicio}
-                      </span>
-                      <span className="text-primary uppercase">
-                        Fin: {proyecto.fechaFinEstimada}
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="w-full max-w-[100px] space-y-1.5">
-                      <div className="flex justify-between items-center text-[10px] font-black uppercase">
-                        <span>{proyecto.avanceCalculado}%</span>
-                        <div className={cn("w-2 h-2 rounded-full", semaforoColors[proyecto.semaforo])} />
-                      </div>
-                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-500",
-                            proyecto.avanceCalculado === 100 ? "bg-success" : "bg-primary"
-                          )}
-                          style={{ width: `${proyecto.avanceCalculado}%` }}
-                        />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Badge className={cn("border-none font-black text-[9px] uppercase tracking-wider", statusColors[proyecto.estado])}>
-                        {proyecto.estado}
-                      </Badge>
-                      <Badge className={cn("border-none font-black text-[9px] uppercase tracking-wider", prioridadColors[proyecto.prioridad])}>
-                        {proyecto.prioridad}
-                      </Badge>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 font-bold text-[10px] uppercase gap-1 border-primary text-primary hover:bg-primary hover:text-white"
-                        onClick={() => handleOpenDetail(proyecto)}
-                      >
-                        <Eye className="w-3 h-3" /> Ver
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 font-bold text-[10px] uppercase gap-1 border-secondary text-secondary hover:bg-secondary hover:text-white"
-                        onClick={() => handleEditProyecto(proyecto)}
-                      >
-                        <Pencil className="w-3 h-3" /> Editar
-                      </Button>
-                    </div>
-                  </TableCell>
+          {/* Tabla */}
+          <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead className="font-bold text-primary">CÓDIGO</TableHead>
+                  <TableHead className="font-bold text-primary">PROYECTO</TableHead>
+                  <TableHead className="font-bold text-primary">ÁREA</TableHead>
+                  <TableHead className="font-bold text-primary">RESPONSABLE</TableHead>
+                  <TableHead className="font-bold text-primary">FECHAS</TableHead>
+                  <TableHead className="font-bold text-primary">AVANCE</TableHead>
+                  <TableHead className="font-bold text-primary">ESTADO</TableHead>
+                  <TableHead className="font-bold text-primary text-right">ACCIONES</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
-      {/* Modal de Detalle */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 border-none bg-background flex flex-col overflow-hidden">
-          <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
-              <Briefcase className="w-6 h-6 text-accent" />
-              {selectedProyecto?.nombre}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="p-6 overflow-y-auto">
-            {selectedProyecto && (
-              <div className="space-y-6">
-                {/* Info Principal */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase">Código</p>
-                    <p className="text-lg font-black text-primary">{selectedProyecto.codigo}</p>
-                  </div>
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase">Área</p>
-                    <p className="text-lg font-black text-primary">{selectedProyecto.area}</p>
-                  </div>
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase">Estado</p>
-                    <Badge className={cn("mt-1", statusColors[selectedProyecto.estado])}>
-                      {selectedProyecto.estado}
-                    </Badge>
-                  </div>
-                  <div className="p-4 bg-muted/20 rounded-xl">
-                    <p className="text-[10px] font-black text-muted-foreground uppercase">Avance</p>
-                    <p className="text-lg font-black text-primary">{selectedProyecto.avanceCalculado}%</p>
-                  </div>
-                </div>
-
-                {/* Actividades Recientes */}
-                <div>
-                  <h3 className="font-black text-primary uppercase tracking-tight mb-4 flex items-center gap-2">
-                    <CheckCircle2 className="w-5 h-5 text-success" />
-                    Actividades ({selectedProyecto.actividades?.length || 0})
-                  </h3>
-                  <div className="space-y-2">
-                    {selectedProyecto.actividades?.map((act: any) => (
-                      <div key={act.id} className="flex items-center justify-between p-3 bg-muted/20 rounded-lg">
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "w-5 h-5 rounded-full flex items-center justify-center border-2",
-                            act.estado === "Completada" || act.estado === "Validada"
-                              ? "bg-success border-success"
-                              : act.estado === "En Progreso"
-                                ? "bg-primary border-primary"
-                                : "bg-white border-border"
-                          )}>
-                            {(act.estado === "Completada" || act.estado === "Validada") && (
-                              <CheckCircle2 className="w-3 h-3 text-white" />
-                            )}
-                          </div>
-                          <div>
-                            <p className={cn("text-sm font-bold", act.estado === "Completada" ? "line-through text-muted-foreground" : "text-primary")}>
-                              {act.descripcion}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              Responsable: {act.responsables?.join(", ") || "Sin asignar"}
-                            </p>
-                          </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8">
+                      <div className="flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        <span>Cargando proyectos...</span>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : proyectosFiltrados.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                      No se encontraron proyectos
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  proyectosFiltrados.map((proyecto) => (
+                    <TableRow key={proyecto.id} className="hover:bg-muted/10 transition-colors group">
+                      <TableCell className="font-medium text-xs text-primary">
+                        {proyecto.codigo || proyecto.id.substring(0, 8)}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-bold text-sm text-primary group-hover:text-secondary transition-colors">
+                            {proyecto.nombre}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate max-w-[200px]">
+                            {proyecto.descripcion || "Sin descripción"}
+                          </p>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={cn("text-[10px] font-bold uppercase text-white", areaColors[proyecto.area] || "bg-gray-100")}>
+                          {proyecto.area}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
-                          <Badge className={cn("text-[9px]", prioridadColors[act.prioridad])}>
-                            {act.prioridad}
-                          </Badge>
-                          <span className="text-[10px] font-black text-muted-foreground">
-                            {act.progreso}%
+                          <div
+                            className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                            style={{ backgroundColor: getResponsableColor(proyecto.responsablePrincipalId) }}
+                          >
+                            {getResponsableName(proyecto.responsablePrincipalId).charAt(0)}
+                          </div>
+                          <span className="text-sm font-bold text-slate-600">
+                            {getResponsableName(proyecto.responsablePrincipalId)}
                           </span>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col text-[10px] font-medium">
+                          <span className="text-muted-foreground uppercase">
+                            Inicio: {formatDate(proyecto.fechaInicio)}
+                          </span>
+                          <span className="text-primary uppercase">
+                            Fin: {formatDate(proyecto.fechaFinEstimada)}
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="w-full max-w-[100px] space-y-1.5">
+                          <div className="flex justify-between items-center text-[10px] font-medium uppercase">
+                            <span>{proyecto.avanceCalculado}%</span>
+                            <div className={cn("w-2 h-2 rounded-full", semaforoColors[proyecto.semaforo])} />
+                          </div>
+                          <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn(
+                                "h-full transition-all duration-500",
+                                proyecto.avanceCalculado === 100 ? "bg-success" : "bg-primary"
+                              )}
+                              style={{ width: `${proyecto.avanceCalculado}%` }}
+                            />
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-1 items-start">
+                          <Badge className={cn("border-none font-medium text-[9px] uppercase tracking-wider", statusColors[proyecto.estado])}>
+                            {proyecto.estado}
+                          </Badge>
+                          <Badge className={cn("border-none font-medium text-[9px] uppercase tracking-wider", prioridadColors[proyecto.prioridad])}>
+                            {proyecto.prioridad}
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 font-bold text-[10px] uppercase gap-1 border-primary text-primary hover:bg-primary hover:text-white"
+                            onClick={() => handleOpenDetail(proyecto)}
+                          >
+                            <Eye className="w-3 h-3" /> Ver
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 font-bold text-[10px] uppercase gap-1 border-secondary text-secondary hover:bg-secondary hover:text-white"
+                            onClick={() => handleEditProyecto(proyecto)}
+                          >
+                            <Pencil className="w-3 h-3" /> Editar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 font-bold text-[10px] uppercase gap-1 border-error text-error hover:bg-error hover:text-white"
+                            onClick={() => handleDeleteClick(proyecto)}
+                          >
+                            <Trash2 className="w-3 h-3" /> Eliminar
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
           </div>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
 
-      {/* Modal de Nuevo Proyecto */}
+        <TabsContent value="kpis" className="mt-4">
+          <KPIPanel
+            proyectosStats={stats}
+            actividadesStats={actividadStats}
+            kpis={kpis}
+            onCambiarPeriodo={(p) => setPeriodoKPI(p)}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Modal Detalle */}
+      {currentSelectedProyecto && isDetailOpen && (
+        <ProyectoDetail
+          proyecto={currentSelectedProyecto}
+          onClose={() => {
+            setIsDetailOpen(false);
+            setSelectedProyecto(null);
+          }}
+        />
+      )}
+
+      {/* Modal Nuevo Proyecto */}
       <Dialog open={isNewProjectModalOpen} onOpenChange={setIsNewProjectModalOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-background flex flex-col overflow-hidden">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto">
           <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
+            <DialogTitle className="text-2xl font-medium tracking-tight flex items-center gap-3">
               <Plus className="w-6 h-6 text-accent" />
               Nuevo Proyecto
             </DialogTitle>
           </DialogHeader>
           <div className="p-4 space-y-3 overflow-y-auto flex-1">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label htmlFor="codigo" className="text-xs font-bold text-primary">Código</Label>
-                <Input
-                  id="codigo"
-                  value={newProject.codigo}
-                  onChange={(e) => setNewProject({ ...newProject, codigo: e.target.value })}
-                  placeholder="PROY-001"
-                  className="h-8 text-sm font-bold"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="nombre" className="text-xs font-bold text-primary">Nombre</Label>
-                <Input
-                  id="nombre"
-                  value={newProject.nombre}
-                  onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
-                  placeholder="Nombre del proyecto"
-                  className="h-8 text-sm font-bold"
-                />
-              </div>
+            <div className="space-y-1">
+              <Label htmlFor="nombre" className="text-xs font-bold text-primary">Nombre del Proyecto *</Label>
+              <Input
+                id="nombre"
+                value={newProject.nombre}
+                onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
+                placeholder="Nombre del proyecto"
+                className="h-8 text-sm font-bold"
+              />
             </div>
 
             <div className="space-y-1">
@@ -719,32 +583,32 @@ export default function ProyectosPage() {
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label htmlFor="area" className="text-xs font-bold text-primary">Área</Label>
+                <Label htmlFor="area" className="text-xs font-bold text-primary">Área *</Label>
                 <Select
                   value={newProject.area}
-                  onValueChange={(val) => setNewProject({ ...newProject, area: val })}
+                  onValueChange={(val) => setNewProject({ ...newProject, area: val ?? "" })}
                 >
                   <SelectTrigger className="h-8 text-sm font-bold">
                     <SelectValue placeholder="Área" />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Steven">Steven</SelectItem>
-                    <SelectItem value="Diego">Diego</SelectItem>
-                    <SelectItem value="Guillermo">Guillermo</SelectItem>
-                    <SelectItem value="Mario">Mario</SelectItem>
+                  <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
+                    <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
+                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
+                    <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1">
-                <Label htmlFor="responsablePrincipal" className="text-xs font-bold text-primary">Responsable</Label>
+                <Label htmlFor="responsablePrincipalId" className="text-xs font-bold text-primary">Responsable *</Label>
                 <Select
-                  value={newProject.responsablePrincipal}
-                  onValueChange={(val) => setNewProject({ ...newProject, responsablePrincipal: val })}
+                  value={newProject.responsablePrincipalId}
+                  onValueChange={(val) => setNewProject({ ...newProject, responsablePrincipalId: val ?? "" })}
                 >
                   <SelectTrigger className="h-8 text-sm font-bold">
                     <SelectValue placeholder="Responsable" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-slate-200">
                     {responsables.map((resp) => (
                       <SelectItem key={resp.id} value={resp.id}>{resp.nombre}</SelectItem>
                     ))}
@@ -758,12 +622,12 @@ export default function ProyectosPage() {
                 <Label htmlFor="estado" className="text-xs font-bold text-primary">Estado</Label>
                 <Select
                   value={newProject.estado}
-                  onValueChange={(val) => setNewProject({ ...newProject, estado: val })}
+                  onValueChange={(val) => setNewProject({ ...newProject, estado: val ?? "" })}
                 >
                   <SelectTrigger className="h-8 text-sm font-bold">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="Planificación">Planificación</SelectItem>
                     <SelectItem value="En Ejecución">En Ejecución</SelectItem>
                     <SelectItem value="Detenido">Detenido</SelectItem>
@@ -775,32 +639,16 @@ export default function ProyectosPage() {
                 <Label htmlFor="prioridad" className="text-xs font-bold text-primary">Prioridad</Label>
                 <Select
                   value={newProject.prioridad}
-                  onValueChange={(val) => setNewProject({ ...newProject, prioridad: val })}
+                  onValueChange={(val) => setNewProject({ ...newProject, prioridad: val ?? "" })}
                 >
                   <SelectTrigger className="h-8 text-sm font-bold">
                     <SelectValue placeholder="Prioridad" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="Baja">Baja</SelectItem>
                     <SelectItem value="Media">Media</SelectItem>
                     <SelectItem value="Alta">Alta</SelectItem>
                     <SelectItem value="Crítica">Crítica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label htmlFor="semaforo" className="text-xs font-bold text-primary">Semáforo</Label>
-                <Select
-                  value={newProject.semaforo}
-                  onValueChange={(val) => setNewProject({ ...newProject, semaforo: val })}
-                >
-                  <SelectTrigger className="h-8 text-sm font-bold">
-                    <SelectValue placeholder="Semáforo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Verde">Verde</SelectItem>
-                    <SelectItem value="Amarillo">Amarillo</SelectItem>
-                    <SelectItem value="Rojo">Rojo</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -818,7 +666,7 @@ export default function ProyectosPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label htmlFor="fechaFinEstimada" className="text-xs font-bold text-primary">Fecha Fin</Label>
+                <Label htmlFor="fechaFinEstimada" className="text-xs font-bold text-primary">Fecha Fin Estimada *</Label>
                 <Input
                   id="fechaFinEstimada"
                   type="date"
@@ -827,6 +675,17 @@ export default function ProyectosPage() {
                   className="h-8 text-sm font-bold"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="clientId" className="text-xs font-bold text-primary">ID de Cliente *</Label>
+              <Input
+                id="clientId"
+                value={newProject.clientId}
+                onChange={(e) => setNewProject({ ...newProject, clientId: e.target.value })}
+                placeholder="CLIENTE-001"
+                className="h-8 text-sm font-bold"
+              />
             </div>
           </div>
           <DialogFooter className="p-3 border-t flex gap-2">
@@ -840,11 +699,11 @@ export default function ProyectosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Editar Proyecto */}
+      {/* Modal Editar Proyecto */}
       <Dialog open={isEditProjectModalOpen} onOpenChange={setIsEditProjectModalOpen}>
-        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-background flex flex-col overflow-hidden">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto">
           <DialogHeader className="p-6 bg-secondary text-white rounded-t-lg shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
+            <DialogTitle className="text-2xl font-medium tracking-tight flex items-center gap-3">
               <Pencil className="w-6 h-6 text-accent" />
               Editar Proyecto
             </DialogTitle>
@@ -854,18 +713,12 @@ export default function ProyectosPage() {
               <>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="edit-codigo" className="text-xs font-bold text-primary">Código</Label>
-                    <Input
-                      id="edit-codigo"
-                      value={editingProyecto.codigo}
-                      onChange={(e) => setEditingProyecto({ ...editingProyecto, codigo: e.target.value })}
-                      className="h-8 text-sm font-bold"
-                    />
+                    <Label className="text-xs font-bold text-primary">Código</Label>
+                    <Input value={editingProyecto.codigo || editingProyecto.id.substring(0,8)} disabled className="h-8 text-sm font-bold bg-muted" />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="edit-nombre" className="text-xs font-bold text-primary">Nombre</Label>
+                    <Label className="text-xs font-bold text-primary">Nombre</Label>
                     <Input
-                      id="edit-nombre"
                       value={editingProyecto.nombre}
                       onChange={(e) => setEditingProyecto({ ...editingProyecto, nombre: e.target.value })}
                       className="h-8 text-sm font-bold"
@@ -874,9 +727,8 @@ export default function ProyectosPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label htmlFor="edit-descripcion" className="text-xs font-bold text-primary">Descripción</Label>
+                  <Label className="text-xs font-bold text-primary">Descripción</Label>
                   <Textarea
-                    id="edit-descripcion"
                     value={editingProyecto.descripcion || ""}
                     onChange={(e) => setEditingProyecto({ ...editingProyecto, descripcion: e.target.value })}
                     className="h-16 text-sm font-bold resize-none"
@@ -885,32 +737,32 @@ export default function ProyectosPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="edit-area" className="text-xs font-bold text-primary">Área</Label>
+                    <Label className="text-xs font-bold text-primary">Área</Label>
                     <Select
                       value={editingProyecto.area}
-                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, area: val })}
+                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, area: (val ?? "") as any })}
                     >
                       <SelectTrigger className="h-8 text-sm font-bold">
                         <SelectValue placeholder="Área" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Steven">Steven</SelectItem>
-                        <SelectItem value="Diego">Diego</SelectItem>
-                        <SelectItem value="Guillermo">Guillermo</SelectItem>
-                        <SelectItem value="Mario">Mario</SelectItem>
+                      <SelectContent className="bg-white border-slate-200">
+                        <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
+                        <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
+                        <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
+                        <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="edit-responsable" className="text-xs font-bold text-primary">Responsable</Label>
+                    <Label className="text-xs font-bold text-primary">Responsable</Label>
                     <Select
-                      value={editingProyecto.responsablePrincipal}
-                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, responsablePrincipal: val })}
+                      value={editingProyecto.responsablePrincipalId}
+                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, responsablePrincipalId: val ?? "" })}
                     >
                       <SelectTrigger className="h-8 text-sm font-bold">
                         <SelectValue placeholder="Responsable" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-slate-200">
                         {responsables.map((resp) => (
                           <SelectItem key={resp.id} value={resp.id}>{resp.nombre}</SelectItem>
                         ))}
@@ -921,15 +773,15 @@ export default function ProyectosPage() {
 
                 <div className="grid grid-cols-3 gap-2">
                   <div className="space-y-1">
-                    <Label htmlFor="edit-estado" className="text-xs font-bold text-primary">Estado</Label>
+                    <Label className="text-xs font-bold text-primary">Estado</Label>
                     <Select
                       value={editingProyecto.estado}
-                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, estado: val })}
+                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, estado: (val ?? "") as any })}
                     >
                       <SelectTrigger className="h-8 text-sm font-bold">
                         <SelectValue placeholder="Estado" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-slate-200">
                         <SelectItem value="Planificación">Planificación</SelectItem>
                         <SelectItem value="En Ejecución">En Ejecución</SelectItem>
                         <SelectItem value="Detenido">Detenido</SelectItem>
@@ -938,15 +790,15 @@ export default function ProyectosPage() {
                     </Select>
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="edit-prioridad" className="text-xs font-bold text-primary">Prioridad</Label>
+                    <Label className="text-xs font-bold text-primary">Prioridad</Label>
                     <Select
                       value={editingProyecto.prioridad}
-                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, prioridad: val })}
+                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, prioridad: (val ?? "") as any })}
                     >
                       <SelectTrigger className="h-8 text-sm font-bold">
                         <SelectValue placeholder="Prioridad" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-white border-slate-200">
                         <SelectItem value="Baja">Baja</SelectItem>
                         <SelectItem value="Media">Media</SelectItem>
                         <SelectItem value="Alta">Alta</SelectItem>
@@ -954,29 +806,12 @@ export default function ProyectosPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="edit-semaforo" className="text-xs font-bold text-primary">Semáforo</Label>
-                    <Select
-                      value={editingProyecto.semaforo}
-                      onValueChange={(val) => setEditingProyecto({ ...editingProyecto, semaforo: val })}
-                    >
-                      <SelectTrigger className="h-8 text-sm font-bold">
-                        <SelectValue placeholder="Semáforo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Verde">Verde</SelectItem>
-                        <SelectItem value="Amarillo">Amarillo</SelectItem>
-                        <SelectItem value="Rojo">Rojo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label htmlFor="edit-fechaInicio" className="text-xs font-bold text-primary">Fecha Inicio</Label>
+                    <Label className="text-xs font-bold text-primary">Fecha Inicio</Label>
                     <Input
-                      id="edit-fechaInicio"
                       type="date"
                       value={editingProyecto.fechaInicio}
                       onChange={(e) => setEditingProyecto({ ...editingProyecto, fechaInicio: e.target.value })}
@@ -984,139 +819,14 @@ export default function ProyectosPage() {
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label htmlFor="edit-fechaFin" className="text-xs font-bold text-primary">Fecha Fin</Label>
+                    <Label className="text-xs font-bold text-primary">Fecha Fin Estimada</Label>
                     <Input
-                      id="edit-fechaFin"
                       type="date"
                       value={editingProyecto.fechaFinEstimada}
                       onChange={(e) => setEditingProyecto({ ...editingProyecto, fechaFinEstimada: e.target.value })}
                       className="h-8 text-sm font-bold"
                     />
                   </div>
-                </div>
-
-                {/* Sección de Actividades */}
-                <div className="border-t pt-4 mt-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-black text-primary uppercase tracking-tight flex items-center gap-2">
-                      <CheckCircle2 className="w-5 h-5" />
-                      Actividades ({editingProyecto.actividades?.length || 0})
-                    </h3>
-                    <Button
-                      size="sm"
-                      onClick={() => setIsNewActivityModalOpen(true)}
-                      className="gap-1 bg-primary hover:bg-primary/90"
-                    >
-                      <Plus className="w-3 h-3" /> Agregar
-                    </Button>
-                  </div>
-
-                  <div className="space-y-2 max-h-[250px] overflow-y-auto">
-                    {editingProyecto.actividades?.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-4">
-                        No hay actividades agendadas. Agrega una para comenzar.
-                      </p>
-                    ) : (
-                      editingProyecto.actividades?.map((act: any) => {
-                        const isCompleted = act.progreso === 100;
-                        return (
-                          <div key={act.id} className={cn("p-3 rounded-lg border", isCompleted ? "bg-success/10 border-success/30" : "bg-muted/20 border-transparent")}>
-                            <div className="flex items-center justify-between mb-2">
-                              <div className="flex items-center gap-2">
-                                <div className={cn(
-                                  "w-5 h-5 rounded-full flex items-center justify-center border-2",
-                                  isCompleted
-                                    ? "bg-success border-success"
-                                    : act.estado === "En Progreso"
-                                      ? "bg-primary border-primary"
-                                      : "bg-white border-border"
-                                )}>
-                                  {isCompleted && (
-                                    <CheckCircle2 className="w-3 h-3 text-white" />
-                                  )}
-                                </div>
-                                <p className={cn("text-sm font-bold", isCompleted ? "line-through text-success" : "text-primary")}>
-                                  {act.descripcion}
-                                </p>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 text-muted-foreground hover:text-error hover:bg-error/10"
-                                onClick={() => handleRemoveActivity(act.id)}
-                              >
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Badge className={cn("text-[9px]", tipoColors[act.tipo])}>
-                                {act.tipo}
-                              </Badge>
-                              <Badge className={cn("text-[9px]", prioridadColors[act.prioridad])}>
-                                {act.prioridad}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center gap-3">
-                              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className={cn("h-full transition-all duration-300", isCompleted ? "bg-success" : "bg-primary")}
-                                  style={{ width: `${act.progreso}%` }}
-                                />
-                              </div>
-                              <div className="flex items-center gap-1 w-[80px]">
-                                <Input
-                                  type="number"
-                                  min="0"
-                                  max="100"
-                                  value={act.progreso}
-                                  onChange={(e) => {
-                                    const newProgreso = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                                    const updatedActividades = editingProyecto.actividades?.map((a: any) =>
-                                      a.id === act.id ? { ...a, progreso: newProgreso } : a
-                                    );
-                                    const avanceCalculado = Math.round(
-                                      (updatedActividades?.filter((a: any) => a.progreso === 100).length || 0) /
-                                      (updatedActividades?.length || 1) * 100
-                                    );
-                                    setEditingProyecto({
-                                      ...editingProyecto,
-                                      actividades: updatedActividades,
-                                      avance: avanceCalculado,
-                                      avanceCalculado,
-                                    });
-                                  }}
-                                  className="h-6 w-12 text-xs text-center font-bold"
-                                />
-                                <span className="text-xs font-black text-muted-foreground">%</span>
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Avance Calculado */}
-                  {editingProyecto.actividades && editingProyecto.actividades.length > 0 && (
-                    <div className="mt-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-black text-primary uppercase">Avance Automático</span>
-                        <span className="text-lg font-black text-primary">{editingProyecto.avanceCalculado}%</span>
-                      </div>
-                      <div className="h-3 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className={cn(
-                            "h-full transition-all duration-500",
-                            editingProyecto.avanceCalculado === 100 ? "bg-success" : "bg-primary"
-                          )}
-                          style={{ width: `${editingProyecto.avanceCalculado}%` }}
-                        />
-                      </div>
-                      <p className="text-[10px] text-muted-foreground mt-1">
-                        {editingProyecto.actividades.filter((a: any) => a.progreso === 100).length} de {editingProyecto.actividades.length} actividades completadas
-                      </p>
-                    </div>
-                  )}
                 </div>
               </>
             )}
@@ -1132,157 +842,34 @@ export default function ProyectosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Nueva Actividad */}
-      <Dialog open={isNewActivityModalOpen} onOpenChange={setIsNewActivityModalOpen}>
-        <DialogContent className="max-w-lg w-[95vw] p-0 border-none bg-background flex flex-col overflow-hidden">
-          <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
-            <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3">
-              <Plus className="w-5 h-5 text-accent" />
-              Nueva Actividad
+      {/* Modal Eliminar Proyecto */}
+      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-error flex items-center gap-2 font-medium">
+              <Trash2 className="w-5 h-5" />
+              CONFIRMAR ELIMINACIÓN
             </DialogTitle>
+            <DialogDescription className="py-4 font-bold text-slate-600">
+              ¿Estás seguro de que deseas eliminar el proyecto <span className="font-medium text-primary">"{projectToDelete?.nombre}"</span>? 
+              <br /><br />
+              Esta acción es <span className="text-error underline">irreversible</span> y eliminará todas las actividades, reportes y datos asociados.
+            </DialogDescription>
           </DialogHeader>
-          <div className="p-6 space-y-4 overflow-y-auto">
-            <div className="space-y-2">
-              <Label htmlFor="act-descripcion" className="font-bold text-primary">Descripción *</Label>
-              <Textarea
-                id="act-descripcion"
-                value={newActivity.descripcion}
-                onChange={(e) => setNewActivity({ ...newActivity, descripcion: e.target.value })}
-                placeholder="Describe la actividad a realizar"
-                className="font-bold"
-                rows={3}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="act-tipo" className="font-bold text-primary">Tipo</Label>
-                <Select
-                  value={newActivity.tipo}
-                  onValueChange={(val) => setNewActivity({ ...newActivity, tipo: val })}
-                >
-                  <SelectTrigger className="font-bold">
-                    <SelectValue placeholder="Tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Técnica">Técnica</SelectItem>
-                    <SelectItem value="Administrativa">Administrativa</SelectItem>
-                    <SelectItem value="Logística">Logística</SelectItem>
-                    <SelectItem value="Documental">Documental</SelectItem>
-                    <SelectItem value="Validación">Validación</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="act-prioridad" className="font-bold text-primary">Prioridad</Label>
-                <Select
-                  value={newActivity.prioridad}
-                  onValueChange={(val) => setNewActivity({ ...newActivity, prioridad: val })}
-                >
-                  <SelectTrigger className="font-bold">
-                    <SelectValue placeholder="Prioridad" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Baja">Baja</SelectItem>
-                    <SelectItem value="Media">Media</SelectItem>
-                    <SelectItem value="Alta">Alta</SelectItem>
-                    <SelectItem value="Crítica">Crítica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="act-estado" className="font-bold text-primary">Estado</Label>
-                <Select
-                  value={newActivity.estado}
-                  onValueChange={(val) => setNewActivity({ ...newActivity, estado: val })}
-                >
-                  <SelectTrigger className="font-bold">
-                    <SelectValue placeholder="Estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Pendiente">Pendiente</SelectItem>
-                    <SelectItem value="En Progreso">En Progreso</SelectItem>
-                    <SelectItem value="Completada">Completada</SelectItem>
-                    <SelectItem value="Validada">Validada</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="act-fecha" className="font-bold text-primary">Fecha Vencimiento</Label>
-                <Input
-                  id="act-fecha"
-                  type="date"
-                  value={newActivity.fechaVencimiento}
-                  onChange={(e) => setNewActivity({ ...newActivity, fechaVencimiento: e.target.value })}
-                  className="font-bold"
-                />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="p-4 border-t">
-            <Button variant="outline" onClick={() => setIsNewActivityModalOpen(false)} className="gap-2">
-              <X className="w-4 h-4" /> Cancelar
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} className="font-bold">
+              CANCELAR
             </Button>
-            <Button onClick={handleAddActivityToProyecto} className="gap-2 bg-primary hover:bg-primary/90">
-              <Plus className="w-4 h-4" /> Agregar
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete} 
+              className="font-medium bg-error hover:bg-error/90 uppercase tracking-wider"
+            >
+              ELIMINAR PROYECTO
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
-  );
-}
-
-// ============================================
-// COMPONENTES AUXILIARES
-// ============================================
-
-function StatsCard({
-  label,
-  value,
-  icon,
-  color,
-  bgColor,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-}) {
-  return (
-    <div className="bg-white p-4 rounded-xl border border-border shadow-sm transition-all hover:shadow-md">
-      <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", bgColor)}>
-          <div className={cn("w-5 h-5", color)}>{icon}</div>
-        </div>
-        <div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase">{label}</p>
-          <p className={cn("text-2xl font-black", color)}>{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// Icon needed
-function FolderKanban({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      stroke="currentColor"
-      viewBox="0 0 24 24"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2}
-        d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
-      />
-    </svg>
   );
 }

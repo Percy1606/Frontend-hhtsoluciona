@@ -368,7 +368,7 @@ export const useCRMStore = create<CRMState>()(
         let lastId = Math.max(...state.quotes.map(q => parseInt(q.id.replace('Q-', '')) || 0), 0);
         const processedQuotes = newQuotes.map(q => {
           lastId += 1;
-          return { ...q, id: `Q-${lastId.padStart(3, '0')}` } as Quote;
+          return { ...q, id: `Q-${lastId.toString().padStart(3, '0')}` } as Quote;
         });
         return { quotes: [...processedQuotes, ...state.quotes] };
       }),

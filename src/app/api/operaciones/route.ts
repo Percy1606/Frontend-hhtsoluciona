@@ -1,24 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type {
+  Area,
+  Prioridad,
+  EstadoProyecto,
+  Semaforo,
+  Responsable,
+  Proyecto,
+  Actividad,
+  EvaluacionTecnica,
+  IngenieriaDiseno,
+  Suboperacion,
+} from '@/lib/types';
 
 // ============================================
-// DATOS DE OPERACIONES - SIMULANDO BASE DE DATOS
+// TIPOS LOCALES (compatibles con lib/types)
 // ============================================
 
-// Tipos
-type Area = 'Steven' | 'Diego' | 'Guillermo' | 'Mario';
-type Prioridad = 'Baja' | 'Media' | 'Alta' | 'Crítica';
-type EstadoProyecto = 'Planificación' | 'En Ejecución' | 'Detenido' | 'Finalizado';
-type Semaforo = 'Verde' | 'Amarillo' | 'Rojo';
 type EstadoActividad = 'Pendiente' | 'En Progreso' | 'Completada' | 'Validada' | 'Bloqueada';
 
-interface Responsable {
+interface Subtarea {
   id: string;
-  nombre: string;
-  area: Area;
-  cargo: string;
-  email?: string;
-  telefono?: string;
-  color: string;
+  actividadId: string;
+  descripcion: string;
+  completada: boolean;
+  responsableId?: string;
+  fechaVencimiento?: string;
+  fechaCompletada?: string;
 }
 
 interface ValidacionRequerida {
@@ -31,31 +38,28 @@ interface ValidacionRequerida {
   observaciones?: string;
 }
 
-interface Subtarea {
+interface Comentario {
   id: string;
-  descripcion: string;
-  completada: boolean;
-  responsableId?: string;
-  fechaVencimiento?: string;
-  fechaCompletada?: string;
+  entidadId: string;
+  entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion';
+  usuario: string;
+  usuarioArea: Area;
+  contenido: string;
+  fecha: string;
+  esInterno: boolean;
 }
 
-interface Actividad {
+interface Evidencia {
   id: string;
-  descripcion: string;
-  tipo: 'Técnica' | 'Administrativa' | 'Logística' | 'Documental' | 'Validación';
-  prioridad: Prioridad;
-  estado: EstadoActividad;
-  fechaCreacion: string;
-  fechaInicio?: string;
-  fechaFin?: string;
-  fechaVencimiento?: string;
-  responsables: string[];
-  validacionesRequeridas: ValidacionRequerida[];
-  subtareas: Subtarea[];
-  progreso: number;
-  ponderacion?: number;
-  orden: number;
+  entidadId: string;
+  entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion';
+  nombre: string;
+  tipo: string;
+  url: string;
+  tamano: string;
+  subidoPor: string;
+  fecha: string;
+  descripcion?: string;
 }
 
 interface HistorialCambio {
@@ -68,29 +72,63 @@ interface HistorialCambio {
   fecha: string;
 }
 
-interface Proyecto {
-  id: string;
-  clientId: string;
-  codigo: string;
-  nombre: string;
-  descripcion?: string;
-  estado: EstadoProyecto;
-  semaforo: Semaforo;
-  prioridad: Prioridad;
-  fechaInicio: string;
-  fechaFinEstimada: string;
-  fechaFinReal?: string;
-  responsablePrincipal: string;
-  responsables: string[];
+interface IndicadorAvance {
   area: Area;
-  actividades: Actividad[];
-  avance: number;
-  avanceCalculado: number;
-  costoPresupuestado?: number;
-  costoReal?: number;
+  porcentaje: number;
+  actividadesTotal: number;
+  actividadesCompletadas: number;
+  ultimaActualizacion: string;
 }
 
-// Base de datos en memoria
+interface Documento {
+  id: string;
+  proyectoId: string;
+  clientId?: string;
+  nombre: string;
+  tipo: 'Técnico' | 'Administrativo' | 'Legal' | 'Financiero' | 'Otro';
+  subtype?: string;
+  numero?: string;
+  url: string;
+  version?: string;
+  estado: 'Borrador' | 'Pendiente Revisión' | 'Aprobado' | 'Obsoleto';
+  subidoPor: string;
+  fechaSubida: string;
+  fechaVencimiento?: string;
+  validaciones: ValidacionRequerida[];
+  observaciones?: string;
+}
+
+interface ReporteDiario {
+  id: string;
+  proyectoId: string;
+  fecha: string;
+  usuario: string;
+  usuarioArea: Area;
+  actividades: string;
+  hallazgos: string;
+  personal: string;
+  proximosPasos: string;
+  evidencias: Evidencia[];
+  estado: 'Borrador' | 'Enviado' | 'Revisado';
+}
+
+interface Entregable {
+  id: string;
+  suboperacionId: string;
+  nombre: string;
+  descripcion?: string;
+  tipo: 'Documento' | 'Plano' | 'Informe' | 'Certificado' | 'Otro';
+  url?: string;
+  estado: 'Pendiente' | 'En Progreso' | 'Entregado' | 'Aprobado';
+  fechaEntrega?: string;
+  fechaAprobacion?: string;
+  aprobadoPor?: string;
+}
+
+// ============================================
+// BASE DE DATOS EN MEMORIA
+// ============================================
+
 let proyectos: Proyecto[] = [
   {
     id: 'proj_001',
@@ -103,14 +141,19 @@ let proyectos: Proyecto[] = [
     prioridad: 'Alta',
     fechaInicio: '2026-05-10',
     fechaFinEstimada: '2026-05-28',
-    responsablePrincipal: 'resp_diego',
-    responsables: ['resp_diego', 'resp_mario'],
-    area: 'Diego',
+    responsablePrincipalId: 'resp_diego',
+    responsablesAdicionales: ['resp_mario'],
+    area: 'Ingeniería y Supervisión Técnica',
     avance: 85,
     avanceCalculado: 85,
+    indicadoresAvance: [
+      { area: 'Ingeniería y Supervisión Técnica', porcentaje: 90, actividadesTotal: 4, actividadesCompletadas: 3, ultimaActualizacion: '2026-05-20' },
+      { area: 'Operaciones de Campo y Control de Obra', porcentaje: 50, actividadesTotal: 2, actividadesCompletadas: 1, ultimaActualizacion: '2026-05-20' },
+    ],
     actividades: [
       {
         id: 'act_001',
+        proyectoId: 'proj_001',
         descripcion: 'Limpieza de aisladores y bushings',
         tipo: 'Técnica',
         prioridad: 'Alta',
@@ -119,26 +162,32 @@ let proyectos: Proyecto[] = [
         fechaInicio: '2026-05-10',
         fechaFin: '2026-05-12',
         fechaVencimiento: '2026-05-12',
-        responsables: ['resp_mario'],
+        responsablePrincipalId: 'resp_mario',
+        responsablesApoyo: [],
         validacionesRequeridas: [
           {
             id: 'val_001',
             tipo: 'Técnica',
-            area: 'Diego',
+            area: 'Ingeniería y Supervisión Técnica',
             estado: 'Aprobada',
             validadoPor: 'Diego',
             fechaValidacion: '2026-05-12'
           }
         ],
         subtareas: [
-          { id: 'sub_001', descripcion: 'Limpieza de aisladores de porcelana', completada: true, responsableId: 'resp_mario' },
-          { id: 'sub_002', descripcion: 'Limpieza de bushings', completada: true, responsableId: 'resp_mario' }
+          { id: 'sub_001', actividadId: 'act_001', descripcion: 'Limpieza de aisladores de porcelana', completada: true, responsableId: 'resp_mario' },
+          { id: 'sub_002', actividadId: 'act_001', descripcion: 'Limpieza de bushings', completada: true, responsableId: 'resp_mario' }
         ],
+        comentarios: [],
+        evidencias: [],
         progreso: 100,
-        orden: 1
+        ponderacion: 1,
+        orden: 1,
+        historialCambios: []
       },
       {
         id: 'act_002',
+        proyectoId: 'proj_001',
         descripcion: 'Pruebas dieléctricas de transformador',
         tipo: 'Técnica',
         prioridad: 'Crítica',
@@ -147,26 +196,32 @@ let proyectos: Proyecto[] = [
         fechaInicio: '2026-05-13',
         fechaFin: '2026-05-15',
         fechaVencimiento: '2026-05-15',
-        responsables: ['resp_diego'],
+        responsablePrincipalId: 'resp_diego',
+        responsablesApoyo: [],
         validacionesRequeridas: [
           {
             id: 'val_002',
             tipo: 'Técnica',
-            area: 'Diego',
+            area: 'Ingeniería y Supervisión Técnica',
             estado: 'Aprobada',
             validadoPor: 'Diego',
             fechaValidacion: '2026-05-15'
           }
         ],
         subtareas: [
-          { id: 'sub_003', descripcion: 'Prueba de resistencia de aislamiento', completada: true, responsableId: 'resp_diego' },
-          { id: 'sub_004', descripcion: 'Prueba de rigidez dieléctrica', completada: true, responsableId: 'resp_diego' }
+          { id: 'sub_003', actividadId: 'act_002', descripcion: 'Prueba de resistencia de aislamiento', completada: true, responsableId: 'resp_diego' },
+          { id: 'sub_004', actividadId: 'act_002', descripcion: 'Prueba de rigidez dieléctrica', completada: true, responsableId: 'resp_diego' }
         ],
+        comentarios: [],
+        evidencias: [],
         progreso: 100,
-        orden: 2
+        ponderacion: 1,
+        orden: 2,
+        historialCambios: []
       },
       {
         id: 'act_003',
+        proyectoId: 'proj_001',
         descripcion: 'Regeneración de aceite dieléctrico',
         tipo: 'Técnica',
         prioridad: 'Alta',
@@ -174,99 +229,138 @@ let proyectos: Proyecto[] = [
         fechaCreacion: '2026-05-15',
         fechaInicio: '2026-05-20',
         fechaVencimiento: '2026-05-25',
-        responsables: ['resp_mario', 'resp_steven'],
+        responsablePrincipalId: 'resp_mario',
+        responsablesApoyo: ['resp_steven'],
         validacionesRequeridas: [
           {
             id: 'val_003',
             tipo: 'Campo',
-            area: 'Mario',
+            area: 'Operaciones de Campo y Control de Obra',
             estado: 'Pendiente'
           },
           {
             id: 'val_004',
             tipo: 'Técnica',
-            area: 'Diego',
+            area: 'Ingeniería y Supervisión Técnica',
             estado: 'Pendiente'
           }
         ],
         subtareas: [
-          { id: 'sub_005', descripcion: 'Drenado de aceite usado', completada: true, responsableId: 'resp_mario' },
-          { id: 'sub_006', descripcion: 'Filtrado de aceite', completada: false, responsableId: 'resp_mario' },
-          { id: 'sub_007', descripcion: 'Llenado de aceite nuevo', completada: false, responsableId: 'resp_mario' }
+          { id: 'sub_005', actividadId: 'act_003', descripcion: 'Drenado de aceite usado', completada: true, responsableId: 'resp_mario' },
+          { id: 'sub_006', actividadId: 'act_003', descripcion: 'Filtrado de aceite', completada: false, responsableId: 'resp_mario' },
+          { id: 'sub_007', actividadId: 'act_003', descripcion: 'Llenado de aceite nuevo', completada: false, responsableId: 'resp_mario' }
         ],
+        comentarios: [],
+        evidencias: [],
         progreso: 40,
-        orden: 3
+        ponderacion: 1,
+        orden: 3,
+        historialCambios: []
       },
       {
         id: 'act_004',
+        proyectoId: 'proj_001',
         descripcion: 'Pruebas de inyección de corriente a relés',
         tipo: 'Validación',
         prioridad: 'Alta',
         estado: 'Pendiente',
         fechaCreacion: '2026-05-20',
         fechaVencimiento: '2026-05-28',
-        responsables: ['resp_diego'],
+        responsablePrincipalId: 'resp_diego',
+        responsablesApoyo: [],
         validacionesRequeridas: [],
         subtareas: [],
+        comentarios: [],
+        evidencias: [],
         progreso: 0,
-        orden: 4
+        ponderacion: 1,
+        orden: 4,
+        historialCambios: []
       }
-    ]
+    ],
+    reportesDiarios: [],
+    comentarios: [],
+    evidencias: [],
+    documentos: [],
+    suboperaciones: [],
+    historialCambios: []
   },
   {
     id: 'proj_002',
     clientId: '3',
     codigo: 'HHT-OPE-26-002',
     nombre: 'Iluminación LED Almacenes LOS PEROLES',
+    descripcion: 'Proyecto de modernización de sistema de iluminación',
     estado: 'Finalizado',
     semaforo: 'Verde',
     prioridad: 'Media',
     fechaInicio: '2026-05-01',
     fechaFinEstimada: '2026-05-15',
     fechaFinReal: '2026-05-14',
-    responsablePrincipal: 'resp_mario',
-    responsables: ['resp_mario'],
-    area: 'Mario',
+    responsablePrincipalId: 'resp_mario',
+    responsablesAdicionales: [],
+    area: 'Operaciones de Campo y Control de Obra',
     avance: 100,
     avanceCalculado: 100,
+    indicadoresAvance: [
+      { area: 'Operaciones de Campo y Control de Obra', porcentaje: 100, actividadesTotal: 2, actividadesCompletadas: 2, ultimaActualizacion: '2026-05-14' },
+    ],
     actividades: [
       {
         id: 'act_005',
+        proyectoId: 'proj_002',
         descripcion: 'Desmontaje de luminarias antiguas',
         tipo: 'Técnica',
         prioridad: 'Media',
         estado: 'Completada',
         fechaCreacion: '2026-05-01',
         fechaFin: '2026-05-05',
-        responsables: ['resp_mario'],
+        fechaVencimiento: '2026-05-05',
+        responsablePrincipalId: 'resp_mario',
+        responsablesApoyo: [],
         validacionesRequeridas: [],
         subtareas: [],
+        comentarios: [],
+        evidencias: [],
         progreso: 100,
-        orden: 1
+        orden: 1,
+        historialCambios: []
       },
       {
         id: 'act_006',
+        proyectoId: 'proj_002',
         descripcion: 'Instalación de proyectores LED 200W',
         tipo: 'Técnica',
         prioridad: 'Media',
         estado: 'Completada',
         fechaCreacion: '2026-05-05',
         fechaFin: '2026-05-14',
-        responsables: ['resp_mario'],
+        fechaVencimiento: '2026-05-14',
+        responsablePrincipalId: 'resp_mario',
+        responsablesApoyo: [],
         validacionesRequeridas: [],
         subtareas: [],
+        comentarios: [],
+        evidencias: [],
         progreso: 100,
-        orden: 2
+        orden: 2,
+        historialCambios: []
       }
-    ]
+    ],
+    reportesDiarios: [],
+    comentarios: [],
+    evidencias: [],
+    documentos: [],
+    suboperaciones: [],
+    historialCambios: []
   }
 ];
 
 let responsables: Responsable[] = [
-  { id: 'resp_steven', nombre: 'Steven', area: 'Steven', cargo: 'Coordinador Logístico', color: '#3B82F6', email: 'steven@hhtsoluciona.com' },
-  { id: 'resp_diego', nombre: 'Diego', area: 'Diego', cargo: 'Ingeniero Supervisor', color: '#8B5CF6', email: 'diego@hhtsoluciona.com' },
-  { id: 'resp_guillermo', nombre: 'Guillermo', area: 'Guillermo', cargo: 'Gestor Documental', color: '#10B981', email: 'guillermo@hhtsoluciona.com' },
-  { id: 'resp_mario', nombre: 'Mario', area: 'Mario', cargo: 'Soporte de Campo', color: '#F59E0B', email: 'mario@hhtsoluciona.com' }
+  { id: 'resp_steven', nombre: 'Steven', area: 'Logística y Recursos', cargo: 'Coordinador Logístico', color: '#3B82F6', email: 'steven@hhtsoluciona.com', telefono: '999888777', activo: true },
+  { id: 'resp_diego', nombre: 'Diego', area: 'Ingeniería y Supervisión Técnica', cargo: 'Ingeniero Supervisor', color: '#8B5CF6', email: 'diego@hhtsoluciona.com', telefono: '999888776', activo: true },
+  { id: 'resp_guillermo', nombre: 'Guillermo', area: 'Gestión Documentaria y Expedientes Técnicos', cargo: 'Gestor Documental', color: '#10B981', email: 'guillermo@hhtsoluciona.com', telefono: '999888775', activo: true },
+  { id: 'resp_mario', nombre: 'Mario', area: 'Operaciones de Campo y Control de Obra', cargo: 'Soporte de Campo', color: '#F59E0B', email: 'mario@hhtsoluciona.com', telefono: '999888774', activo: true }
 ];
 
 // ============================================
@@ -298,13 +392,35 @@ function calculateAvance(actividades: Actividad[]): number {
   return Math.round((pesosCompletados / actividades.length) * 100);
 }
 
+function calculateIndicadoresAvance(proyecto: Proyecto): IndicadorAvance[] {
+  const areas: Area[] = [
+    'Logística y Recursos',
+    'Ingeniería y Supervisión Técnica',
+    'Gestión Documentaria y Expedientes Técnicos',
+    'Operaciones de Campo y Control de Obra'
+  ];
+  return areas.map(area => {
+    const actividadesArea = proyecto.actividades.filter(a => {
+      const responsable = responsables.find(r => r.id === a.responsablePrincipalId);
+      return responsable?.area === area;
+    });
+    const completadas = actividadesArea.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length;
+    return {
+      area,
+      porcentaje: actividadesArea.length > 0 ? Math.round((completadas / actividadesArea.length) * 100) : 0,
+      actividadesTotal: actividadesArea.length,
+      actividadesCompletadas: completadas,
+      ultimaActualizacion: new Date().toISOString().split('T')[0],
+    };
+  });
+}
+
 // ============================================
 // RUTAS API
 // ============================================
 
 // GET - Obtener todos los proyectos
 export async function GET(request: NextRequest) {
-  console.log("GET /api/operaciones called");
   const { searchParams } = new URL(request.url);
   const estado = searchParams.get('estado');
   const area = searchParams.get('area');
@@ -338,17 +454,17 @@ export async function GET(request: NextRequest) {
   // Agregar datos de responsables
   const proyectosWithResponsables = filteredProyectos.map(p => ({
     ...p,
-    responsablePrincipalData: responsables.find(r => r.id === p.responsablePrincipal),
-    responsablesData: p.responsables.map(rId => responsables.find(r => r.id === rId)).filter(Boolean)
+    responsablePrincipalData: responsables.find(r => r.id === p.responsablePrincipalId),
+    responsablesData: p.responsablesAdicionales.map(rId => responsables.find(r => r.id === rId)).filter(Boolean)
   }));
-  console.log("Returning JSON response from /api/operaciones");
+
   return NextResponse.json({
     proyectos: proyectosWithResponsables,
     responsables,
     estadisticas: {
       total: proyectos.length,
       activos: proyectos.filter(p => p.estado === 'En Ejecución').length,
-      planejamento: proyectos.filter(p => p.estado === 'Planificación').length,
+      planification: proyectos.filter(p => p.estado === 'Planificación').length,
       finalizados: proyectos.filter(p => p.estado === 'Finalizado').length,
       detenidos: proyectos.filter(p => p.estado === 'Detenido').length,
       verdes: proyectos.filter(p => p.semaforo === 'Verde').length,
@@ -374,7 +490,24 @@ export async function POST(request: NextRequest) {
       codigo,
       semaforo: calculateSemaforo(body),
       avanceCalculado: calculateAvance(body.actividades || []),
-      actividades: body.actividades || []
+      indicadoresAvance: [],
+      actividades: body.actividades || [],
+      reportesDiarios: [],
+      comentarios: [],
+      evidencias: [],
+      documentos: [],
+      suboperaciones: [],
+      historialCambios: [{
+        id: `hist_${Date.now()}`,
+        entidadId: newId,
+        entidadTipo: 'proyecto',
+        campo: 'Creación',
+        valorAnterior: '',
+        valorNuevo: codigo,
+        usuario: body.creadoPor || 'Sistema',
+        area: body.area,
+        fecha: new Date().toISOString().split('T')[0]
+      }]
     };
 
     proyectos.unshift(newProyecto);
@@ -409,7 +542,13 @@ export async function PUT(request: NextRequest) {
       ...proyectos[proyectoIndex],
       ...updates,
       semaforo: calculateSemaforo({ ...proyectos[proyectoIndex], ...updates }),
-      avanceCalculado: calculateAvance(updates.actividades || proyectos[proyectoIndex].actividades)
+      avanceCalculado: calculateAvance(updates.actividades || proyectos[proyectoIndex].actividades),
+      indicadoresAvance: calculateIndicadoresAvance({
+        ...proyectos[proyectoIndex],
+        ...updates,
+        actividades: updates.actividades || proyectos[proyectoIndex].actividades
+      }),
+      fechaActualizacion: new Date().toISOString().split('T')[0]
     };
 
     proyectos[proyectoIndex] = proyectoActualizado;

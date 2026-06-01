@@ -8,19 +8,33 @@ import {
   CheckCircle2 
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { KPI_DATA } from "@/mocks/data";
-
-const kpiConfig = [
-  { label: "Total Clientes", value: KPI_DATA.totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
-  { label: "Prospectos", value: KPI_DATA.prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600" },
-  { label: "Cotizaciones", value: KPI_DATA.cotizacionesEnviadas, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
-  { label: "Proyectos Activos", value: KPI_DATA.proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600" },
-  { label: "Monto Estimado", value: KPI_DATA.montoEstimado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
-  { label: "Venta Proyectada", value: KPI_DATA.ventaProyectada, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
-  { label: "% Cobranza", value: KPI_DATA.porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true },
-];
+import { useCRMStore } from "@/store/crm-store";
+import { useOperacionesStore } from "@/store/operaciones-store";
 
 export function KPIStats() {
+  const { clients, quotes } = useCRMStore();
+  const { proyectos } = useOperacionesStore();
+
+  const totalClientes = clients.length;
+  const prospectos = clients.filter(c => c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido').length;
+  const cotizacionesEnviadas = quotes.length;
+  const proyectosActivos = proyectos.filter(p => p.estado === 'En Ejecución').length;
+  const montoEstimado = clients.reduce((acc, c) => acc + (c.montoEstimado || 0), 0);
+  const ventaProyectada = clients.reduce((acc, c) => acc + (c.ventaProyectada || 0), 0);
+  
+  // % Cobranza simulado por ahora si no hay datos de facturación
+  const porcentajeCobranza = 85; 
+
+  const kpiConfig = [
+    { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
+    { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600" },
+    { label: "Cotizaciones", value: cotizacionesEnviadas, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
+    { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600" },
+    { label: "Monto Estimado", value: montoEstimado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
+    { label: "Venta Proyectada", value: ventaProyectada, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
+    { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true },
+  ];
+
   const formatValue = (kpi: typeof kpiConfig[0]) => {
     if (kpi.isCurrency) {
       return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(kpi.value);

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLayoutStore } from "@/store/layout-store";
+import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 
 const menuItems = [
@@ -83,14 +84,36 @@ const menuItems = [
     ]
   },
   { icon: BarChart3, label: "Finanzas", href: "/finanzas" },
+  {
+    icon: Settings,
+    label: "Configuración",
+    href: "/configuracion",
+    subItems: [
+      { icon: Users, label: "Usuarios", href: "/configuracion/usuarios" },
+      { icon: LayoutDashboard, label: "Trabajadores", href: "/configuracion/trabajadores" },
+      { icon: FileCheck, label: "Manual de Usuario", href: "/configuracion/manual" },
+    ]
+  },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { sidebarCollapsed, toggleSidebar } = useLayoutStore();
+  const { user, logout } = useAuthStore();
+
+  const userModules = user?.modulos || ["dashboard"];
+  const isAdmin = user?.rol === "ADMIN";
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (item.href === "/") return true;
+    if (isAdmin) return true;
+    const moduleId = item.href.split("/")[1];
+    return userModules.includes(moduleId);
+  });
 
   const [openSubmenu, setOpenSubmenu] = useState<string | null>(() => {
-    const activeItem = menuItems.find(item => item.subItems && pathname.startsWith(item.href));
+    const activeItem = filteredMenuItems.find(item => item.subItems && pathname.startsWith(item.href));
     return activeItem ? activeItem.href : null;
   });
 
@@ -116,7 +139,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-none">
-        {menuItems.map((item) => {
+        {filteredMenuItems.map((item) => {
           const isParentActive = item.href === "/" 
             ? pathname === "/" 
             : pathname.startsWith(item.href);
@@ -201,17 +224,16 @@ export function Sidebar() {
       </nav>
 
       <div className="p-4 mt-auto border-t border-white/10 space-y-2">
-        <button className={cn(
-          "flex items-center gap-3 px-4 py-3 w-full text-white/70 hover:text-white transition-colors",
-          sidebarCollapsed ? "justify-center px-0" : "justify-start"
-        )}>
-          <Settings className="w-5 h-5 shrink-0" />
-          {!sidebarCollapsed && <span className="font-medium animate-in fade-in duration-300">Configuración</span>}
-        </button>
-        <button className={cn(
-          "flex items-center gap-3 px-4 py-3 w-full text-white/70 hover:text-accent transition-colors",
-          sidebarCollapsed ? "justify-center px-0" : "justify-start"
-        )}>
+        <button 
+          onClick={() => {
+            logout();
+            router.push("/login");
+          }}
+          className={cn(
+            "flex items-center gap-3 px-4 py-3 w-full text-white/70 hover:text-accent transition-colors",
+            sidebarCollapsed ? "justify-center px-0" : "justify-start"
+          )}
+        >
           <LogOut className="w-5 h-5 shrink-0" />
           {!sidebarCollapsed && <span className="font-medium animate-in fade-in duration-300">Cerrar Sesión</span>}
         </button>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useCRMStore, Quote } from "@/store/crm-store";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { 
   Table, 
   TableBody, 
@@ -177,7 +177,7 @@ export function QuoteManager() {
                       {quote.estado}
                     </Badge>
                   </TableCell>
-                  <TableCell className="text-center text-xs font-semibold text-slate-500">{quote.fecha}</TableCell>
+                  <TableCell className="text-center text-xs font-semibold text-slate-500">{formatDate(quote.fecha)}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-1">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-success hover:bg-green-50" onClick={() => handleWhatsAppQuote(quote)} title="WhatsApp">

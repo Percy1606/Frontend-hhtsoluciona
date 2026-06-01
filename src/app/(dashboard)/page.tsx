@@ -55,37 +55,81 @@ interface DashboardData {
   distribucionPorPrioridad: Record<string, number>;
 }
 
+import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
+
 // ============================================
 // COMPONENTES
 // ============================================
 
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
+  const { 
+    proyectos, 
+    fetchProyectos, 
+    fetchResponsables, 
+    alertas,
+    getTimelineEvents,
+    loading: loadingOpe 
+  } = useOperacionesStore();
+  
+  const { 
+    clients, 
+    quotes,
+  } = useCRMStore();
+
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboardData();
-  }, []);
-
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch('/api/dashboard');
-      const dashboardData = await response.json();
-      setData(dashboardData);
-    } catch (error) {
-      console.error("Error fetching dashboard:", error);
-    } finally {
+    const init = async () => {
+      await Promise.all([fetchProyectos(), fetchResponsables()]);
       setLoading(false);
-    }
-  };
+    };
+    init();
+  }, [fetchProyectos, fetchResponsables]);
 
   // Áreas con sus colores
   const areas = [
-    { name: 'Steven', color: 'bg-blue-500', role: 'Logística y Coordinación', icon: Truck },
-    { name: 'Diego', color: 'bg-purple-500', role: 'Ingeniería y Validación', icon: Briefcase },
-    { name: 'Guillermo', color: 'bg-green-500', role: 'Gestión Documental', icon: FileCheck },
-    { name: 'Mario', color: 'bg-yellow-500', role: 'Soporte de Campo', icon: ClipboardList },
+    { id: 'Logística y Recursos', name: 'Steven', color: 'bg-blue-500', role: 'Logística y Coordinación', icon: Truck },
+    { id: 'Ingeniería y Supervisión Técnica', name: 'Diego', color: 'bg-purple-500', role: 'Ingeniería y Validación', icon: Briefcase },
+    { id: 'Gestión Documentaria y Expedientes Técnicos', name: 'Guillermo', color: 'bg-green-500', role: 'Gestión Documental', icon: FileCheck },
+    { id: 'Operaciones de Campo y Control de Obra', name: 'Mario', color: 'bg-yellow-500', role: 'Soporte de Campo', icon: ClipboardList },
   ];
+
+  // Calcular KPIs en tiempo real
+  const kpis = {
+    proyectos: {
+      total: proyectos.length,
+      activos: proyectos.filter(p => p.estado === 'En Ejecución').length,
+      finalizados: proyectos.filter(p => p.estado === 'Finalizado').length,
+      verdes: proyectos.filter(p => p.semaforo === 'Verde').length,
+      amarillos: proyectos.filter(p => p.semaforo === 'Amarillo').length,
+      rojos: proyectos.filter(p => p.semaforo === 'Rojo').length
+    },
+    actividades: {
+      vencidas: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => {
+        if (!a.fechaVencimiento || a.estado === 'Completada' || a.estado === 'Validada') return false;
+        return new Date(a.fechaVencimiento) < new Date();
+      }).length || 0), 0)
+    }
+  };
+
+  const timelineOperativo = getTimelineEvents().slice(0, 5).map(e => ({
+    id: e.id,
+    descripcion: e.actividadDescripcion || e.campo,
+    proyecto: { codigo: e.proyectoCodigo, nombre: e.proyectoNombre },
+    fecha: e.fecha,
+    usuario: e.usuario
+  }));
+
+  const distribucionPorArea = areas.reduce((acc, area) => {
+    acc[area.name] = proyectos.filter(p => p.area === area.id).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const distribucionPorPrioridad = proyectos.reduce((acc, p) => {
+    acc[p.prioridad] = (acc[p.prioridad] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
   return (
     <div className="space-y-8">
@@ -107,7 +151,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             {areas.map((area) => {
               const Icon = area.icon;
-              const proyectosArea = data?.distribucionPorArea[area.name] || 0;
+              const proyectosArea = distribucionPorArea[area.name] || 0;
               return (
                 <Card key={area.name} className="border-none shadow-sm hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
@@ -139,7 +183,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black text-green-700 uppercase">Proyectos Verdes</p>
-                    <p className="text-3xl font-black text-green-600">{data?.kpis.proyectos.verdes || 0}</p>
+                    <p className="text-3xl font-black text-green-600">{kpis.proyectos.verdes}</p>
                   </div>
                   <CheckCircle2 className="w-10 h-10 text-green-500" />
                 </div>
@@ -150,7 +194,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black text-yellow-700 uppercase">Proyectos Amarillos</p>
-                    <p className="text-3xl font-black text-yellow-600">{data?.kpis.proyectos.amarillos || 0}</p>
+                    <p className="text-3xl font-black text-yellow-600">{kpis.proyectos.amarillos}</p>
                   </div>
                   <Clock className="w-10 h-10 text-yellow-500" />
                 </div>
@@ -161,7 +205,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black text-red-700 uppercase">Proyectos Rojos</p>
-                    <p className="text-3xl font-black text-red-600">{data?.kpis.proyectos.rojos || 0}</p>
+                    <p className="text-3xl font-black text-red-600">{kpis.proyectos.rojos}</p>
                   </div>
                   <AlertCircle className="w-10 h-10 text-red-500" />
                 </div>
@@ -172,7 +216,7 @@ export default function DashboardPage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-xs font-black text-primary uppercase">Actividades Vencidas</p>
-                    <p className="text-3xl font-black text-primary">{data?.kpis.actividades.vencidas || 0}</p>
+                    <p className="text-3xl font-black text-primary">{kpis.actividades.vencidas}</p>
                   </div>
                   <TrendingUp className="w-10 h-10 text-primary" />
                 </div>
@@ -190,7 +234,7 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {data?.alertas?.slice(0, 5).map((alerta: any) => (
+                {alertas.slice(0, 5).map((alerta) => (
                   <div
                     key={alerta.id}
                     className={cn(
@@ -211,7 +255,7 @@ export default function DashboardPage() {
                     </Badge>
                   </div>
                 ))}
-                {(!data?.alertas || data.alertas.length === 0) && (
+                {alertas.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-4">Sin alertas pendientes</p>
                 )}
               </CardContent>
@@ -227,51 +271,32 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {data?.timelineOperativo?.map((item: any, idx: number) => (
+                  {timelineOperativo.map((item) => (
                     <div
                       key={item.id}
                       className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
                     >
-                      <div className={cn(
-                        "w-3 h-3 rounded-full mt-1.5",
-                        item.diasRestantes < 0 ? "bg-error" :
-                          item.diasRestantes <= 3 ? "bg-warning" :
-                            "bg-success"
-                      )} />
+                      <div className="w-3 h-3 rounded-full mt-1.5 bg-primary" />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-bold text-primary">{item.descripcion}</p>
-                          <Badge className={cn(
-                            "text-[9px]",
-                            item.diasRestantes < 0 ? "bg-error text-white" :
-                              item.diasRestantes <= 3 ? "bg-warning text-white" :
-                                "bg-success text-white"
-                          )}>
-                            {item.diasRestantes < 0
-                              ? `Vencido`
-                              : `${item.diasRestantes} días`}
-                          </Badge>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(item.fecha).toLocaleDateString()}
+                          </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                           {item.proyecto?.codigo} - {item.proyecto?.nombre}
                         </p>
                         <div className="flex items-center gap-2 mt-2">
-                          <div className="flex -space-x-1">
-                            {item.responsables?.slice(0, 2).map((r: string, i: number) => (
-                              <div key={i} className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[8px] font-bold border border-white">
-                                {r?.charAt(0)}
-                              </div>
-                            ))}
-                          </div>
-                          <span className="text-[10px] text-muted-foreground">
-                            {item.responsables?.join(', ')}
+                           <span className="text-[10px] text-muted-foreground">
+                            Por: {item.usuario}
                           </span>
                         </div>
                       </div>
                     </div>
                   ))}
-                  {(!data?.timelineOperativo || data.timelineOperativo.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Sin actividades pendientes</p>
+                  {timelineOperativo.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">Sin actividades recientes</p>
                   )}
                 </div>
               </CardContent>
@@ -287,7 +312,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(data?.distribucionPorPrioridad || {}).map(([prioridad, count]) => (
+                {Object.entries(distribucionPorPrioridad).map(([prioridad, count]) => (
                   <div key={prioridad} className="p-4 bg-muted/20 rounded-xl text-center">
                     <p className={cn(
                       "text-2xl font-black",
@@ -295,7 +320,7 @@ export default function DashboardPage() {
                         prioridad === 'Alta' ? "text-orange-600" :
                           prioridad === 'Media' ? "text-yellow-600" :
                             "text-gray-600"
-                    )}>{count as number}</p>
+                    )}>{count}</p>
                     <p className="text-xs font-bold text-muted-foreground uppercase">{prioridad}</p>
                   </div>
                 ))}

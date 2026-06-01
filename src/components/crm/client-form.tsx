@@ -221,7 +221,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Etapa Comercial</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Seleccionar etapa" />
@@ -251,7 +251,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Asignado A</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Responsable" />
@@ -274,7 +274,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Tipo Cliente</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Tipo" />
@@ -299,7 +299,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Tarifa</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Seleccionar" />
@@ -320,7 +320,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Temperatura</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Seleccionar" />
@@ -343,7 +343,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Prioridad</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Seleccionar" />
@@ -366,7 +366,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700">Día de Trabajo</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="border-border bg-white">
                             <SelectValue placeholder="Día" />
