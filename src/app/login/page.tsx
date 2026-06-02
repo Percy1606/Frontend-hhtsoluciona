@@ -71,11 +71,12 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="space-y-4 flex flex-col items-center">
           <div className="relative h-20 w-48 mb-2">
-            <img 
-    src="/hh_t_soluciona_per_oficial_logo.jpg"
-    alt="SOFTWARE HH Logo"
-    className="object-contain w-full h-full"
-  />
+            <Image
+              src="/hh_t_soluciona_per_oficial_logo.jpg"
+              alt="HH T-SOLUCIONA Logo"
+              fill
+              className="object-contain"
+            />
           </div>
           <CardTitle className="text-2xl font-bold text-[#001F3F] text-center">
             Iniciar Sesión
