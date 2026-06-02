@@ -21,8 +21,10 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Loader2,
 } from "lucide-react";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { api } from "@/lib/api";
 import {
   Select,
   SelectContent,
@@ -142,13 +144,11 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
 // ============================================
 
 const tipoDocumentoOptions = [
-  "Plano",
-  "Especificación Técnica",
-  "Informe",
-  "Contrato",
-  "Certificado",
-  "Permiso",
-  "Otro",
+  { label: "Técnico (Planos, Especificaciones)", value: "Técnico" },
+  { label: "Administrativo (Contratos, Actas)", value: "Administrativo" },
+  { label: "Legal (Permisos, Licencias)", value: "Legal" },
+  { label: "Financiero (Presupuestos, Facturas)", value: "Financiero" },
+  { label: "Otro", value: "Otro" },
 ];
 
 const estadoDocumentoColors: Record<string, string> = {
@@ -156,6 +156,7 @@ const estadoDocumentoColors: Record<string, string> = {
   "En Revisión": "bg-blue-100 text-blue-700",
   "Aprobado": "bg-green-100 text-green-700",
   "Rechazado": "bg-red-100 text-red-700",
+  "Borrador": "bg-gray-100 text-gray-700",
 };
 
 interface DocumentosPanelProps {
@@ -163,8 +164,9 @@ interface DocumentosPanelProps {
 }
 
 function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
-  const { addDocumento } = useOperacionesStore();
+  const { addDocumento, deleteDocumento, loading } = useOperacionesStore();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState<{
     nombre: string;
     tipo: string;
@@ -177,36 +179,78 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
     observaciones: "",
   });
 
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Simular URL de archivo (en un caso real, esto subiría a un servidor/storage)
-      const mockUrl = `/uploads/${file.name}`;
+      setSelectedFile(file);
       setNewDoc((prev) => ({
         ...prev,
         nombre: file.name,
-        url: mockUrl,
       }));
     }
   };
 
-  const handleUploadDocument = () => {
-    if (!newDoc.nombre || !newDoc.tipo) return;
+  const handleUploadDocument = async () => {
+    if (!selectedFile || !newDoc.tipo) return;
 
-    addDocumento(proyecto.id, {
-      proyectoId: proyecto.id,
-      nombre: newDoc.nombre,
-      tipo: newDoc.tipo as "Técnico" | "Administrativo" | "Legal" | "Financiero" | "Otro",
-      url: newDoc.url || "#",
-      estado: "Borrador",
-      subidoPor: "Usuario Actual",
-      fechaSubida: new Date().toISOString(),
-      observaciones: newDoc.observaciones || "",
-      validaciones: [],
-    });
+    // Validación de tamaño en el frontend (10MB)
+    const MAX_SIZE = 10 * 1024 * 1024;
+    if (selectedFile.size > MAX_SIZE) {
+      alert("El archivo es demasiado pesado (máx 10MB). Reduzca el tamaño o use una imagen más ligera.");
+      return;
+    }
 
-    setNewDoc({ nombre: "", tipo: "", url: "", observaciones: "" });
-    setIsUploadOpen(false);
+    setIsUploading(true);
+    try {
+      // 1. Subir el archivo real al backend
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+
+      const uploadResponse = await api.post('/operaciones/upload', formData);
+      const fileUrl = uploadResponse.url;
+
+      if (!fileUrl) throw new Error("No se recibió la URL del archivo");
+
+      // 2. Guardar el metadato del documento en la DB
+      await addDocumento(proyecto.id, {
+        proyectoId: proyecto.id,
+        nombre: newDoc.nombre || selectedFile.name,
+        tipo: newDoc.tipo as any,
+        url: fileUrl,
+        estado: "Borrador",
+        subidoPor: "Admin",
+        fechaSubida: new Date().toISOString(),
+        validaciones: [],
+        observaciones: newDoc.observaciones || "",
+      });
+
+      setNewDoc({ nombre: "", tipo: "", url: "", observaciones: "" });
+      setSelectedFile(null);
+      setIsUploadOpen(false);
+      
+      // Feedback opcional
+      // toast.success("Documento guardado correctamente");
+    } catch (error: any) {
+      console.error("Error al subir archivo:", error);
+      const errorMsg = error.message?.includes('413') || error.message?.includes('too large')
+        ? "El servidor rechazó el archivo por ser muy pesado (máx 10MB)."
+        : "No se pudo guardar el documento. Verifique su conexión y el formato del archivo.";
+      alert(errorMsg);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const handleRemoveDocument = async (docId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar este documento? Esta acción no se puede deshacer.")) return;
+    
+    try {
+      await deleteDocumento(proyecto.id, docId);
+    } catch (error) {
+      alert("No se pudo eliminar el documento. Intente nuevamente.");
+    }
   };
 
   return (
@@ -251,7 +295,7 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
                 </Badge>
                 <span className="text-[10px] text-slate-400 flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {formatDate(doc.fechaSubida)}
+                  {formatDate(doc.fechaSubida, true)}
                 </span>
               </div>
 
@@ -260,8 +304,25 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
               )}
 
               <div className="flex gap-2 pt-2 border-t border-slate-100">
-                <Button size="sm" variant="ghost" className="flex-1 h-8 text-slate-500">
-                  <Download className="w-4 h-4 mr-1" /> Descargar
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="flex-1 h-8 text-slate-500"
+                  onClick={() => {
+                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                    const fullUrl = doc.url.startsWith('http') ? doc.url : `${API_URL}${doc.url}`;
+                    window.open(fullUrl, '_blank');
+                  }}
+                >
+                  <Download className="w-4 h-4 mr-1" /> Ver / Descargar
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="ghost" 
+                  className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => handleRemoveDocument(doc.id)}
+                >
+                  <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -288,24 +349,33 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
               {/* Input file */}
               <div className="space-y-2">
                 <Label className="text-xs font-bold">Archivo</Label>
-                <Input
-                  type="file"
-                  onChange={handleFileChange}
-                  className="h-10 text-xs"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf"
-                />
+                <div className="relative">
+                  <Input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="h-10 text-xs"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf"
+                  />
+                  {isUploading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Tipo de documento */}
               <div className="space-y-2">
                 <Label className="text-xs font-bold">Tipo de Documento</Label>
                 <Select value={newDoc.tipo} onValueChange={(v) => setNewDoc(prev => ({ ...prev, tipo: v || "" }))}>
-                  <SelectTrigger className="h-10">
+                  <SelectTrigger className="h-10 text-xs">
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
                     {tipoDocumentoOptions.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                      <SelectItem key={tipo.value} value={tipo.value} className="text-xs">
+                        {tipo.label}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

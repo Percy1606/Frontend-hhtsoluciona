@@ -34,6 +34,19 @@ export const api = {
   },
   post: async (endpoint: string, data: any) => {
     const headers = await getHeaders();
+    
+    // Si es FormData, dejamos que el navegador maneje el Content-Type (boundary)
+    const isFormData = data instanceof FormData;
+    if (isFormData) {
+      const { 'Content-Type': _, ...restHeaders } = headers as any;
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+        method: 'POST',
+        headers: restHeaders,
+        body: data,
+      });
+      return handleResponse(response);
+    }
+
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       method: 'POST',
       headers,

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { api } from '@/lib/api';
+import { useAuthStore } from './auth-store';
 import type {
   Area,
   Prioridad,
@@ -64,32 +65,33 @@ interface OperacionesState {
   deleteProyecto: (id: string) => Promise<void>;
   calcularAvanceProyecto: (proyectoId: string) => void;
 
-  addEvaluacionTecnica: (proyectoId: string, evaluacion: Omit<EvaluacionTecnica, 'id' | 'proyectoId'>) => void;
-  addIngenieriaDiseno: (proyectoId: string, ingenieria: Omit<IngenieriaDiseno, 'id' | 'proyectoId'>) => void;
-  addExpedienteTecnico: (proyectoId: string, expediente: Omit<ExpedienteTecnico, 'id' | 'proyectoId'>) => void;
-  addSuboperacion: (proyectoId: string, suboperacion: Omit<Suboperacion, 'id' | 'proyectoId'>) => void;
-  addEntregable: (proyectoId: string, suboperacionId: string, entregable: Omit<Entregable, 'id' | 'suboperacionId'>) => void;
+  addEvaluacionTecnica: (proyectoId: string, evaluacion: Omit<EvaluacionTecnica, 'id' | 'proyectoId'>) => Promise<void>;
+  addIngenieriaDiseno: (proyectoId: string, ingenieria: Omit<IngenieriaDiseno, 'id' | 'proyectoId'>) => Promise<void>;
+  addExpedienteTecnico: (proyectoId: string, expediente: Omit<ExpedienteTecnico, 'id' | 'proyectoId'>) => Promise<void>;
+  addSuboperacion: (proyectoId: string, suboperacion: Omit<Suboperacion, 'id' | 'proyectoId'>) => Promise<void>;
+  addEntregable: (proyectoId: string, suboperacionId: string, entregable: Omit<Entregable, 'id' | 'suboperacionId'>) => Promise<void>;
 
-  addActividad: (proyectoId: string, actividad: Omit<Actividad, 'id' | 'historialCambios'>) => void;
-  updateActividad: (proyectoId: string, actividad: Actividad) => void;
-  deleteActividad: (proyectoId: string, actividadId: string) => void;
-  toggleSubtarea: (proyectoId: string, actividadId: string, subtareaId: string) => void;
+  addActividad: (proyectoId: string, actividad: Omit<Actividad, 'id' | 'historialCambios'>) => Promise<void>;
+  updateActividad: (proyectoId: string, actividad: Actividad) => Promise<void>;
+  deleteActividad: (proyectoId: string, actividadId: string) => Promise<void>;
+  toggleSubtarea: (proyectoId: string, actividadId: string, subtareaId: string) => Promise<void>;
 
-  bloquearChecklist: (proyectoId: string, actividadId: string, motivo: string) => void;
-  desbloquearChecklist: (proyectoId: string, actividadId: string, motivo: string) => void;
+  bloquearChecklist: (proyectoId: string, actividadId: string, motivo: string) => Promise<void>;
+  desbloquearChecklist: (proyectoId: string, actividadId: string, motivo: string) => Promise<void>;
 
   aprobarValidacion: (proyectoId: string, actividadId: string, validacionId: string, observaciones?: string) => Promise<void>;
   rechazarValidacion: (proyectoId: string, actividadId: string, validacionId: string, observaciones: string) => Promise<void>;
 
-  addComentario: (entidadId: string, entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion', contenido: string, esInterno?: boolean) => void;
-  addEvidencia: (entidadId: string, entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion', evidencia: Omit<Evidencia, 'id' | 'fecha'>) => void;
+  addComentario: (entidadId: string, entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion', contenido: string, esInterno?: boolean) => Promise<void>;
+  addEvidencia: (entidadId: string, entidadTipo: 'proyecto' | 'actividad' | 'tarea' | 'validacion', evidencia: Omit<Evidencia, 'id' | 'fecha'>) => Promise<void>;
 
-  addReporteDiario: (proyectoId: string, reporte: Omit<ReporteDiario, 'id'>) => void;
-  addDocumento: (proyectoId: string, documento: Omit<Documento, 'id'>) => void;
-  updateDocumento: (proyectoId: string, documento: Documento) => void;
+  addReporteDiario: (proyectoId: string, reporte: Omit<ReporteDiario, 'id'>) => Promise<void>;
+  addDocumento: (proyectoId: string, documento: Omit<Documento, 'id'>) => Promise<void>;
+  updateDocumento: (proyectoId: string, documento: Documento) => Promise<void>;
+  deleteDocumento: (proyectoId: string, documentoId: string) => Promise<void>;
 
-  addResponsable: (responsable: Omit<Responsable, 'id'>) => void;
-  updateResponsable: (responsable: Responsable) => void;
+  addResponsable: (responsable: Omit<Responsable, 'id'>) => Promise<void>;
+  updateResponsable: (responsable: Responsable) => Promise<void>;
 
   generarAlertas: () => void;
   marcarAlertaLeida: (alertaId: string) => void;
@@ -244,6 +246,28 @@ const mapAreaToFrontend = (area: string) => {
   return map[area] || area;
 };
 
+const mapTipoDocumentoToBackend = (tipo: string) => {
+  const map: Record<string, string> = {
+    'Técnico': 'Tecnica',
+    'Administrativo': 'Administrativa',
+    'Legal': 'Legal',
+    'Financiero': 'Financiero',
+    'Otro': 'Otro'
+  };
+  return map[tipo] || 'Otro';
+};
+
+const mapTipoDocumentoToFrontend = (tipo: string) => {
+  const map: Record<string, string> = {
+    'Tecnica': 'Técnico',
+    'Administrativa': 'Administrativo',
+    'Legal': 'Legal',
+    'Financiero': 'Financiero',
+    'Otro': 'Otro'
+  };
+  return map[tipo] || tipo;
+};
+
 const safeJsonParse = (str: any, fallback: any = []) => {
   if (typeof str !== 'string') return str || fallback;
   try {
@@ -272,6 +296,10 @@ const mapProyectoToFrontend = (p: any): Proyecto => ({
     tipo: mapTipoActividadToFrontend(s.tipo),
     estado: mapEstadoActividadToFrontend(s.estado),
     responsablesApoyo: safeJsonParse(s.responsablesApoyo),
+  })),
+  documentos: (p.documentos || []).map((d: any) => ({
+    ...d,
+    tipo: mapTipoDocumentoToFrontend(d.tipo),
   })),
   historialCambios: p.historialCambios || [],
 });
@@ -445,12 +473,24 @@ export const useOperacionesStore = create<OperacionesState>()(
             ...cleanData 
           } = actividadData as any;
 
+          const toISO = (dateStr?: string) => {
+            if (!dateStr || dateStr.trim() === '') return undefined;
+            try {
+              return new Date(dateStr).toISOString();
+            } catch (e) {
+              return undefined;
+            }
+          };
+
           const payload = {
             ...cleanData,
             proyectoId,
             tipo: mapTipoActividadToBackend(actividadData.tipo), 
             prioridad: mapPrioridadToBackend(actividadData.prioridad),
             estado: mapEstadoActividadToBackend(actividadData.estado), 
+            fechaInicio: toISO(actividadData.fechaInicio),
+            fechaFin: toISO(actividadData.fechaFin),
+            fechaVencimiento: toISO(actividadData.fechaVencimiento),
           };
           await api.post('/operaciones/actividades', payload);
           await get().fetchProyectos();
@@ -482,11 +522,27 @@ export const useOperacionesStore = create<OperacionesState>()(
             ...cleanData 
           } = actividadActualizada as any;
 
+          const toISO = (dateStr?: string) => {
+            if (!dateStr || dateStr.trim() === '') return undefined;
+            try {
+              return new Date(dateStr).toISOString();
+            } catch (e) {
+              return undefined;
+            }
+          };
+
+          const userRole = useAuthStore.getState().user?.rol;
+
           const payload = {
             ...cleanData,
+            userRole, // Enviar rol para validación
             tipo: mapTipoActividadToBackend(actividadActualizada.tipo),
             prioridad: mapPrioridadToBackend(actividadActualizada.prioridad),
             estado: mapEstadoActividadToBackend(actividadActualizada.estado),
+            progreso: (actividadActualizada.estado === 'Completada' || actividadActualizada.estado === 'Validada') ? 100 : (actividadActualizada.estado === 'En Progreso' ? 50 : 0),
+            fechaInicio: toISO(actividadActualizada.fechaInicio),
+            fechaFin: toISO(actividadActualizada.fechaFin),
+            fechaVencimiento: toISO(actividadActualizada.fechaVencimiento),
           };
           await api.put(`/operaciones/actividades/${actividadActualizada.id}`, payload);
           await get().fetchProyectos();
@@ -652,13 +708,17 @@ export const useOperacionesStore = create<OperacionesState>()(
           const payload = {
             ...documentoData,
             proyectoId,
-            subidoPor: get().usuarioActual
+            tipo: mapTipoDocumentoToBackend(documentoData.tipo),
+            estado: documentoData.estado || 'Borrador',
+            subidoPor: get().usuarioActual || 'Admin'
           };
           await api.post('/operaciones/documentos', payload);
           await get().fetchProyectos();
           set({ loading: false });
         } catch (error: any) {
+          console.error("Store error saving document:", error);
           set({ error: error.message, loading: false });
+          throw error;
         }
       },
 
@@ -671,6 +731,19 @@ export const useOperacionesStore = create<OperacionesState>()(
           set({ loading: false });
         } catch (error: any) {
           set({ error: error.message, loading: false });
+        }
+      },
+
+      deleteDocumento: async (proyectoId, documentoId) => {
+        set({ loading: true });
+        try {
+          await api.delete(`/operaciones/documentos/${documentoId}`);
+          await get().fetchProyectos();
+          set({ loading: false });
+        } catch (error: any) {
+          console.error("Store error deleting document:", error);
+          set({ error: error.message, loading: false });
+          throw error;
         }
       },
 

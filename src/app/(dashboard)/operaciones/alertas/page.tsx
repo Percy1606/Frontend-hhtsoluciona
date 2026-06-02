@@ -116,44 +116,53 @@ export default function AlertasPage() {
         </div>
 
         <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Select value={selectedPrioridad} onValueChange={(val) => setSelectedPrioridad(val ?? "")}>
-            <SelectTrigger className="w-36 h-10">
-              <SelectValue placeholder="Prioridad" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="Baja">Baja</SelectItem>
-              <SelectItem value="Media">Media</SelectItem>
-              <SelectItem value="Alta">Alta</SelectItem>
-              <SelectItem value="Crítica">Crítica</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            <span className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Prioridad</span>
+            <Select value={selectedPrioridad} onValueChange={(val) => setSelectedPrioridad(val ?? "")}>
+              <SelectTrigger className="w-full h-10 border-border">
+                <SelectValue placeholder="Prioridad" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las Prioridades</SelectItem>
+                <SelectItem value="Baja">Baja</SelectItem>
+                <SelectItem value="Media">Media</SelectItem>
+                <SelectItem value="Alta">Alta</SelectItem>
+                <SelectItem value="Crítica">Crítica</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={selectedArea} onValueChange={(val) => setSelectedArea(val ?? "")}>
-            <SelectTrigger className="w-40 h-10">
-              <SelectValue placeholder="Área" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las Áreas</SelectItem>
-              <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
-              <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
-              <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
-              <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <span className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Área</span>
+            <Select value={selectedArea} onValueChange={(val) => setSelectedArea(val ?? "")}>
+              <SelectTrigger className="w-full h-10 border-border">
+                <SelectValue placeholder="Área" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las Áreas</SelectItem>
+                <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
+                <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
+                <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
+                <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={filterLeidas} onValueChange={(val) => setFilterLeidas(val ?? "")}>
-            <SelectTrigger className="w-40 h-10">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="sin_leer">Sin resolver</SelectItem>
-              <SelectItem value="leidas">Resueltas/Leídas</SelectItem>
-              <SelectItem value="todas">Todas</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1.5 min-w-[140px]">
+            <span className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Lectura</span>
+            <Select value={filterLeidas} onValueChange={(val) => setFilterLeidas(val ?? "")}>
+              <SelectTrigger className="w-full h-10 border-border">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="sin_leer">Sin resolver</SelectItem>
+                <SelectItem value="leidas">Resueltas/Leídas</SelectItem>
+                <SelectItem value="todas">Todas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground" onClick={() => {
+          <Button variant="ghost" size="icon" className="h-10 w-10 text-muted-foreground self-end mb-0.5" onClick={() => {
             setSearchQuery("");
             setSelectedPrioridad("all");
             setSelectedArea("all");

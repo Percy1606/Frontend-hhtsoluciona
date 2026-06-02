@@ -20,7 +20,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -31,7 +31,10 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import type { Actividad, Responsable } from "@/lib/types";
-import { Loader2, ClipboardList, AlertCircle } from "lucide-react";
+import { Loader2, ClipboardList, AlertCircle, Search, Check, ChevronsUpDown } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 const actividadSchema = z.object({
   proyectoId: z.string().min(1, "El proyecto es requerido"),
@@ -61,6 +64,24 @@ interface ActividadFormProps {
 export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: ActividadFormProps) {
   const { proyectos, responsables, addActividad, updateActividad, loading, error } = useOperacionesStore();
   
+  // States for searchable project selector
+  const [projectSearch, setProjectSearch] = useState("");
+  const [isProjectSelectOpen, setIsProjectSelectOpen] = useState(false);
+
+  // States for searchable responsible selector
+  const [responsibleSearch, setResponsibleSearch] = useState("");
+  const [isResponsibleSelectOpen, setIsResponsibleSelectOpen] = useState(false);
+
+  const filteredProyectos = proyectos.filter(p => 
+    p.nombre.toLowerCase().includes(projectSearch.toLowerCase()) || 
+    p.codigo.toLowerCase().includes(projectSearch.toLowerCase())
+  );
+
+  const filteredResponsables = responsables.filter(r => 
+    r.nombre.toLowerCase().includes(responsibleSearch.toLowerCase()) || 
+    r.area.toLowerCase().includes(responsibleSearch.toLowerCase())
+  );
+
   const form = useForm<ActividadFormValues>({
     resolver: zodResolver(actividadSchema),
     defaultValues: {
@@ -160,25 +181,74 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
               control={form.control}
               name="proyectoId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Proyecto / Operación *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value} disabled={!!proyectoId && !actividad}>
-                    <FormControl>
-                      <SelectTrigger className="h-12 border-slate-200 bg-slate-50/50 hover:bg-white transition-colors focus:ring-primary shadow-none font-medium">
-                        <SelectValue placeholder="Seleccionar proyecto" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-white border-slate-200">
-                      {proyectos.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="focus:bg-primary focus:text-white group">
-                          <div className="flex flex-col py-1">
-                            <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
-                            <span className="text-[10px] text-slate-500 group-focus:text-white/80">{p.nombre}</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={isProjectSelectOpen} onOpenChange={setIsProjectSelectOpen}>
+                    <PopoverTrigger
+                      disabled={!!proyectoId && !actividad}
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "h-12 w-full justify-between border-slate-200 bg-slate-50/50 hover:bg-white transition-colors focus:ring-primary shadow-none font-medium text-left px-4",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      <span className="truncate">
+                        {field.value
+                          ? (() => {
+                              const p = proyectos.find(p => p.id === field.value);
+                              return p ? `${p.codigo} - ${p.nombre}` : "Seleccionar proyecto";
+                            })()
+                          : "Seleccionar proyecto"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border-slate-200" align="start">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="Buscar proyecto..."
+                            className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
+                            value={projectSearch}
+                            onChange={(e) => setProjectSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <ScrollArea className="h-60">
+                        <div className="p-1">
+                          {filteredProyectos.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-slate-500 italic">
+                              No se encontraron proyectos
+                            </div>
+                          ) : (
+                            filteredProyectos.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className={cn(
+                                  "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
+                                  field.value === p.id && "bg-slate-100 border border-slate-200"
+                                )}
+                                onClick={() => {
+                                  form.setValue("proyectoId", p.id);
+                                  setIsProjectSelectOpen(false);
+                                  setProjectSearch("");
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
+                                  <span className="text-[10px] text-slate-500 group-focus:text-white/80 line-clamp-1">{p.nombre}</span>
+                                </div>
+                                {field.value === p.id && (
+                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage className="text-[10px] font-black uppercase" />
                 </FormItem>
               )}
@@ -303,23 +373,74 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
               control={form.control}
               name="responsablePrincipalId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Responsable Principal *</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="h-12 border-slate-200 font-medium">
-                        <SelectValue placeholder="Seleccionar responsable" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-white border-slate-200">
-                      {responsables.map((r) => (
-                        <SelectItem key={r.id} value={r.id} className="font-medium">
-                          {r.nombre} ({r.area})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
+                  <Popover open={isResponsibleSelectOpen} onOpenChange={setIsResponsibleSelectOpen}>
+                    <PopoverTrigger
+                      className={cn(
+                        buttonVariants({ variant: "outline" }),
+                        "h-12 w-full justify-between border-slate-200 bg-slate-50/50 hover:bg-white transition-colors focus:ring-primary shadow-none font-medium text-left px-4",
+                        !field.value && "text-muted-foreground"
+                      )}
+                    >
+                      <span className="truncate">
+                        {field.value
+                          ? (() => {
+                              const r = responsables.find(r => r.id === field.value);
+                              return r ? `${r.nombre} (${r.area})` : "Seleccionar responsable";
+                            })()
+                          : "Seleccionar responsable"}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border-slate-200" align="start">
+                      <div className="p-2 border-b">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input
+                            placeholder="Buscar responsable..."
+                            className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
+                            value={responsibleSearch}
+                            onChange={(e) => setResponsibleSearch(e.target.value)}
+                          />
+                        </div>
+                      </div>
+                      <ScrollArea className="h-60">
+                        <div className="p-1">
+                          {filteredResponsables.length === 0 ? (
+                            <div className="py-6 text-center text-xs text-slate-500 italic">
+                              No se encontraron responsables
+                            </div>
+                          ) : (
+                            filteredResponsables.map((r) => (
+                              <button
+                                key={r.id}
+                                type="button"
+                                className={cn(
+                                  "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
+                                  field.value === r.id && "bg-slate-100 border border-slate-200"
+                                )}
+                                onClick={() => {
+                                  form.setValue("responsablePrincipalId", r.id);
+                                  setIsResponsibleSelectOpen(false);
+                                  setResponsibleSearch("");
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="font-bold text-sm text-slate-700 group-focus:text-white uppercase">{r.nombre}</span>
+                                  <span className="text-[10px] text-slate-400 group-focus:text-white/80">{r.area}</span>
+                                </div>
+                                {field.value === r.id && (
+                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                )}
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage className="text-[10px] font-black uppercase" />
                 </FormItem>
               )}
             />

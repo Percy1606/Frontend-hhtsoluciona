@@ -182,14 +182,14 @@ export default function ActividadesPage() {
         
         <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
           <div className="flex flex-col gap-1.5 min-w-[180px]">
-            <span className="text-[10px] font-medium uppercase text-primary tracking-widest ml-1">Estado</span>
+            <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado</span>
             <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val ?? "all")}>
               <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic font-medium">Sin filtro</SelectItem>
-                {["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"].map(e => (
+                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic font-medium">Todos los Estados</SelectItem>
+                {["Pendiente", "En Progreso", "Completada", "Validada"].map(e => (
                   <SelectItem key={e} value={e} className="font-medium">{e}</SelectItem>
                 ))}
               </SelectContent>
@@ -197,13 +197,13 @@ export default function ActividadesPage() {
           </div>
 
           <div className="flex flex-col gap-1.5 min-w-[220px]">
-            <span className="text-[10px] font-medium uppercase text-primary tracking-widest ml-1">Responsable</span>
+            <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Responsable</span>
             <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val ?? "")}>
               <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
                 <SelectValue placeholder="Responsable" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic font-medium">Sin filtro</SelectItem>
+                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic font-medium">Todos los Responsables</SelectItem>
                 {responsables.map(r => (
                   <SelectItem key={r.id} value={r.id} className="font-medium uppercase">{r.nombre}</SelectItem>
                 ))}

@@ -24,6 +24,7 @@ import {
   Pencil,
   Trash2,
   FilterX,
+  X,
   LayoutDashboard,
   FileCheck,
   History,
@@ -100,6 +101,30 @@ export default function OperacionesPage() {
 
   const filteredProjects = useMemo(() => getProyectosFiltrados(), [getProyectosFiltrados, proyectos, filtros]);
 
+  const activeFilters = useMemo(() => {
+    const active = [];
+    if (filtros.searchQuery) {
+      active.push({ id: 'searchQuery', label: `Búsqueda: ${filtros.searchQuery}`, clear: () => setSearchQuery('') });
+    }
+    if (filtros.estado && filtros.estado !== 'all') {
+      active.push({ id: 'estado', label: `Estado: ${filtros.estado}`, clear: () => setEstado('all') });
+    }
+    if (filtros.responsable && filtros.responsable !== 'all') {
+      const resp = responsables.find(r => r.id === filtros.responsable);
+      active.push({ id: 'responsable', label: `Resp: ${resp?.nombre || filtros.responsable}`, clear: () => setResponsable('all') });
+    }
+    if (filtros.area && filtros.area !== 'all') {
+      active.push({ id: 'area', label: `Área: ${filtros.area}`, clear: () => setArea('all') });
+    }
+    if (filtros.prioridad && filtros.prioridad !== 'all') {
+      active.push({ id: 'prioridad', label: `Prioridad: ${filtros.prioridad}`, clear: () => setPrioridad('all') });
+    }
+    if (filtros.semaforo && filtros.semaforo !== 'all') {
+      active.push({ id: 'semaforo', label: `Semáforo: ${filtros.semaforo}`, clear: () => setSemaforo('all') });
+    }
+    return active;
+  }, [filtros, responsables, setSearchQuery, setEstado, setResponsable, setArea, setPrioridad, setSemaforo]);
+
   const stats = useMemo(() => ({
     activos: proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'Planificación').length,
     planificacion: proyectos.filter(p => p.estado === 'Planificación').length,
@@ -173,58 +198,129 @@ export default function OperacionesPage() {
             <StatsCard label="Finalizados" value={stats.finalizados} icon={<CheckCircle2 className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" />
           </div>
 
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-6">
-            <div className="relative flex-1 w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-              <Input 
-                placeholder="Buscar por código, cliente o nombre..." 
-                className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
-                value={filtros.searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          {activeFilters.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+              {activeFilters.map(filter => (
+                <Badge key={filter.id} variant="secondary" className="gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10 transition-colors group shadow-none">
+                  {filter.label}
+                  <button onClick={filter.clear} className="text-primary/40 group-hover:text-red-500 transition-colors">
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </Badge>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6">
+            <div className="relative w-full">
+              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Búsqueda rápida</span>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Input 
+                  placeholder="Buscar por código, cliente o nombre..." 
+                  className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
+                  value={filtros.searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
             </div>
             
-            <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-              <div className="flex flex-col gap-2 min-w-[180px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado</span>
                 <Select
-               value={filtros.estado ?? "all"}
+                  value={filtros.estado ?? "all"}
                   onValueChange={(val) => setEstado(val ?? "all")}>                  
-                    <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
+                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
                     <SelectValue placeholder="Estado" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
-                    <SelectItem value="Planificación">Planificación</SelectItem>
-                    <SelectItem value="En Ejecución">En Ejecución</SelectItem>
-                    <SelectItem value="Detenido">Detenido</SelectItem>
-                    <SelectItem value="Finalizado">Finalizado</SelectItem>
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos los estados</SelectItem>
+                    <SelectItem value="Planificación" className="text-[10px]">PLANIFICACIÓN</SelectItem>
+                    <SelectItem value="En Ejecución" className="text-[10px]">EN EJECUCIÓN</SelectItem>
+                    <SelectItem value="Detenido" className="text-[10px]">DETENIDO</SelectItem>
+                    <SelectItem value="Finalizado" className="text-[10px]">FINALIZADO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex flex-col gap-2 min-w-[220px]">
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Área</span>
+                <Select
+                  value={filtros.area ?? "all"}
+                  onValueChange={(val) => setArea(val ?? "all")}>                  
+                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
+                    <SelectValue placeholder="Área" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todas las áreas</SelectItem>
+                    <SelectItem value="Logística y Recursos" className="text-[10px]">LOGÍSTICA Y RECURSOS</SelectItem>
+                    <SelectItem value="Ingeniería y Supervisión Técnica" className="text-[10px]">INGENIERÍA Y SUPERVISIÓN</SelectItem>
+                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos" className="text-[10px]">GESTIÓN DOCUMENTAL</SelectItem>
+                    <SelectItem value="Operaciones de Campo y Control de Obra" className="text-[10px]">OPERACIONES DE CAMPO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Prioridad</span>
+                <Select
+                  value={filtros.prioridad ?? "all"}
+                  onValueChange={(val) => setPrioridad(val ?? "all")}>                  
+                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
+                    <SelectValue placeholder="Prioridad" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todas</SelectItem>
+                    <SelectItem value="Baja" className="text-[10px]">BAJA</SelectItem>
+                    <SelectItem value="Media" className="text-[10px]">MEDIA</SelectItem>
+                    <SelectItem value="Alta" className="text-[10px]">ALTA</SelectItem>
+                    <SelectItem value="Crítica" className="text-[10px]">CRÍTICA</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Semáforo</span>
+                <Select
+                  value={filtros.semaforo ?? "all"}
+                  onValueChange={(val) => setSemaforo(val ?? "all")}>                  
+                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
+                    <SelectValue placeholder="Semáforo" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200 rounded-xl">
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos</SelectItem>
+                    <SelectItem value="Verde" className="text-[10px]">VERDE</SelectItem>
+                    <SelectItem value="Amarillo" className="text-[10px]">AMARILLO</SelectItem>
+                    <SelectItem value="Rojo" className="text-[10px]">ROJO</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable</span>
                 <Select value={filtros.responsable || "all"} onValueChange={(value) => setResponsable(value ?? "all")}>
-                  <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
+                  <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
                     <SelectValue placeholder="Responsable" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
+                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos</SelectItem>
                     {responsables.map(r => (
-                      <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
+                      <SelectItem key={r.id} value={r.id} className="text-[10px] uppercase">{r.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="flex items-end self-end h-14 pb-0.5">
+              <div className="flex items-end h-12">
                 <Button 
                   variant="ghost" 
                   size="icon" 
                   onClick={resetFiltros} 
-                  className="h-14 w-14 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl"
-                  title="Limpiar filtros"
+                  className="h-12 w-full text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl gap-2 font-black text-[10px] uppercase"
                 >
-                  <FilterX className="w-6 h-6" />
+                  <FilterX className="w-5 h-5" />
+                  <span className="lg:hidden">Limpiar</span>
                 </Button>
               </div>
             </div>

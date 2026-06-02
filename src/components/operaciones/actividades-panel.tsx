@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   MoreVertical,
   Search,
-  FilterX
+  FilterX,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useOperacionesStore } from "@/store/operaciones-store";
@@ -110,6 +111,21 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
     setIsFormOpen(true);
   };
 
+  const activeFilters = useMemo(() => {
+    const active = [];
+    if (searchQuery) {
+      active.push({ id: 'searchQuery', label: `Búsqueda: ${searchQuery}`, clear: () => setSearchQuery('') });
+    }
+    if (filtroEstado !== "all") {
+      active.push({ id: 'estado', label: `Estado: ${filtroEstado}`, clear: () => setFiltroEstado('all') });
+    }
+    if (filtroResponsable !== "all") {
+      const resp = responsables.find(r => r.id === filtroResponsable);
+      active.push({ id: 'responsable', label: `Resp: ${resp?.nombre || filtroResponsable}`, clear: () => setFiltroResponsable('all') });
+    }
+    return active;
+  }, [searchQuery, filtroEstado, filtroResponsable, responsables]);
+
   const handleDelete = async (actividadId: string) => {
     if (confirm("¿Estás seguro de eliminar esta actividad?")) {
       await deleteActividad(proyecto.id, actividadId);
@@ -128,20 +144,37 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
         </Button>
       </div>
 
+      {activeFilters.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
+          {activeFilters.map(filter => (
+            <Badge key={filter.id} variant="secondary" className="gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10 transition-colors group shadow-none">
+              {filter.label}
+              <button onClick={filter.clear} className="text-primary/40 group-hover:text-red-500 transition-colors">
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+
       {/* Barra de Filtros de Actividades */}
       <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-          <Input 
-            placeholder="Buscar actividad por nombre..." 
-            className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Búsqueda de actividad</span>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Input 
+              placeholder="Buscar actividad por nombre..." 
+              className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+        <div className="flex flex-wrap items-end gap-4 w-full md:w-auto">
           <div className="flex flex-col gap-2 min-w-[180px]">
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado de Actividad</span>
             <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val ?? "")}>
               <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
                 <SelectValue placeholder="Estado" />
@@ -156,6 +189,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
           </div>
 
           <div className="flex flex-col gap-2 min-w-[220px]">
+            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable Ejecución</span>
             <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val ?? "")}>
               <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
                 <SelectValue placeholder="Responsable" />
@@ -169,7 +203,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
             </Select>
           </div>
 
-          <div className="flex items-end self-end h-14 pb-0.5">
+          <div className="flex items-end h-14">
             <Button 
               variant="ghost" 
               size="icon" 
