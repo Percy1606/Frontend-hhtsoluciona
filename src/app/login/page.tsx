@@ -21,7 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
-import logo from "@/img/hh_t_soluciona_per_oficial_logo.jpg";
+//import logo from "@/img/hh_t_soluciona_per_oficial_logo.jpg";
 
 const loginSchema = z.object({
   username: z.string().min(2, {
@@ -71,13 +71,11 @@ export default function LoginPage() {
       <Card className="w-full max-w-md shadow-lg border-none">
         <CardHeader className="space-y-4 flex flex-col items-center">
           <div className="relative h-20 w-48 mb-2">
-            <Image
-              src={logo}
-              alt="SOFTWARE HH Logo"
-              fill
-              className="object-contain"
-              priority
-            />
+            <img 
+    src="/hh_t_soluciona_per_oficial_logo.jpg"
+    alt="SOFTWARE HH Logo"
+    className="object-contain w-full h-full"
+  />
           </div>
           <CardTitle className="text-2xl font-bold text-[#001F3F] text-center">
             Iniciar Sesión
