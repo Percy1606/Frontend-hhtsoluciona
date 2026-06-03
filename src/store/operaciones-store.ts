@@ -34,7 +34,7 @@ import type {
 // INTERFAZ DEL STORE
 // ============================================
 
-type AddProyectoData = Omit<Proyecto, 'id' | 'codigo' | 'avanceCalculado' | 'historialCambios' | 'semaforo'>;
+type AddProyectoData = Omit<Proyecto, 'id' | 'codigo' | 'avanceCalculado' | 'historialCambios' | 'semaforo'> & { cotizacionId: string };
 
 interface OperacionesState {
   proyectos: Proyecto[];
@@ -282,6 +282,7 @@ const mapProyectoToFrontend = (p: any): Proyecto => ({
   estado: mapEstadoProyectoToFrontend(p.estado),
   prioridad: mapPrioridadToFrontend(p.prioridad),
   area: mapAreaToFrontend(p.area),
+  cotizacion: p.cotizacionOrigen || p.cotizacion, // Mapear desde cotizacionOrigen del backend
   responsablesAdicionales: safeJsonParse(p.responsablesAdicionales),
   actividades: (p.actividades || []).map((a: any) => ({
     ...a,
@@ -367,12 +368,15 @@ export const useOperacionesStore = create<OperacionesState>()(
             responsablePrincipalId: proyectoData.responsablePrincipalId,
             responsablesAdicionales: proyectoData.responsablesAdicionales || [],
             area: mapAreaToBackend(proyectoData.area),
+            cotizacionId: proyectoData.cotizacionId,
           };
           const nuevoProyecto = await api.post('/operaciones/proyectos', payload);
           set((state) => ({ proyectos: [mapProyectoToFrontend(nuevoProyecto), ...state.proyectos], loading: false }));
           return nuevoProyecto.id;
         } catch (error: any) {
-          set({ error: error.message, loading: false });
+          // Si el backend devuelve un error estructurado, lo guardamos tal cual
+          const errorMsg = error.response?.data?.message || error.message;
+          set({ error: errorMsg, loading: false });
           throw error;
         }
       },

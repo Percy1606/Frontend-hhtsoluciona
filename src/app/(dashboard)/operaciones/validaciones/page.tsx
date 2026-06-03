@@ -117,7 +117,14 @@ export default function ValidacionesPage() {
   };
 
   const getResponsableName = (id: string) => {
-    return responsables.find(r => r.id === id)?.nombre || "Sin asignar";
+    if (!id) return "SIN ASIGNAR";
+    const resp = responsables.find(r => r.id === id);
+    if (resp) return resp.nombre.toUpperCase();
+    
+    // Si es un UUID (contiene guiones y es largo), lo ocultamos
+    if (id.includes('-') && id.length > 20) return "RESPONSABLE EXTERNO";
+    
+    return id.toUpperCase();
   };
 
   return (

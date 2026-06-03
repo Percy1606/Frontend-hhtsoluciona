@@ -1,6 +1,6 @@
 "use client";
 
-import { Client } from "@/mocks/data";
+import { Client } from "@/types/crm";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,6 +21,7 @@ import {
   MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import { ClientDetails } from "./client-details";
 import { ClientForm } from "./client-form";
@@ -61,7 +62,7 @@ const tempColors: Record<string, string> = {
 };
 
 export function ClientKanban() {
-  const { clients, filters, updateClient, deleteClient, changeStage, addInteraction } = useCRMStore();
+  const { clients, filters, updateClient, deleteClient, changeStage, addInteraction, setSearchQuery } = useCRMStore();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -171,12 +172,6 @@ export function ClientKanban() {
                     {columnClients.length}
                   </Badge>
                 </div>
-                <div className="pt-2 border-t border-slate-100">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Venta Proyectada</p>
-                  <p className="text-sm font-black text-accent">
-                    {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(totalAmount)}
-                  </p>
-                </div>
               </div>
 
               <div className="flex-1 bg-slate-100/50 rounded-xl p-2.5 space-y-2.5 overflow-y-auto border border-border/40 scrollbar-thin">
@@ -251,13 +246,6 @@ export function ClientKanban() {
                         </div>
 
                         <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                          <div className={cn(
-                            "inline-flex px-1.5 py-0.5 rounded text-[8px] font-black uppercase flex items-center gap-0.5",
-                            tempColors[client.temperatura] || "text-slate-500 bg-slate-50"
-                          )}>
-                            <Flame className="w-2.5 h-2.5" />
-                            {client.temperatura}
-                          </div>
                           {client.tipoCliente && (
                             <Badge variant="outline" className="text-[8px] font-bold px-1.5 py-0">
                               {client.tipoCliente}
@@ -273,9 +261,6 @@ export function ClientKanban() {
                             {overdue ? <AlertCircle className="w-3 h-3 text-error animate-pulse" /> : <Calendar className="w-3 h-3" />}
                             {client.proximoSeguimiento || "Pendiente"}
                           </div>
-                          <p className="font-black text-xs text-primary">
-                            {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(client.montoEstimado)}
-                          </p>
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[10px]">

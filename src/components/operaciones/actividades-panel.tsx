@@ -271,7 +271,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                         {resp?.nombre?.charAt(0) || "?"}
                       </div>
                       <div className="hidden lg:block text-left">
-                        <p className="text-[11px] font-black text-slate-700 leading-none">{resp?.nombre || "Sin asignar"}</p>
+                        <p className="text-[11px] font-black text-slate-700 leading-none uppercase">{resp?.nombre || "Sin asignar"}</p>
                         <p className="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">{resp?.area || "Sin área"}</p>
                       </div>
                     </div>

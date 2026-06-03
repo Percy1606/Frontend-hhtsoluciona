@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate } from "@/lib/utils";
+import { StatsCard } from "@/components/ui/stats-card";
 import {
   Select,
   SelectContent,
@@ -381,31 +382,3 @@ export default function DocumentalPage() {
 // ============================================
 // COMPONENTES AUXILIARES
 // ============================================
-
-function StatsCard({
-  label,
-  value,
-  icon,
-  color,
-  bgColor,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  color: string;
-  bgColor: string;
-}) {
-  return (
-    <div className="bg-white p-4 rounded-xl border border-border shadow-sm transition-all hover:shadow-md">
-      <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", bgColor)}>
-          <div className={cn("w-5 h-5", color)}>{icon}</div>
-        </div>
-        <div>
-          <p className="text-[10px] font-black text-muted-foreground uppercase">{label}</p>
-          <p className={cn("text-2xl font-black", color)}>{value}</p>
-        </div>
-      </div>
-    </div>
-  );
-}

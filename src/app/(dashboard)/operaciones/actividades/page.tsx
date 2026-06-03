@@ -115,7 +115,14 @@ export default function ActividadesPage() {
   }), [allActivities]);
 
   const getResponsableName = useCallback((id: string) => {
-    return responsables.find(r => r.id === id)?.nombre || 'Sin asignar';
+    if (!id) return "SIN ASIGNAR";
+    const resp = responsables.find(r => r.id === id);
+    if (resp) return resp.nombre.toUpperCase();
+    
+    // Si es un UUID (contiene guiones y es largo), lo ocultamos con un placeholder legible
+    if (id.includes('-') && id.length > 20) return "RESPONSABLE EXTERNO";
+    
+    return id.toUpperCase();
   }, [responsables]);
 
   const handleEdit = (actividad: Actividad) => {

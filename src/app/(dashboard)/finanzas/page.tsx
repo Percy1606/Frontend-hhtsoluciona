@@ -9,14 +9,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { FINANCIAL_DATA, PROJECTS_DATA, CRM_DATA } from "@/mocks/data";
 import { Button } from "@/components/ui/button";
-import { 
-  Plus, 
-  Search, 
-  BarChart3, 
-  DollarSign, 
-  Wallet, 
+import {
+  Plus,
+  Search,
+  BarChart3,
+  DollarSign,
+  Wallet,
   ArrowUpRight,
   ArrowDownRight,
   Download,
@@ -34,6 +33,11 @@ const financeStatus: Record<string, string> = {
 };
 
 export default function FinanzasPage() {
+  // Temporary empty arrays until Finanzas module is connected to DB
+  const FINANCIAL_DATA: any[] = [];
+  const PROJECTS_DATA: any[] = [];
+  const CRM_DATA: any[] = [];
+
   const totalFacturado = FINANCIAL_DATA.reduce((acc, curr) => acc + curr.monto, 0);
   const totalCobrado = totalFacturado - FINANCIAL_DATA.reduce((acc, curr) => acc + curr.saldo, 0);
 

@@ -1,14 +1,43 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { useCRMStore } from "@/store/crm-store";
+import { RefreshCw, LayoutDashboard } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
-export function CRMHeader({ title, subtitle }: { title: string, subtitle: string }) {
+interface CRMHeaderProps {
+  title: string;
+  subtitle: string;
+  icon?: React.ReactNode;
+}
+
+export function CRMHeader({ title, subtitle, icon }: CRMHeaderProps) {
+  const { fetchClients, fetchQuotes, loading } = useCRMStore();
+
+  const handleRefresh = async () => {
+    await Promise.all([fetchClients(), fetchQuotes()]);
+  };
+
   return (
-    <div className="space-y-2 mb-8">
-      <h1 className="text-3xl font-black text-primary tracking-tight uppercase leading-none">{title}</h1>
-      <p className="text-muted-foreground font-medium">{subtitle}</p>
-      <div className="h-1 w-20 bg-accent rounded-full mt-4" />
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div>
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2 rounded-lg">
+            {icon || <LayoutDashboard className="w-6 h-6 text-primary" />}
+          </div>
+          <h1 className="text-3xl font-black text-primary tracking-tight uppercase">{title}</h1>
+        </div>
+        <p className="text-muted-foreground mt-1 font-medium">{subtitle}</p>
+      </div>
+      <Button 
+        variant="outline" 
+        size="sm" 
+        onClick={handleRefresh}
+        disabled={loading}
+        className="h-9 gap-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all shadow-sm"
+      >
+        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        {loading ? 'SINCRONIZANDO...' : 'REFRESCAR DATOS'}
+      </Button>
     </div>
   );
 }

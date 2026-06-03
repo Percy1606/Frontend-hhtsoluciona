@@ -24,6 +24,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
 import { api } from "@/lib/api";
 import {
   Select,
@@ -32,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import { cn, formatDate } from "@/lib/utils";
 import {
   Dialog,
@@ -43,6 +45,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Textarea } from "@/components/ui/textarea";
 
 import type { Proyecto } from "@/lib/types";
 import { ActividadesPanel } from "./actividades-panel";
@@ -72,66 +75,83 @@ interface ProyectoDetailProps {
 }
 
 export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
+  const { responsables } = useOperacionesStore();
+  const { clients: crmClients } = useCRMStore();
   const [activeTab, setActiveTab] = useState("actividades");
+
+  const clientName = crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo";
+  const responsableName = responsables.find(r => r.id === proyecto.responsablePrincipalId)?.nombre || "Sin asignar";
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto">
-        <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
-          <DialogTitle className="text-2xl font-medium tracking-tight flex items-center gap-3">
-            <Briefcase className="w-6 h-6 text-accent" />
-            {proyecto.codigo} - {proyecto.nombre}
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto rounded-xl shadow-2xl">
+        <DialogHeader className="p-8 bg-primary text-white rounded-t-xl shrink-0">
+          <div className="flex items-center gap-2 mb-2">
+            <Badge className="bg-white/20 text-white border-none font-black uppercase text-[10px] tracking-widest px-3">
+              {clientName}
+            </Badge>
+          </div>
+          <DialogTitle className="text-3xl font-black tracking-tight flex items-center gap-4 uppercase">
+            <Briefcase className="w-10 h-10 text-accent" />
+            <div className="flex flex-col">
+                <span className="text-[10px] opacity-60 font-black tracking-widest">PROYECTO CÓDIGO: {proyecto.codigo}</span>
+                <span>{proyecto.nombre}</span>
+            </div>
           </DialogTitle>
-          <div className="flex items-center gap-4 mt-2 text-sm text-white/80">
-            <Badge className={cn("border-none font-medium", statusColors[proyecto.estado])}>
+          <div className="flex flex-wrap items-center gap-4 mt-4">
+            <div className="flex items-center gap-1.5 font-black uppercase text-[10px] bg-white/10 px-3 py-1 rounded-full">
+                <span className="opacity-60">LÍDER:</span> {responsableName}
+            </div>
+            <Separator orientation="vertical" className="h-4 bg-white/20 hidden md:block" />
+            <Badge className={cn("border-none font-black text-[10px] uppercase px-3 py-1", statusColors[proyecto.estado])}>
               {proyecto.estado}
             </Badge>
-            <Badge className={cn("border-none font-medium", prioridadColors[proyecto.prioridad])}>
+            <Badge className={cn("border-none font-black text-[10px] uppercase px-3 py-1", prioridadColors[proyecto.prioridad])}>
               {proyecto.prioridad}
             </Badge>
-            <span className="flex items-center gap-1 font-medium">
-              <Calendar className="w-4 h-4" />
+            <span className="flex items-center gap-2 font-black text-[10px] uppercase bg-white/10 px-3 py-1 rounded-full">
+              <Calendar className="w-3.5 h-3.5" />
               {formatDate(proyecto.fechaInicio)} → {formatDate(proyecto.fechaFinEstimada)}
             </span>
           </div>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-          <TabsList className="w-full justify-start px-6 pt-4 border-b bg-transparent gap-2 h-14">
-            <TabsTrigger value="actividades" className="gap-2 font-medium uppercase text-[10px]">
-              <ClipboardList className="w-4 h-4" />
-              Actividades ({proyecto.actividades.length})
-            </TabsTrigger>
-            <TabsTrigger value="documentos" className="gap-2 font-medium uppercase text-[10px]">
-              <FileText className="w-4 h-4" />
-              Documentos ({proyecto.documentos?.length || 0})
-            </TabsTrigger>
-            <TabsTrigger value="historial" className="gap-2 font-medium uppercase text-[10px]">
-              <History className="w-4 h-4" />
-              Historial
-            </TabsTrigger>
-          </TabsList>
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
+          <div className="px-8 pt-4 border-b bg-slate-50/50 shrink-0">
+            <TabsList className="bg-transparent h-12 w-full justify-start gap-8 rounded-none p-0">
+                <TabsTrigger value="actividades" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-slate-500">
+                    <ClipboardList className="w-4 h-4" /> Actividades ({proyecto.actividades.length})
+                </TabsTrigger>
+                <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-slate-500">
+                    <FileText className="w-4 h-4" /> Documentos ({proyecto.documentos?.length || 0})
+                </TabsTrigger>
+                <TabsTrigger value="historial" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-slate-500">
+                    <History className="w-4 h-4" /> Historial
+                </TabsTrigger>
+            </TabsList>
+          </div>
 
           <ScrollArea className="flex-1">
-            <div className="p-6">
-              <TabsContent value="actividades" className="space-y-4 mt-0">
+            <div className="p-8">
+              <TabsContent value="actividades" className="space-y-4 mt-0 animate-in fade-in duration-300">
                 <ActividadesPanel proyecto={proyecto} />
               </TabsContent>
 
-              <TabsContent value="historial" className="mt-0">
+              <TabsContent value="historial" className="mt-0 animate-in fade-in duration-300">
                 <TimelinePanel />
               </TabsContent>
 
-              <TabsContent value="documentos" className="mt-0">
+              <TabsContent value="documentos" className="mt-0 animate-in fade-in duration-300">
                 <DocumentosPanel proyecto={proyecto} />
               </TabsContent>
             </div>
           </ScrollArea>
         </Tabs>
 
-        <DialogFooter className="p-4 border-t bg-slate-50">
-          <Button variant="outline" onClick={onClose} className="gap-2 font-medium uppercase text-xs">
-            <X className="w-4 h-4" /> Cerrar Vista Detallada
+        <DialogFooter className="p-4 border-t bg-slate-100 flex items-center justify-between shrink-0">
+          <p className="text-[9px] font-black text-slate-400 uppercase italic ml-4">HH T SOLUCIONA S.A.C. - SISTEMA DE CONTROL OPERATIVO</p>
+          <Button variant="outline" onClick={onClose} className="gap-2 font-black uppercase text-xs border-slate-300 hover:bg-slate-200 shadow-sm text-slate-600">
+            <X className="w-4 h-4" /> CERRAR VISTA DETALLADA
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -195,7 +215,6 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
   const handleUploadDocument = async () => {
     if (!selectedFile || !newDoc.tipo) return;
 
-    // Validación de tamaño en el frontend (10MB)
     const MAX_SIZE = 10 * 1024 * 1024;
     if (selectedFile.size > MAX_SIZE) {
       alert("El archivo es demasiado pesado (máx 10MB). Reduzca el tamaño o use una imagen más ligera.");
@@ -204,7 +223,6 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
 
     setIsUploading(true);
     try {
-      // 1. Subir el archivo real al backend
       const formData = new FormData();
       formData.append('file', selectedFile);
 
@@ -213,7 +231,6 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
 
       if (!fileUrl) throw new Error("No se recibió la URL del archivo");
 
-      // 2. Guardar el metadato del documento en la DB
       await addDocumento(proyecto.id, {
         proyectoId: proyecto.id,
         nombre: newDoc.nombre || selectedFile.name,
@@ -229,97 +246,89 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
       setNewDoc({ nombre: "", tipo: "", url: "", observaciones: "" });
       setSelectedFile(null);
       setIsUploadOpen(false);
-      
-      // Feedback opcional
-      // toast.success("Documento guardado correctamente");
     } catch (error: any) {
       console.error("Error al subir archivo:", error);
-      const errorMsg = error.message?.includes('413') || error.message?.includes('too large')
-        ? "El servidor rechazó el archivo por ser muy pesado (máx 10MB)."
-        : "No se pudo guardar el documento. Verifique su conexión y el formato del archivo.";
-      alert(errorMsg);
+      alert("No se pudo guardar el documento.");
     } finally {
       setIsUploading(false);
     }
   };
 
   const handleRemoveDocument = async (docId: string) => {
-    if (!confirm("¿Está seguro de que desea eliminar este documento? Esta acción no se puede deshacer.")) return;
-    
+    if (!confirm("¿Está seguro de que desea eliminar este documento?")) return;
     try {
       await deleteDocumento(proyecto.id, docId);
     } catch (error) {
-      alert("No se pudo eliminar el documento. Intente nuevamente.");
+      alert("No se pudo eliminar el documento.");
     }
   };
 
   return (
-    <div className="space-y-4">
-      {/* Header con botón de subir */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-black flex items-center gap-2">
-          <FileText className="w-5 h-5 text-primary" />
-          Documentos del Proyecto
-        </h3>
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <div className="flex justify-between items-center bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-primary/5 rounded-xl flex items-center justify-center">
+            <FileText className="w-6 h-6 text-primary" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black uppercase tracking-tight">Expediente del Proyecto</h3>
+            <p className="text-xs font-medium text-slate-400">Gestión de planos, actas y certificados técnicos.</p>
+          </div>
+        </div>
         <Button
           onClick={() => setIsUploadOpen(true)}
-          className="gap-2 font-black uppercase text-xs"
+          className="gap-2 font-black uppercase text-xs h-12 px-6 shadow-lg shadow-primary/10"
         >
           <Upload className="w-4 h-4" /> Subir Documento
         </Button>
       </div>
 
-      {/* Grid de documentos */}
       {proyecto.documentos && proyecto.documentos.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {proyecto.documentos.map((doc) => (
             <div
               key={doc.id}
-              className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all"
+              className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/20 transition-all group"
             >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                    <FileText className="w-5 h-5 text-slate-500" />
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5 text-red-500" />
                   </div>
-                  <div>
-                    <h4 className="font-medium text-slate-800 text-sm line-clamp-1">{doc.nombre}</h4>
-                    <p className="text-[10px] text-slate-400 uppercase">{doc.tipo}</p>
+                  <div className="overflow-hidden">
+                    <h4 className="font-bold text-slate-800 text-sm truncate uppercase" title={doc.nombre}>{doc.nombre}</h4>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">{doc.tipo}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center justify-between mb-2">
-                <Badge className={cn("text-[9px] font-black uppercase", estadoDocumentoColors[doc.estado] || "bg-slate-100")}>
+              <div className="flex items-center justify-between mb-4 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <Badge className={cn("text-[9px] font-black uppercase border-none h-5 shadow-none", estadoDocumentoColors[doc.estado] || "bg-slate-200")}>
                   {doc.estado}
                 </Badge>
-                <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <span className="text-[9px] text-slate-400 font-bold uppercase flex items-center gap-1">
                   <Clock className="w-3 h-3" />
-                  {formatDate(doc.fechaSubida, true)}
+                  {formatDate(doc.fechaSubida)}
                 </span>
               </div>
 
-              {doc.observaciones && (
-                <p className="text-xs text-slate-500 line-clamp-2 mb-3">{doc.observaciones}</p>
-              )}
-
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <Button 
                   size="sm" 
                   variant="ghost" 
-                  className="flex-1 h-8 text-slate-500"
+                  className="flex-1 h-9 text-[10px] font-black uppercase text-primary hover:bg-primary/5"
                   onClick={() => {
                     const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
                     const fullUrl = doc.url.startsWith('http') ? doc.url : `${API_URL}${doc.url}`;
                     window.open(fullUrl, '_blank');
                   }}
                 >
-                  <Download className="w-4 h-4 mr-1" /> Ver / Descargar
+                  <Download className="w-3.5 h-3.5 mr-1.5" /> Descargar
                 </Button>
                 <Button 
-                  size="sm" 
+                  size="icon" 
                   variant="ghost" 
-                  className="h-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                  className="h-9 w-9 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
                   onClick={() => handleRemoveDocument(doc.id)}
                 >
                   <Trash2 className="w-4 h-4" />
@@ -329,89 +338,71 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
           ))}
         </div>
       ) : (
-        <div className="text-center py-20 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-          <FileText className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-400 font-medium">No hay documentos registrados</p>
-          <p className="text-xs text-slate-300 mt-1">Sube el primer documento del proyecto</p>
+        <div className="text-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed border-slate-200">
+          <FilePlus className="w-16 h-16 text-slate-200 mx-auto mb-4" />
+          <p className="text-slate-400 font-black uppercase text-sm tracking-widest">No hay documentos técnicos</p>
+          <p className="text-xs text-slate-300 font-medium mt-1">El expediente está vacío por el momento.</p>
         </div>
       )}
 
-      {/* Modal de subida de documentos */}
       {isUploadOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-            <h3 className="text-lg font-black mb-4 flex items-center gap-2">
-              <Upload className="w-5 h-5 text-primary" />
-              Subir Documento
-            </h3>
-
-            <div className="space-y-4">
-              {/* Input file */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold">Archivo</Label>
-                <div className="relative">
-                  <Input
-                    type="file"
-                    onChange={handleFileChange}
-                    className="h-10 text-xs"
-                    accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf"
-                  />
-                  {isUploading && (
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Loader2 className="w-4 h-4 animate-spin text-primary" />
+        <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+            <DialogContent className="max-w-md p-0 border-none overflow-hidden rounded-2xl shadow-2xl">
+                <DialogHeader className="p-6 bg-primary text-white shrink-0">
+                    <DialogTitle className="text-xl font-black uppercase flex items-center gap-2">
+                        <Upload className="w-6 h-6 text-accent" /> Subir al Expediente
+                    </DialogTitle>
+                </DialogHeader>
+                <div className="p-6 space-y-6 bg-white">
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Seleccionar Archivo *</Label>
+                            <Input
+                                type="file"
+                                onChange={handleFileChange}
+                                className="h-12 border-slate-200 cursor-pointer"
+                                accept=".pdf,.doc,.docx,.xls,.xlsx,.dwg,.dxf"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Tipo de Documento *</Label>
+                            <Select value={newDoc.tipo} onValueChange={(v) => setNewDoc(prev => ({ ...prev, tipo: v || "" }))}>
+                                <SelectTrigger className="h-12 border-slate-200 font-bold">
+                                    <SelectValue placeholder="Categoría técnica..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    {tipoDocumentoOptions.map((tipo) => (
+                                        <SelectItem key={tipo.value} value={tipo.value} className="font-bold">
+                                            {tipo.label}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Observaciones</Label>
+                            <Textarea
+                                placeholder="Referencia u observaciones..."
+                                value={newDoc.observaciones}
+                                onChange={(e) => setNewDoc(prev => ({ ...prev, observaciones: e.target.value }))}
+                                className="h-20 resize-none border-slate-200"
+                            />
+                        </div>
                     </div>
-                  )}
+                    <div className="flex gap-3 pt-4 border-t border-slate-100">
+                        <Button variant="ghost" onClick={() => setIsUploadOpen(false)} className="flex-1 font-bold text-slate-500 uppercase text-xs">Cancelar</Button>
+                        <Button
+                            onClick={handleUploadDocument}
+                            disabled={!selectedFile || !newDoc.tipo || isUploading}
+                            className="flex-1 font-black uppercase text-xs shadow-lg shadow-primary/20"
+                        >
+                            {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Upload className="w-4 h-4 mr-2" />}
+                            Iniciar Carga
+                        </Button>
+                    </div>
                 </div>
-              </div>
-
-              {/* Tipo de documento */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold">Tipo de Documento</Label>
-                <Select value={newDoc.tipo} onValueChange={(v) => setNewDoc(prev => ({ ...prev, tipo: v || "" }))}>
-                  <SelectTrigger className="h-10 text-xs">
-                    <SelectValue placeholder="Seleccionar tipo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tipoDocumentoOptions.map((tipo) => (
-                      <SelectItem key={tipo.value} value={tipo.value} className="text-xs">
-                        {tipo.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Observaciones */}
-              <div className="space-y-2">
-                <Label className="text-xs font-bold">Observaciones</Label>
-                <Input
-                  placeholder="Descripción opcional..."
-                  value={newDoc.observaciones}
-                  onChange={(e) => setNewDoc(prev => ({ ...prev, observaciones: e.target.value }))}
-                  className="h-10"
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setIsUploadOpen(false)}
-                className="flex-1"
-              >
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleUploadDocument}
-                disabled={!newDoc.nombre || !newDoc.tipo}
-                className="flex-1"
-              >
-                <Upload className="w-4 h-4 mr-2" />
-                Subir
-              </Button>
-            </div>
-          </div>
-        </div>
+            </DialogContent>
+        </Dialog>
       )}
     </div>
   );
@@ -431,14 +422,14 @@ export function StatsCard({
   bgColor: string;
 }) {
   return (
-    <div className="bg-white p-4 rounded-xl border border-border shadow-sm transition-all hover:shadow-md">
+    <div className="bg-white p-4 rounded-xl border border-border shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
       <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-lg", bgColor)}>
+        <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110", bgColor)}>
           <div className={cn("w-5 h-5", color)}>{icon}</div>
         </div>
         <div>
-          <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider">{label}</p>
-          <p className={cn("text-2xl font-medium", color)}>{value}</p>
+          <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+          <p className={cn("text-2xl font-black tracking-tighter", color)}>{value}</p>
         </div>
       </div>
     </div>

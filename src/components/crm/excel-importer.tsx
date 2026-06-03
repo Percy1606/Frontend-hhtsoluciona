@@ -24,7 +24,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Client } from "@/mocks/data";
+import { Client } from "@/types/crm";
 
 interface ExcelImporterProps {
   onImportComplete?: () => void;
@@ -123,7 +123,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     mapped.contacto = getRowValue(["Contacto", "Nombre Contacto", "Representante", "Atencion"]) || "";
     mapped.cargo = getRowValue(["Cargo", "Cargo Contacto", "Puesto"]) || "";
     mapped.correo = getRowValue(["Correo", "Email", "Correo Electronico", "E-mail"]) || "";
-    mapped.asignadoA = getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angi";
+    mapped.asignadoA = getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angie";
     mapped.diaTrabajo = getRowValue(["Dia de Trabajo", "Dia Trabajo", "Dia Visita", "Dia"]) || "Lunes";
     mapped.estado = getRowValue(["Estado", "Situacion", "Estado Cliente"]) || "Activo";
 
@@ -141,21 +141,6 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
 
     mapped.observaciones = getRowValue(["Observaciones", "Notas", "Comentarios", "Detalles"]) || "";
     mapped.zona = getRowValue(["Zona", "Distrito", "Region", "Ciudad"]) || "Piura";
-
-    const tempRaw = getRowValue(["Temperatura Cliente", "Temperatura", "Temp"]) || "";
-    const t = String(tempRaw).trim().toLowerCase();
-    mapped.temperatura = t.includes("muy") || t.includes("hot") ? "Muy Caliente" : t.includes("cal") ? "Caliente" : t.includes("fri") ? "Frío" : "Tibio";
-
-    mapped.montoEstimado = Number(getRowValue(["Monto Estimado", "Monto Est", "Monto", "Valor Estimado", "Presupuesto"]) || 0);
-
-    const probRaw = getRowValue(["Probabilidad de Cierre", "Probabilidad", "Prob", "Porcentaje Cierre"]);
-    if (probRaw !== undefined) {
-      let pNum = Number(probRaw);
-      if (pNum > 1) pNum = pNum / 100; // if it was 50 instead of 0.5
-      mapped.probabilidad = isNaN(pNum) ? 0.5 : Math.min(1, Math.max(0, pNum));
-    } else {
-      mapped.probabilidad = 0.5;
-    }
 
     mapped.tipoCliente = getRowValue(["Tipo Cliente", "Tipo", "Tipo de Cliente"]) || "Nuevo";
 
@@ -225,22 +210,21 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     const headers = [
       "Razón Social", "RUC", "Dirección", "Zona", "Tarifa", "Teléfono", 
       "Contacto", "Cargo", "Correo", "Asignado A", "Día de Trabajo", 
-      "Etapa Comercial", "Temperatura", "Prioridad", "Monto Estimado", 
-      "Probabilidad de Cierre", "Último Contacto", "Próximo Seguimiento", 
+      "Etapa Comercial", "Prioridad", "Último Contacto", "Próximo Seguimiento", 
       "Acción", "Observaciones", "Tipo Cliente"
     ];
     
     const sampleRowBase = [
       "EMPRESA EJEMPLO S.A.C.", "20123456789", "Av. Industrial 456, Piura", "Zona Industrial", "MT3", "987654321",
-      "Carlos Mendívil", "Gerente Operaciones", "cmendivil@ejemplo.com", "Angi", "Lunes",
-      "Prospecto", "Tibio", "Media", 15000, 0.5, "2026-05-20", "2026-06-05",
+      "Carlos Mendívil", "Gerente Operaciones", "cmendivil@ejemplo.com", "Angie", "Lunes",
+      "Prospecto", "Media", "2026-05-20", "2026-06-05",
       "Enviar brochure institucional", "Interesado en mantenimiento eléctrico general.", "Nuevo"
     ];
 
     const sampleRowMT4 = [
       "ALIMENTOS DEL NORTE", "20998877665", "Carretera Paita Km 5", "Paita", "MT4", "945612378",
       "Ing. Sonia Rivas", "Supervisora MT", "srivas@alimentosnorte.pe", "Valentina", "Martes",
-      "Cotización Enviada", "Caliente", "Alta", 35000, 0.8, "2026-05-22", "2026-05-29",
+      "Cotización Enviada", "Alta", "2026-05-22", "2026-05-29",
       "Llamar para verificar sustento de cotización", "Enviada cotización de cambio de celdas MT.", "Recurrente"
     ];
 
@@ -248,7 +232,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, "CRM Plantilla");
-    XLSX.writeFile(wb, `Plantilla_CRM_${fileType === "base" ? "BASE_CRM" : "MT4_ANGI"}.xlsx`);
+    XLSX.writeFile(wb, `Plantilla_CRM_${fileType === "base" ? "BASE_CRM" : "MT4_ANGIE"}.xlsx`);
   };
 
   return (
@@ -288,7 +272,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
                     className="flex-1 font-bold text-xs uppercase h-9"
                     onClick={() => setFileType("mt4")}
                   >
-                    MT4 ANGI Específico
+                    MT4 ANGIE Específico
                   </Button>
                 </div>
               </div>
@@ -382,8 +366,6 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
                         <TableHead className="font-bold">Tarifa</TableHead>
                         <TableHead className="font-bold text-center">Etapa</TableHead>
                         <TableHead className="font-bold">Responsable</TableHead>
-                        <TableHead className="font-bold text-right">Monto Estimado</TableHead>
-                        <TableHead className="font-bold text-center">Temp.</TableHead>
                         <TableHead className="font-bold">Dirección</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -399,10 +381,6 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
                             </Badge>
                           </TableCell>
                           <TableCell className="font-semibold">{client.asignadoA}</TableCell>
-                          <TableCell className="text-right font-bold text-primary">
-                            {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(client.montoEstimado)}
-                          </TableCell>
-                          <TableCell className="text-center font-bold">{client.temperatura}</TableCell>
                           <TableCell className="max-w-[150px] truncate text-muted-foreground">{client.direccion}</TableCell>
                         </TableRow>
                       ))}

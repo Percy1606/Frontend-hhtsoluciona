@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { Client } from "@/mocks/data";
+import { Client } from "@/types/crm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 
@@ -31,7 +31,24 @@ interface ClientFormProps {
 
 export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
   const form = useForm({
-    defaultValues: client || {
+    defaultValues: client ? {
+      ...client,
+      telefono: client.telefono || "",
+      cargo: client.cargo || "",
+      correo: client.correo || "",
+      diaTrabajo: client.diaTrabajo || "Otros",
+      ultimoContacto: client.ultimoContacto ? client.ultimoContacto.split('T')[0] : "",
+      proximoSeguimiento: client.proximoSeguimiento ? client.proximoSeguimiento.split('T')[0] : "",
+      observaciones: client.observaciones || "",
+      accion: client.accion || "",
+      tarifa: client.tarifa || "MT3",
+      asignadoA: client.asignadoA || "Angie",
+      prioridad: client.prioridad || "Media",
+      etapaComercial: client.etapaComercial || "Prospecto",
+      tipoCliente: client.tipoCliente || "Nuevo",
+      estado: client.estado || "Activo",
+    } : {
+      codigo: "",
       empresa: "",
       ruc: "",
       direccion: "",
@@ -40,14 +57,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       telefono: "",
       cargo: "",
       correo: "",
-      asignadoA: "Angi",
-      diaTrabajo: "Lunes",
+      asignadoA: "Angie",
+      diaTrabajo: "Otros",
       estado: "Activo",
       prioridad: "Media",
       zona: "",
-      temperatura: "Tibio",
-      montoEstimado: 0,
-      probabilidad: 0.5,
       observaciones: "",
       accion: "",
       ultimoContacto: new Date().toISOString().split('T')[0],
@@ -59,44 +73,81 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <ScrollArea className="h-[68vh] pr-4">
-          <div className="space-y-8 p-1">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+        <ScrollArea className="flex-1 max-h-[60vh]">
+          <div className="space-y-6 p-6">
             {/* Sección: Información de la Empresa */}
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-2 h-4 bg-primary rounded-sm" />
+                <span className="w-1 h-4 bg-primary rounded-full" />
                 Información de la Empresa
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="empresa"
-                  rules={{ required: "La razón social es obligatoria" }}
+                  name="codigo"
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Razón Social <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Código Empresa <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Nombre de la empresa" {...field} className="border-border" />
+                        <Input placeholder="HHT-..." {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
+                  name="empresa"
+                  rules={{ required: "Requerido" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Razón Social <span className="text-error">*</span></FormLabel>
+                      <FormControl>
+                        <Input placeholder="Empresa S.A.C." {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
+                      </FormControl>
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
                   name="ruc"
                   rules={{ 
-                    required: "El RUC es obligatorio",
-                    pattern: { value: /^\d{11}$/, message: "El RUC debe tener 11 dígitos" } 
+                    required: "Requerido",
+                    pattern: { value: /^\d{11}$/, message: "11 dígitos" } 
                   }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">RUC <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">RUC <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="11 dígitos" maxLength={11} {...field} className="border-border" />
+                        <Input placeholder="20..." maxLength={11} {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
                       </FormControl>
-                      <FormMessage />
+                      <FormMessage className="text-[10px]" />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="tarifa"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Tarifa</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue placeholder="MT2/MT3/MT4" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="MT2">MT2</SelectItem>
+                          <SelectItem value="MT3">MT3</SelectItem>
+                          <SelectItem value="MT4">MT4</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </FormItem>
                   )}
                 />
@@ -105,54 +156,51 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                 <FormField
                   control={form.control}
                   name="direccion"
-                  rules={{ required: "La dirección es obligatoria" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Dirección Fiscal / Planta <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Dirección <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Av. Principal #123..." {...field} className="border-border" />
+                        <Input placeholder="Av. Principal..." {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="zona"
-                  rules={{ required: "La zona es obligatoria" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Zona / Distrito <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Zona / Distrito <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Piura, Paita, Sullana..." {...field} className="border-border" />
+                        <Input placeholder="Piura" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
 
-            <Separator className="bg-slate-100" />
+            <Separator className="opacity-50" />
 
             {/* Sección: Datos de Contacto */}
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-2 h-4 bg-primary rounded-sm" />
+                <span className="w-1 h-4 bg-primary rounded-full" />
                 Contacto & Comunicación
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="contacto"
-                  rules={{ required: "El nombre de contacto es obligatorio" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Nombre de Contacto <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Nombre Contacto <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Persona encargada" {...field} className="border-border" />
+                        <Input placeholder="Persona responsable" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -161,11 +209,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   name="cargo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Cargo</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Cargo</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Jefe de Mantenimiento, Administrador" {...field} className="border-border" />
+                        <Input placeholder="Ej: Administrador" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -176,43 +223,35 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   name="telefono"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Teléfono / Celular</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Teléfono</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: 999888777" {...field} className="border-border" />
+                        <Input placeholder="999..." {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="correo"
-                  rules={{ 
-                    pattern: { 
-                      value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/, 
-                      message: "Correo inválido" 
-                    } 
-                  }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Correo Electrónico</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Correo</FormLabel>
                       <FormControl>
-                        <Input placeholder="correo@empresa.com" type="email" {...field} className="border-border" />
+                        <Input placeholder="email@ejemplo.com" type="email" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
 
-            <Separator className="bg-slate-100" />
+            <Separator className="opacity-50" />
 
-            {/* Sección: Información Comercial */}
+            {/* Sección: Gestión Comercial */}
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-2 h-4 bg-primary rounded-sm" />
-                Gestión Comercial & Pipeline
+                <span className="w-1 h-4 bg-primary rounded-full" />
+                Gestión Comercial
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
@@ -220,11 +259,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   name="etapaComercial"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Etapa Comercial</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Etapa</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Seleccionar etapa" />
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
@@ -237,11 +276,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Seguimiento">Seguimiento</SelectItem>
                           <SelectItem value="Negociación">Negociación</SelectItem>
                           <SelectItem value="Orden de Servicio">Orden de Servicio</SelectItem>
-                          <SelectItem value="Ganado">Cerrado / Ganado</SelectItem>
-                          <SelectItem value="Perdido">Cerrado / Perdido</SelectItem>
+                          <SelectItem value="Ganado">Ganado</SelectItem>
+                          <SelectItem value="Perdido">Perdido</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -250,90 +288,41 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   name="asignadoA"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Asignado A</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Asignado A</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Responsable" />
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Angi">Angi</SelectItem>
+                          <SelectItem value="Angie">Angie</SelectItem>
                           <SelectItem value="Valentina">Valentina</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
-                          <SelectItem value="Nicol">Nicol</SelectItem>
+                          <SelectItem value="Nicoll">Nicoll</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
-                  name="tipoCliente"
+                  name="diaTrabajo"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Tipo Cliente</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Día de Revisión</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Tipo" />
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue placeholder="Seleccionar día" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Nuevo">Nuevo</SelectItem>
-                          <SelectItem value="Recurrente">Recurrente</SelectItem>
-                          <SelectItem value="Reactivado">Reactivado</SelectItem>
+                          <SelectItem value="Martes">Martes</SelectItem>
+                          <SelectItem value="Jueves">Jueves</SelectItem>
+                          <SelectItem value="Otros">Otros / Sin asignar</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <FormField
-                  control={form.control}
-                  name="tarifa"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Tarifa</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Seleccionar" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="MT3">MT3</SelectItem>
-                          <SelectItem value="MT4">MT4</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="temperatura"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Temperatura</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Seleccionar" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="Frío">Frío</SelectItem>
-                          <SelectItem value="Tibio">Tibio</SelectItem>
-                          <SelectItem value="Caliente">Caliente</SelectItem>
-                          <SelectItem value="Muy Caliente">Muy Caliente</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -342,11 +331,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   name="prioridad"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Prioridad</FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Prioridad</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Seleccionar" />
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
@@ -356,165 +345,85 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Crítica">Crítica</SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="diaTrabajo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Día de Trabajo</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="border-border bg-white">
-                            <SelectValue placeholder="Día" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="Lunes">Lunes</SelectItem>
-                          <SelectItem value="Martes">Martes</SelectItem>
-                          <SelectItem value="Miércoles">Miércoles</SelectItem>
-                          <SelectItem value="Jueves">Jueves</SelectItem>
-                          <SelectItem value="Viernes">Viernes</SelectItem>
-                          <SelectItem value="Sábado">Sábado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="montoEstimado"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Monto Estimado (S/.)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="border-border" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="probabilidad"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Probabilidad de Cierre (0.1 - 1.0)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.1" min="0" max="1" {...field} onChange={e => field.onChange(parseFloat(e.target.value) || 0)} className="border-border" />
-                      </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
 
-            <Separator className="bg-slate-100" />
+            <Separator className="opacity-50" />
 
-            {/* Sección: Alertas y Próximo Seguimiento */}
-            <div className="space-y-4 bg-accent/[0.03] p-4 rounded-xl border border-accent/10">
+            {/* Sección: Seguimiento */}
+            <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed">
               <h3 className="text-xs font-black uppercase tracking-wider text-accent flex items-center gap-2">
-                <span className="w-2 h-4 bg-accent rounded-sm" />
-                Seguimiento & Alertas (Obligatorio)
+                <span className="w-1 h-4 bg-accent rounded-full" />
+                Seguimiento
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="accion"
-                  rules={{ required: "Debe registrar la acción a realizar" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Acción Comercial Programada <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Acción Programada <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Llamada para sustentar propuesta" {...field} className="border-border bg-white" />
+                        <Input placeholder="Ej: Llamar" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
                 <FormField
                   control={form.control}
                   name="proximoSeguimiento"
-                  rules={{ required: "La fecha de próximo seguimiento es obligatoria" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Fecha Próximo Seguimiento <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Fecha <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} className="border-border bg-white" />
+                        <Input type="date" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              <div className="grid grid-cols-1 gap-4">
-                <FormField
-                  control={form.control}
-                  name="ultimoContacto"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-slate-700">Fecha Último Contacto</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} className="border-border bg-white" />
-                      </FormControl>
-                      <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
             </div>
 
-            <Separator className="bg-slate-100" />
-
-            {/* Sección: Observaciones */}
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-2 h-4 bg-primary rounded-sm" />
-                Observaciones & Notas
-              </h3>
-              <FormField
-                control={form.control}
-                name="observaciones"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-slate-700">Detalles Adicionales</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Ingrese comentarios sobre el estado actual del cliente, requerimientos técnicos, etc." 
-                        className="min-h-[100px] border-border resize-none"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+            {/* Observaciones */}
+            <FormField
+              control={form.control}
+              name="observaciones"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Observaciones Generales</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Detalles adicionales..." 
+                      className="min-h-[80px] text-sm resize-none border-slate-200"
+                      {...field} 
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
           </div>
         </ScrollArea>
 
-        <div className="flex justify-end gap-3 pt-6 px-6 pb-6 border-t border-border bg-white rounded-b-xl shrink-0">
+        {/* Footer fijo con botones */}
+        <div className="flex items-center justify-end gap-3 p-4 border-t bg-slate-50 mt-auto shrink-0">
           <Button 
             type="button" 
-            variant="outline" 
+            variant="ghost" 
             onClick={onCancel} 
-            className="font-bold border-border bg-white hover:bg-muted"
+            className="font-bold text-slate-500 hover:bg-slate-200 h-9"
           >
-            Cancelar
+            CANCELAR
           </Button>
           <Button 
             type="submit" 
-            className="bg-primary hover:bg-primary/90 text-white font-bold px-8 shadow-lg shadow-primary/20"
+            className="bg-primary hover:bg-primary/90 text-white font-black px-8 h-9 shadow-md"
           >
-            {client ? "Guardar Cambios" : "Crear Cliente"}
+            {client ? "ACTUALIZAR DATOS" : "GUARDAR CLIENTE"}
           </Button>
         </div>
       </form>

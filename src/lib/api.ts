@@ -15,8 +15,11 @@ async function getHeaders() {
 
 async function handleResponse(response: Response) {
   if (response.status === 401) {
-    // Optional: Auto-logout on 401
-    // useAuthStore.getState().logout();
+    // Auto-logout on 401
+    if (typeof window !== 'undefined') {
+        useAuthStore.getState().logout();
+        window.location.href = '/login';
+    }
   }
   if (!response.ok) {
     const error = await response.json().catch(() => ({ message: 'Unknown error' }));

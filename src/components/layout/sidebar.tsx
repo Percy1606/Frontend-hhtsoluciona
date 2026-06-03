@@ -43,12 +43,11 @@ const menuItems = [
     label: "CRM Comercial",
     href: "/crm",
     subItems: [
-      { icon: Table, label: "Cartera de Clientes", href: "/crm/cartera" },
-      { icon: Grid, label: "Pipeline de Ventas", href: "/crm/pipeline" },
+      { icon: Table, label: "Clientes", href: "/crm/cartera" },
+      { icon: Grid, label: "Proceso de ventas", href: "/crm/pipeline" },
       { icon: Calendar, label: "Seguimiento", href: "/crm/seguimiento" },
-      { icon: FileSpreadsheet, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: BarChart, label: "Informes", href: "/crm/estadisticas" },
-      { icon: FileUp, label: "Importación", href: "/crm/importacion" },
     ]
   },
   {

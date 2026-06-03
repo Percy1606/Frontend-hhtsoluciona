@@ -17,11 +17,9 @@ import {
   Edit,
   Trash2,
   Calendar,
-  Flame,
   AlertCircle,
   Phone,
   Mail,
-  UserCheck,
   MessageSquare
 } from "lucide-react";
 import {
@@ -31,11 +29,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { ClientDetails } from "./client-details";
 import { ClientForm } from "./client-form";
 import { FollowUpModal } from "./follow-up-modal";
-import { Client } from "@/mocks/data";
+import { Client } from "@/types/crm";
 import {
   Dialog,
   DialogContent,
@@ -47,13 +45,6 @@ const semaforoColors: Record<string, string> = {
   Verde: "bg-success",
   Amarillo: "bg-warning",
   Rojo: "bg-error",
-};
-
-const tempColors: Record<string, string> = {
-  "Frío": "text-blue-500 bg-blue-50",
-  "Tibio": "text-yellow-600 bg-yellow-50",
-  "Caliente": "text-orange-600 bg-orange-50",
-  "Muy Caliente": "text-red-600 bg-red-50",
 };
 
 interface ClientTableProps {
@@ -78,13 +69,12 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
     const matchesAsignado = filters.asignadoA === "all" || client.asignadoA === filters.asignadoA;
     const matchesEstado = filters.estado === "all" || client.estado === filters.estado;
     const matchesEtapa = filters.etapaComercial === "all" || client.etapaComercial === filters.etapaComercial;
-    const matchesTemperatura = filters.temperatura === "all" || client.temperatura === filters.temperatura;
     const matchesPrioridad = filters.prioridad === "all" || client.prioridad === filters.prioridad;
     const matchesZona = filters.zona === "all" || client.zona === filters.zona;
     const matchesTipo = filters.tipoCliente === "all" || client.tipoCliente === filters.tipoCliente;
 
     return matchesSearch && matchesTarifa && matchesAsignado && matchesEstado && 
-           matchesEtapa && matchesTemperatura && matchesPrioridad && matchesZona && matchesTipo;
+           matchesEtapa && matchesPrioridad && matchesZona && matchesTipo;
   });
 
   const handleOpenDetails = (client: Client) => {
@@ -118,17 +108,11 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
       alert("Este cliente no tiene un teléfono registrado.");
       return;
     }
-    
-    // Limpiar número (quitar espacios, guiones, etc.)
     const cleanPhone = client.telefono.replace(/\D/g, '');
     const phoneWithCountry = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`;
-    
     const message = encodeURIComponent(`Hola ${client.contacto}, te saludo de HH T Soluciona. Queremos dar seguimiento a la gestión de ${client.empresa}.`);
     const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${message}`;
-    
-    // Registrar la interacción automáticamente
     addInteraction(client.id, "WhatsApp", "Contacto por WhatsApp", "Se inició conversación por WhatsApp para seguimiento.", client.asignadoA || "Admin");
-    
     window.open(whatsappUrl, '_blank');
   };
 
@@ -136,7 +120,7 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
     <>
       <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
         <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
-          <Table className="min-w-[2500px] border-separate border-spacing-0">
+          <Table className="min-w-[1500px] border-separate border-spacing-0">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border/80">
                 <TableHead className="w-[50px] font-black text-primary text-[10px] uppercase">ITEM</TableHead>
@@ -146,33 +130,33 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                 <TableHead className="font-black text-primary text-[10px] uppercase text-center">TARIFA</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">CONTACTO</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">TELÉFONO / CORREO</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase">DÍA REVISIÓN</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">ASIGNADO A</TableHead>
                 
                 {mode !== "cartera" && (
                   <>
-                    <TableHead className="font-black text-primary text-[10px] uppercase text-center">SEMÁFORO</TableHead>
-                    <TableHead className="font-black text-primary text-[10px] uppercase">ETAPA COMERCIAL</TableHead>
-                    <TableHead className="font-black text-primary text-[10px] uppercase">TEMPERATURA</TableHead>
-                    <TableHead className="font-black text-primary text-[10px] uppercase text-right">MONTO EST.</TableHead>
-                    <TableHead className="font-black text-primary text-[10px] uppercase text-center">PROB.</TableHead>
-                    <TableHead className="font-black text-primary text-[10px] uppercase text-right">VENTA PROY.</TableHead>
+                    <TableHead className="font-black text-primary text-[10px] uppercase">ETAPA</TableHead>
                     <TableHead className="font-black text-primary text-[10px] uppercase text-center">ÚLTIMO CONTACTO</TableHead>
                   </>
                 )}
                 
                 <TableHead className="font-black text-primary text-[10px] uppercase text-center">PRÓX. SEGUIMIENTO</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase text-center">DÍAS SIN SEGUIMIENTO</TableHead>
+                <TableHead className="font-black text-primary text-[10px] uppercase text-center">DÍAS SIN CONTACTO</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">TIPO CLIENTE</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">PRIORIDAD</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase">DIRECCIÓN / ZONA</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase">OBSERVACIONES</TableHead>
                 <TableHead className="font-black text-primary text-[10px] uppercase text-right w-[60px]">ACCIONES</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredData.map((client, index) => {
-                const daysSince = getDaysSinceContact(client.ultimoContacto);
+                const daysSinceLastContact = getDaysSinceContact(client.ultimoContacto);
                 const isOverdue = isFollowUpOverdue(client);
+                
+                // Si está vencido, contamos los días desde que debió ser el seguimiento
+                // Si no, contamos los días desde el último contacto real
+                const daysOverdue = isOverdue ? getDaysSinceContact(client.proximoSeguimiento) : 0;
+                const daysToShow = isOverdue ? daysOverdue : daysSinceLastContact;
                 
                 return (
                   <TableRow key={client.id} className="hover:bg-muted/20 transition-colors group">
@@ -202,8 +186,10 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                     <TableCell className="text-xs font-bold text-slate-700">{client.contacto}</TableCell>
                     <TableCell>
                       <div className="space-y-0.5 text-[10px] font-semibold text-slate-600">
-                        {client.telefono && (
+                        {client.telefono ? (
                           <p className="flex items-center gap-1"><Phone className="w-2.5 h-2.5 text-slate-400" /> {client.telefono}</p>
+                        ) : (
+                          <p className="text-slate-400 italic">Sin teléfono</p>
                         )}
                         {client.correo && (
                           <p className="flex items-center gap-1 text-primary truncate max-w-[150px]" title={client.correo}>
@@ -211,6 +197,20 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                           </p>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {client.diaTrabajo ? (
+                        <Badge variant="outline" className={cn(
+                          "font-black text-[9px] uppercase px-2 py-0.5",
+                          client.diaTrabajo === "Martes" ? "border-blue-200 bg-blue-50 text-blue-700" :
+                          client.diaTrabajo === "Jueves" ? "border-purple-200 bg-purple-50 text-purple-700" :
+                          "border-slate-200 bg-slate-50 text-slate-500"
+                        )}>
+                          {client.diaTrabajo}
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 italic">No asignado</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-xs font-bold text-slate-700">
                       <div className="flex items-center gap-1.5">
@@ -223,39 +223,13 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
 
                     {mode !== "cartera" && (
                       <>
-                        <TableCell className="text-center">
-                          <div className="flex justify-center">
-                            <div className={cn(
-                              "w-3.5 h-3.5 rounded-full shadow-inner ring-2 ring-white",
-                              semaforoColors[client.semaforo] || "bg-slate-300"
-                            )} />
-                          </div>
-                        </TableCell>
                         <TableCell>
                           <Badge className="font-black text-[9px] uppercase tracking-wide bg-slate-100 text-slate-800 border border-slate-200">
                             {client.etapaComercial}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <div className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 rounded text-[9px] font-black uppercase border",
-                            tempColors[client.temperatura] || "text-slate-500 bg-slate-100"
-                          )}>
-                            <Flame className="w-2.5 h-2.5" />
-                            {client.temperatura}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right font-black text-xs text-primary">
-                          {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(client.montoEstimado)}
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-xs">
-                          {Math.round((client.probabilidad || 0) * 100)}%
-                        </TableCell>
-                        <TableCell className="text-right font-black text-xs text-primary bg-slate-50/50">
-                          {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(client.ventaProyectada)}
-                        </TableCell>
                         <TableCell className="text-center text-xs font-semibold text-slate-600">
-                          {client.ultimoContacto || "Sin contacto"}
+                          {formatDate(client.ultimoContacto)}
                         </TableCell>
                       </>
                     )}
@@ -270,7 +244,7 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                               "px-2 py-0.5 rounded",
                               isOverdue ? "bg-error text-white font-black" : "bg-slate-100 text-slate-700"
                             )}>
-                              {client.proximoSeguimiento}
+                              {formatDate(client.proximoSeguimiento)}
                             </span>
                           </>
                         )}
@@ -278,14 +252,14 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                     </TableCell>
                     <TableCell className="text-center text-xs font-black">
                       <div className="min-w-[100px]">
-                        {daysSince === 999 ? (
+                        {daysToShow === 999 ? (
                           <Badge variant="destructive" className="bg-error text-white font-black">SIN CONTACTO</Badge>
                         ) : (
                           <div className={cn(
                             "inline-flex items-center justify-center px-2 py-0.5 rounded-full min-w-[60px]",
-                            daysSince > 15 ? "bg-error text-white" : daysSince > 7 ? "bg-warning text-slate-900" : "bg-success text-white"
+                            daysToShow > 15 ? "bg-error text-white" : daysToShow > 7 ? "bg-warning text-slate-900" : "bg-success text-white"
                           )}>
-                            {daysSince} {daysSince === 1 ? "día" : "días"}
+                            {daysToShow} {daysToShow === 1 ? "día" : "días"}
                           </div>
                         )}
                       </div>
@@ -305,9 +279,6 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
                     </TableCell>
                     <TableCell className="text-[10px] font-semibold text-slate-600 max-w-[150px] truncate" title={`${client.direccion} (${client.zona})`}>
                       {client.direccion} <span className="text-primary font-bold">({client.zona})</span>
-                    </TableCell>
-                    <TableCell className="text-[10px] font-semibold text-slate-500 max-w-[200px] truncate" title={client.observaciones}>
-                      {client.observaciones}
                     </TableCell>
                     <TableCell className="text-right">
                       <DropdownMenu>
@@ -353,8 +324,8 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
               })}
               {filteredData.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={22} className="h-32 text-center text-muted-foreground font-semibold">
-                    No se encontraron clientes con los filtros aplicados.
+                  <TableCell colSpan={22} className="h-32 text-center text-muted-foreground font-semibold uppercase text-[10px]">
+                    No se encontraron registros en la base de datos real.
                   </TableCell>
                 </TableRow>
               )}
@@ -377,14 +348,14 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
 
       {/* Modal: Editar Cliente */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-hidden p-0 border-none bg-white shadow-2xl">
-          <DialogHeader className="p-8 bg-primary text-white rounded-t-xl shrink-0">
-            <DialogTitle className="text-3xl font-black tracking-tight flex items-center gap-2">
-              <Edit className="w-8 h-8 text-accent" />
-              Editar Cliente: {selectedClient?.empresa}
+        <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden p-0 border-none bg-white shadow-2xl">
+          <DialogHeader className="p-6 bg-primary text-white rounded-t-xl shrink-0">
+            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-2 uppercase">
+              <Edit className="w-6 h-6 text-accent" />
+              Editar: {selectedClient?.empresa}
             </DialogTitle>
           </DialogHeader>
-          <div className="p-8">
+          <div className="p-0 flex-1 overflow-hidden">
             <ClientForm
               client={selectedClient}
               onSubmit={handleUpdateClient}

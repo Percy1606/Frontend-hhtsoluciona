@@ -5,7 +5,18 @@ import { KPIStats } from "@/components/dashboard/kpi-stats";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, Clock, CheckCircle2, Briefcase, ClipboardList, FileCheck, Truck, TrendingUp } from "lucide-react";
+import { 
+  AlertCircle, 
+  Clock, 
+  CheckCircle2, 
+  Briefcase, 
+  ClipboardList, 
+  FileCheck, 
+  Truck, 
+  TrendingUp,
+  Calendar,
+  ChevronRight
+} from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -69,31 +80,50 @@ export default function DashboardPage() {
     fetchResponsables, 
     alertas,
     getTimelineEvents,
-    loading: loadingOpe 
   } = useOperacionesStore();
   
   const { 
     clients, 
     quotes,
+    fetchClients,
+    fetchQuotes
   } = useCRMStore();
 
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const init = async () => {
-      await Promise.all([fetchProyectos(), fetchResponsables()]);
+      await Promise.all([
+        fetchProyectos(), 
+        fetchResponsables(),
+        fetchClients(),
+        fetchQuotes()
+      ]);
       setLoading(false);
     };
     init();
-  }, [fetchProyectos, fetchResponsables]);
+  }, [fetchProyectos, fetchResponsables, fetchClients, fetchQuotes]);
 
-  // Áreas con sus colores
+  // Áreas Operativas
   const areas = [
     { id: 'Logística y Recursos', name: 'Steven', color: 'bg-blue-500', role: 'Logística y Coordinación', icon: Truck },
     { id: 'Ingeniería y Supervisión Técnica', name: 'Diego', color: 'bg-purple-500', role: 'Ingeniería y Validación', icon: Briefcase },
     { id: 'Gestión Documentaria y Expedientes Técnicos', name: 'Guillermo', color: 'bg-green-500', role: 'Gestión Documental', icon: FileCheck },
     { id: 'Operaciones de Campo y Control de Obra', name: 'Mario', color: 'bg-yellow-500', role: 'Soporte de Campo', icon: ClipboardList },
   ];
+
+  // Equipo Comercial
+  const sellers = [
+    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora Comercial' },
+    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora Comercial' },
+    { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora Comercial' },
+    { name: 'Nicoll', color: 'bg-teal-600', role: 'Asesora Comercial' },
+  ];
+
+  const today = new Date();
+  const dayName = today.toLocaleDateString('es-ES', { weekday: 'long' });
+  const isReviewDay = dayName.toLowerCase().includes('martes') || dayName.toLowerCase().includes('jueves');
+  const currentReviewDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).split(',')[0];
 
   // Calcular KPIs en tiempo real
   const kpis = {
@@ -110,6 +140,21 @@ export default function DashboardPage() {
         if (!a.fechaVencimiento || a.estado === 'Completada' || a.estado === 'Validada') return false;
         return new Date(a.fechaVencimiento) < new Date();
       }).length || 0), 0)
+    },
+    crm: {
+      totalHoy: clients.filter(c => {
+        if (!c.proximoSeguimiento) return false;
+        const fs = c.proximoSeguimiento.split('T')[0];
+        const hoy = new Date().toISOString().split('T')[0];
+        return fs === hoy && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido';
+      }).length,
+      vencidos: clients.filter(c => {
+        if (!c.proximoSeguimiento || c.etapaComercial === 'Ganado' || c.etapaComercial === 'Perdido') return false;
+        const fs = new Date(c.proximoSeguimiento.split('T')[0]);
+        const hoy = new Date();
+        hoy.setHours(0,0,0,0);
+        return fs < hoy;
+      }).length
     }
   };
 
@@ -121,8 +166,18 @@ export default function DashboardPage() {
     usuario: e.usuario
   }));
 
+  const proximosSeguimientos = clients
+    .filter(c => c.proximoSeguimiento && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido')
+    .sort((a, b) => new Date(a.proximoSeguimiento).getTime() - new Date(b.proximoSeguimiento).getTime())
+    .slice(0, 5);
+
   const distribucionPorArea = areas.reduce((acc, area) => {
     acc[area.name] = proyectos.filter(p => p.area === area.id).length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  const distribucionPorVendedor = sellers.reduce((acc, s) => {
+    acc[s.name] = clients.filter(c => c.asignadoA === s.name).length;
     return acc;
   }, {} as Record<string, number>);
 
@@ -133,9 +188,21 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-black text-primary tracking-tight">Panel de Control</h1>
-        <p className="text-muted-foreground mt-1 font-medium">Resumen general de HH T Soluciona S.A.C.</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-black text-primary tracking-tight">Panel de Control</h1>
+          <p className="text-muted-foreground mt-1 font-medium">Resumen general de HH T Soluciona S.A.C.</p>
+        </div>
+        
+        {isReviewDay && (
+          <div className="bg-accent/10 border-2 border-accent/20 px-6 py-3 rounded-2xl flex items-center gap-3 animate-pulse">
+            <Calendar className="w-5 h-5 text-accent" />
+            <div>
+              <p className="text-[10px] font-black text-accent uppercase">Comité Comercial Activo</p>
+              <p className="text-sm font-bold text-primary">Hoy: {currentReviewDay}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {loading ? (
@@ -147,67 +214,109 @@ export default function DashboardPage() {
           {/* KPI Stats */}
           <KPIStats />
 
-          {/* Métricas por Área */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {areas.map((area) => {
-              const Icon = area.icon;
-              const proyectosArea = distribucionPorArea[area.name] || 0;
-              return (
-                <Card key={area.name} className="border-none shadow-sm hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className={cn("p-2 rounded-lg", area.color)}>
-                        <Icon className="w-5 h-5 text-white" />
+          {/* Métricas Operativas */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              <h2 className="text-sm font-black text-primary uppercase tracking-wider">Gestión de Operaciones</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {areas.map((area) => {
+                const Icon = area.icon;
+                const proyectosArea = distribucionPorArea[area.name] || 0;
+                return (
+                  <Card key={area.name} className="border-none shadow-sm hover:shadow-md transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <div className={cn("p-2 rounded-lg", area.color)}>
+                          <Icon className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black text-muted-foreground uppercase">{area.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{area.role}</p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="text-xs font-black text-muted-foreground uppercase">{area.name}</p>
-                        <p className="text-[10px] text-muted-foreground">{area.role}</p>
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Proyectos Activos</span>
+                          <span className="text-xl font-black text-primary">{proyectosArea}</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="mt-3 pt-3 border-t border-border">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-muted-foreground">Proyectos Activos</span>
-                        <span className="text-xl font-black text-primary">{proyectosArea}</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Semáforos y Estado de Proyectos */}
+          {/* Métricas Comerciales */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h2 className="text-sm font-black text-primary uppercase tracking-wider">Equipo Comercial y Ventas</h2>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {sellers.map((seller) => {
+                const clientesVendedor = distribucionPorVendedor[seller.name] || 0;
+                return (
+                  <Card key={seller.name} className="border-none shadow-sm hover:shadow-md transition-shadow border-b-4" style={{ borderColor: seller.color.replace('bg-', '') }}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
+                          <AvatarFallback className={cn("text-white font-black", seller.color)}>
+                            {seller.name[0]}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-xs font-black text-muted-foreground uppercase">{seller.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{seller.role}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs text-muted-foreground">Cartera Activa</span>
+                          <span className="text-xl font-black text-primary">{clientesVendedor}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Alertas Rápidas Mixtas */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-none shadow-sm bg-green-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-black text-green-700 uppercase">Proyectos Verdes</p>
-                    <p className="text-3xl font-black text-green-600">{kpis.proyectos.verdes}</p>
-                  </div>
-                  <CheckCircle2 className="w-10 h-10 text-green-500" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-yellow-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-black text-yellow-700 uppercase">Proyectos Amarillos</p>
-                    <p className="text-3xl font-black text-yellow-600">{kpis.proyectos.amarillos}</p>
-                  </div>
-                  <Clock className="w-10 h-10 text-yellow-500" />
-                </div>
-              </CardContent>
-            </Card>
             <Card className="border-none shadow-sm bg-red-50">
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-black text-red-700 uppercase">Proyectos Rojos</p>
-                    <p className="text-3xl font-black text-red-600">{kpis.proyectos.rojos}</p>
+                    <p className="text-[10px] font-black text-red-700 uppercase">Seguimientos Vencidos</p>
+                    <p className="text-3xl font-black text-red-600">{kpis.crm.vencidos}</p>
                   </div>
-                  <AlertCircle className="w-10 h-10 text-red-500" />
+                  <AlertCircle className="w-10 h-10 text-red-400 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm bg-blue-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-blue-700 uppercase">Gestiones de Hoy</p>
+                    <p className="text-3xl font-black text-blue-600">{kpis.crm.totalHoy}</p>
+                  </div>
+                  <Calendar className="w-10 h-10 text-blue-400 opacity-50" />
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-none shadow-sm bg-orange-50">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] font-black text-orange-700 uppercase">Proyectos Críticos</p>
+                    <p className="text-3xl font-black text-orange-600">{kpis.proyectos.rojos}</p>
+                  </div>
+                  <AlertCircle className="w-10 h-10 text-orange-400 opacity-50" />
                 </div>
               </CardContent>
             </Card>
@@ -215,118 +324,111 @@ export default function DashboardPage() {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-black text-primary uppercase">Actividades Vencidas</p>
+                    <p className="text-[10px] font-black text-primary uppercase">Actividades Vencidas</p>
                     <p className="text-3xl font-black text-primary">{kpis.actividades.vencidas}</p>
                   </div>
-                  <TrendingUp className="w-10 h-10 text-primary" />
+                  <Clock className="w-10 h-10 text-primary opacity-30" />
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            {/* Alertas y Notificaciones */}
-            <Card className="border-none shadow-sm xl:col-span-1">
-              <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <AlertCircle className="w-4 h-4 text-accent" />
-                  Alertas y Notificaciones
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Agenda Comercial */}
+            <Card className="border-none shadow-sm overflow-hidden">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  Próximos Seguimientos (Agenda Comercial)
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                {alertas.slice(0, 5).map((alerta) => (
-                  <div
-                    key={alerta.id}
-                    className={cn(
-                      "p-3 border-l-4 rounded-r-lg",
-                      alerta.prioridad === 'Crítica' ? "bg-red-50 border-error" :
-                        alerta.prioridad === 'Alta' ? "bg-orange-50 border-orange-500" :
-                          "bg-yellow-50 border-yellow-500"
-                    )}
-                  >
-                    <p className="text-sm font-bold">{alerta.titulo}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{alerta.descripcion}</p>
-                    <Badge className={cn(
-                      "mt-2 text-[9px]",
-                      alerta.prioridad === 'Crítica' ? "bg-error text-white" :
-                        "bg-warning text-white"
-                    )}>
-                      {alerta.prioridad} - {alerta.area}
-                    </Badge>
-                  </div>
-                ))}
-                {alertas.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">Sin alertas pendientes</p>
-                )}
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {proximosSeguimientos.map((client) => {
+                    const isOverdue = new Date(client.proximoSeguimiento || '') < new Date(new Date().setHours(0,0,0,0));
+                    return (
+                      <div key={client.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                        <div className="flex items-center gap-3">
+                          <div className={cn(
+                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm",
+                            isOverdue ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
+                          )}>
+                            {new Date(client.proximoSeguimiento || '').getDate()}
+                            <span className="text-[8px] uppercase ml-0.5">
+                              {new Date(client.proximoSeguimiento || '').toLocaleDateString('es-ES', { month: 'short' })}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-800">{client.empresa}</p>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5 py-0">
+                                {client.asignadoA}
+                              </Badge>
+                              <span className="text-[10px] text-slate-500 italic font-medium truncate max-w-[150px]">
+                                {client.accion}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Link 
+                          href="/crm/seguimiento" 
+                          className="text-xs font-black text-primary hover:text-accent transition-colors uppercase flex items-center gap-1"
+                        >
+                          Ver <ChevronRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                    );
+                  })}
+                  {proximosSeguimientos.length === 0 && (
+                    <div className="p-10 text-center space-y-2">
+                      <Clock className="w-10 h-10 text-slate-200 mx-auto" />
+                      <p className="text-sm text-slate-400 font-bold uppercase">Sin seguimientos programados</p>
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
             {/* Timeline Operativo */}
-            <Card className="border-none shadow-sm xl:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  Timeline Operativo
+            <Card className="border-none shadow-sm overflow-hidden">
+              <CardHeader className="bg-primary/5 border-b border-primary/10">
+                <CardTitle className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Timeline de Operaciones
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
                   {timelineOperativo.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-start gap-3 p-3 bg-muted/20 rounded-lg hover:bg-muted/30 transition-colors"
+                      className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors"
                     >
-                      <div className="w-3 h-3 rounded-full mt-1.5 bg-primary" />
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-bold text-primary">{item.descripcion}</p>
-                          <span className="text-[10px] text-muted-foreground">
+                      <div className="w-2 h-2 rounded-full mt-2 bg-primary shrink-0" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-bold text-primary truncate">{item.descripcion}</p>
+                          <span className="text-[10px] font-black text-slate-400 uppercase shrink-0">
                             {new Date(item.fecha).toLocaleDateString()}
                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1">
+                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           {item.proyecto?.codigo} - {item.proyecto?.nombre}
                         </p>
-                        <div className="flex items-center gap-2 mt-2">
-                           <span className="text-[10px] text-muted-foreground">
-                            Por: {item.usuario}
-                          </span>
-                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">Responsable: {item.usuario}</p>
                       </div>
                     </div>
                   ))}
                   {timelineOperativo.length === 0 && (
-                    <p className="text-sm text-muted-foreground text-center py-4">Sin actividades recientes</p>
+                    <div className="p-10 text-center space-y-2">
+                      <Briefcase className="w-10 h-10 text-slate-200 mx-auto" />
+                      <p className="text-sm text-slate-400 font-bold uppercase">Sin actividades recientes</p>
+                    </div>
                   )}
                 </div>
               </CardContent>
             </Card>
           </div>
-
-          {/* Distribución por Prioridad */}
-          <Card className="border-none shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">
-                Distribución por Prioridad
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(distribucionPorPrioridad).map(([prioridad, count]) => (
-                  <div key={prioridad} className="p-4 bg-muted/20 rounded-xl text-center">
-                    <p className={cn(
-                      "text-2xl font-black",
-                      prioridad === 'Crítica' ? "text-error" :
-                        prioridad === 'Alta' ? "text-orange-600" :
-                          prioridad === 'Media' ? "text-yellow-600" :
-                            "text-gray-600"
-                    )}>{count}</p>
-                    <p className="text-xs font-bold text-muted-foreground uppercase">{prioridad}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Charts */}
           <DashboardCharts />

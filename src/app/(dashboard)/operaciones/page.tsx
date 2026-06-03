@@ -96,7 +96,14 @@ export default function OperacionesPage() {
   }, [fetchProyectos, fetchResponsables]);
 
   const getResponsableName = useCallback((id: string) => {
-    return responsables.find(r => r.id === id)?.nombre || 'Sin asignar';
+    if (!id) return "SIN ASIGNAR";
+    const resp = responsables.find(r => r.id === id);
+    if (resp) return resp.nombre.toUpperCase();
+    
+    // Si es un UUID (contiene guiones y es largo), lo ocultamos con un placeholder legible
+    if (id.includes('-') && id.length > 20) return "RESPONSABLE EXTERNO";
+    
+    return id.toUpperCase();
   }, [responsables]);
 
   const filteredProjects = useMemo(() => getProyectosFiltrados(), [getProyectosFiltrados, proyectos, filtros]);
@@ -350,21 +357,21 @@ export default function OperacionesPage() {
                     <TableRow key={proyecto.id} className="hover:bg-slate-50/50 transition-colors group">
                       <TableCell>
                         <div className="flex flex-col gap-0.5">
-                          <span className="font-medium text-primary text-xs uppercase tracking-tight">{proyecto.codigo}</span>
-                          <span className="text-[10px] font-medium text-slate-600 truncate max-w-[200px]">{proyecto.nombre}</span>
+                          <span className="font-bold text-primary text-xs uppercase tracking-tight">{proyecto.codigo}</span>
+                          <span className="text-[10px] font-black text-slate-700 uppercase truncate max-w-[200px]">{proyecto.nombre}</span>
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className={cn("border-none font-medium text-[9px] uppercase shadow-none", statusColors[proyecto.estado])}>
+                        <Badge className={cn("border-none font-black text-[9px] uppercase shadow-none", statusColors[proyecto.estado])}>
                           {proyecto.estado}
                         </Badge>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-medium uppercase">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-black uppercase">
                             {getResponsableName(proyecto.responsablePrincipalId).charAt(0)}
                           </div>
-                          <span className="text-[10px] font-medium text-slate-700">{getResponsableName(proyecto.responsablePrincipalId)}</span>
+                          <span className="text-[10px] font-black text-slate-700 uppercase">{getResponsableName(proyecto.responsablePrincipalId)}</span>
                         </div>
                       </TableCell>
                       <TableCell>

@@ -12,13 +12,33 @@ import {
   Bell
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
 
 export default function SeguimientoPage() {
-  const { clients } = useCRMStore();
+  const { clients, fetchClients } = useCRMStore();
 
-  const totalPendientes = clients.filter(c => !c.proximoSeguimiento).length;
+  useEffect(() => {
+    fetchClients();
+  }, [fetchClients]);
+
+  const today = new Date();
+  const dayName = today.toLocaleDateString('es-ES', { weekday: 'long' });
+  const isReviewDay = dayName.toLowerCase().includes('martes') || dayName.toLowerCase().includes('jueves');
+  const currentReviewDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).split(',')[0];
+
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const totalPendientes = clients.filter(c => !c.proximoSeguimiento && c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido").length;
   const totalVencidos = clients.filter(c => isFollowUpOverdue(c)).length;
-  const totalHoy = clients.filter(c => c.proximoSeguimiento === new Date().toISOString().split('T')[0]).length;
+  const totalHoy = clients.filter(c => {
+    if (!c.proximoSeguimiento) return false;
+    const followUpDate = c.proximoSeguimiento.split('T')[0];
+    return followUpDate === todayStr && c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido";
+  }).length;
+  
+  const clientsToReview = clients.filter(c => 
+    c.diaTrabajo === (dayName.toLowerCase().includes('martes') ? 'Martes' : 'Jueves')
+  );
 
   return (
     <div className="space-y-6">
@@ -26,6 +46,27 @@ export default function SeguimientoPage() {
         title="Seguimiento y Agenda" 
         subtitle="Control de actividades, recordatorios y alertas de clientes desatendidos." 
       />
+
+      {isReviewDay && (
+        <div className="bg-primary p-6 rounded-2xl border-4 border-accent/20 shadow-xl animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/20">
+                <Calendar className="w-8 h-8 text-accent animate-pulse" />
+              </div>
+              <div>
+                <h2 className="text-xl font-black text-white uppercase tracking-tighter">Comité de Revisión Comercial</h2>
+                <p className="text-accent/80 font-bold text-sm uppercase">Hoy es {currentReviewDay} — Foco en Prospección y Seguimiento</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Badge className="bg-accent text-primary font-black px-4 py-1.5 rounded-lg text-xs uppercase shadow-lg">
+                {clientsToReview.length} Clientes para Revisar
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-red-50 border-red-100">

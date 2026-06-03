@@ -314,6 +314,11 @@ export interface Proyecto {
   // Índices de avance por área
   indicadoresAvance?: IndicadorAvance[];
 
+  // Vínculo comercial
+  cotizacion?: {
+    estado: string;
+  };
+
   // Auditoría
   creadoPor?: string;
   fechaCreacion?: string;

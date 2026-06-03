@@ -37,10 +37,10 @@ const sections = [
   {
     title: "CRM y Ventas",
     icon: HelpCircle,
-    content: "Administre su cartera de clientes y oportunidades comerciales.",
+    content: "Administre su base de clientes y oportunidades comerciales.",
     steps: [
       "Registro de clientes y contactos.",
-      "Pipeline de ventas y seguimiento de cotizaciones.",
+      "Proceso de ventas y seguimiento de cotizaciones.",
       "Informes de rendimiento comercial."
     ]
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import {
   Dialog,
@@ -19,9 +19,16 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Calendar as CalendarIcon, Clock } from "lucide-react";
-import { Client } from "@/mocks/data";
+import { Calendar as CalendarIcon } from "lucide-react";
+import { Client, Interaction } from "@/types/crm";
 import { useCRMStore } from "@/store/crm-store";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface FollowUpModalProps {
   client: Client | null;
@@ -31,17 +38,31 @@ interface FollowUpModalProps {
 
 export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
   const { scheduleFollowUp } = useCRMStore();
+  
   const form = useForm({
     defaultValues: {
-      fecha: client?.proximoSeguimiento || new Date().toISOString().split('T')[0],
-      accion: client?.accion || "",
+      fecha: "",
+      accion: "",
+      tipo: "Llamada" as Interaction['tipo'],
     },
   });
+
+  // Sync form with client when modal opens
+  useEffect(() => {
+    if (client && isOpen) {
+      form.reset({
+        fecha: client.proximoSeguimiento ? client.proximoSeguimiento.split('T')[0] : new Date().toISOString().split('T')[0],
+        accion: client.accion || "",
+        tipo: "Llamada",
+      });
+    }
+  }, [client, isOpen, form]);
 
   if (!client) return null;
 
   const onSubmit = (data: any) => {
-    scheduleFollowUp(client.id, data.fecha, data.accion);
+    // We update the scheduleFollowUp signature or just pass it in action
+    scheduleFollowUp(client.id, data.fecha, data.accion, data.tipo);
     onClose();
   };
 
@@ -51,41 +72,65 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
         <DialogHeader className="bg-primary text-white p-6 rounded-t-xl shrink-0">
           <DialogTitle className="text-xl font-black flex items-center gap-2">
             <CalendarIcon className="w-5 h-5 text-accent" />
-            Agendar Seguimiento
+            REGISTRAR ACCIÓN / SEGUIMIENTO
           </DialogTitle>
-          <p className="text-white/60 text-xs font-bold uppercase mt-1">
-            Cliente: {client.empresa}
+          <p className="text-white/60 text-[10px] font-bold uppercase mt-1">
+            CLIENTE: {client.empresa}
           </p>
         </DialogHeader>
         <div className="p-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="fecha"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-primary">Fecha de Seguimiento</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input type="date" {...field} className="pl-10 border-border" />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="tipo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-primary text-[10px] uppercase">Tipo de Gestión</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="border-slate-200 text-xs font-bold bg-white">
+                            <SelectValue placeholder="Seleccionar tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="Llamada">Llamada</SelectItem>
+                          <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                          <SelectItem value="Visita">Visita</SelectItem>
+                          <SelectItem value="Correo">Correo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fecha"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-primary text-[10px] uppercase">Próximo Seguimiento</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                          <Input type="date" {...field} className="pl-10 border-slate-200 text-xs font-bold" />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
                 name="accion"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-bold text-primary">Acción a Realizar</FormLabel>
+                    <FormLabel className="font-bold text-primary text-[10px] uppercase">Acción Realizada / Observaciones</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="Ej: Llamar para confirmar presupuesto, Visita técnica..." 
-                        className="min-h-[100px] border-border resize-none"
+                        placeholder="Ej: Se llamó para confirmar recepción de presupuesto..." 
+                        className="min-h-[100px] border-slate-200 resize-none text-sm"
                         {...field} 
                       />
                     </FormControl>
@@ -93,12 +138,12 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end gap-3 pt-4 border-t border-border">
-                <Button type="button" variant="outline" onClick={onClose} className="font-bold">
+              <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <Button type="button" variant="ghost" onClick={onClose} className="font-bold text-slate-500 uppercase text-xs">
                   Cancelar
                 </Button>
-                <Button type="submit" className="bg-primary hover:bg-primary/90 font-bold px-8 shadow-lg shadow-primary/20">
-                  Agendar Acción
+                <Button type="submit" className="bg-primary hover:bg-primary/90 font-black px-8 shadow-lg uppercase text-xs">
+                  Guardar Gestión
                 </Button>
               </div>
             </form>
