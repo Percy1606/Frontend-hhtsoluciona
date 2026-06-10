@@ -24,11 +24,11 @@ export type EstadoProyecto = 'Planificación' | 'En Ejecución' | 'Detenido' | '
 
 export type Semaforo = 'Verde' | 'Amarillo' | 'Rojo';
 
-export type TipoActividad = 'Técnica' | 'Administrativa' | 'Logística' | 'Documental' | 'Validación';
+export type TipoActividad = 'Técnica' | 'Administrativa' | 'Logística' | 'Documental' | 'Validación' | 'Tecnica' | 'Logistica' | 'Validacion';
 
-export type TipoValidacion = 'Técnica' | 'Campo' | 'Documental' | 'Calidad';
+export type TipoValidacion = 'Técnica' | 'Campo' | 'Documental' | 'Calidad' | 'Tecnica';
 
-export type EstadoActividad = 'Pendiente' | 'En Progreso' | 'Completada' | 'Validada' | 'Bloqueada';
+export type EstadoActividad = 'Pendiente' | 'En Progreso' | 'Completada' | 'Validada' | 'Bloqueada' | 'EnProgreso';
 
 export type TipoDocumento = 'Técnico' | 'Administrativo' | 'Legal' | 'Financiero' | 'Otro';
 
@@ -132,8 +132,6 @@ export interface Actividad {
   subtareas: Subtarea[];
   checklistBloqueado?: boolean;
   motivoBloqueoChecklist?: string;
-  desbloqueadoPor?: string;
-  fechaDesbloqueoChecklist?: string;
 
   // Seguimiento
   comentarios: Comentario[];
@@ -571,6 +569,33 @@ export interface CotizacionVersion {
   fecha: string;
   observaciones?: string;
   url?: string;
+}
+
+export interface FichaTecnica {
+  id: string;
+  clienteId: string;
+  cliente: Cliente;
+  tecnicoId: string;
+  tecnico: Responsable;
+  fechaVisita: string;
+  observaciones?: string;
+  hallazgos?: string;
+  recomendaciones?: string;
+  estado: 'PENDIENTE' | 'COMPLETADA' | 'OBSERVADA';
+  firmaTecnico?: string;
+  datosTecnicos?: Record<string, any>;
+  adjuntos: FichaTecnicaAdjunto[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FichaTecnicaAdjunto {
+  id: string;
+  fichaTecnicaId: string;
+  nombre: string;
+  url: string;
+  tipo: 'Imagen' | 'PDF' | 'Documento';
+  createdAt: string;
 }
 
 // ============================================

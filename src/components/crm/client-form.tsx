@@ -36,6 +36,8 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       telefono: client.telefono || "",
       cargo: client.cargo || "",
       correo: client.correo || "",
+      cartera: client.cartera || "",
+      clasificacion: client.clasificacion || "RENTABLE",
       diaTrabajo: client.diaTrabajo || "Otros",
       ultimoContacto: client.ultimoContacto ? client.ultimoContacto.split('T')[0] : "",
       proximoSeguimiento: client.proximoSeguimiento ? client.proximoSeguimiento.split('T')[0] : "",
@@ -45,9 +47,9 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       asignadoA: client.asignadoA || "Angie",
       prioridad: client.prioridad || "Media",
       etapaComercial: client.etapaComercial || "Prospecto",
-      tipoCliente: client.tipoCliente || "Nuevo",
+      tipoCliente: client.tipoCliente || "PROSPECTO",
       estado: client.estado || "Activo",
-    } : {
+      } : {
       codigo: "",
       empresa: "",
       ruc: "",
@@ -57,6 +59,8 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       telefono: "",
       cargo: "",
       correo: "",
+      cartera: "",
+      clasificacion: "RENTABLE",
       asignadoA: "Angie",
       diaTrabajo: "Otros",
       estado: "Activo",
@@ -66,9 +70,9 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       accion: "",
       ultimoContacto: new Date().toISOString().split('T')[0],
       proximoSeguimiento: "",
-      tipoCliente: "Nuevo",
+      tipoCliente: "PROSPECTO",
       etapaComercial: "Prospecto",
-    },
+      },
   });
 
   return (
@@ -143,6 +147,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
+                          <SelectItem value="MT1">MT1</SelectItem>
                           <SelectItem value="MT2">MT2</SelectItem>
                           <SelectItem value="MT3">MT3</SelectItem>
                           <SelectItem value="MT4">MT4</SelectItem>
@@ -343,6 +348,27 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Media">Media</SelectItem>
                           <SelectItem value="Alta">Alta</SelectItem>
                           <SelectItem value="Crítica">Crítica</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="clasificacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Clasificación</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                            <SelectValue />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="MUY_RENTABLE">Muy Rentable</SelectItem>
+                          <SelectItem value="RENTABLE">Rentable</SelectItem>
+                          <SelectItem value="POCO_RENTABLE">Poco Rentable</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>

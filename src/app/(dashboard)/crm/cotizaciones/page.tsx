@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useCRMStore, Quote } from "@/store/crm-store";
 import { cn, formatDate } from "@/lib/utils";
@@ -31,7 +31,13 @@ import {
   FilterX,
   Mail,
   MessageSquare,
-  FileUp
+  FileUp,
+  Share2,
+  Clock,
+  ExternalLink,
+  Pencil,
+  ShieldAlert,
+  Lock
 } from "lucide-react";
 import { 
   DropdownMenu, 
@@ -40,10 +46,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { QuoteForm } from "@/components/crm/quote-form";
 import { useAuthStore } from "@/store/auth-store";
-import { StatsCard } from "@/components/ui/stats-card";
 import { 
   Select, 
   SelectContent, 
@@ -52,10 +57,45 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
+import { useOperacionesStore } from "@/store/operaciones-store";
+import { toast } from "sonner";
+
+// Componente local para estadísticas
+const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
+  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
+    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+      {icon}
+    </div>
+    <div>
+      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
+      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>
+        {typeof value === 'number' && label.includes('S/') ? 
+          new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value) : 
+          value}
+      </p>
+    </div>
+  </div>
+);
 
 export default function CotizacionesInboxPage() {
-  const { clients, quotes, addQuote, updateQuote, deleteQuote, loading, fetchQuotes, fetchClients } = useCRMStore();
-  const { token } = useAuthStore();
+  const { 
+    clients, 
+    quotes, 
+    totalQuotes,
+    quotePage,
+    quoteLimit,
+    quoteTotalPages,
+    addQuote, 
+    updateQuote, 
+    deleteQuote, 
+    deleteQuoteSecure, 
+    loading, 
+    fetchQuotes, 
+    fetchClients 
+  } = useCRMStore();
+  const { addProyecto } = useOperacionesStore();
+  const { token, user: currentUser } = useAuthStore();
   const router = useRouter();
   
   const [search, setSearch] = useState("");
@@ -65,28 +105,161 @@ export default function CotizacionesInboxPage() {
   const [isVersionUpdate, setIsVersionUpdate] = useState(false);
   const [historyQuote, setHistoryQuote] = useState<Quote | null>(null);
 
-  useEffect(() => {
-    fetchQuotes();
-    fetchClients();
-  }, [fetchQuotes, fetchClients]);
+  // Secure Delete State
+  const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
+  const [quoteToDeleteId, setQuoteToDeleteId] = useState<string | null>(null);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Calcular estadísticas
-  const stats = {
-    total: quotes.length,
-    pendientes: quotes.filter(q => q.estado === "Pendiente").length,
-    enviadas: quotes.filter(q => q.estado === "Enviado").length,
-    aprobadas: quotes.filter(q => q.estado === "Aprobado").length,
-    montoAprobado: quotes
-      .filter(q => q.estado === "Aprobado")
-      .reduce((sum, q) => sum + q.monto, 0),
+  useEffect(() => {
+    fetchQuotes(quotePage, quoteLimit);
+    fetchClients();
+  }, [fetchQuotes, fetchClients, quotePage, quoteLimit]);
+
+  const handlePageChange = (newPage: number) => {
+    fetchQuotes(newPage, quoteLimit);
   };
 
-  const filteredQuotes = quotes.filter(q => {
-    const matchesSearch = q.empresa.toLowerCase().includes(search.toLowerCase()) ||
-                          (q.codigo && q.codigo.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = statusFilter === "all" || q.estado === statusFilter;
-    return matchesSearch && matchesStatus;
+  // CALCULO DE ESTADISTICAS
+  const stats = useMemo(() => {
+    return {
+      total: quotes.length,
+      pendientes: quotes.filter(q => q.estado === "Pendiente").length,
+      enviadas: quotes.filter(q => q.estado === "Enviado").length,
+      aprobadas: quotes.filter(q => q.estado === "Aprobado" || q.estado === "Aprobada").length,
+      montoAprobado: quotes
+        .filter(q => q.estado === "Aprobado" || q.estado === "Aprobada")
+        .reduce((sum, q) => sum + (q.monto || 0), 0),
+    };
+  }, [quotes]);
+
+  const filteredQuotes = useMemo(() => {
+    return quotes.filter(q => {
+      const matchesSearch = (q.empresa?.toLowerCase() || "").includes(search.toLowerCase()) ||
+                            (q.codigo && q.codigo.toLowerCase().includes(search.toLowerCase())) ||
+                            (q.referencia && q.referencia.toLowerCase().includes(search.toLowerCase()));
+      const matchesStatus = statusFilter === "all" || q.estado === statusFilter;
+      return matchesSearch && matchesStatus;
+    });
+  }, [quotes, search, statusFilter]);
+
+  // Modern Dialog State
+  const [modernDialog, setModernDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    type: DialogType;
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+    showCancel?: boolean;
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    type: "info"
   });
+
+  const closeModernDialog = () => setModernDialog(prev => ({ ...prev, isOpen: false }));
+
+  const showSuccess = (title: string, description: string) => {
+    toast.success(title, { description });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "success",
+      confirmText: "Excelente"
+    });
+  };
+
+  const showError = (title: string, description: string) => {
+    toast.error(title, { description });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "error",
+      confirmText: "Entendido"
+    });
+  };
+
+  const handleSecureDelete = async () => {
+    if (!quoteToDeleteId || !adminPassword) {
+        showError("Contraseña Requerida", "Por favor ingrese la contraseña de administrador.");
+        return;
+    }
+
+    try {
+        setIsDeleting(true);
+        await deleteQuoteSecure(quoteToDeleteId, adminPassword);
+        
+        setIsSecureDeleteOpen(false);
+        setQuoteToDeleteId(null);
+        setAdminPassword("");
+        showSuccess("Cotización Eliminada", "El registro ha sido removido del sistema exitosamente.");
+    } catch (err: any) {
+        console.error("Error deleting quote:", err);
+        const errorMessage = err.message || "La contraseña de administrador es incorrecta.";
+        showError("Acceso Denegado", errorMessage);
+        setAdminPassword(""); 
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
+  const handleCreateQuote = async (data: any) => {
+    try {
+        await addQuote(data);
+        setIsModalOpen(false);
+        setSelectedQuote(null);
+        showSuccess("Propuesta Registrada", "La cotización se ha guardado correctamente en el sistema.");
+    } catch (err) {
+        showError("Error de Registro", "No se pudo crear la cotización. Por favor intente de nuevo.");
+    }
+  };
+
+  const handleUpdateQuote = async (data: any) => {
+    if (!selectedQuote) return;
+
+    try {
+        await updateQuote({ ...selectedQuote, ...data });
+        
+        if (data.estado === "Aprobado") {
+            const client = clients.find(c => c.id === selectedQuote.clientId);
+            if (client && client.etapaComercial !== 'Ganado' && client.etapaComercial !== 'Orden de Servicio') {
+                const { updateClient } = useCRMStore.getState();
+                await updateClient({ 
+                    ...client,
+                    etapaComercial: "Ganado",
+                    esClienteReal: true 
+                });
+            }
+            
+            showSuccess("¡Venta Cerrada!", `La cotización ${selectedQuote.codigo} ha sido aprobada. El cliente ha sido promovido a la etapa "Ganado" y ya es visible en el módulo de Operaciones.`);
+        } else {
+            showSuccess("Actualización Exitosa", "La cotización ha sido actualizada con éxito.");
+        }
+
+        setIsModalOpen(false);
+        setSelectedQuote(null);
+        setIsVersionUpdate(false);
+        fetchClients(); 
+    } catch (err) {
+        showError("Error al Actualizar", "No se pudieron guardar los cambios en la cotización.");
+    }
+  };
+
+  const handleDeleteQuote = (id: string) => {
+    setQuoteToDeleteId(id);
+    setIsSecureDeleteOpen(true);
+  };
+
+  const openModal = (quote: Quote | null = null, versionUpdate = false) => {
+    setSelectedQuote(quote);
+    setIsVersionUpdate(versionUpdate);
+    setIsModalOpen(true);
+  };
 
   const handlePreviewFile = (quote: any) => {
     if (quote.documentos && quote.documentos.length > 0) {
@@ -102,62 +275,11 @@ export default function CotizacionesInboxPage() {
       const filename = parts[parts.length - 1];
       const previewUrl = `${API_URL}/files/preview/${folder}/${filename}`;
 
-      // SOLUCIÓN FINAL: Usamos una página visor interna
       const viewerUrl = `/api/viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}`;
       window.open(viewerUrl, '_blank');
-      
       return;
     }
-    alert("Esta cotización no tiene ningún archivo adjunto.");
-  };
-
-  const handleWhatsAppQuote = (quote: any) => {
-    const client = clients.find(c => c.id === quote.clientId);
-    if (!client || !client.telefono) {
-      alert("No se encontró el teléfono del cliente.");
-      return;
-    }
-    const cleanPhone = client.telefono.replace(/\D/g, '');
-    const phoneWithCountry = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`;
-    const message = encodeURIComponent(`Hola ${quote.contacto}, te envío la cotización ${quote.codigo || quote.id} por un monto de S/ ${quote.monto}.`);
-    window.open(`https://wa.me/${phoneWithCountry}?text=${message}`, '_blank');
-  };
-
-  const handleEmailQuote = (quote: any) => {
-    const client = clients.find(c => c.id === quote.clientId);
-    if (!client || !client.correo) {
-      alert("No se encontró el correo del cliente.");
-      return;
-    }
-    const subject = encodeURIComponent(`Cotización ${quote.codigo || quote.id} - HH T Soluciona`);
-    window.location.href = `mailto:${client.correo}?subject=${subject}`;
-  };
-
-  const handleCreateQuote = async (data: any) => {
-    await addQuote(data);
-    setIsModalOpen(false);
-    setSelectedQuote(null);
-  };
-
-  const handleUpdateQuote = async (data: any) => {
-    if (selectedQuote) {
-      await updateQuote({ ...selectedQuote, ...data });
-      setIsModalOpen(false);
-      setSelectedQuote(null);
-      setIsVersionUpdate(false);
-    }
-  };
-
-  const handleDeleteQuote = (id: string) => {
-    if (confirm("¿Estás seguro de eliminar esta cotización?")) {
-      deleteQuote(id);
-    }
-  };
-
-  const openModal = (quote: Quote | null = null, versionUpdate = false) => {
-    setSelectedQuote(quote);
-    setIsVersionUpdate(versionUpdate);
-    setIsModalOpen(true);
+    showError("Sin Documentos", "Esta cotización no tiene ningún archivo adjunto.");
   };
 
   return (
@@ -167,17 +289,17 @@ export default function CotizacionesInboxPage() {
         <div>
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-lg">
-              <FileCheck className="w-6 h-6 text-primary" />
+              <FileCheck className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Bandeja de Cotizaciones</h1>
+            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Bandeja de Cotizaciones</h1>
           </div>
-          <p className="text-muted-foreground mt-1 font-medium">Control de proformas y propuestas técnicas enviadas a clientes.</p>
+          <p className="text-[11px] text-muted-foreground mt-1 font-bold uppercase tracking-wide">Control de proformas y propuestas técnicas enviadas a clientes.</p>
         </div>
         <Button 
           onClick={() => openModal()}
-          className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 px-6 h-11 uppercase text-xs"
+          className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 px-6 h-10 uppercase text-[10px]"
         >
-          <Plus className="w-5 h-5 text-accent" /> Crear Propuesta
+          <Plus className="w-4 h-4 text-accent" /> Crear Propuesta
         </Button>
       </div>
 
@@ -202,16 +324,15 @@ export default function CotizacionesInboxPage() {
           />
         </div>
         <div className="flex gap-2">
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
-            <SelectTrigger className="w-48 h-10 font-bold text-xs">
-              <SelectValue placeholder="Estado" />
+          <Select value={statusFilter === "all" ? "" : statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
+            <SelectTrigger className="w-48 h-10 text-[10px] font-black uppercase border-border bg-white rounded-xl shadow-sm">
+              <SelectValue placeholder="SELECCIONAR ESTADO" />
             </SelectTrigger>
-            <SelectContent className="bg-white">
-              <SelectItem value="all" className="font-bold text-xs uppercase">Todos los Estados</SelectItem>
-              <SelectItem value="Pendiente" className="font-bold text-xs uppercase">Pendiente</SelectItem>
-              <SelectItem value="Revisado" className="font-bold text-xs uppercase text-blue-500">Revisado</SelectItem>
-              <SelectItem value="Aprobado" className="font-bold text-xs uppercase text-success">Aprobado</SelectItem>
-              <SelectItem value="Obsoleto" className="font-bold text-xs uppercase text-error">Obsoleto</SelectItem>
+            <SelectContent className="bg-white border-slate-200">
+              <SelectItem value="Pendiente" className="font-black text-[10px] uppercase">Pendiente</SelectItem>
+              <SelectItem value="Revisado" className="font-black text-[10px] uppercase text-blue-500">Revisado</SelectItem>
+              <SelectItem value="Aprobado" className="font-black text-[10px] uppercase text-success">Aprobado</SelectItem>
+              <SelectItem value="Obsoleto" className="font-black text-[10px] uppercase text-error">Obsoleto</SelectItem>
             </SelectContent>
           </Select>
 
@@ -311,9 +432,38 @@ export default function CotizacionesInboxPage() {
             )}
           </TableBody>
         </Table>
+
+        {/* Paginación Integrada (Estilo Cartera) */}
+        {quoteTotalPages > 1 && (
+          <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+              Página {quotePage} de {quoteTotalPages} — Total: {totalQuotes} registros
+            </p>
+            <div className="flex gap-2 mr-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
+                onClick={() => handlePageChange(quotePage - 1)}
+                disabled={quotePage <= 1 || loading}
+              >
+                Anterior
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
+                onClick={() => handlePageChange(quotePage + 1)}
+                disabled={quotePage >= quoteTotalPages || loading}
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Modal Principal de Cotización ... */}
+      {/* Modal Principal de Cotización */}
       <Dialog open={isModalOpen} onOpenChange={(open) => {
         setIsModalOpen(open);
         if (!open) {
@@ -388,6 +538,75 @@ export default function CotizacionesInboxPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de Eliminación Segura */}
+      <Dialog open={isSecureDeleteOpen} onOpenChange={setIsSecureDeleteOpen}>
+        <DialogContent className="sm:max-w-[450px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
+          <DialogHeader className="p-8 bg-error text-white flex flex-col items-center gap-4">
+            <div className="bg-white/20 p-4 rounded-full">
+              <ShieldAlert className="w-12 h-12 text-white" />
+            </div>
+            <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">
+              Eliminación Restringida
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-8 space-y-6">
+            <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed">
+              Esta acción es crítica e irreversible. Para eliminar esta cotización, se requiere la autorización de un administrador.
+            </DialogDescription>
+            
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Contraseña de Administrador</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  type="password"
+                  placeholder="••••••••"
+                  className="pl-10 h-12 border-slate-200 bg-slate-50 focus:bg-white transition-all font-bold text-lg"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSecureDelete()}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsSecureDeleteOpen(false);
+                setAdminPassword("");
+              }}
+              className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200"
+              disabled={isDeleting}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSecureDelete}
+              disabled={isDeleting || !adminPassword}
+              className="h-12 px-10 font-black uppercase text-xs text-white bg-error hover:bg-error/90 shadow-lg shadow-error/20"
+            >
+              {isDeleting ? "Autorizando..." : "Confirmar Eliminación"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modern Dialogs (Success, Error, Confirm) */}
+      <ModernDialog 
+        isOpen={modernDialog.isOpen}
+        onOpenChange={(open) => setModernDialog(prev => ({ ...prev, isOpen: open }))}
+        title={modernDialog.title}
+        description={modernDialog.description}
+        type={modernDialog.type}
+        confirmText={modernDialog.confirmText}
+        cancelText={modernDialog.cancelText}
+        showCancel={modernDialog.showCancel}
+        onConfirm={modernDialog.onConfirm}
+      />
     </div>
   );
 }

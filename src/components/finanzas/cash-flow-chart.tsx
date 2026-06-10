@@ -11,16 +11,18 @@ import {
   Legend
 } from 'recharts';
 
-const data = [
-  { month: 'Ene', ingresos: 120000, egresos: 80000 },
-  { month: 'Feb', ingresos: 150000, egresos: 95000 },
-  { month: 'Mar', ingresos: 180000, egresos: 110000 },
-  { month: 'Abr', ingresos: 140000, egresos: 100000 },
-  { month: 'May', ingresos: 210000, egresos: 130000 },
-  { month: 'Jun', ingresos: 190000, egresos: 125000 },
-];
+interface CashFlowChartProps {
+  data?: any[];
+  isPrint?: boolean;
+}
 
-export function CashFlowChart() {
+export function CashFlowChart({ data, isPrint = false }: CashFlowChartProps) {
+  if (!data || data.length === 0) return (
+    <div className="h-full w-full flex items-center justify-center opacity-30">
+      <p className="font-bold uppercase text-xs tracking-widest">Sin datos analíticos</p>
+    </div>
+  );
+
   return (
     <div className="h-full w-full">
       <ResponsiveContainer width="100%" height="100%">
@@ -59,6 +61,7 @@ export function CashFlowChart() {
             strokeWidth={3}
             fillOpacity={1} 
             fill="url(#colorIngresos)" 
+            isAnimationActive={!isPrint}
           />
           <Area 
             type="monotone" 
@@ -67,6 +70,7 @@ export function CashFlowChart() {
             strokeWidth={3}
             fillOpacity={1} 
             fill="url(#colorEgresos)" 
+            isAnimationActive={!isPrint}
           />
         </AreaChart>
       </ResponsiveContainer>

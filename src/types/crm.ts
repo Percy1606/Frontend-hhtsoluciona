@@ -27,6 +27,8 @@ export type Client = {
   telefono?: string;
   cargo?: string;
   correo?: string;
+  linkedin?: string;
+  cartera?: string;
   asignadoA: string;
   diaTrabajo?: string;
   estado: string; // Keep for Excel compatibility
@@ -41,7 +43,9 @@ export type Client = {
   montoEstimado: number;
   probabilidad: number;
   ventaProyectada: number;
-  tipoCliente?: string; // e.g. Nuevo, Recurrente, Reactivado
+  tipoCliente?: "PROSPECTO" | "CLIENTE" | "CLIENTE_INACTIVO";
+  clasificacion?: "MUY_RENTABLE" | "RENTABLE" | "POCO_RENTABLE";
+  esClienteReal?: boolean;
   etapaComercial: "Prospecto" | "Contactado" | "Llamada Realizada" | "Visita Agendada" | "Inspección Realizada" | "Cotización Enviada" | "Seguimiento" | "Negociación" | "Orden de Servicio" | "Ganado" | "Perdido";
   historialInteracciones?: Interaction[];
   archivosAdjuntos?: AttachedFile[];
@@ -50,4 +54,5 @@ export type Client = {
   solucionesPropuestas?: string[];
   propuestaTecnicaUrl?: string;
   fechaCreacion: string;
+  deletedAt?: string;
 };

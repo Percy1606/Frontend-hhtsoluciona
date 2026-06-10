@@ -15,7 +15,9 @@ import {
   Download,
   X,
   Filter,
-  FilterX
+  FilterX,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { useCRMStore } from "@/store/crm-store";
 import { 
@@ -37,37 +39,48 @@ export default function CarteraPage() {
   const {
     clients,
     filters,
+    zones,
+    totalClients,
+    page,
+    limit,
+    totalPages,
     setSearchQuery,
     setTarifa,
     setAsignadoA,
     setEstado,
     setZona,
     setTipoCliente,
+    setClasificacion,
+    setFechaRango,
     resetFilters,
     addClient,
-    fetchClients
+    fetchClients,
+    loading
   } = useCRMStore();
 
   useEffect(() => {
-    fetchClients();
-  }, [fetchClients]);
+    fetchClients(page, limit);
+  }, [fetchClients, page, limit, filters]);
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const isFiltered =
     filters.searchQuery !== '' ||
-    filters.tarifa !== 'all' ||
-    filters.asignadoA !== 'all' ||
-    filters.estado !== 'all' ||
-    filters.zona !== 'all' ||
-    filters.tipoCliente !== 'all';
+    filters.tarifa !== '' ||
+    filters.asignadoA !== '' ||
+    filters.estado !== '' ||
+    filters.zona !== '' ||
+    filters.clasificacion !== '' ||
+    filters.tipoCliente !== '';
 
-  const uniqueZones = Array.from(new Set(clients.map(c => c.zona).filter(Boolean)));
-  const uniqueTypes = Array.from(new Set(clients.map(c => c.tipoCliente).filter(Boolean)));
-
-  const handleCreateClient = (data: any) => {
-    addClient(data);
-    setIsAddModalOpen(false);
+  const handleCreateClient = async (data: any) => {
+    try {
+      await addClient(data);
+      setIsAddModalOpen(false);
+      // fetchClients() is called inside addClient
+    } catch (error: any) {
+      alert(error.message || "Error al crear el cliente");
+    }
   };
 
   const handleExportExcel = () => {
@@ -79,12 +92,13 @@ export default function CarteraPage() {
       "Dirección": c.direccion,
       "Zona": c.zona,
       "Tarifa": c.tarifa,
+      "Clasificación": c.clasificacion || "Sin asignar",
+      "Tipo Cliente": c.tipoCliente || "Prospecto",
       "Teléfono": c.telefono || "",
       "Contacto": c.contacto,
       "Cargo": c.cargo || "",
       "Correo": c.correo || "",
       "Asignado A": c.asignadoA,
-      "Tipo Cliente": c.tipoCliente || "Nuevo"
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -96,8 +110,8 @@ export default function CarteraPage() {
   return (
     <div className="space-y-6">
       <CRMHeader 
-        title="Clientes" 
-        subtitle="Base de datos centralizada de clientes y prospectos." 
+        title="Base de Datos Clientes" 
+        subtitle="Gestión integral de prospectos y clientes reales de HH T Soluciona." 
       />
 
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
@@ -105,10 +119,10 @@ export default function CarteraPage() {
           <div className="flex-1 space-y-2">
             <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Búsqueda Global</Label>
             <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <Input 
                 placeholder="Buscar por empresa, RUC o contacto..." 
-                className="pl-12 h-12 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-base rounded-xl" 
+                className="pl-12 h-10 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-sm rounded-xl" 
                 value={filters.searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -135,76 +149,82 @@ export default function CarteraPage() {
         <div className="border-t border-slate-100 pt-6">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
             <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Calidad</Label>
+                <Select value={filters.clasificacion} onValueChange={(val) => setClasificacion(val || "")}>
+                <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR CALIDAD" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="MUY_RENTABLE" className="font-black text-[10px] text-green-600 uppercase">MUY RENTABLE</SelectItem>
+                    <SelectItem value="RENTABLE" className="font-black text-[10px] text-blue-600 uppercase">RENTABLE</SelectItem>
+                    <SelectItem value="POCO_RENTABLE" className="font-black text-[10px] text-slate-600 uppercase">POCO RENTABLE</SelectItem>
+                </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Tarifa</Label>
-                <Select value={filters.tarifa} onValueChange={(val) => setTarifa(val || "all")}>
-                <SelectTrigger className="h-11 text-xs border-slate-200 bg-white font-bold rounded-xl shadow-sm">
-                    <SelectValue placeholder="Tarifa" />
+                <Select value={filters.tarifa} onValueChange={(val) => setTarifa(val || "")}>
+                <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR TARIFA" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todas las tarifas</SelectItem>
-                    <SelectItem value="MT2" className="font-bold text-[10px]">MT2</SelectItem>
-                    <SelectItem value="MT3" className="font-bold text-[10px]">MT3</SelectItem>
-                    <SelectItem value="MT4" className="font-bold text-[10px]">MT4</SelectItem>
-                </SelectContent>
-                </Select>
-            </div>
-
-            <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Asesor Asignado</Label>
-                <Select value={filters.asignadoA} onValueChange={(val) => setAsignadoA(val || "all")}>
-                <SelectTrigger className="h-11 text-xs border-slate-200 bg-white font-bold rounded-xl shadow-sm">
-                    <SelectValue placeholder="Responsable" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todos los asesores</SelectItem>
-                    <SelectItem value="Angie" className="font-bold text-[10px]">ANGIE</SelectItem>
-                    <SelectItem value="Valentina" className="font-bold text-[10px]">VALENTINA</SelectItem>
-                    <SelectItem value="Ariana" className="font-bold text-[10px]">ARIANA</SelectItem>
-                    <SelectItem value="Nicoll" className="font-bold text-[10px]">NICOLL</SelectItem>
-                </SelectContent>
-                </Select>
-            </div>
-
-            <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Tipo de Cliente</Label>
-                <Select value={filters.tipoCliente} onValueChange={(val) => setTipoCliente(val || "all")}>
-                <SelectTrigger className="h-11 text-xs border-slate-200 bg-white font-bold rounded-xl shadow-sm">
-                    <SelectValue placeholder="Tipo" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todos los tipos</SelectItem>
-                    {uniqueTypes.map(t => (
-                    <SelectItem key={t} value={t} className="font-bold text-[10px] uppercase">{t}</SelectItem>
-                    ))}
+                    <SelectItem value="MT1" className="font-black text-[10px] uppercase">MT1</SelectItem>
+                    <SelectItem value="MT2" className="font-black text-[10px] uppercase">MT2</SelectItem>
+                    <SelectItem value="MT3" className="font-black text-[10px] uppercase">MT3</SelectItem>
+                    <SelectItem value="MT4" className="font-black text-[10px] uppercase">MT4</SelectItem>
                 </SelectContent>
                 </Select>
             </div>
 
             <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Zona Comercial</Label>
-                <Select value={filters.zona} onValueChange={(val) => setZona(val || "all")}>
-                <SelectTrigger className="h-11 text-xs border-slate-200 bg-white font-bold rounded-xl shadow-sm">
-                    <SelectValue placeholder="Zona" />
+                <Select value={filters.zona} onValueChange={(val) => setZona(val || "")}>
+                <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR ZONA" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todas las zonas</SelectItem>
-                    {uniqueZones.map(z => (
-                    <SelectItem key={z} value={z} className="font-bold text-[10px] uppercase">{z}</SelectItem>
-                    ))}
+                    {zones.length === 0 ? (
+                        <>
+                            <SelectItem value="Piura" className="font-black text-[10px] uppercase">PIURA</SelectItem>
+                            <SelectItem value="Sullana" className="font-black text-[10px] uppercase">SULLANA</SelectItem>
+                            <SelectItem value="Paita" className="font-black text-[10px] uppercase">PAITA</SelectItem>
+                            <SelectItem value="Talara" className="font-black text-[10px] uppercase">TALARA</SelectItem>
+                            <SelectItem value="Lima" className="font-black text-[10px] uppercase">LIMA</SelectItem>
+                        </>
+                    ) : (
+                        zones.map(z => (
+                            <SelectItem key={z} value={z} className="font-black text-[10px] uppercase">{z.toUpperCase()}</SelectItem>
+                        ))
+                    )}
                 </SelectContent>
                 </Select>
             </div>
 
             <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado</Label>
-                <Select value={filters.estado} onValueChange={(val) => setEstado(val || "all")}>
-                <SelectTrigger className="h-11 text-xs border-slate-200 bg-white font-bold rounded-xl shadow-sm">
-                    <SelectValue placeholder="Estado" />
+                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Asesor Asignado</Label>
+                <Select value={filters.asignadoA} onValueChange={(val) => setAsignadoA(val || "")}>
+                <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR ASESOR" />
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                    <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todos los estados</SelectItem>
-                    <SelectItem value="Activo" className="font-bold text-[10px]">ACTIVO</SelectItem>
-                    <SelectItem value="Inactivo" className="font-bold text-[10px]">INACTIVO</SelectItem>
+                    <SelectItem value="Angie" className="font-black text-[10px] uppercase">ANGIE</SelectItem>
+                    <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
+                    <SelectItem value="Ariana" className="font-black text-[10px] uppercase">ARIANA</SelectItem>
+                    <SelectItem value="Nicoll" className="font-black text-[10px] uppercase">NICOLL</SelectItem>
+                </SelectContent>
+                </Select>
+            </div>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado Comercial</Label>
+                <Select value={filters.estado} onValueChange={(val) => setEstado(val || "")}>
+                <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR ESTADO" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                    <SelectItem value="Activo" className="font-black text-[10px] uppercase">ACTIVO</SelectItem>
+                    <SelectItem value="Inactivo" className="font-black text-[10px] uppercase">INACTIVO</SelectItem>
                 </SelectContent>
                 </Select>
             </div>

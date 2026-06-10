@@ -101,7 +101,10 @@ export default function OperacionesPage() {
     if (resp) return resp.nombre.toUpperCase();
     
     // Si es un UUID (contiene guiones y es largo), lo ocultamos con un placeholder legible
-    if (id.includes('-') && id.length > 20) return "RESPONSABLE EXTERNO";
+    if (id.includes('-') && id.length > 20) {
+      // Intentar ver si es un usuario del sistema (si tuviéramos esa lista)
+      return "RESPONSABLE TÉCNICO";
+    }
     
     return id.toUpperCase();
   }, [responsables]);
@@ -113,21 +116,21 @@ export default function OperacionesPage() {
     if (filtros.searchQuery) {
       active.push({ id: 'searchQuery', label: `Búsqueda: ${filtros.searchQuery}`, clear: () => setSearchQuery('') });
     }
-    if (filtros.estado && filtros.estado !== 'all') {
-      active.push({ id: 'estado', label: `Estado: ${filtros.estado}`, clear: () => setEstado('all') });
+    if (filtros.estado) {
+      active.push({ id: 'estado', label: `Estado: ${filtros.estado}`, clear: () => setEstado('') });
     }
-    if (filtros.responsable && filtros.responsable !== 'all') {
+    if (filtros.responsable) {
       const resp = responsables.find(r => r.id === filtros.responsable);
-      active.push({ id: 'responsable', label: `Resp: ${resp?.nombre || filtros.responsable}`, clear: () => setResponsable('all') });
+      active.push({ id: 'responsable', label: `Resp: ${resp?.nombre || filtros.responsable}`, clear: () => setResponsable('') });
     }
-    if (filtros.area && filtros.area !== 'all') {
-      active.push({ id: 'area', label: `Área: ${filtros.area}`, clear: () => setArea('all') });
+    if (filtros.area) {
+      active.push({ id: 'area', label: `Área: ${filtros.area}`, clear: () => setArea('') });
     }
-    if (filtros.prioridad && filtros.prioridad !== 'all') {
-      active.push({ id: 'prioridad', label: `Prioridad: ${filtros.prioridad}`, clear: () => setPrioridad('all') });
+    if (filtros.prioridad) {
+      active.push({ id: 'prioridad', label: `Prioridad: ${filtros.prioridad}`, clear: () => setPrioridad('') });
     }
-    if (filtros.semaforo && filtros.semaforo !== 'all') {
-      active.push({ id: 'semaforo', label: `Semáforo: ${filtros.semaforo}`, clear: () => setSemaforo('all') });
+    if (filtros.semaforo) {
+      active.push({ id: 'semaforo', label: `Semáforo: ${filtros.semaforo}`, clear: () => setSemaforo('') });
     }
     return active;
   }, [filtros, responsables, setSearchQuery, setEstado, setResponsable, setArea, setPrioridad, setSemaforo]);
@@ -163,36 +166,36 @@ export default function OperacionesPage() {
             <div className="bg-primary/10 p-2 rounded-lg">
               <Briefcase className="w-6 h-6 text-primary" />
             </div>
-            <h1 className="text-3xl font-medium text-primary tracking-tight">Panel de Operaciones</h1>
+            <h1 className="text-3xl font-black text-primary tracking-tight uppercase">Panel de Operaciones</h1>
           </div>
           <p className="text-muted-foreground mt-1 font-medium">Control de ejecución de proyectos e ingeniería.</p>
         </div>
         <div className="flex gap-2">
           <Button 
             variant="outline"
-            className="gap-2 font-medium border-primary text-primary hover:bg-primary/5"
+            className="h-12 gap-2 font-black uppercase text-xs border-primary text-primary hover:bg-primary/5 rounded-xl px-6"
             onClick={() => setIsNewActivityModalOpen(true)}
           >
             <ClipboardList className="w-4 h-4" /> Nueva Actividad
           </Button>
           <Button 
-            className="gap-2 font-medium bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+            className="h-12 gap-2 font-black uppercase text-xs bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-8"
             onClick={() => setIsNewProjectModalOpen(true)}
           >
-            <Plus className="w-4 h-4" /> Nuevo Proyecto
+            <Plus className="w-5 h-5" /> Nuevo Proyecto
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="proyectos" className="space-y-6">
         <TabsList className="bg-white border p-1 rounded-xl h-12 gap-1">
-          <TabsTrigger value="proyectos" className="gap-2 px-4 font-medium uppercase text-[10px]">
+          <TabsTrigger value="proyectos" className="gap-2 px-4 font-black uppercase text-[10px]">
             <LayoutDashboard className="w-4 h-4" /> Proyectos
           </TabsTrigger>
-          <TabsTrigger value="validaciones" className="gap-2 px-4 font-medium uppercase text-[10px]">
+          <TabsTrigger value="validaciones" className="gap-2 px-4 font-black uppercase text-[10px]">
             <FileCheck className="w-4 h-4" /> Validaciones
           </TabsTrigger>
-          <TabsTrigger value="timeline" className="gap-2 px-4 font-medium uppercase text-[10px]">
+          <TabsTrigger value="timeline" className="gap-2 px-4 font-black uppercase text-[10px]">
             <History className="w-4 h-4" /> Historial Global
           </TabsTrigger>
         </TabsList>
@@ -225,7 +228,7 @@ export default function OperacionesPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                 <Input 
                   placeholder="Buscar por código, cliente o nombre..." 
-                  className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
+                  className="pl-12 h-14 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-base rounded-xl" 
                   value={filtros.searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
@@ -234,86 +237,83 @@ export default function OperacionesPage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado</span>
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado</span>
                 <Select
-                  value={filtros.estado ?? "all"}
-                  onValueChange={(val) => setEstado(val ?? "all")}>                  
-                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
-                    <SelectValue placeholder="Estado" />
+                  value={filtros.estado}
+                  onValueChange={(val) => setEstado(val || "")}>                  
+                    <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR ESTADO" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos los estados</SelectItem>
-                    <SelectItem value="Planificación" className="text-[10px]">PLANIFICACIÓN</SelectItem>
-                    <SelectItem value="En Ejecución" className="text-[10px]">EN EJECUCIÓN</SelectItem>
-                    <SelectItem value="Detenido" className="text-[10px]">DETENIDO</SelectItem>
-                    <SelectItem value="Finalizado" className="text-[10px]">FINALIZADO</SelectItem>
+                    <SelectItem value="Planificación" className="font-black text-[10px] uppercase">PLANIFICACIÓN</SelectItem>
+                    <SelectItem value="En Ejecución" className="font-black text-[10px] uppercase">EN EJECUCIÓN</SelectItem>
+                    <SelectItem value="Detenido" className="font-black text-[10px] uppercase">DETENIDO</SelectItem>
+                    <SelectItem value="Finalizado" className="font-black text-[10px] uppercase">FINALIZADO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Área</span>
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Área</span>
                 <Select
-                  value={filtros.area ?? "all"}
-                  onValueChange={(val) => setArea(val ?? "all")}>                  
-                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
-                    <SelectValue placeholder="Área" />
+                  value={filtros.area}
+                  onValueChange={(val) => setArea(val || "")}>                  
+                    <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR ÁREA" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todas las áreas</SelectItem>
-                    <SelectItem value="Logística y Recursos" className="text-[10px]">LOGÍSTICA Y RECURSOS</SelectItem>
-                    <SelectItem value="Ingeniería y Supervisión Técnica" className="text-[10px]">INGENIERÍA Y SUPERVISIÓN</SelectItem>
-                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos" className="text-[10px]">GESTIÓN DOCUMENTAL</SelectItem>
-                    <SelectItem value="Operaciones de Campo y Control de Obra" className="text-[10px]">OPERACIONES DE CAMPO</SelectItem>
+                    <SelectItem value="Logística y Recursos" className="font-black text-[10px] uppercase">LOGÍSTICA Y RECURSOS</SelectItem>
+                    <SelectItem value="Ingeniería y Supervisión Técnica" className="font-black text-[10px] uppercase">INGENIERÍA Y SUPERVISIÓN</SelectItem>
+                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos" className="font-black text-[10px] uppercase">GESTIÓN DOCUMENTAL</SelectItem>
+                    <SelectItem value="Operaciones de Campo y Control de Obra" className="font-black text-[10px] uppercase">OPERACIONES DE CAMPO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Prioridad</span>
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Prioridad</span>
                 <Select
-                  value={filtros.prioridad ?? "all"}
-                  onValueChange={(val) => setPrioridad(val ?? "all")}>                  
-                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
-                    <SelectValue placeholder="Prioridad" />
+                  value={filtros.prioridad}
+                  onValueChange={(val) => setPrioridad(val || "")}>                  
+                    <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR PRIORIDAD" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todas</SelectItem>
-                    <SelectItem value="Baja" className="text-[10px]">BAJA</SelectItem>
-                    <SelectItem value="Media" className="text-[10px]">MEDIA</SelectItem>
-                    <SelectItem value="Alta" className="text-[10px]">ALTA</SelectItem>
-                    <SelectItem value="Crítica" className="text-[10px]">CRÍTICA</SelectItem>
+                    <SelectItem value="Baja" className="font-black text-[10px] uppercase">BAJA</SelectItem>
+                    <SelectItem value="Media" className="font-black text-[10px] uppercase">MEDIA</SelectItem>
+                    <SelectItem value="Alta" className="font-black text-[10px] uppercase">ALTA</SelectItem>
+                    <SelectItem value="Crítica" className="font-black text-[10px] uppercase">CRÍTICA</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Semáforo</span>
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Semáforo</span>
                 <Select
-                  value={filtros.semaforo ?? "all"}
-                  onValueChange={(val) => setSemaforo(val ?? "all")}>                  
-                    <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
-                    <SelectValue placeholder="Semáforo" />
+                  value={filtros.semaforo}
+                  onValueChange={(val) => setSemaforo(val || "")}>                  
+                    <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR SEMÁFORO" />
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos</SelectItem>
-                    <SelectItem value="Verde" className="text-[10px]">VERDE</SelectItem>
-                    <SelectItem value="Amarillo" className="text-[10px]">AMARILLO</SelectItem>
-                    <SelectItem value="Rojo" className="text-[10px]">ROJO</SelectItem>
+                    <SelectItem value="Verde" className="font-black text-[10px] uppercase">VERDE</SelectItem>
+                    <SelectItem value="Amarillo" className="font-black text-[10px] uppercase">AMARILLO</SelectItem>
+                    <SelectItem value="Rojo" className="font-black text-[10px] uppercase">ROJO</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="flex flex-col gap-2">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable</span>
-                <Select value={filtros.responsable || "all"} onValueChange={(value) => setResponsable(value ?? "all")}>
-                  <SelectTrigger className="h-12 border-slate-200 bg-white text-xs font-medium shadow-none rounded-xl">
-                    <SelectValue placeholder="Responsable" />
+                <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Responsable</span>
+                <Select value={filtros.responsable} onValueChange={(value) => setResponsable(value || "")}>
+                  <SelectTrigger className="h-11 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
+                    <SelectValue placeholder="SELECCIONAR RESPONSABLE">
+                      {filtros.responsable ? responsables.find(r => r.id === filtros.responsable)?.nombre : undefined}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white border-slate-200 rounded-xl">
-                    <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic text-[10px]">Todos</SelectItem>
                     {responsables.map(r => (
-                      <SelectItem key={r.id} value={r.id} className="text-[10px] uppercase">{r.nombre}</SelectItem>
+                      <SelectItem key={r.id} value={r.id} className="font-black text-[10px] uppercase">{r.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

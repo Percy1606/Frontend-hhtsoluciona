@@ -44,22 +44,21 @@ export default function PipelinePage() {
               />
             </div>
             
-            <Select value={filters.asignadoA} onValueChange={(val) => setAsignadoA(val || "all")}>
-              <SelectTrigger className="w-full md:w-[300px] h-12 text-sm font-bold border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl shadow-sm">
-                <SelectValue placeholder="Todos los asesores" />
+            <Select value={filters.asignadoA} onValueChange={(val) => setAsignadoA(val || "")}>
+              <SelectTrigger className="w-full md:w-[300px] h-12 text-[10px] font-black uppercase border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl shadow-sm">
+                <SelectValue placeholder="SELECCIONAR ASESOR" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 shadow-xl">
-                <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todos los asesores comerciales</SelectItem>
-                <SelectItem value="Angie" className="font-bold uppercase text-xs">ANGIE</SelectItem>
-                <SelectItem value="Valentina" className="font-bold uppercase text-xs">VALENTINA</SelectItem>
-                <SelectItem value="Ariana" className="font-bold uppercase text-xs">ARIANA</SelectItem>
-                <SelectItem value="Nicoll" className="font-bold uppercase text-xs">NICOLL</SelectItem>
+                <SelectItem value="Angie" className="font-black uppercase text-[10px]">ANGIE</SelectItem>
+                <SelectItem value="Valentina" className="font-black uppercase text-[10px]">VALENTINA</SelectItem>
+                <SelectItem value="Ariana" className="font-black uppercase text-[10px]">ARIANA</SelectItem>
+                <SelectItem value="Nicoll" className="font-black uppercase text-[10px]">NICOLL</SelectItem>
               </SelectContent>
             </Select>
-            {(filters.asignadoA !== 'all' || filters.searchQuery) && (
+            {(filters.asignadoA || filters.searchQuery) && (
                 <Button 
                     variant="ghost" 
-                    onClick={() => { setAsignadoA("all"); setSearchQuery(""); }}
+                    onClick={() => { setAsignadoA(""); setSearchQuery(""); }}
                     className="h-12 text-[10px] font-black uppercase text-error hover:bg-red-50 gap-2 px-4 rounded-xl"
                 >
                     <FilterX className="w-4 h-4" /> Limpiar

@@ -48,19 +48,19 @@ export default function SeguimientoPage() {
       />
 
       {isReviewDay && (
-        <div className="bg-primary p-6 rounded-2xl border-4 border-accent/20 shadow-xl animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/20">
-                <Calendar className="w-8 h-8 text-accent animate-pulse" />
+        <div className="bg-primary p-4 rounded-xl border-2 border-accent/10 shadow-lg animate-in fade-in slide-in-from-top-2 duration-500">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm border border-white/20">
+                <Calendar className="w-5 h-5 text-accent animate-pulse" />
               </div>
               <div>
-                <h2 className="text-xl font-black text-white uppercase tracking-tighter">Comité de Revisión Comercial</h2>
-                <p className="text-accent/80 font-bold text-sm uppercase">Hoy es {currentReviewDay} — Foco en Prospección y Seguimiento</p>
+                <h2 className="text-sm font-black text-white uppercase tracking-tighter">Comité de Revisión Comercial</h2>
+                <p className="text-[10px] text-accent/80 font-bold uppercase tracking-wide">Hoy es {currentReviewDay} — Foco en Prospección y Seguimiento</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge className="bg-accent text-primary font-black px-4 py-1.5 rounded-lg text-xs uppercase shadow-lg">
+              <Badge className="bg-accent text-primary font-black px-3 py-1 rounded-md text-[9px] uppercase shadow-sm">
                 {clientsToReview.length} Clientes para Revisar
               </Badge>
             </div>

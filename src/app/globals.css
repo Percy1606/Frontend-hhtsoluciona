@@ -133,6 +133,15 @@
     @apply bg-slate-300 rounded-full hover:bg-slate-400 transition-colors;
   }
 
+  /* Specific styling for Factura Form ScrollArea */
+  .factura-scroll-area [data-slot="scroll-area-scrollbar"] {
+    @apply !w-2.5 !bg-slate-100/50 !rounded-full !p-0.5;
+  }
+
+  .factura-scroll-area [data-slot="scroll-area-thumb"] {
+    @apply !bg-slate-400 hover:!bg-primary transition-colors duration-200;
+  }
+
   /* For Firefox */
   * {
     scrollbar-width: thin;

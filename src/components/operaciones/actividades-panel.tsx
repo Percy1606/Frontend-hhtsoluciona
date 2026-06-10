@@ -74,6 +74,26 @@ const formatDate = (dateStr: string | null | undefined) => {
   }
 };
 
+const getDueDateStatus = (dateStr: string | null | undefined) => {
+  if (!dateStr) return { isOverdue: false, isImminent: false };
+  try {
+    const dueDate = dateStr.includes('T') ? parseISO(dateStr) : parseISO(`${dateStr}T00:00:00`);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Due date + 1 day for imminent check
+    const imminentDate = new Date(today);
+    imminentDate.setDate(today.getDate() + 1);
+
+    const isOverdue = dueDate < today;
+    const isImminent = dueDate >= today && dueDate <= imminentDate;
+
+    return { isOverdue, isImminent };
+  } catch (e) {
+    return { isOverdue: false, isImminent: false };
+  }
+};
+
 interface ActividadesPanelProps {
   proyecto: Proyecto;
 }
@@ -104,7 +124,16 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
     return true;
   });
 
-  const getResponsableById = (id: string) => responsables.find(r => r.id === id);
+  const getResponsableDisplay = (id: string) => {
+    const resp = responsables.find(r => r.id === id);
+    if (resp) return { nombre: resp.nombre, area: resp.area, color: resp.color };
+    
+    if (id && id.includes('-') && id.length > 20) {
+      return { nombre: "RESPONSABLE TÉCNICO", area: "OPERACIONES", color: "#94a3b8" };
+    }
+    
+    return { nombre: id || "Sin asignar", area: "Sin área", color: "#94a3b8" };
+  };
 
   const handleEdit = (actividad: Actividad) => {
     setEditingActividad(actividad);
@@ -180,7 +209,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                 <SelectValue placeholder="Estado" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
+                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</SelectItem>
                 {["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"].map(e => (
                   <SelectItem key={e} value={e} className="uppercase">{e}</SelectItem>
                 ))}
@@ -192,10 +221,12 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
             <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable Ejecución</span>
             <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val ?? "")}>
               <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
-                <SelectValue placeholder="Responsable" />
+                <SelectValue placeholder="Responsable">
+                  {filtroResponsable !== "all" ? responsables.find(r => r.id === filtroResponsable)?.nombre : "TODOS LOS RESPONSABLES"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">Sin filtro</SelectItem>
+                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</SelectItem>
                 {responsables.map(r => (
                   <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
                 ))}
@@ -224,15 +255,20 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
           </div>
         ) : (
           filteredActividades.map((actividad) => {
-            const resp = getResponsableById(actividad.responsablePrincipalId);
+            const respInfo = getResponsableDisplay(actividad.responsablePrincipalId);
             const isBloqueada = actividad.checklistBloqueado || actividad.estado === "Bloqueada";
+            
+            // --- LÓGICA DE ALERTA ---
+            const { isOverdue, isImminent } = getDueDateStatus(actividad.fechaVencimiento);
+            const needsAttention = (isOverdue || isImminent) && actividad.estado !== "Validada" && actividad.estado !== "Completada";
 
             return (
               <div
                 key={actividad.id}
                 className={cn(
                   "p-5 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all",
-                  actividad.estado === "Validada" ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200"
+                  actividad.estado === "Validada" ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200",
+                  needsAttention ? "border-red-300 ring-1 ring-red-100" : "" 
                 )}
               >
                 <div className="flex items-start justify-between mb-4">
@@ -266,13 +302,13 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                     <div className="flex items-center gap-2 mr-2">
                       <div 
                         className="w-7 h-7 rounded-full flex items-center justify-center text-white text-[10px] font-black shadow-sm"
-                        style={{ backgroundColor: resp?.color || "#94a3b8" }}
+                        style={{ backgroundColor: respInfo.color }}
                       >
-                        {resp?.nombre?.charAt(0) || "?"}
+                        {respInfo.nombre.charAt(0)}
                       </div>
                       <div className="hidden lg:block text-left">
-                        <p className="text-[11px] font-black text-slate-700 leading-none uppercase">{resp?.nombre || "Sin asignar"}</p>
-                        <p className="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">{resp?.area || "Sin área"}</p>
+                        <p className="text-[11px] font-black text-slate-700 leading-none uppercase">{respInfo.nombre}</p>
+                        <p className="text-[9px] text-slate-400 uppercase font-medium tracking-tighter">{respInfo.area}</p>
                       </div>
                     </div>
 
@@ -371,10 +407,10 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                           <div>
                             <p className="text-[9px] text-slate-400 font-medium">Vencimiento</p>
                             <p className={cn(
-                              actividad.fechaVencimiento && new Date(actividad.fechaVencimiento) < new Date() && actividad.estado !== "Validada" 
-                                ? "text-red-500" 
-                                : ""
+                              "flex items-center gap-1",
+                              needsAttention ? "text-red-600 font-black" : ""
                             )}>
+                              {needsAttention && <AlertTriangle className="w-3.5 h-3.5" />}
                               {formatDate(actividad.fechaVencimiento)}
                             </p>
                           </div>

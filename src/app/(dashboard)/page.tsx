@@ -1,95 +1,84 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { KPIStats } from "@/components/dashboard/kpi-stats";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
-  AlertCircle, 
   Clock, 
-  CheckCircle2, 
   Briefcase, 
   ClipboardList, 
   FileCheck, 
   Truck, 
   TrendingUp,
   Calendar,
-  ChevronRight
+  ChevronRight,
+  LayoutDashboard,
+  Users,
+  Target,
+  ArrowUpRight,
+  Activity,
+  Layers,
+  Inbox
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-
-// ============================================
-// TIPOS
-// ============================================
-
-interface DashboardData {
-  fechaActual: string;
-  kpis: {
-    proyectos: {
-      total: number;
-      activos: number;
-      planejamento: number;
-      finalizados: number;
-      criticos: number;
-      verdes: number;
-      amarillos: number;
-      rojos: number;
-    };
-    actividades: {
-      total: number;
-      pendientes: number;
-      enProgreso: number;
-      completadas: number;
-      vencidas: number;
-    };
-    documentos: {
-      total: number;
-      pendientes: number;
-      aprobados: number;
-      porArea: Record<string, number>;
-    };
-    alertas: {
-      total: number;
-      criticas: number;
-      altas: number;
-      pendientes: number;
-    };
-  };
-  proyectos: any[];
-  actividades: any[];
-  alertas: any[];
-  timelineOperativo: any[];
-  distribucionPorArea: Record<string, number>;
-  distribucionPorPrioridad: Record<string, number>;
-}
+import { api } from "@/lib/api";
 
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useCRMStore } from "@/store/crm-store";
-
-// ============================================
-// COMPONENTES
-// ============================================
+import { useAuthStore } from "@/store/auth-store";
+import { useLogisticaStore } from "@/store/logistica-store";
+import { useDocumentalStore } from "@/store/documental-store";
+import { useNotificationStore } from "@/store/notification-store";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 export default function DashboardPage() {
+  const { user } = useAuthStore();
   const { 
     proyectos, 
     fetchProyectos, 
     fetchResponsables, 
-    alertas,
     getTimelineEvents,
   } = useOperacionesStore();
   
   const { 
     clients, 
-    quotes,
     fetchClients,
     fetchQuotes
   } = useCRMStore();
 
+  const {
+    ordenes,
+    insumos,
+    fetchOrdenes,
+    fetchInsumos
+  } = useLogisticaStore();
+
+  const {
+    documentos,
+  } = useDocumentalStore();
+
+  const { fetchUnreadCount } = useNotificationStore();
+
   const [loading, setLoading] = useState(true);
+  const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+
+  const fetchOnlineUsers = useCallback(async () => {
+    try {
+      const data = await api.get("/config/usuarios/online");
+      setOnlineUsers(data || []);
+    } catch (error) {
+      console.error("Error fetching online users:", error);
+    }
+  }, []);
 
   useEffect(() => {
     const init = async () => {
@@ -97,27 +86,35 @@ export default function DashboardPage() {
         fetchProyectos(), 
         fetchResponsables(),
         fetchClients(),
-        fetchQuotes()
+        fetchQuotes(),
+        fetchOrdenes(),
+        fetchInsumos(),
+        fetchUnreadCount(),
+        fetchOnlineUsers()
       ]);
       setLoading(false);
     };
     init();
-  }, [fetchProyectos, fetchResponsables, fetchClients, fetchQuotes]);
+
+    // Poll online users every 30 seconds
+    const interval = setInterval(fetchOnlineUsers, 30000);
+    return () => clearInterval(interval);
+  }, [fetchProyectos, fetchResponsables, fetchClients, fetchQuotes, fetchOrdenes, fetchInsumos, fetchUnreadCount, fetchOnlineUsers]);
 
   // Áreas Operativas
   const areas = [
-    { id: 'Logística y Recursos', name: 'Steven', color: 'bg-blue-500', role: 'Logística y Coordinación', icon: Truck },
-    { id: 'Ingeniería y Supervisión Técnica', name: 'Diego', color: 'bg-purple-500', role: 'Ingeniería y Validación', icon: Briefcase },
-    { id: 'Gestión Documentaria y Expedientes Técnicos', name: 'Guillermo', color: 'bg-green-500', role: 'Gestión Documental', icon: FileCheck },
-    { id: 'Operaciones de Campo y Control de Obra', name: 'Mario', color: 'bg-yellow-500', role: 'Soporte de Campo', icon: ClipboardList },
+    { id: 'Logística y Recursos', name: 'Steven', color: 'bg-blue-500', role: 'Logística', icon: Truck },
+    { id: 'Ingeniería y Supervisión Técnica', name: 'Diego', color: 'bg-purple-500', role: 'Ingeniería', icon: Briefcase },
+    { id: 'Gestión Documentaria y Expedientes Técnicos', name: 'Guillermo', color: 'bg-green-500', role: 'Documentación', icon: FileCheck },
+    { id: 'Operaciones de Campo y Control de Obra', name: 'Mario', color: 'bg-yellow-500', role: 'Campo', icon: ClipboardList },
   ];
 
   // Equipo Comercial
   const sellers = [
-    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora Comercial' },
-    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora Comercial' },
-    { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora Comercial' },
-    { name: 'Nicoll', color: 'bg-teal-600', role: 'Asesora Comercial' },
+    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
+    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
+    { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
+    { name: 'Nicoll', color: 'bg-teal-600', role: 'Asesora' },
   ];
 
   const today = new Date();
@@ -130,9 +127,6 @@ export default function DashboardPage() {
     proyectos: {
       total: proyectos.length,
       activos: proyectos.filter(p => p.estado === 'En Ejecución').length,
-      finalizados: proyectos.filter(p => p.estado === 'Finalizado').length,
-      verdes: proyectos.filter(p => p.semaforo === 'Verde').length,
-      amarillos: proyectos.filter(p => p.semaforo === 'Amarillo').length,
       rojos: proyectos.filter(p => p.semaforo === 'Rojo').length
     },
     actividades: {
@@ -155,6 +149,13 @@ export default function DashboardPage() {
         hoy.setHours(0,0,0,0);
         return fs < hoy;
       }).length
+    },
+    logistica: {
+      ordenesPendientes: ordenes.filter(o => o.estado === 'PENDIENTE').length,
+      stockBajo: insumos.filter(i => i.stockActual <= i.stockMinimo).length
+    },
+    documental: {
+      pendientesRevision: documentos.filter(d => d.estado === 'Pendiente Revisión').length
     }
   };
 
@@ -169,7 +170,7 @@ export default function DashboardPage() {
   const proximosSeguimientos = clients
     .filter(c => c.proximoSeguimiento && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido')
     .sort((a, b) => new Date(a.proximoSeguimiento).getTime() - new Date(b.proximoSeguimiento).getTime())
-    .slice(0, 5);
+    .slice(0, 8);
 
   const distribucionPorArea = areas.reduce((acc, area) => {
     acc[area.name] = proyectos.filter(p => p.area === area.id).length;
@@ -181,259 +182,349 @@ export default function DashboardPage() {
     return acc;
   }, {} as Record<string, number>);
 
-  const distribucionPorPrioridad = proyectos.reduce((acc, p) => {
-    acc[p.prioridad] = (acc[p.prioridad] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
+        <div className="relative flex items-center justify-center">
+          <div className="w-20 h-20 border-4 border-slate-100 rounded-full animate-pulse" />
+          <div className="absolute w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        </div>
+        <div className="text-center">
+          <p className="text-lg font-bold text-slate-800 uppercase tracking-[0.2em] mb-1">Cargando Inteligencia</p>
+          <p className="text-xs text-muted-foreground font-medium animate-pulse uppercase tracking-widest">Sincronizando modulos de HH T Soluciona</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-primary tracking-tight">Panel de Control</h1>
-          <p className="text-muted-foreground mt-1 font-medium">Resumen general de HH T Soluciona S.A.C.</p>
-        </div>
-        
-        {isReviewDay && (
-          <div className="bg-accent/10 border-2 border-accent/20 px-6 py-3 rounded-2xl flex items-center gap-3 animate-pulse">
-            <Calendar className="w-5 h-5 text-accent" />
-            <div>
-              <p className="text-[10px] font-black text-accent uppercase">Comité Comercial Activo</p>
-              <p className="text-sm font-bold text-primary">Hoy: {currentReviewDay}</p>
+    <div className="space-y-8 pb-12 max-w-[1600px] mx-auto px-4 md:px-6">
+      {/* Header Premium */}
+      <div className="relative overflow-hidden bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div className="relative z-10 flex items-center gap-5">
+          <div className="h-16 w-16 rounded-3xl bg-slate-900 flex items-center justify-center shadow-2xl shadow-slate-900/20 group hover:scale-105 transition-transform">
+            <LayoutDashboard className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
+              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-600 font-bold py-0 px-2 text-[9px]">LIVE</Badge>
+            </div>
+            <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium uppercase tracking-wider">
+              <span className="flex items-center gap-1.5"><Layers className="w-3 h-3" /> HH T Soluciona S.A.C.</span>
+              <span className="w-1 h-1 rounded-full bg-slate-300" />
+              <span>Resumen Ejecutivo</span>
             </div>
           </div>
-        )}
+        </div>
+
+        <div className="relative z-10 flex flex-wrap items-center gap-3">
+          {isReviewDay && (
+            <div className="bg-amber-50 border border-amber-100 text-amber-700 font-bold py-2 px-4 rounded-2xl flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 duration-700">
+              <Calendar className="w-4 h-4" />
+              <div className="text-left">
+                <p className="text-[10px] uppercase leading-none opacity-70 mb-0.5">Comité Comercial</p>
+                <p className="text-xs">{currentReviewDay}</p>
+              </div>
+            </div>
+          )}
+          <div className="bg-slate-50 border border-slate-100 text-slate-600 font-bold py-2 px-4 rounded-2xl flex items-center gap-3 shadow-sm">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <div className="text-left">
+              <p className="text-[10px] uppercase leading-none opacity-70 mb-0.5">Estado Global</p>
+              <p className="text-xs uppercase">Activo</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Decoración abstracta */}
+        <div className="absolute top-0 right-0 -translate-y-1/2 translate-x-1/4 w-96 h-96 bg-slate-50 rounded-full blur-3xl opacity-50" />
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-        </div>
-      ) : (
-        <>
-          {/* KPI Stats */}
-          <KPIStats />
-
-          {/* Métricas Operativas */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              <h2 className="text-sm font-black text-primary uppercase tracking-wider">Gestión de Operaciones</h2>
+      <Tabs defaultValue="general" className="w-full space-y-8 outline-none">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <TabsList className="bg-slate-100/60 backdrop-blur-md p-1.5 rounded-full border border-slate-200/60 shadow-inner flex h-auto gap-1 w-full md:w-auto overflow-x-auto no-scrollbar">
+            <TabsTrigger
+              value="general"
+              className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 data-active:bg-white data-active:text-primary data-active:shadow-md transition-all gap-2 flex-1 md:flex-none"
+            >
+              <Activity className="w-4 h-4" /> Visión Global
+            </TabsTrigger>
+            <TabsTrigger
+              value="comercial"
+              className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 data-active:bg-white data-active:text-primary data-active:shadow-md transition-all gap-2 flex-1 md:flex-none"
+            >
+              <Users className="w-4 h-4" /> Comercial
+            </TabsTrigger>
+            <TabsTrigger
+              value="operaciones"
+              className="rounded-full px-5 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200/50 data-active:bg-white data-active:text-primary data-active:shadow-md transition-all gap-2 flex-1 md:flex-none"
+            >
+              <Briefcase className="w-4 h-4" /> Operaciones
+            </TabsTrigger>
+          </TabsList>
+          
+          <div className="hidden lg:flex items-center gap-4 bg-white border px-5 py-2.5 rounded-2xl shadow-sm">
+            <div className="flex -space-x-2">
+              {onlineUsers.length > 0 ? (
+                onlineUsers.slice(0, 5).map((u, idx) => (
+                  <div 
+                    key={u.id} 
+                    className={cn(
+                      "w-8 h-8 rounded-full border-2 border-white text-[10px] flex items-center justify-center text-white font-bold", 
+                      u.responsable?.color || "bg-slate-400"
+                    )}
+                    title={`${u.nombre} (${u.rol})`}
+                  >
+                    {u.nombre[0]}
+                  </div>
+                ))
+              ) : (
+                <div className="w-8 h-8 rounded-full border-2 border-dashed border-slate-200 flex items-center justify-center">
+                    <Users className="w-3 h-3 text-slate-300" />
+                </div>
+              )}
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {areas.map((area) => {
-                const Icon = area.icon;
-                const proyectosArea = distribucionPorArea[area.name] || 0;
-                return (
-                  <Card key={area.name} className="border-none shadow-sm hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <div className={cn("p-2 rounded-lg", area.color)}>
-                          <Icon className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <p className="text-xs font-black text-muted-foreground uppercase">{area.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{area.role}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Proyectos Activos</span>
-                          <span className="text-xl font-black text-primary">{proyectosArea}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
+            <div className="flex flex-col">
+                <span className="text-[10px] font-black text-slate-800 uppercase tracking-widest leading-none">Equipo en Línea</span>
+                <span className="text-[9px] font-bold text-emerald-500 uppercase">{onlineUsers.length} activos ahora</span>
             </div>
           </div>
+        </div>
 
-          {/* Métricas Comerciales */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary" />
-              <h2 className="text-sm font-black text-primary uppercase tracking-wider">Equipo Comercial y Ventas</h2>
+        <KPIStats />
+
+        {/* TAB: GENERAL (Visión Global) */}
+        <TabsContent value="general" className="space-y-8 outline-none">
+          {/* Alertas Compactas */}
+          {(kpis.proyectos.rojos > 0 || kpis.crm.vencidos > 0) && (
+            <div className="flex flex-wrap items-center gap-4 bg-slate-900 p-4 rounded-3xl shadow-sm text-white">
+              <div className="flex items-center gap-2 px-3 border-r border-white/10">
+                <TrendingUp className="w-4 h-4 text-primary" />
+                <span className="text-xs font-bold uppercase tracking-wider">Foco Operativo</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-6 flex-1">
+                {kpis.proyectos.rojos > 0 && (
+                  <Link href="/operaciones/alertas" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Badge className="bg-amber-500/20 text-amber-500 border-none px-2 py-0.5 text-[10px]">{kpis.proyectos.rojos}</Badge>
+                    <span className="text-xs font-medium text-slate-300">Alertas Pendientes</span>
+                  </Link>
+                )}
+                {kpis.crm.vencidos > 0 && (
+                  <Link href="/crm/cartera" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                    <Badge className="bg-red-500/20 text-red-500 border-none px-2 py-0.5 text-[10px]">{kpis.crm.vencidos}</Badge>
+                    <span className="text-xs font-medium text-slate-300">Seguimientos Vencidos</span>
+                  </Link>
+                )}
+                <p className="text-[10px] text-slate-500 italic ml-auto hidden md:block">
+                   Priorice estas áreas para optimizar el flujo de trabajo.
+                </p>
+              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {sellers.map((seller) => {
-                const clientesVendedor = distribucionPorVendedor[seller.name] || 0;
-                return (
-                  <Card key={seller.name} className="border-none shadow-sm hover:shadow-md transition-shadow border-b-4" style={{ borderColor: seller.color.replace('bg-', '') }}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-10 w-10 border-2 border-white shadow-sm">
-                          <AvatarFallback className={cn("text-white font-black", seller.color)}>
+          )}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Gestiones Hoy', val: kpis.crm.totalHoy, icon: Calendar, color: 'text-blue-600', bg: 'bg-blue-50/50', border: 'border-blue-100' },
+              { label: 'O. Compra Pend.', val: kpis.logistica.ordenesPendientes, icon: Truck, color: 'text-purple-600', bg: 'bg-purple-50/50', border: 'border-purple-100' },
+              { label: 'Revisiones Doc.', val: kpis.documental.pendientesRevision, icon: Inbox, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
+              { label: 'Stock Crítico', val: kpis.logistica.stockBajo, icon: Layers, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
+            ].map((item, idx) => (
+              <div key={idx} className={cn("p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between bg-white hover:shadow-md transition-all", item.bg)}>
+                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center mb-4 border", item.border)}>
+                  <item.icon className={cn("w-5 h-5", item.color)} />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold uppercase opacity-50 tracking-widest mb-1 block">{item.label}</span>
+                  <div className="flex items-end gap-2">
+                    <span className={cn("text-3xl font-bold leading-none", item.color)}>{item.val}</span>
+                    {item.val > 0 && <ArrowUpRight className={cn("w-4 h-4 mb-1 opacity-50", item.color)} />}
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <div className="col-span-2 md:col-span-4 mt-2">
+               <DashboardCharts />
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* TAB: COMERCIAL */}
+        <TabsContent value="comercial" className="space-y-8 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Sales Team List */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Target className="w-5 h-5 text-slate-800" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Pipeline por Equipo</h3>
+                </div>
+                <Badge className="bg-slate-100 text-slate-600 border-none font-bold">TOTAL: {clients.length}</Badge>
+              </div>
+              <div className="space-y-4">
+                {sellers.map((seller) => (
+                  <Card key={seller.name} className="border-none shadow-sm overflow-hidden group hover:scale-[1.02] transition-all bg-white rounded-3xl">
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-12 w-12 border-2 border-white shadow-md shrink-0">
+                          <AvatarFallback className={cn("text-white font-bold text-sm", seller.color)}>
                             {seller.name[0]}
                           </AvatarFallback>
                         </Avatar>
                         <div>
-                          <p className="text-xs font-black text-muted-foreground uppercase">{seller.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{seller.role}</p>
+                          <p className="text-sm font-bold text-slate-800 group-hover:text-primary transition-colors">{seller.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter opacity-70">{seller.role}</p>
                         </div>
                       </div>
-                      <div className="mt-3 pt-3 border-t border-border">
-                        <div className="flex justify-between items-center">
-                          <span className="text-xs text-muted-foreground">Cartera Activa</span>
-                          <span className="text-xl font-black text-primary">{clientesVendedor}</span>
-                        </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-slate-800 leading-none">{distribucionPorVendedor[seller.name] || 0}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold opacity-50">leads</p>
                       </div>
                     </CardContent>
                   </Card>
-                );
-              })}
+                ))}
+              </div>
             </div>
-          </div>
 
-          {/* Alertas Rápidas Mixtas */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-none shadow-sm bg-red-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-red-700 uppercase">Seguimientos Vencidos</p>
-                    <p className="text-3xl font-black text-red-600">{kpis.crm.vencidos}</p>
-                  </div>
-                  <AlertCircle className="w-10 h-10 text-red-400 opacity-50" />
+            {/* Commercial Schedule */}
+            <div className="lg:col-span-3 space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-slate-800" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Agenda Próximos Seguimientos</h3>
                 </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-blue-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-blue-700 uppercase">Gestiones de Hoy</p>
-                    <p className="text-3xl font-black text-blue-600">{kpis.crm.totalHoy}</p>
-                  </div>
-                  <Calendar className="w-10 h-10 text-blue-400 opacity-50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-orange-50">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-orange-700 uppercase">Proyectos Críticos</p>
-                    <p className="text-3xl font-black text-orange-600">{kpis.proyectos.rojos}</p>
-                  </div>
-                  <AlertCircle className="w-10 h-10 text-orange-400 opacity-50" />
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-none shadow-sm bg-primary/5">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-[10px] font-black text-primary uppercase">Actividades Vencidas</p>
-                    <p className="text-3xl font-black text-primary">{kpis.actividades.vencidas}</p>
-                  </div>
-                  <Clock className="w-10 h-10 text-primary opacity-30" />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Agenda Comercial */}
-            <Card className="border-none shadow-sm overflow-hidden">
-              <CardHeader className="bg-primary/5 border-b border-primary/10">
-                <CardTitle className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                  <Calendar className="w-4 h-4" />
-                  Próximos Seguimientos (Agenda Comercial)
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {proximosSeguimientos.map((client) => {
+                <Link href="/crm/seguimiento" className="text-[10px] font-bold text-primary uppercase flex items-center gap-1 hover:underline">Ver Agenda Completa <ArrowUpRight className="w-3 h-3" /></Link>
+              </div>
+              
+              <div className="bg-white border rounded-[2.5rem] shadow-sm overflow-hidden">
+                <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-slate-100">
+                  {proximosSeguimientos.map((client, idx) => {
                     const isOverdue = new Date(client.proximoSeguimiento || '') < new Date(new Date().setHours(0,0,0,0));
                     return (
-                      <div key={client.id} className="p-4 flex items-center justify-between hover:bg-slate-50 transition-colors">
-                        <div className="flex items-center gap-3">
+                      <div key={client.id} className="p-6 flex items-center justify-between hover:bg-slate-50 transition-colors group">
+                        <div className="flex items-center gap-5">
                           <div className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm",
-                            isOverdue ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600"
+                            "w-12 h-12 rounded-2xl flex flex-col items-center justify-center font-bold shadow-sm transition-transform group-hover:scale-110",
+                            isOverdue ? "bg-red-50 text-red-600 border border-red-100" : "bg-blue-50 text-blue-600 border border-blue-100"
                           )}>
-                            {new Date(client.proximoSeguimiento || '').getDate()}
-                            <span className="text-[8px] uppercase ml-0.5">
+                            <span className="text-base leading-none mb-0.5">{new Date(client.proximoSeguimiento || '').getDate()}</span>
+                            <span className="text-[9px] uppercase leading-none">
                               {new Date(client.proximoSeguimiento || '').toLocaleDateString('es-ES', { month: 'short' })}
                             </span>
                           </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-800">{client.empresa}</p>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-[9px] uppercase font-black px-1.5 py-0">
-                                {client.asignadoA}
-                              </Badge>
-                              <span className="text-[10px] text-slate-500 italic font-medium truncate max-w-[150px]">
-                                {client.accion}
-                              </span>
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-slate-800 truncate">{client.empresa}</p>
+                            <div className="flex items-center gap-3 mt-1.5">
+                              <span className="flex items-center gap-1 text-[10px] font-bold text-slate-500 uppercase"><Users className="w-3 h-3" /> {client.asignadoA}</span>
+                              <span className="w-1 h-1 rounded-full bg-slate-300" />
+                              <span className="text-xs text-muted-foreground truncate max-w-[120px] italic">"{client.accion}"</span>
                             </div>
                           </div>
                         </div>
-                        <Link 
-                          href="/crm/seguimiento" 
-                          className="text-xs font-black text-primary hover:text-accent transition-colors uppercase flex items-center gap-1"
-                        >
-                          Ver <ChevronRight className="w-3 h-3" />
+                        <Link href="/crm/seguimiento" className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-500 rounded-xl transition-all">
+                          <ChevronRight className="w-5 h-5" />
                         </Link>
                       </div>
                     );
                   })}
-                  {proximosSeguimientos.length === 0 && (
-                    <div className="p-10 text-center space-y-2">
-                      <Clock className="w-10 h-10 text-slate-200 mx-auto" />
-                      <p className="text-sm text-slate-400 font-bold uppercase">Sin seguimientos programados</p>
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
+                {proximosSeguimientos.length === 0 && (
+                  <div className="p-20 text-center flex flex-col items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center">
+                      <Calendar className="w-8 h-8 text-slate-200" />
+                    </div>
+                    <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Sin compromisos agendados</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
 
-            {/* Timeline Operativo */}
-            <Card className="border-none shadow-sm overflow-hidden">
-              <CardHeader className="bg-primary/5 border-b border-primary/10">
-                <CardTitle className="text-sm font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                  <Clock className="w-4 h-4" />
-                  Timeline de Operaciones
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="divide-y divide-border">
-                  {timelineOperativo.map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-4 flex items-start gap-4 hover:bg-slate-50 transition-colors"
-                    >
-                      <div className="w-2 h-2 rounded-full mt-2 bg-primary shrink-0" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between gap-2">
-                          <p className="text-sm font-bold text-primary truncate">{item.descripcion}</p>
-                          <span className="text-[10px] font-black text-slate-400 uppercase shrink-0">
-                            {new Date(item.fecha).toLocaleDateString()}
-                          </span>
+        {/* TAB: OPERACIONES */}
+        <TabsContent value="operaciones" className="space-y-8 outline-none">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+            {/* Operational Areas */}
+            <div className="lg:col-span-1 space-y-6">
+              <div className="flex items-center gap-2 px-2">
+                <Briefcase className="w-5 h-5 text-slate-800" />
+                <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Carga por Área</h3>
+              </div>
+              <div className="space-y-4">
+                {areas.map((area) => (
+                  <Card key={area.id} className="border-none shadow-sm overflow-hidden hover:scale-[1.02] transition-all bg-white rounded-3xl">
+                    <CardContent className="p-5 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className={cn("h-12 w-12 rounded-2xl text-white flex items-center justify-center shadow-lg", area.color)}>
+                          <area.icon className="w-5 h-5" />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                          {item.proyecto?.codigo} - {item.proyecto?.nombre}
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold">Responsable: {item.usuario}</p>
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{area.name}</p>
+                          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tighter opacity-70">{area.role}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xl font-bold text-slate-800 leading-none">{distribucionPorArea[area.name] || 0}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold opacity-50">proyectos</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            {/* Operational Timeline */}
+            <div className="lg:col-span-3 space-y-6">
+              <div className="flex items-center justify-between px-2">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-slate-800" />
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Timeline de Ejecución</h3>
+                </div>
+                <Badge className="bg-slate-900 text-white border-none text-[10px] font-bold">ÚLTIMAS 5 ACCIONES</Badge>
+              </div>
+              
+              <div className="bg-white border rounded-[2.5rem] shadow-sm overflow-hidden relative">
+                <div className="divide-y divide-slate-100">
+                  {timelineOperativo.map((item, idx) => (
+                    <div key={item.id} className="p-6 flex items-start gap-6 hover:bg-slate-50 transition-colors relative">
+                      <div className="relative flex flex-col items-center h-full">
+                        <div className="w-4 h-4 rounded-full bg-slate-900 ring-8 ring-slate-100 shrink-0 z-10" />
+                        {idx !== timelineOperativo.length - 1 && <div className="w-0.5 h-full bg-slate-100 absolute top-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-4">
+                          <p className="text-sm font-bold text-slate-800 truncate leading-none mb-1.5">{item.descripcion}</p>
+                          <Badge variant="outline" className="text-[9px] font-bold text-slate-400 uppercase border-slate-200">{new Date(item.fecha).toLocaleDateString()}</Badge>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <p className="text-xs text-slate-500 font-medium">
+                            {item.proyecto?.codigo} · <span className="text-primary font-bold">{item.proyecto?.nombre}</span>
+                          </p>
+                        </div>
+                        <div className="mt-3 flex items-center gap-2">
+                          <Avatar className="w-5 h-5 border-none">
+                            <AvatarFallback className="bg-slate-100 text-[8px] font-bold text-slate-500 uppercase">{item.usuario[0]}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-[10px] text-slate-400 uppercase font-bold tracking-tight">Responsable: {item.usuario}</span>
+                        </div>
                       </div>
                     </div>
                   ))}
-                  {timelineOperativo.length === 0 && (
-                    <div className="p-10 text-center space-y-2">
-                      <Briefcase className="w-10 h-10 text-slate-200 mx-auto" />
-                      <p className="text-sm text-slate-400 font-bold uppercase">Sin actividades recientes</p>
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
+                {timelineOperativo.length === 0 && (
+                  <div className="p-20 text-center flex flex-col items-center gap-4">
+                    <div className="h-16 w-16 rounded-full bg-slate-50 flex items-center justify-center">
+                      <Briefcase className="w-8 h-8 text-slate-200" />
+                    </div>
+                    <p className="text-sm text-slate-400 font-bold uppercase tracking-widest">Sin actividad reciente</p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-
-          {/* Charts */}
-          <DashboardCharts />
-        </>
-      )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

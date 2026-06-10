@@ -21,15 +21,13 @@ import {
   AlertCircle,
   Eye,
   Pencil,
-  X,
-  FolderKanban,
-  BarChart3,
   Trash2,
   FilterX,
-  Clock
+  ShieldAlert,
+  Lock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn, formatDate } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -48,12 +46,27 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProyectoDetail, StatsCard } from "@/components/operaciones/proyecto-detail";
+import { ProyectoDetail } from "@/components/operaciones/proyecto-detail";
 import { KPIPanel } from "@/components/operaciones/kpi-panel";
+import { toast } from "sonner";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useCRMStore } from "@/store/crm-store";
 import { Combobox } from "@/components/ui/combobox";
-import type { Proyecto, Actividad } from "@/lib/types";
+import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
+import type { Proyecto, Actividad, EstadoProyecto, Area, Prioridad } from "@/lib/types";
+
+// Componente local para estadísticas compactas
+const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
+  <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white", bgColor)}>
+    <div className={cn("p-2 rounded-lg bg-white shadow-sm shrink-0", color)}>
+      {icon}
+    </div>
+    <div className="min-w-0">
+      <p className="text-[9px] font-black uppercase text-slate-400 tracking-tighter leading-none mb-1 truncate">{label}</p>
+      <p className={cn("text-lg font-black leading-none tracking-tight", color)}>{value}</p>
+    </div>
+  </div>
+);
 
 const statusColors: Record<string, string> = {
   "Planificación": "bg-blue-100 text-blue-700",
@@ -85,25 +98,23 @@ const areaColors: Record<string, string> = {
 export default function ProyectosPage() {
   const {
     proyectos,
+    totalProyectos,
+    proyectoPage,
+    proyectoTotalPages,
     responsables,
     filtros,
     setSearchQuery,
     setEstado,
     setArea,
     setPrioridad,
-    setSemaforo,
     setResponsable,
     resetFiltros,
     addProyecto,
     updateProyecto,
-    deleteProyecto,
-    updateActividad,
-    bloquearChecklist,
-    desbloquearChecklist,
+    deleteProyectoSecure,
     calcularKPIs,
     fetchProyectos,
     fetchResponsables,
-    getProyectosFiltrados,
   } = useOperacionesStore();
 
   const { clients: crmClients, quotes, fetchClients: fetchCRMClients, fetchQuotes } = useCRMStore();
@@ -123,15 +134,74 @@ export default function ProyectosPage() {
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [projectToDelete, setProjectToDelete] = useState<Proyecto | null>(null);
+  
+  const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
+  const [projectToDeleteId, setProjectToDeleteId] = useState<string | null>(null);
+  const [projectToDeleteName, setProjectToDeleteName] = useState("");
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+
   const [editingProyecto, setEditingProyecto] = useState<Proyecto | null>(null);
   
-  const [errorDialog, setErrorDialog] = useState<{ isOpen: boolean; title: string; message: string }>({
+  const [modernDialog, setModernDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    type: DialogType;
+    confirmText?: string;
+    onConfirm?: () => void;
+    showCancel?: boolean;
+  }>({
     isOpen: false,
     title: "",
-    message: ""
+    description: "",
+    type: "info"
   });
+
+  const closeModernDialog = () => setModernDialog(prev => ({ ...prev, isOpen: false }));
+
+  const showSuccess = (title: string, description: string) => {
+    toast.success(title, { description });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "success",
+      confirmText: "Perfecto"
+    });
+  };
+
+  const showError = (title: string, description: string) => {
+    toast.error(title, { description });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "error",
+      confirmText: "Entendido"
+    });
+  };
+
+  const handleSecureDelete = async () => {
+    if (!projectToDeleteId || !adminPassword) {
+        showError("Contraseña Requerida", "Por favor ingrese la contraseña de administrador.");
+        return;
+    }
+
+    try {
+        setIsDeleting(true);
+        await deleteProyectoSecure(projectToDeleteId, adminPassword);
+        setIsSecureDeleteOpen(false);
+        setProjectToDeleteId(null);
+        setAdminPassword("");
+        showSuccess("Proyecto Eliminado", "El registro ha sido removido exitosamente.");
+    } catch (err: any) {
+        showError("Acceso Denegado", err.message || "La contraseña es incorrecta.");
+        setAdminPassword("");
+    } finally {
+        setIsDeleting(false);
+    }
+  };
 
   const [newProject, setNewProject] = useState({
     clientId: "",
@@ -147,32 +217,17 @@ export default function ProyectosPage() {
     responsablesAdicionales: [],
   });
 
-  const quoteOptions = useMemo(() => 
-    quotes
-      .filter(q => q.clientId === newProject.clientId)
-      .map(q => ({
-        value: q.id,
-        label: `${q.codigo || 'S/C'} - ${new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(q.monto)}`,
-        subLabel: `Estado: ${q.estado.toUpperCase()}`
-      })), [quotes, newProject.clientId]
-  );
-
   const getResponsableName = useCallback((id: string) => {
-    if (!id) return "SIN ASIGNAR";
+    if (!id) return "S/A";
     const resp = responsables.find(r => r.id === id);
     if (resp) return resp.nombre.toUpperCase();
-    if (id.length > 20 && id.includes('-')) return "BUSCANDO PERSONAL...";
-    return id.toUpperCase();
-  }, [responsables]);
-
-  const getResponsableColor = useCallback((id: string) => {
-    return responsables.find(r => r.id === id)?.color || "#666";
+    return "S/A";
   }, [responsables]);
 
   useEffect(() => {
     const init = async () => {
       await Promise.all([
-        fetchProyectos(), 
+        fetchProyectos(proyectoPage, 20), 
         fetchResponsables(),
         fetchCRMClients(),
         fetchQuotes()
@@ -180,13 +235,11 @@ export default function ProyectosPage() {
       setLoading(false);
     };
     init();
-  }, [fetchProyectos, fetchResponsables, fetchCRMClients, fetchQuotes]);
+  }, [fetchProyectos, fetchResponsables, fetchCRMClients, fetchQuotes, proyectoPage]);
 
-  useEffect(() => {
-    if (responsables.length > 0 && !newProject.responsablePrincipalId) {
-      setNewProject(prev => ({ ...prev, responsablePrincipalId: responsables[0].id }));
-    }
-  }, [responsables, newProject.responsablePrincipalId]);
+  const handlePageChange = (newPage: number) => {
+    fetchProyectos(newPage, 20);
+  };
 
   const handleOpenDetail = (proyecto: Proyecto) => {
     setSelectedProyecto(proyecto);
@@ -202,56 +255,29 @@ export default function ProyectosPage() {
     setIsEditProjectModalOpen(true);
   };
 
-  const handleDeleteClick = (proyecto: Proyecto) => {
-    setProjectToDelete(proyecto);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (projectToDelete) {
-      await deleteProyecto(projectToDelete.id);
-      setIsDeleteModalOpen(false);
-      setProjectToDelete(null);
-    }
-  };
-
   const handleSaveNewProject = async () => {
-    // 1. VALIDACIÓN DE CAMPOS OBLIGATORIOS
-    if (!newProject.nombre) {
-      alert("Por favor, ingresa el nombre del proyecto.");
-      return;
-    }
-    if (!newProject.clientId) {
-      alert("Por favor, selecciona un cliente para el proyecto.");
-      return;
-    }
-    if (!newProject.fechaFinEstimada) {
-      alert("Por favor, selecciona una fecha estimada de finalización.");
+    if (!newProject.nombre || !newProject.clientId || !newProject.fechaFinEstimada) {
+      showError("Faltan Datos", "Por favor, completa los campos obligatorios.");
       return;
     }
 
-    // 2. VALIDACIÓN DE COTIZACIÓN APROBADA (RESTRICCIÓN COMERCIAL)
-    // Buscamos cualquier cotización aprobada para este cliente
-    const approvedQuote = quotes.find(q => 
-      q.clientId === newProject.clientId && (q.estado === "Aprobado" || q.estado === "Aprobada")
-    );
-    
-    if (!approvedQuote) {
-      setErrorDialog({
-        isOpen: true,
-        title: "Proyecto no autorizado",
-        message: "No es posible registrar este proyecto porque la cotización asociada aún no ha sido aprobada por el cliente.\n\nPor favor, contacte al área comercial para validar el estado de la negociación o gestionar la aprobación correspondiente antes de continuar.\n\nUna vez que la cotización se encuentre en estado APROBADA, podrá registrar el proyecto."
-      });
+    // VALIDACIÓN LOCAL: Evitar duplicados (Un proyecto activo por cliente)
+    const existingActive = proyectos.find(p => p.clientId === newProject.clientId && p.estado !== 'Finalizado');
+    if (existingActive) {
+        showError("Cliente con Proyecto Activo", `El cliente seleccionado ya tiene un proyecto operativo en curso: "${existingActive.nombre}". Debe finalizarlo antes de iniciar uno nuevo.`);
+        return;
+    }
+
+    const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
+    const selectedQuote = clientQuotes[0];
+    if (!selectedQuote) {
+      showError("Cotización requerida", "El cliente no tiene cotizaciones registradas.");
       return;
     }
 
-    // 3. REGISTRO DEL PROYECTO
     try {
-      // Pasamos el ID de la cotización aprobada encontrada automáticamente
-      await addProyecto({ ...newProject, cotizacionId: approvedQuote.id } as any);
+      await addProyecto({ ...newProject, cotizacionId: selectedQuote.id } as any);
       setIsNewProjectModalOpen(false);
-      
-      // Reset del formulario
       setNewProject({
         clientId: "",
         cotizacionId: "",
@@ -265,24 +291,30 @@ export default function ProyectosPage() {
         responsablePrincipalId: responsables.length > 0 ? responsables[0].id : "",
         responsablesAdicionales: [],
       });
-      
-      alert("Proyecto registrado exitosamente.");
+      showSuccess("Registro Exitoso", "Proyecto creado correctamente.");
     } catch (error: any) {
-      console.error("Error al registrar proyecto:", error);
-      // El store ya maneja el mensaje de error si viene del backend
+      console.error(error);
+      const msg = error.response?.data?.message || error.message || "No se pudo crear el proyecto. Verifique los requisitos.";
+      showError("Error de Registro", msg);
     }
   };
 
   const handleSaveEditProject = async () => {
     if (!editingProyecto) return;
-    await updateProyecto(editingProyecto);
-    setIsEditProjectModalOpen(false);
-    setEditingProyecto(null);
+    try {
+      await updateProyecto(editingProyecto);
+      setIsEditProjectModalOpen(false);
+      setEditingProyecto(null);
+      showSuccess("Cambios Guardados", "Información actualizada.");
+    } catch (err) {
+      showError("Error al Guardar", "No se pudieron guardar los cambios.");
+    }
   };
 
-  const currentSelectedProyecto = selectedProyecto 
-    ? proyectos.find(p => p.id === selectedProyecto.id) || null
-    : null;
+  const currentSelectedProyecto = useMemo(() => 
+    selectedProyecto ? proyectos.find(p => p.id === selectedProyecto.id) || null : null,
+    [selectedProyecto, proyectos]
+  );
 
   const proyectosFiltrados = useMemo(() => {
     return proyectos.filter((p) => {
@@ -290,11 +322,10 @@ export default function ProyectosPage() {
           !p.codigo.toLowerCase().includes(filtros.searchQuery.toLowerCase())) {
         return false;
       }
-      if (filtros.estado !== "all" && p.estado !== filtros.estado) return false;
-      if (filtros.area !== "all" && p.area !== filtros.area) return false;
-      if (filtros.prioridad !== "all" && p.prioridad !== filtros.prioridad) return false;
-      if (filtros.semaforo !== "all" && p.semaforo !== filtros.semaforo) return false;
-      if (filtros.responsable !== "all" && p.responsablePrincipalId !== filtros.responsable) return false;
+      if (filtros.estado && p.estado !== filtros.estado) return false;
+      if (filtros.area && p.area !== filtros.area) return false;
+      if (filtros.prioridad && p.prioridad !== filtros.prioridad) return false;
+      if (filtros.responsable && p.responsablePrincipalId !== filtros.responsable) return false;
       return true;
     });
   }, [proyectos, filtros]);
@@ -309,243 +340,192 @@ export default function ProyectosPage() {
     amarillos: proyectos.filter(p => p.semaforo === 'Amarillo').length,
     rojos: proyectos.filter(p => p.semaforo === 'Rojo').length,
   }), [proyectos]);
-// Estadísticas de Actividades
-const actividadStats = useMemo(() => ({
-  total: proyectos.reduce((acc, p) => acc + (p.actividades?.length || 0), 0),
-  pendientes: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Pendiente").length || 0), 0),
-  enProgreso: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "En Progreso").length || 0), 0),
-  completadas: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Completada" || a.estado === "Validada").length || 0), 0),
-  bloqueadas: proyectos.reduce((acc, p) => acc + (p.actividades?.filter(a => a.estado === "Bloqueada").length || 0), 0),
-}), [proyectos]);
 
-// KPIs
-const kpis = calcularKPIs('mensual');
+  const kpis = calcularKPIs('mensual');
 
-return (
-
-    <div className="space-y-6">
+  return (
+    <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary/10 p-2 rounded-lg">
-            <Briefcase className="w-6 h-6 text-primary" />
+        <div>
+          <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <Briefcase className="w-5 h-5 text-primary" />
+            </div>
+            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Gestión de Proyectos</h1>
           </div>
-          <h1 className="text-3xl font-medium text-primary tracking-tight uppercase">Gestión de Proyectos</h1>
+          <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Control operativo y seguimiento de proyectos.</p>
         </div>
         <Button
-          className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+          className="h-9 gap-2 font-black uppercase text-[10px] bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
           onClick={() => setIsNewProjectModalOpen(true)}
         >
           <Plus className="w-4 h-4" /> Nuevo Proyecto
         </Button>
       </div>
 
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <StatsCard label="Total" value={stats.total} icon={<Briefcase className="w-4 h-4" />} color="text-primary" bgColor="bg-primary/5" />
+        <StatsCard label="Ejecución" value={stats.activos} icon={<Activity className="w-4 h-4" />} color="text-orange-600" bgColor="bg-orange-50" />
+        <StatsCard label="Plan" value={stats.planification} icon={<Calendar className="w-4 h-4" />} color="text-blue-600" bgColor="bg-blue-50" />
+        <StatsCard label="Finalizado" value={stats.finalizados} icon={<CheckCircle2 className="w-4 h-4" />} color="text-green-600" bgColor="bg-green-50" />
+        <StatsCard label="Críticos" value={stats.rojos} icon={<AlertCircle className="w-4 h-4" />} color="text-error" bgColor="bg-red-50" />
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-4">
+        <div className="relative w-full max-w-[400px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+          <Input 
+            placeholder="Buscar código o proyecto..." 
+            className="pl-10 h-9 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-xs rounded-xl" 
+            value={filtros.searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 items-end">
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Estado</Label>
+            <Select value={filtros.estado} onValueChange={(val) => setEstado(val as string)}>
+              <SelectTrigger className="h-9 border-slate-200 bg-white font-bold text-[10px] uppercase rounded-xl">
+                <SelectValue placeholder="ESTADO" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 font-bold text-[10px] uppercase">
+                <SelectItem value="Planificación">Planificación</SelectItem>
+                <SelectItem value="En Ejecución">En Ejecución</SelectItem>
+                <SelectItem value="Detenido">Detenido</SelectItem>
+                <SelectItem value="Finalizado">Finalizado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Líder</Label>
+            <Select value={filtros.responsable} onValueChange={(val) => setResponsable(val as string)}>
+              <SelectTrigger className="h-9 border-slate-200 bg-white font-bold text-[10px] uppercase rounded-xl">
+                <SelectValue placeholder="LÍDER">
+                  {filtros.responsable ? responsables.find(r => r.id === filtros.responsable)?.nombre : "LÍDER"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 font-bold text-[10px] uppercase">
+                {responsables.map(r => (
+                  <SelectItem key={r.id} value={r.id}>{r.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Área</Label>
+            <Select value={filtros.area} onValueChange={(val) => setArea(val as string)}>
+              <SelectTrigger className="h-9 border-slate-200 bg-white font-bold text-[10px] uppercase rounded-xl">
+                <SelectValue placeholder="ÁREA" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 font-bold text-[10px] uppercase">
+                <SelectItem value="Logística y Recursos">Logística</SelectItem>
+                <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería</SelectItem>
+                <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Documental</SelectItem>
+                <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-primary tracking-widest ml-1">Prioridad</Label>
+            <Select value={filtros.prioridad} onValueChange={(val) => setPrioridad(val as string)}>
+              <SelectTrigger className="h-9 border-slate-200 bg-white font-bold text-[10px] uppercase rounded-xl">
+                <SelectValue placeholder="PRIORIDAD" />
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200 font-bold text-[10px] uppercase">
+                <SelectItem value="Baja">Baja</SelectItem>
+                <SelectItem value="Media">Media</SelectItem>
+                <SelectItem value="Alta">Alta</SelectItem>
+                <SelectItem value="Crítica">Crítica</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={resetFiltros} 
+            className="h-9 text-slate-400 hover:text-error hover:bg-red-50 border border-slate-200 rounded-xl gap-2 font-black text-[10px] uppercase"
+          >
+            <FilterX className="w-3.5 h-3.5" /> LIMPIAR
+          </Button>
+        </div>
+      </div>
+
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="bg-white border p-1 rounded-xl h-12">
-          <TabsTrigger value="proyectos" className="gap-2 px-4 font-black uppercase text-[10px]">
-            <FolderKanban className="w-4 h-4" /> Listado de Proyectos
-          </TabsTrigger>
-          <TabsTrigger value="kpis" className="gap-2 px-4 font-black uppercase text-[10px]">
-            <BarChart3 className="w-4 h-4" /> Panel de KPIs
-          </TabsTrigger>
+        <TabsList className="bg-white border p-1 rounded-xl h-10">
+          <TabsTrigger value="proyectos" className="px-4 font-black uppercase text-[9px]">Proyectos ({proyectos.length})</TabsTrigger>
+          <TabsTrigger value="kpis" className="px-4 font-black uppercase text-[9px]">Análisis KPIs</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="proyectos" className="mt-4 space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <StatsCard label="Total Proyectos" value={stats.total} icon={<Briefcase className="w-5 h-5" />} color="text-primary" bgColor="bg-primary/5" />
-            <StatsCard label="En Ejecución" value={stats.activos} icon={<Activity className="w-5 h-5" />} color="text-orange-600" bgColor="bg-orange-50" />
-            <StatsCard label="Planificación" value={stats.planification} icon={<Calendar className="w-5 h-5" />} color="text-blue-600" bgColor="bg-blue-50" />
-            <StatsCard label="Finalizados" value={stats.finalizados} icon={<CheckCircle2 className="w-5 h-5" />} color="text-green-600" bgColor="bg-green-50" />
-            <StatsCard label="Críticos" value={stats.rojos} icon={<AlertCircle className="w-5 h-5" />} color="text-error" bgColor="bg-red-50" />
-          </div>
-
-          {/* BARRA DE FILTROS REFINADA */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-6">
-            <div className="relative w-full">
-              <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block italic">Filtrar por texto</span>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <Input 
-                  placeholder="Buscar código, empresa o nombre del servicio..." 
-                  className="pl-12 h-14 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-base rounded-xl" 
-                  value={filtros.searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 items-end">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado de Ejecución</Label>
-                <Select value={filtros.estado} onValueChange={(val) => setEstado(val ?? "")}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white font-bold text-xs rounded-xl shadow-sm">
-                    <SelectValue placeholder="Todos los estados" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl">
-                    <SelectItem value="all" className="text-slate-400 font-bold italic uppercase text-[10px]">Todos los estados</SelectItem>
-                    <SelectItem value="Planificación" className="font-bold text-[10px] uppercase">Planificación</SelectItem>
-                    <SelectItem value="En Ejecución" className="font-bold text-[10px] uppercase">En Ejecución</SelectItem>
-                    <SelectItem value="Detenido" className="font-bold text-[10px] uppercase">Detenido</SelectItem>
-                    <SelectItem value="Finalizado" className="font-bold text-[10px] uppercase">Finalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Líder del Proyecto</Label>
-                <Select value={filtros.responsable || "all"} onValueChange={(val) => setResponsable(val ?? "")}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white font-bold text-xs rounded-xl shadow-sm">
-                    <SelectValue placeholder="Todos los líderes" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl">
-                    <SelectItem value="all" className="text-slate-400 font-bold italic uppercase text-[10px]">Todos los responsables</SelectItem>
-                    {responsables.map(r => (
-                      <SelectItem key={r.id} value={r.id} className="font-bold text-[10px] uppercase">{r.nombre}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Área Operativa</Label>
-                <Select value={filtros.area} onValueChange={(val) => setArea(val ?? "")}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white font-bold text-xs rounded-xl shadow-sm">
-                    <SelectValue placeholder="Todas las áreas" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl">
-                    <SelectItem value="all" className="text-slate-400 font-bold italic uppercase text-[10px]">Todas las áreas</SelectItem>
-                    <SelectItem value="Logística y Recursos" className="font-bold text-[10px] uppercase">Logística y Recursos</SelectItem>
-                    <SelectItem value="Ingeniería y Supervisión Técnica" className="font-bold text-[10px] uppercase">Ingeniería y Supervisión</SelectItem>
-                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos" className="font-bold text-[10px] uppercase">Gestión Documentaria</SelectItem>
-                    <SelectItem value="Operaciones de Campo y Control de Obra" className="font-bold text-[10px] uppercase">Operaciones de Campo</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Prioridad</Label>
-                <Select value={filtros.prioridad} onValueChange={(val) => setPrioridad(val ?? "")}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white font-bold text-xs rounded-xl shadow-sm">
-                    <SelectValue placeholder="Cualquier prioridad" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl">
-                    <SelectItem value="all" className="text-slate-400 font-bold italic uppercase text-[10px]">Todas las prioridades</SelectItem>
-                    <SelectItem value="Baja" className="font-bold text-[10px] uppercase">Baja</SelectItem>
-                    <SelectItem value="Media" className="font-bold text-[10px] uppercase">Media</SelectItem>
-                    <SelectItem value="Alta" className="font-bold text-[10px] uppercase">Alta</SelectItem>
-                    <SelectItem value="Crítica" className="font-bold text-[10px] uppercase">Crítica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                    variant="outline" 
-                    onClick={resetFiltros} 
-                    className="h-11 flex-1 text-slate-400 hover:text-error hover:bg-red-50 border border-slate-200 transition-all rounded-xl gap-2 font-black text-[10px] uppercase"
-                >
-                    <FilterX className="w-4 h-4" /> LIMPIAR
-                </Button>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+        <TabsContent value="proyectos" className="mt-2">
+          <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow>
-                  <TableHead className="font-black text-primary uppercase text-[10px] py-5">Código</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px] py-3 pl-6 w-[50px]">Item</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px] py-3">Código</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto / Cliente</TableHead>
-                  <TableHead className="font-black text-primary uppercase text-[10px]">Área</TableHead>
-                  <TableHead className="font-black text-primary uppercase text-[10px] text-center">Responsable</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px] text-center">Líder</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-center">Avance</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-right">Estado</TableHead>
-                  <TableHead className="text-right font-black text-primary uppercase text-[10px] w-[80px]">Acciones</TableHead>
+                  <TableHead className="text-right font-black text-primary uppercase text-[10px] w-[80px] pr-6">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {proyectosFiltrados.map((proyecto) => (
+                {proyectosFiltrados.map((proyecto, index) => (
                   <TableRow key={proyecto.id} className="hover:bg-slate-50/50 transition-colors group">
+                    <TableCell className="font-bold text-xs text-slate-400 pl-6">{index + 1}</TableCell>
                     <TableCell className="font-bold text-xs text-primary">{proyecto.codigo}</TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-1.5">
-                            {proyecto.cotizacion && proyecto.cotizacion.estado !== 'Aprobado' ? (
-                                <Badge variant="outline" className="text-[9px] font-black uppercase bg-amber-50 text-amber-600 border-amber-200 px-1.5 py-0 animate-pulse">
-                                    PENDIENTE DE APROBACIÓN COMERCIAL
-                                </Badge>
-                            ) : (
-                                <Badge variant="outline" className="text-[9px] font-black uppercase bg-slate-50 text-slate-400 border-slate-200 px-1.5 py-0">
-                                    {crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="font-black text-sm text-primary group-hover:text-secondary transition-colors uppercase truncate max-w-[300px]">
+                      <div className="flex flex-col">
+                        <span className="text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                            {crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                        </span>
+                        <p className="font-black text-[12px] text-primary group-hover:text-secondary transition-colors uppercase truncate max-w-[280px]">
                           {proyecto.nombre}
                         </p>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn("text-[10px] font-black uppercase text-white shadow-none border-none", areaColors[proyecto.area] || "bg-gray-400")}>
-                        {proyecto.area}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[11px] font-black uppercase border border-primary/20 shadow-inner">
+                      <div className="flex flex-col items-center justify-center gap-1">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[10px] font-black uppercase border border-primary/20 shadow-sm">
                           {getResponsableName(proyecto.responsablePrincipalId).charAt(0)}
                         </div>
-                        <span className="text-[9px] font-black text-slate-600 uppercase">{getResponsableName(proyecto.responsablePrincipalId)}</span>
+                        <span className="text-[9px] font-black text-slate-600 uppercase tracking-tighter">
+                            {getResponsableName(proyecto.responsablePrincipalId)}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="w-full max-w-[120px] mx-auto space-y-1.5">
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase">
+                      <div className="w-full max-w-[90px] mx-auto space-y-1">
+                        <div className="flex justify-between items-center text-[9px] font-black">
                           <span>{proyecto.avanceCalculado}%</span>
-                          <div className={cn("w-2.5 h-2.5 rounded-full shadow-inner ring-1 ring-white", semaforoColors[proyecto.semaforo])} />
+                          <div className={cn("w-2 h-2 rounded-full", semaforoColors[proyecto.semaforo])} />
                         </div>
-                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-100">
-                          <div className={cn("h-full transition-all duration-700", proyecto.avanceCalculado === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${proyecto.avanceCalculado}%` }} />
+                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className={cn("h-full transition-all", proyecto.avanceCalculado === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${proyecto.avanceCalculado}%` }} />
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex flex-col gap-1 items-end">
-                        <Badge className={cn("border-none font-black text-[9px] uppercase shadow-none h-5 px-3", statusColors[proyecto.estado])}>
-                          {proyecto.estado}
-                        </Badge>
-                        <Badge className={cn("border-none font-black text-[9px] uppercase shadow-none h-5 px-3", prioridadColors[proyecto.prioridad])}>
-                          {proyecto.prioridad}
-                        </Badge>
-                      </div>
+                      <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-2", statusColors[proyecto.estado])}>
+                        {proyecto.estado}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-all">
+                    <TableCell className="text-right pr-6">
+                      <div className="flex items-center justify-end gap-1 opacity-60 group-hover:opacity-100">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleOpenDetail(proyecto)}><Eye className="w-4 h-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => handleEditProyecto(proyecto)}><Pencil className="w-4 h-4" /></Button>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-9 w-9 text-primary hover:bg-primary/10 hover:scale-110"
-                          onClick={() => handleOpenDetail(proyecto)}
-                          title="Gestionar"
+                          className="h-8 w-8 text-error" 
+                          onClick={() => {
+                            setProjectToDeleteId(proyecto.id);
+                            setProjectToDeleteName(proyecto.nombre);
+                            setIsSecureDeleteOpen(true);
+                          }}
                         >
-                          <Eye className="w-4.5 h-4.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-9 w-9 text-secondary hover:bg-secondary/10 hover:scale-110"
-                          onClick={() => handleEditProyecto(proyecto)}
-                          title="Editar"
-                        >
-                          <Pencil className="w-4.5 h-4.5" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-9 w-9 text-error hover:bg-error/10 hover:scale-110"
-                          onClick={() => handleDeleteClick(proyecto)}
-                          title="Eliminar"
-                        >
-                          <Trash2 className="w-4.5 h-4.5" />
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -553,81 +533,218 @@ return (
                 ))}
               </TableBody>
             </Table>
+
+            {/* Paginación Integrada (Estilo Cartera) */}
+            {proyectoTotalPages > 1 && (
+                <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
+                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                        Página {proyectoPage} de {proyectoTotalPages} — Total: {totalProyectos} proyectos
+                    </p>
+                    <div className="flex gap-2 mr-2">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={proyectoPage <= 1 || loading}
+                            onClick={() => handlePageChange(proyectoPage - 1)}
+                            className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
+                        >
+                            Anterior
+                        </Button>
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            disabled={proyectoPage >= proyectoTotalPages || loading}
+                            onClick={() => handlePageChange(proyectoPage + 1)}
+                            className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
+                        >
+                            Siguiente
+                        </Button>
+                    </div>
+                </div>
+            )}
           </div>
         </TabsContent>
 
-        <TabsContent value="kpis" className="mt-4">
-          <KPIPanel proyectosStats={stats} actividadesStats={actividadStats} kpis={kpis} onCambiarPeriodo={() => {}} />
+        <TabsContent value="kpis" className="mt-2">
+          <KPIPanel proyectosStats={stats} actividadesStats={{total: 0, pendientes: 0, enProgreso: 0, completadas: 0, bloqueadas: 0}} kpis={kpis} onCambiarPeriodo={() => {}} />
         </TabsContent>
       </Tabs>
 
-      {/* MODALS REDESIGNED */}
+      {currentSelectedProyecto && isDetailOpen && (
+        <ProyectoDetail proyecto={currentSelectedProyecto} onClose={() => { setIsDetailOpen(false); setSelectedProyecto(null); }} />
+      )}
+
+      <ModernDialog 
+        isOpen={modernDialog.isOpen} 
+        onOpenChange={(open) => setModernDialog(prev => ({ ...prev, isOpen: open }))} 
+        title={modernDialog.title} 
+        description={modernDialog.description} 
+        type={modernDialog.type} 
+        confirmText={modernDialog.confirmText} 
+        onConfirm={modernDialog.onConfirm} 
+      />
+
+      {/* MODAL: NUEVO PROYECTO */}
       <Dialog open={isNewProjectModalOpen} onOpenChange={setIsNewProjectModalOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto rounded-xl shadow-2xl">
-          <DialogHeader className="p-8 bg-primary text-white rounded-t-xl shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 uppercase text-white">
-              <Plus className="w-8 h-8 text-accent" /> Nuevo Registro de Proyecto
+        <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-8 bg-primary text-white">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+              <Plus className="w-8 h-8 text-accent" />
+              Nuevo Proyecto Operativo
             </DialogTitle>
+            <DialogDescription className="text-white/70 font-bold uppercase text-xs">
+              Registre un nuevo proyecto a partir de una cotización ganada.
+            </DialogDescription>
           </DialogHeader>
-          <div className="p-8 space-y-8 overflow-y-auto flex-1">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                    <div className="w-1 h-3 bg-primary rounded-full" /> Nombre del Proyecto *
-                </Label>
-                <Input value={newProject.nombre} onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })} placeholder="Ej: CAMBIO DE TABLEROS..." className="h-11 text-sm font-bold border-slate-200 focus:border-primary shadow-sm uppercase" />
-              </div>
-              <div className="space-y-2 flex flex-col">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                    <div className="w-1 h-3 bg-primary rounded-full" /> Cliente Vinculado *
-                </Label>
-                <Combobox options={clientOptions} value={newProject.clientId} onChange={(val) => setNewProject({ ...newProject, clientId: val, cotizacionId: "" })} placeholder="Buscar cliente..." searchPlaceholder="Nombre o RUC..." className="h-11 text-xs border-slate-200 shadow-sm" />
-              </div>
+
+          <div className="p-8 grid grid-cols-2 gap-6">
+            <div className="space-y-2 col-span-2">
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cliente / Empresa</Label>
+              <Combobox
+                options={clientOptions}
+                value={newProject.clientId}
+                onChange={(val) => setNewProject({ ...newProject, clientId: val })}
+                placeholder="BUSCAR CLIENTE..."
+              />
+            </div>
+
+            <div className="space-y-2 col-span-2">
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
+              <Input 
+                className="h-12 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl"
+                placeholder="EJ: MANTENIMIENTO PREVENTIVO SEDAPAL"
+                value={newProject.nombre}
+                onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
+              />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                <div className="w-1 h-3 bg-primary rounded-full" /> Descripción Técnica
-              </Label>
-              <Textarea value={newProject.descripcion} onChange={(e) => setNewProject({ ...newProject, descripcion: e.target.value })} placeholder="Resumen del servicio..." className="h-24 text-sm font-medium resize-none border-slate-200 focus:border-primary shadow-sm" />
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Inicio</Label>
+              <Input 
+                type="date"
+                className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                value={newProject.fechaInicio}
+                onChange={(e) => setNewProject({ ...newProject, fechaInicio: e.target.value })}
+              />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                  <div className="w-1 h-3 bg-primary rounded-full" /> Área Encargada *
-                </Label>
-                <Select value={newProject.area} onValueChange={(val) => setNewProject({ ...newProject, area: val ?? "" })}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white"><SelectValue placeholder="Seleccionar Área" /></SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl font-bold uppercase text-[10px]">
-                    <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
-                    <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión</SelectItem>
-                    <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
-                    <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
-                  </SelectContent>
-                </Select>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Fin Est.</Label>
+              <Input 
+                type="date"
+                className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                value={newProject.fechaFinEstimada}
+                onChange={(e) => setNewProject({ ...newProject, fechaFinEstimada: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Responsable Principal</Label>
+              <Select value={newProject.responsablePrincipalId || ""} onValueChange={(val) => setNewProject({ ...newProject, responsablePrincipalId: val as string })}>
+                <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                  <SelectValue placeholder="SELECCIONAR LÍDER">
+                    {newProject.responsablePrincipalId ? responsables.find(r => r.id === newProject.responsablePrincipalId)?.nombre : "SELECCIONAR LÍDER"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  {responsables.map(r => (
+                    <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Área Ejecutora</Label>
+              <Select value={newProject.area} onValueChange={(val) => setNewProject({ ...newProject, area: val as Area })}>
+                <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                  <SelectValue placeholder="ÁREA">
+                    {newProject.area || "ÁREA"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200">
+                  <SelectItem value="Logística y Recursos">Logística</SelectItem>
+                  <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería</SelectItem>
+                  <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Documental</SelectItem>
+                  <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter className="p-8 bg-slate-50 flex items-center justify-end gap-3">
+            <Button variant="ghost" onClick={() => setIsNewProjectModalOpen(false)} className="font-bold text-slate-500 uppercase text-xs">Cancelar</Button>
+            <Button onClick={handleSaveNewProject} className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs h-12 px-8 rounded-xl shadow-lg shadow-primary/20">Crear Proyecto</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL: EDITAR PROYECTO */}
+      <Dialog open={isEditProjectModalOpen} onOpenChange={setIsEditProjectModalOpen}>
+        <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-8 bg-secondary text-white">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+              <Pencil className="w-8 h-8 text-white" />
+              Editar Proyecto
+            </DialogTitle>
+          </DialogHeader>
+
+          {editingProyecto && (
+            <div className="p-8 grid grid-cols-2 gap-6">
+              <div className="space-y-2 col-span-2">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
+                <Input 
+                  className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                  value={editingProyecto.nombre}
+                  onChange={(e) => setEditingProyecto({ ...editingProyecto, nombre: e.target.value })}
+                />
               </div>
+
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                  <div className="w-1 h-3 bg-primary rounded-full" /> Responsable Principal *
-                </Label>
-                <Select value={newProject.responsablePrincipalId} onValueChange={(val) => setNewProject({ ...newProject, responsablePrincipalId: val ?? "" })}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm">
-                    <SelectValue placeholder="SELECCIONAR LÍDER" />
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Inicio</Label>
+                <Input 
+                  type="date"
+                  className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                  value={editingProyecto.fechaInicio}
+                  onChange={(e) => setEditingProyecto({ ...editingProyecto, fechaInicio: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Fin Est.</Label>
+                <Input 
+                  type="date"
+                  className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                  value={editingProyecto.fechaFinEstimada}
+                  onChange={(e) => setEditingProyecto({ ...editingProyecto, fechaFinEstimada: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Responsable Principal</Label>
+                <Select value={editingProyecto.responsablePrincipalId || ""} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, responsablePrincipalId: val as string })}>
+                  <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                    <SelectValue placeholder="SELECCIONAR LÍDER">
+                        {editingProyecto.responsablePrincipalId ? responsables.find(r => r.id === editingProyecto.responsablePrincipalId)?.nombre : "SELECCIONAR LÍDER"}
+                    </SelectValue>
                   </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 shadow-xl font-bold uppercase text-[10px]">
-                    {responsables.map((resp) => (
-                      <SelectItem key={resp.id} value={resp.id}>{resp.nombre}</SelectItem>
+                  <SelectContent className="bg-white border-slate-200">
+                    {responsables.map(r => (
+                      <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Estado Inicial</Label>
-                <Select value={newProject.estado} onValueChange={(val) => setNewProject({ ...newProject, estado: val ?? "" })}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px]">
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Estado</Label>
+                <Select value={editingProyecto.estado} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, estado: val as EstadoProyecto })}>
+                  <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                    <SelectValue placeholder="ESTADO">
+                        {editingProyecto.estado || "ESTADO"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
                     <SelectItem value="Planificación">Planificación</SelectItem>
                     <SelectItem value="En Ejecución">En Ejecución</SelectItem>
                     <SelectItem value="Detenido">Detenido</SelectItem>
@@ -635,177 +752,57 @@ return (
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Prioridad</Label>
-                <Select value={newProject.prioridad} onValueChange={(val) => setNewProject({ ...newProject, prioridad: val ?? "" })}>
-                  <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px]">
-                    <SelectItem value="Baja">Baja</SelectItem>
-                    <SelectItem value="Media">Media</SelectItem>
-                    <SelectItem value="Alta">Alta</SelectItem>
-                    <SelectItem value="Crítica">Crítica</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-200 border-dashed">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-accent tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Fecha Inicio</Label>
-                <Input type="date" value={newProject.fechaInicio} onChange={(e) => setNewProject({ ...newProject, fechaInicio: e.target.value })} className="h-11 border-slate-200 bg-white shadow-sm" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase text-accent tracking-widest flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Fin Estimado *</Label>
-                <Input type="date" value={newProject.fechaFinEstimada} onChange={(e) => setNewProject({ ...newProject, fechaFinEstimada: e.target.value })} className="h-11 border-slate-200 bg-white shadow-sm" />
-              </div>
-            </div>
-          </div>
-          <DialogFooter className="p-6 border-t bg-slate-50/50 flex flex-row justify-end gap-3 rounded-b-xl shrink-0">
-            <Button variant="ghost" onClick={() => setIsNewProjectModalOpen(false)} className="h-11 px-8 font-bold text-slate-500 hover:bg-slate-200 transition-all uppercase text-xs">CANCELAR</Button>
-            <Button onClick={handleSaveNewProject} className="h-11 px-10 font-black bg-primary hover:bg-primary/90 text-white shadow-xl uppercase text-xs">CREAR PROYECTO</Button>
+          )}
+
+          <DialogFooter className="p-8 bg-slate-50 flex items-center justify-end gap-3">
+            <Button variant="ghost" onClick={() => setIsEditProjectModalOpen(false)} className="font-bold text-slate-500 uppercase text-xs">Cancelar</Button>
+            <Button onClick={handleSaveEditProject} className="bg-secondary hover:bg-secondary/90 text-white font-black uppercase text-xs h-12 px-8 rounded-xl shadow-lg shadow-secondary/20">Guardar Cambios</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Modal Editar Proyecto */}
-      <Dialog open={isEditProjectModalOpen} onOpenChange={setIsEditProjectModalOpen}>
-        <DialogContent className="max-w-4xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto rounded-xl shadow-2xl">
-          <DialogHeader className="p-8 bg-secondary text-white rounded-t-xl shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 uppercase text-white">
-              <Pencil className="w-8 h-8 text-accent" /> Editar Proyecto Real
+      {/* MODAL: BORRADO SEGURO */}
+      <Dialog open={isSecureDeleteOpen} onOpenChange={setIsSecureDeleteOpen}>
+        <DialogContent className="max-w-md bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
+          <DialogHeader className="p-8 bg-error text-white">
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+              <ShieldAlert className="w-8 h-8 text-white" />
+              Borrado de Seguridad
             </DialogTitle>
+            <DialogDescription className="text-white/80 font-bold uppercase text-xs">
+                Esta acción es irreversible y eliminará todo el historial del proyecto: {projectToDeleteName}.
+            </DialogDescription>
           </DialogHeader>
-          <div className="p-8 space-y-8 overflow-y-auto flex-1">
-            {editingProyecto && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Código de Registro</Label>
-                    <Input value={editingProyecto.codigo} disabled className="h-11 text-sm font-bold bg-muted border-slate-200 shadow-none uppercase" />
-                  </div>
-                  <div className="space-y-2 flex flex-col">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest mb-0.5">Cliente Vinculado *</Label>
-                    <Combobox options={clientOptions} value={editingProyecto.clientId} onChange={(val) => setEditingProyecto({ ...editingProyecto, clientId: val })} placeholder="Buscar por nombre..." searchPlaceholder="Nombre o RUC..." className="h-11 text-xs border-slate-200 shadow-sm" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Nombre del Proyecto</Label>
-                  <Input value={editingProyecto.nombre} onChange={(e) => setEditingProyecto({ ...editingProyecto, nombre: e.target.value })} className="h-11 text-sm font-bold border-slate-200 focus:border-primary shadow-sm uppercase" />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Área de Operación</Label>
-                    <Select value={editingProyecto.area} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, area: val as any })}>
-                      <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px] shadow-xl">
-                        <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
-                        <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión</SelectItem>
-                        <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
-                        <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest mb-0.5">Responsable Líder</Label>
-                    <Select value={editingProyecto.responsablePrincipalId} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, responsablePrincipalId: val ?? "" })}>
-                      <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px] shadow-xl">
-                        {responsables.map((resp) => (
-                          <SelectItem key={resp.id} value={resp.id}>{resp.nombre}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-200">
-                    <div className="space-y-2 md:col-span-2">
-                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Estado Actual</Label>
-                        <Select value={editingProyecto.estado} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, estado: val as any })}>
-                            <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px] shadow-xl">
-                                <SelectItem value="Planificación">Planificación</SelectItem>
-                                <SelectItem value="En Ejecución">En Ejecución</SelectItem>
-                                <SelectItem value="Detenido">Detenido</SelectItem>
-                                <SelectItem value="Finalizado">Finalizado</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2 md:col-span-2">
-                        <Label className="text-[10px] font-black uppercase text-primary tracking-widest">Prioridad</Label>
-                        <Select value={editingProyecto.prioridad} onValueChange={(val) => setEditingProyecto({ ...editingProyecto, prioridad: val as any })}>
-                            <SelectTrigger className="h-11 border-slate-200 bg-white shadow-sm"><SelectValue /></SelectTrigger>
-                            <SelectContent className="bg-white border-slate-200 font-bold uppercase text-[10px] shadow-xl">
-                                <SelectItem value="Baja">Baja</SelectItem>
-                                <SelectItem value="Media">Media</SelectItem>
-                                <SelectItem value="Alta">Alta</SelectItem>
-                                <SelectItem value="Crítica">Crítica</SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
-              </>
-            )}
-          </div>
-          <DialogFooter className="p-6 border-t bg-slate-50/50 rounded-b-xl flex flex-row justify-end gap-3">
-            <Button variant="ghost" onClick={() => setIsEditProjectModalOpen(false)} className="h-11 px-8 font-bold text-slate-500 uppercase text-xs">CANCELAR</Button>
-            <Button onClick={handleSaveEditProject} className="h-11 px-10 font-black bg-secondary hover:bg-secondary/90 text-white shadow-xl uppercase text-xs">GUARDAR CAMBIOS</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Modal Eliminar */}
-      <Dialog open={isDeleteModalOpen} onOpenChange={setIsDeleteModalOpen}>
-        <DialogContent className="sm:max-w-[425px] bg-white rounded-xl">
-          <DialogHeader>
-            <DialogTitle className="text-error flex items-center gap-2 font-black uppercase text-sm"><Trash2 className="w-5 h-5" /> Confirmar Eliminación</DialogTitle>
-            <DialogDescription className="py-4 font-bold text-slate-600">¿Estás seguro de eliminar el proyecto <span className="text-primary underline uppercase">"{projectToDelete?.nombre}"</span>? Esta acción es irreversible.</DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setIsDeleteModalOpen(false)} className="font-bold uppercase text-xs">CANCELAR</Button>
-            <Button variant="destructive" onClick={confirmDelete} className="font-black bg-error hover:bg-error/90 uppercase text-xs px-6">ELIMINAR AHORA</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* DETALLE */}
-      {currentSelectedProyecto && isDetailOpen && (
-        <ProyectoDetail
-          proyecto={currentSelectedProyecto}
-          onClose={() => { setIsDetailOpen(false); setSelectedProyecto(null); }}
-        />
-      )}
-
-      {/* MODAL DE ERROR DE NEGOCIO */}
-      <Dialog open={errorDialog.isOpen} onOpenChange={(open) => setErrorDialog({ ...errorDialog, isOpen: open })}>
-        <DialogContent className="sm:max-w-[500px] border-none shadow-2xl rounded-2xl p-0 overflow-hidden bg-white">
-          <DialogHeader className="p-6 bg-error text-white">
-            <DialogTitle className="flex items-center gap-3 text-xl font-black uppercase">
-              <AlertCircle className="w-8 h-8" /> {errorDialog.title}
-            </DialogTitle>
-          </DialogHeader>
           <div className="p-8 space-y-6">
-            <div className="space-y-4">
-              {errorDialog.message.split('\n\n').map((paragraph, idx) => (
-                <p key={idx} className={cn(
-                  "text-sm leading-relaxed",
-                  idx === 0 ? "font-bold text-slate-900 text-base" : "text-slate-600 font-medium"
-                )}>
-                  {paragraph}
+            <div className="bg-red-50 border border-red-100 p-4 rounded-xl flex gap-4">
+                <Lock className="w-6 h-6 text-error shrink-0" />
+                <p className="text-xs text-error font-bold uppercase leading-snug">
+                    Se requiere contraseña de administrador para confirmar esta operación crítica.
                 </p>
-              ))}
             </div>
-            <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex gap-3 items-start">
-              <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-[11px] font-bold text-amber-800 leading-tight uppercase">
-                ESTADO REQUERIDO: APROBADA
-              </p>
+
+            <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-500 ml-1 tracking-widest">Contraseña Admin</Label>
+                <Input 
+                    type="password"
+                    placeholder="••••••••"
+                    className="h-12 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSecureDelete()}
+                />
             </div>
           </div>
-          <DialogFooter className="p-6 bg-slate-50 border-t flex justify-end">
+
+          <DialogFooter className="p-8 bg-slate-50 flex items-center justify-end gap-3">
+            <Button variant="ghost" onClick={() => setIsSecureDeleteOpen(false)} className="font-bold text-slate-500 uppercase text-xs" disabled={isDeleting}>Cancelar</Button>
             <Button 
-              onClick={() => setErrorDialog({ ...errorDialog, isOpen: false })}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-black uppercase text-xs px-8 h-11 rounded-xl transition-all"
+                onClick={handleSecureDelete} 
+                className="bg-error hover:bg-red-700 text-white font-black uppercase text-xs h-12 px-8 rounded-xl shadow-lg shadow-red-200"
+                disabled={isDeleting}
             >
-              ENTENDIDO
+                {isDeleting ? "Eliminando..." : "Confirmar Eliminación"}
             </Button>
           </DialogFooter>
         </DialogContent>

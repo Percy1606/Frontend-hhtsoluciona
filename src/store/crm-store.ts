@@ -1,108 +1,38 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { api } from '@/lib/api';
+import { format } from 'date-fns';
 import { useAuthStore } from './auth-store';
 import { Client, Interaction, AttachedFile } from '@/types/crm';
+import { toast } from 'sonner';
 
 export type Quote = {
   id: string;
+  codigo: string;
   clientId: string;
   empresa: string;
   contacto: string;
-  monto: number;
-  estado: "Pendiente" | "Enviado" | "Aprobado" | "Rechazado" | "Obsoleto" | "Revisado" | "Aprobada";
-  fecha: string;
-  validez?: string;
-  observaciones?: string;
-  codigo?: string;
-  referencia?: string;
+  referencia: string;
   objetivo?: string;
-  alcance?: any;
+  alcance: any;
   consideraciones?: string;
   entregables?: string;
+  monto: number;
   plazo?: string;
+  validez?: string;
   formaPago?: string;
-  version?: number;
-  interacciones?: Interaction[];
+  estado: 'Pendiente' | 'Enviado' | 'Revisado' | 'Aprobado' | 'Aprobada' | 'Rechazado' | 'Rechazada' | 'Obsoleto';
+  version: number;
+  fecha: string;
+  fechaCreacion?: string;
+  fechaActualizacion?: string;
+  cotizacionPadreId?: string;
+  proyectoGeneradoId?: string;
   documentos?: any[];
+  interacciones?: any[];
 };
 
-
-export const getDaysSinceContact = (ultimoContacto: string | undefined | null): number => {
-  if (!ultimoContacto) return 999;
-  try {
-    const today = new Date();
-    // Normalizamos hoy a medianoche local para comparar solo fechas
-    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    // Extraemos solo la parte de la fecha YYYY-MM-DD
-    const dateStr = ultimoContacto.includes('T') ? ultimoContacto.split('T')[0] : ultimoContacto;
-    const [y, m, d] = dateStr.split('-').map(Number);
-    
-    // Creamos la fecha del último contacto a medianoche local
-    const lastDateLocal = new Date(y, m - 1, d);
-    
-    if (isNaN(lastDateLocal.getTime())) return 999;
-    
-    // Calculamos la diferencia en milisegundos
-    const diffTime = todayLocal.getTime() - lastDateLocal.getTime();
-    
-    // Convertimos a días (86400000 ms = 1 día)
-    // Usamos Math.floor para contar días completos transcurridos
-    const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    // Si la fecha es hoy, diffTime es 0, days es 0.
-    // Si la fecha fue anteayer (01/06) y hoy es (03/06), diffTime es 2 días en ms, days es 2.
-    return Math.max(0, days);
-  } catch (e) {
-    return 999;
-  }
-};
-
-export const isFollowUpOverdue = (client: { proximoSeguimiento?: string | null; etapaComercial?: string }): boolean => {
-  if (client.etapaComercial === "Ganado" || client.etapaComercial === "Perdido") return false;
-  if (!client.proximoSeguimiento) return false; 
-  
-  try {
-    const today = new Date();
-    const todayLocal = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    
-    const dateStr = client.proximoSeguimiento.includes('T') ? client.proximoSeguimiento.split('T')[0] : client.proximoSeguimiento;
-    const [y, m, d] = dateStr.split('-').map(Number);
-    const followUpDate = new Date(y, m - 1, d);
-    
-    if (isNaN(followUpDate.getTime())) return false;
-    
-    return followUpDate < todayLocal;
-  } catch (e) {
-    return false;
-  }
-};
-
-export const calculateClientSemaforo = (client: {
-  proximoSeguimiento?: string | null;
-  ultimoContacto?: string | null;
-  etapaComercial?: string;
-}): "Verde" | "Amarillo" | "Rojo" => {
-  if (client.etapaComercial === "Ganado" || client.etapaComercial === "Perdido") {
-    return "Verde";
-  }
-
-  const isOverdue = isFollowUpOverdue(client);
-  const daysSinceContact = getDaysSinceContact(client.ultimoContacto);
-  
-  if (isOverdue || daysSinceContact > 15) {
-    return "Rojo";
-  }
-
-  if (daysSinceContact <= 7 && daysSinceContact !== 999) {
-    return "Verde";
-  }
-
-  return "Amarillo";
-};
-
-interface CRMFilters {
+export interface CRMFilters {
   searchQuery: string;
   tarifa: string;
   asignadoA: string;
@@ -111,18 +41,52 @@ interface CRMFilters {
   prioridad: string;
   zona: string;
   tipoCliente: string;
+  clasificacion: string;
   temperatura: string; 
+  fechaDesde?: string;
+  fechaHasta?: string;
 }
+
+export const isFollowUpOverdue = (client: Client) => {
+  if (!client.proximoSeguimiento) return false;
+  return new Date(client.proximoSeguimiento) < new Date();
+};
+
+export const getDaysSinceContact = (dateString?: string) => {
+  if (!dateString) return 999;
+  const lastDate = new Date(dateString);
+  const today = new Date();
+  const diffTime = Math.abs(today.getTime() - lastDate.getTime());
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+};
+
+export const calculateClientSemaforo = (client: Client) => {
+  const days = getDaysSinceContact(client.ultimoContacto);
+  if (days <= 7) return 'Verde';
+  if (days <= 15) return 'Amarillo';
+  return 'Rojo';
+};
 
 interface CRMState {
   clients: Client[];
   quotes: Quote[];
+  totalClients: number;
+  totalQuotes: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  quotePage: number;
+  quoteLimit: number;
+  quoteTotalPages: number;
   loading: boolean;
   view: 'table' | 'kanban';
   filters: CRMFilters;
+  zones: string[];
   
-  fetchClients: () => Promise<void>;
-  fetchQuotes: () => Promise<void>;
+  fetchClients: (page?: number, limit?: number, append?: boolean) => Promise<void>;
+  fetchClientById: (id: string) => Promise<Client | null>;
+  fetchQuotes: (page?: number, limit?: number) => Promise<void>;
+  fetchZones: () => Promise<void>;
   setView: (view: 'table' | 'kanban') => void;
   setSearchQuery: (query: string) => void;
   setTarifa: (tarifa: string) => void;
@@ -132,287 +96,388 @@ interface CRMState {
   setPrioridad: (prioridad: string) => void;
   setZona: (zona: string) => void;
   setTipoCliente: (tipoCliente: string) => void;
+  setClasificacion: (clasificacion: string) => void;
+  setFechaRango: (desde?: string, hasta?: string) => void;
   resetFilters: () => void;
   
   addClient: (client: Omit<Client, 'id' | 'codigo' | 'ventaProyectada' | 'semaforo'>) => Promise<void>;
-  importClients: (clients: Partial<Client>[]) => Promise<void>;
   updateClient: (client: Client) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  scheduleFollowUp: (id: string, date: string, action: string, type?: Interaction['tipo']) => Promise<void>;
-  addInteraction: (clientId: string, type: Interaction['tipo'], action: string, observaciones: string, user: string) => Promise<void>;
-  attachFile: (clientId: string, file: Omit<AttachedFile, 'id' | 'fecha'>) => void;
-  deleteFile: (clientId: string, fileId: string) => void;
-  changeStage: (clientId: string, stage: Client['etapaComercial']) => Promise<void>;
+  deleteClientSecure: (id: string, password: string) => Promise<void>;
+
+  addInteraction: (clientId: string, data: { tipo: string, accion: string, observaciones: string, usuario: string }) => Promise<void>;
+  
   reassignSeller: (clientId: string, seller: string) => Promise<void>;
-  uploadQuoteFile: (file: File) => Promise<any>;
+  attachFile: (clientId: string, file: { nombre: string, url: string, tipo: string, tamano: string, subidoPor: string }) => Promise<void>;
+  deleteFile: (clientId: string, fileId: string) => Promise<void>;
 
   addQuote: (quote: Omit<Quote, 'id'>) => Promise<void>;
+  uploadQuoteFile: (file: File) => Promise<any>;
   importQuotes: (quotes: Partial<Quote>[]) => Promise<void>;
-  updateQuote: (quote: Quote) => Promise<void>;
+  importClients: (clients: Partial<Client>[]) => Promise<void>;
+  updateQuote: (quote: Quote) => Promise<any>;
   deleteQuote: (id: string) => Promise<void>;
+  deleteQuoteSecure: (id: string, password: string) => Promise<void>;
   cloneQuote: (id: string) => Promise<void>;
+  changeStage: (id: string, newStage: Client['etapaComercial']) => Promise<void>;
+  scheduleFollowUp: (clientId: string, fecha: string, accion: string, tipo: Interaction['tipo']) => Promise<void>;
+  scheduleTechnicalVisit: (clientId: string, tecnicoId: string, fecha: string, observaciones: string) => Promise<void>;
 }
+
+const safeJsonParse = (str: any, fallback: any = []) => {
+  if (typeof str !== 'string') return str || fallback;
+  if (!str || str.trim() === '') return fallback;
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    console.warn("[CRMStore] Error parsing JSON:", str);
+    return fallback;
+  }
+};
 
 export const useCRMStore = create<CRMState>()(
   persist(
     (set, get) => ({
       clients: [], 
       quotes: [],
+      totalClients: 0,
+      totalQuotes: 0,
+      page: 1,
+      limit: 20,
+      totalPages: 0,
+      quotePage: 1,
+      quoteLimit: 20,
+      quoteTotalPages: 0,
       loading: false,
       view: 'table',
       filters: {
         searchQuery: '',
-        tarifa: 'all',
-        asignadoA: 'all',
-        estado: 'all',
-        etapaComercial: 'all',
-        prioridad: 'all',
-        zona: 'all',
-        tipoCliente: 'all',
-        temperatura: 'all',
+        tarifa: '',
+        asignadoA: '',
+        estado: '',
+        etapaComercial: '',
+        prioridad: '',
+        zona: '',
+        tipoCliente: '',
+        clasificacion: '',
+        temperatura: '',
       },
+      zones: [],
 
-      fetchClients: async () => {
+      fetchClients: async (page = 1, limit = 20, append = false) => {
         set({ loading: true });
         try {
-          const clients = await api.get('/crm/clientes');
-          const parsedClients = clients.map((c: any) => ({
+          get().fetchZones();
+          const { filters } = get();
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+            _t: Date.now().toString(),
+          });
+
+          if (filters.searchQuery) queryParams.append('search', filters.searchQuery);
+          if (filters.tarifa) queryParams.append('tarifa', filters.tarifa);
+          if (filters.zona) queryParams.append('zona', filters.zona);
+          if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
+          if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
+          if (filters.estado) queryParams.append('estado', filters.estado);
+
+          const response = await api.get(`/crm/clientes?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+          }
+
+          const parsedClients = rawData.map((c: any) => ({
             ...c,
-            hallazgosTecnicos: typeof c.hallazgosTecnicos === 'string' ? JSON.parse(c.hallazgosTecnicos) : (c.hallazgosTecnicos || []),
-            solucionesPropuestas: typeof c.solucionesPropuestas === 'string' ? JSON.parse(c.solucionesPropuestas) : (c.solucionesPropuestas || []),
+            hallazgosTecnicos: safeJsonParse(c.hallazgosTecnicos),
+            solucionesPropuestas: safeJsonParse(c.solucionesPropuestas),
             historialInteracciones: c.interacciones || [],
             archivosAdjuntos: c.documentos || []
           }));
-          set({ clients: parsedClients, loading: false });
+
+          if (append) {
+            set((state) => ({
+              clients: [...state.clients, ...parsedClients],
+              totalClients: total,
+              page: page,
+              totalPages: totalP,
+              loading: false
+            }));
+          } else {
+            set({ 
+              clients: parsedClients, 
+              totalClients: total,
+              page: page,
+              totalPages: totalP,
+              loading: false 
+            });
+          }
         } catch (error) {
           console.error("Error fetching clients:", error);
           set({ loading: false });
         }
       },
 
-      fetchQuotes: async () => {
+      fetchQuotes: async (page = 1, limit = 20) => {
         set({ loading: true });
         try {
-          const quotes = await api.get('/crm/cotizaciones');
-          const parsedQuotes = quotes.map((q: any) => ({
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          
+          const response = await api.get(`/crm/cotizaciones?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+          }
+
+          const parsedQuotes = rawData.map((q: any) => ({
             ...q,
             empresa: q.cliente?.empresa || "Sin Empresa",
             contacto: q.cliente?.contacto || "Sin Contacto",
-            alcance: typeof q.alcance === 'string' ? JSON.parse(q.alcance) : (q.alcance || [])
+            alcance: safeJsonParse(q.alcance)
           }));
-          set({ quotes: parsedQuotes, loading: false });
+          set({ 
+            quotes: parsedQuotes, 
+            totalQuotes: total,
+            quotePage: page,
+            quoteLimit: limit,
+            quoteTotalPages: totalP,
+            loading: false 
+          });
         } catch (error) {
           console.error("Error fetching quotes:", error);
           set({ loading: false });
         }
       },
 
+      fetchClientById: async (id) => {
+        try {
+          const c = await api.get(`/crm/clientes/${id}`);
+          if (!c) return null;
+
+          const parsedClient = {
+            ...c,
+            hallazgosTecnicos: safeJsonParse(c.hallazgosTecnicos),
+            solucionesPropuestas: safeJsonParse(c.solucionesPropuestas),
+            historialInteracciones: c.interacciones || [],
+            archivosAdjuntos: c.documentos || []
+          };
+
+          // Actualizar el cliente en la lista local si existe
+          set((state) => ({
+            clients: state.clients.map(cl => cl.id === id ? parsedClient : cl)
+          }));
+
+          return parsedClient;
+        } catch (error) {
+          console.error(`Error fetching client ${id}:`, error);
+          return null;
+        }
+      },
+
+      fetchZones: async () => {
+        try {
+          const zones = await api.get('/crm/zonas');
+          if (Array.isArray(zones)) {
+            set({ zones });
+          }
+        } catch (error) {
+          console.error("Error fetching zones:", error);
+        }
+      },
+
       setView: (view) => set({ view }),
-      setSearchQuery: (query) => set((state) => ({ filters: { ...state.filters, searchQuery: query } })),
-      setTarifa: (tarifa) => set((state) => ({ filters: { ...state.filters, tarifa } })),
-      setAsignadoA: (asignadoA) => set((state) => ({ filters: { ...state.filters, asignadoA } })),
-      setEstado: (estado) => set((state) => ({ filters: { ...state.filters, estado } })),
-      setEtapaComercial: (etapaComercial) => set((state) => ({ filters: { ...state.filters, etapaComercial } })),
-      setPrioridad: (prioridad) => set((state) => ({ filters: { ...state.filters, prioridad } })),
-      setZona: (zona) => set((state) => ({ filters: { ...state.filters, zona } })),
-      setTipoCliente: (tipoCliente) => set((state) => ({ filters: { ...state.filters, tipoCliente } })),
+      setSearchQuery: (query) => set((state) => ({ page: 1, filters: { ...state.filters, searchQuery: query } })),
+      setTarifa: (tarifa) => set((state) => ({ page: 1, filters: { ...state.filters, tarifa } })),
+      setAsignadoA: (asignadoA) => set((state) => ({ page: 1, filters: { ...state.filters, asignadoA } })),
+      setEstado: (estado) => set((state) => ({ page: 1, filters: { ...state.filters, estado } })),
+      setEtapaComercial: (etapaComercial) => set((state) => ({ page: 1, filters: { ...state.filters, etapaComercial } })),
+      setPrioridad: (prioridad) => set((state) => ({ page: 1, filters: { ...state.filters, prioridad } })),
+      setZona: (zona) => set((state) => ({ page: 1, filters: { ...state.filters, zona } })),
+      setTipoCliente: (tipoCliente) => set((state) => ({ page: 1, filters: { ...state.filters, tipoCliente } })),
+      setClasificacion: (clasificacion) => set((state) => ({ page: 1, filters: { ...state.filters, clasificacion } })),
+      setFechaRango: (desde, hasta) => set((state) => ({ 
+        page: 1,
+        filters: { ...state.filters, fechaDesde: desde, fechaHasta: hasta } 
+      })),
       resetFilters: () => set({
+        page: 1,
         filters: {
           searchQuery: '',
-          tarifa: 'all',
-          asignadoA: 'all',
-          estado: 'all',
-          etapaComercial: 'all',
-          prioridad: 'all',
-          zona: 'all',
-          tipoCliente: 'all',
-          temperatura: 'all',
+          tarifa: '',
+          asignadoA: '',
+          estado: '',
+          etapaComercial: '',
+          prioridad: '',
+          zona: '',
+          tipoCliente: '',
+          clasificacion: '',
+          temperatura: '',
         }
       }),
-      
+
       addClient: async (clientData) => {
+        set({ loading: true });
         try {
-          const today = new Date().toISOString();
-          const { id, fechaCreacion, fechaActualizacion, interacciones, historialInteracciones, proyectos, documentos, archivosAdjuntos, ...cleanData } = clientData as any;
-          
           const payload = {
-            ...cleanData,
-            semaforo: "Verde",
-            ultimoContacto: today, // NUEVO CLIENTE = CONTACTO HOY
-            proximoSeguimiento: cleanData.proximoSeguimiento ? new Date(cleanData.proximoSeguimiento).toISOString() : null,
-            ventaProyectada: 0,
-            probabilidad: 0,
-            montoEstimado: 0,
-            temperatura: "Tibio",
+            ...clientData,
+            semaforo: (clientData as any).semaforo || "Verde",
+            temperatura: (clientData as any).temperatura || "Tibio"
           };
-          
           await api.post('/crm/clientes', payload);
-          await get().fetchClients();
+          await get().fetchClients(1);
         } catch (error) {
           console.error("Error adding client:", error);
+          throw error;
         }
       },
 
-      importClients: async (clientsData) => {
+      updateClient: async (client) => {
+        set({ loading: true });
         try {
-           // We can use the bulk endpoint if the backend supports it, but for safety, mapping through addClient is also fine or just post to bulk.
-           // Since we don't have a specific backend bulk method typed in api.ts, we'll try the bulk endpoint or fallback to individual.
-           await api.post('/crm/clientes/bulk', clientsData);
-           await get().fetchClients();
-        } catch (error) {
-           console.error("Error importing clients:", error);
-        }
-      },
-
-      updateClient: async (updatedClient) => {
-        try {
-          const { id, fechaCreacion, fechaActualizacion, interacciones, historialInteracciones, proyectos, documentos, archivosAdjuntos, ...cleanData } = updatedClient as any;
+          const { 
+            id, 
+            interacciones, 
+            documentos, 
+            proyectos, 
+            historialInteracciones, 
+            archivosAdjuntos,
+            fechaCreacion,
+            fechaActualizacion,
+            deletedAt,
+            ...data 
+          } = client as any;
           
-          // Mantenemos el ultimoContacto que ya tenía el cliente en el store
-          const existingClient = get().clients.find(c => c.id === id);
-          
-          const payload = {
-            ...cleanData,
-            ultimoContacto: existingClient?.ultimoContacto || cleanData.ultimoContacto,
-            proximoSeguimiento: cleanData.proximoSeguimiento ? new Date(cleanData.proximoSeguimiento).toISOString() : null,
-          };
-          
-          // Recalculamos semáforo antes de enviar
-          payload.semaforo = calculateClientSemaforo(payload);
-          
-          await api.put(`/crm/clientes/${id}`, payload);
-          await get().fetchClients();
+          await api.put(`/crm/clientes/${id}`, data);
+          await get().fetchClients(1);
         } catch (error) {
           console.error("Error updating client:", error);
+          throw error;
         }
       },
 
       deleteClient: async (id) => {
         try {
           await api.delete(`/crm/clientes/${id}`);
-          await get().fetchClients();
+          await get().fetchClients(1);
         } catch (error) {
           console.error("Error deleting client:", error);
+          throw error;
         }
       },
 
-      scheduleFollowUp: async (id, date, action, type = "Llamada") => {
+      deleteClientSecure: async (id, password) => {
         try {
-          const client = get().clients.find(c => c.id === id);
-          if (!client) return;
-          const today = new Date().toISOString();
-          
-          // 1. Guardar la interacción
-          await api.post('/crm/interacciones', {
-            clientId: id,
-            tipo: type,
-            accion: action,
-            observaciones: `Seguimiento registrado. Próxima acción para el ${date}.`,
-            usuario: client.asignadoA || "Sistema",
-            fecha: today
-          });
-          
-          // 2. Actualizar el cliente (REINICIANDO DÍAS SIN CONTACTO)
-          const updatePayload: any = {
-            ultimoContacto: today,
-            proximoSeguimiento: new Date(date).toISOString(),
-            accion: action,
-          };
-          updatePayload.semaforo = calculateClientSemaforo({
-            ...client,
-            ...updatePayload
-          });
-
-          await api.put(`/crm/clientes/${id}`, updatePayload);
-          
-          await get().fetchClients();
-        } catch (error) {
-          console.error("Error scheduling follow up:", error);
+          await api.post(`/crm/clientes/${id}/secure-delete`, { password });
+          await get().fetchClients(1);
+        } catch (error: any) {
+          console.error("Error in secure delete client:", error);
+          throw error;
         }
       },
 
-      addInteraction: async (clientId, type, action, observaciones, user) => {
+      addInteraction: async (clientId, data) => {
         try {
-          const today = new Date().toISOString();
-          await api.post('/crm/interacciones', {
-            clientId,
-            tipo: type,
-            accion: action,
-            observaciones,
-            usuario: user,
-            fecha: today
-          });
-          
-          // ACTUALIZAMOS ÚLTIMO CONTACTO AL REGISTRAR INTERACCIÓN
-          const client = get().clients.find(c => c.id === clientId);
-          const updatePayload: any = {
-            ultimoContacto: today,
-          };
-          if (client) {
-            updatePayload.semaforo = calculateClientSemaforo({
-              ...client,
-              ...updatePayload
-            });
-          } else {
-            updatePayload.semaforo = "Verde";
-          }
-
-          await api.put(`/crm/clientes/${clientId}`, updatePayload);
-          
-          await get().fetchClients();
+          await api.post('/crm/interacciones', { ...data, clientId });
+          await get().fetchClients(1);
         } catch (error) {
           console.error("Error adding interaction:", error);
         }
       },
 
-      attachFile: (clientId, fileData) => set((state) => ({
-        clients: state.clients.map((c) => {
-          if (c.id !== clientId) return c;
-          const newFile: AttachedFile = {
-            ...fileData,
-            id: `file_${Date.now()}`,
-            fecha: new Date().toISOString()
-          };
-          return {
-            ...c,
-            archivosAdjuntos: [newFile, ...(c.archivosAdjuntos || [])]
-          };
-        })
-      })),
-
-      deleteFile: (clientId, fileId) => set((state) => ({
-        clients: state.clients.map((c) => {
-          if (c.id !== clientId) return c;
-          return {
-            ...c,
-            archivosAdjuntos: (c.archivosAdjuntos || []).filter(f => f.id !== fileId)
-          };
-        })
-      })),
-
-      changeStage: async (clientId, stage) => {
+      reassignSeller: async (clientId, seller) => {
         try {
-          await api.put(`/crm/clientes/${clientId}`, { etapaComercial: stage });
-          await get().fetchClients();
+          const client = get().clients.find(c => c.id === clientId);
+          if (!client) return;
+          
+          const { 
+            id: _, 
+            interacciones, 
+            documentos, 
+            proyectos, 
+            historialInteracciones, 
+            archivosAdjuntos,
+            fechaCreacion,
+            fechaActualizacion,
+            deletedAt,
+            ...data 
+          } = client as any;
+          
+          await api.put(`/crm/clientes/${clientId}`, { 
+            ...data, 
+            asignadoA: seller 
+          });
+          
+          await get().fetchClients(1);
+          toast.success("Asesor Reasignado", { description: `El cliente ahora está asignado a ${seller}.` });
         } catch (error) {
-          console.error("Error changing stage:", error);
+          console.error("Error reassigning seller:", error);
+          toast.error("Error al Reasignar", { description: "No se pudo actualizar el asesor." });
         }
       },
 
-      reassignSeller: async (clientId, seller) => {
+      attachFile: async (clientId, fileData) => {
         try {
-          await api.put(`/crm/clientes/${clientId}`, { asignadoA: seller });
-          await get().fetchClients();
+          await api.post('/crm/documentos', { ...fileData, clientId });
+          await get().fetchClients(1);
+          toast.success("Archivo Adjunto", { description: "El documento se vinculó al cliente exitosamente." });
         } catch (error) {
-          console.error("Error reassigning seller:", error);
+          console.error("Error attaching file:", error);
+          toast.error("Error al Adjuntar", { description: "No se pudo vincular el archivo." });
+        }
+      },
+
+      deleteFile: async (clientId, fileId) => {
+        try {
+          await api.delete(`/crm/documentos/${fileId}`);
+          await get().fetchClients(1);
+          toast.success("Archivo Eliminado", { description: "El documento fue removido." });
+        } catch (error) {
+          console.error("Error deleting file:", error);
+          toast.error("Error al Eliminar", { description: "No se pudo borrar el archivo." });
+        }
+      },
+
+      addQuote: async (quote) => {
+        set({ loading: true });
+        try {
+          // Limpiamos campos que el backend no acepta en el CreateCotizacionDto
+          const { empresa, contacto, ...cleanData } = quote as any;
+          
+          await api.post('/crm/cotizaciones', cleanData);
+          await get().fetchQuotes();
+        } catch (error) {
+          console.error("Error adding quote:", error);
+          throw error;
         }
       },
 
       uploadQuoteFile: async (file: File) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        
         try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
           const response = await api.post('/crm/cotizaciones/upload', formData);
           return response;
         } catch (error) {
@@ -421,22 +486,30 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
-      addQuote: async (quoteData) => {
+      importQuotes: async (quotesData) => {
+        set({ loading: true });
         try {
-          const { empresa, contacto, ...cleanData } = quoteData as any;
-          const payload = {
-            ...cleanData,
-            fecha: cleanData.fecha ? new Date(cleanData.fecha).toISOString() : new Date().toISOString()
-          };
-          await api.post('/crm/cotizaciones', payload);
+          await api.post('/crm/cotizaciones/bulk', quotesData);
           await get().fetchQuotes();
         } catch (error) {
-          console.error("Error adding quote:", error);
+          console.error("Error importing quotes:", error);
+        } finally {
+          set({ loading: false });
         }
       },
 
-      importQuotes: async (quotesData) => {
-        // Implement bulk import logic here if needed
+      importClients: async (clientsData) => {
+        set({ loading: true });
+        try {
+          await api.post('/crm/clientes/bulk', clientsData);
+          await get().fetchClients(1);
+          toast.success(`${clientsData.length} clientes importados.`);
+        } catch (error) {
+          console.error("Error importing clients:", error);
+          toast.error("Error al importar clientes");
+        } finally {
+          set({ loading: false });
+        }
       },
 
       updateQuote: async (updatedQuote) => {
@@ -451,66 +524,22 @@ export const useCRMStore = create<CRMState>()(
             codigo, 
             fechaCreacion, 
             fechaActualizacion,
+            proyectoGenerado,
             proyectoGeneradoId,
             ...cleanData 
           } = updatedQuote as any;
+          
           const payload = {
             ...cleanData,
             fecha: cleanData.fecha ? new Date(cleanData.fecha).toISOString() : new Date().toISOString()
           };
           
           await api.put(`/crm/cotizaciones/${id}`, payload);
-          
-          if (payload.estado === "Aprobado") {
-            const confirmProj = confirm("¿Deseas registrar este proyecto aprobado en el módulo de Operaciones ahora mismo?");
-            if (confirmProj) {
-                try {
-                    const currentUser = useAuthStore.getState().user;
-                    const projectPayload = {
-                        clientId: payload.clientId,
-                        nombre: `PROYECTO: ${empresa}`,
-                        descripcion: `Derivado de Cotización ${updatedQuote.codigo}. ${payload.referencia || ""} ${payload.observaciones || ""}`,
-                        estado: "Planificacion",
-                        prioridad: "Media",
-                        semaforo: "Verde",
-                        fechaInicio: new Date().toISOString().split('T')[0],
-                        fechaFinEstimada: new Date(Date.now() + 30 * 86400000).toISOString().split('T')[0],
-                        area: "OperacionesDeCampo",
-                        responsablePrincipalId: currentUser?.responsable?.id || currentUser?.id || "",
-                    };
-                    const newProject = await api.post('/operaciones/proyectos', projectPayload);
-                    
-                    // VINCULAMOS EL PROYECTO A LA COTIZACIÓN
-                    const { 
-                        id: qId, 
-                        cliente: _c, 
-                        documentos: _d, 
-                        interacciones: _i, 
-                        empresa: _e, 
-                        contacto: _con, 
-                        codigo: _cod, 
-                        fechaCreacion: _fc, 
-                        fechaActualizacion: _fa,
-                        proyectoGenerado: _pg,
-                        ...cleanQuoteData 
-                    } = updatedQuote as any;
-
-                    await api.put(`/crm/cotizaciones/${id}`, {
-                        ...cleanQuoteData,
-                        proyectoGeneradoId: newProject.id,
-                        estado: "Aprobado"
-                    });
-
-                    alert("¡Proyecto registrado y vinculado exitosamente!");
-                } catch (err) {
-                    console.error("Error al crear proyecto desde cotización:", err);
-                    alert("La cotización se actualizó, pero hubo un error al crear el proyecto en Operaciones.");
-                }
-            }
-          }
           await get().fetchQuotes();
+          return { success: true, quoteStatus: payload.estado };
         } catch (error) {
           console.error("Error updating quote:", error);
+          throw error;
         }
       },
 
@@ -518,8 +547,19 @@ export const useCRMStore = create<CRMState>()(
         try {
           await api.delete(`/crm/cotizaciones/${id}`);
           await get().fetchQuotes();
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error deleting quote:", error);
+          throw error;
+        }
+      },
+
+      deleteQuoteSecure: async (id, password) => {
+        try {
+          await api.post(`/crm/cotizaciones/${id}/secure-delete`, { password });
+          await get().fetchQuotes();
+        } catch (error: any) {
+          console.error("Error in secure delete:", error);
+          throw error;
         }
       },
 
@@ -527,22 +567,12 @@ export const useCRMStore = create<CRMState>()(
         try {
           const originalQuote = get().quotes.find(q => q.id === id);
           if (!originalQuote) return;
-
-          const newVersion = (originalQuote as any).version ? (originalQuote as any).version + 1 : 2;
+          
+          const newVersion = (originalQuote.version || 1) + 1;
+          const { id: _, codigo: __, ...rest } = originalQuote;
           
           const payload = {
-            clientId: originalQuote.clientId,
-            referencia: originalQuote.referencia,
-            objetivo: originalQuote.objetivo,
-            alcance: originalQuote.alcance,
-            consideraciones: (originalQuote as any).consideraciones,
-            entregables: (originalQuote as any).entregables,
-            monto: originalQuote.monto,
-            plazo: originalQuote.plazo,
-            validez: originalQuote.validez,
-            formaPago: (originalQuote as any).formaPago,
-            observaciones: originalQuote.observaciones,
-            estado: "Pendiente", // Reset state for the new revision
+            ...rest,
             version: newVersion,
             cotizacionPadreId: originalQuote.id,
             fecha: new Date().toISOString()
@@ -550,10 +580,131 @@ export const useCRMStore = create<CRMState>()(
 
           await api.post('/crm/cotizaciones', payload);
           await get().fetchQuotes();
-          alert(`Revisión v${newVersion} generada con éxito.`);
         } catch (error) {
           console.error("Error cloning quote:", error);
           alert("Error al generar la revisión.");
+        }
+      },
+
+      changeStage: async (id, newStage) => {
+        try {
+          const client = get().clients.find(c => c.id === id);
+          if (!client) return;
+          
+          const { 
+            id: _, 
+            interacciones, 
+            documentos, 
+            proyectos, 
+            historialInteracciones, 
+            archivosAdjuntos,
+            fechaCreacion,
+            fechaActualizacion,
+            deletedAt,
+            ...data 
+          } = client as any;
+          
+          // Actualización optimista local para fluidez total
+          set((state) => ({
+            clients: state.clients.map(c => c.id === id ? { ...c, etapaComercial: newStage } : c)
+          }));
+
+          await api.put(`/crm/clientes/${id}`, { 
+            ...data, 
+            etapaComercial: newStage 
+          });
+          
+          // Sincronizar suavemente sin resetear la vista
+          const response = await api.get(`/crm/clientes/${id}`);
+          if (response) {
+            set((state) => ({
+                clients: state.clients.map(c => c.id === id ? response : c)
+            }));
+          }
+        } catch (error) {
+          console.error("Error changing stage:", error);
+          // Revertir en caso de error
+          await get().fetchClients(1);
+        }
+      },
+
+      scheduleFollowUp: async (clientId, fecha, accion, tipo) => {
+        try {
+          const user = useAuthStore.getState().user;
+          
+          // 1. Registrar interacción
+          await api.post('/crm/interacciones', {
+            clientId,
+            fecha: new Date().toISOString(),
+            tipo,
+            accion: 'Seguimiento registrado',
+            observaciones: accion,
+            usuario: user?.nombre || 'Admin'
+          });
+
+          // 2. Actualizar datos del cliente (Próximo seguimiento y última acción)
+          const client = get().clients.find(c => c.id === clientId);
+          if (client) {
+            const { id: _, interacciones, documentos, proyectos, ...cleanData } = client as any;
+            await api.put(`/crm/clientes/${clientId}`, {
+              ...cleanData,
+              proximoSeguimiento: fecha,
+              accion: accion,
+              ultimoContacto: new Date().toISOString()
+            });
+          }
+          
+          await get().fetchClients(1);
+        } catch (error) {
+          console.error("Error scheduling follow up:", error);
+          throw error;
+        }
+      },
+
+      scheduleTechnicalVisit: async (clientId, tecnicoId, fecha, observaciones) => {
+        try {
+          const user = useAuthStore.getState().user;
+          const client = get().clients.find(c => c.id === clientId);
+          
+          // 1. Crear Actividad Comercial en CRM (esto disparará la notificación en el backend)
+          await api.post('/crm/actividades', {
+            clienteId: clientId,
+            usuarioId: user?.id || 'Sistema',
+            tipoActividad: 'VISITA_TECNICA',
+            descripcion: observaciones,
+            fechaActividad: fecha,
+            estado: 'PENDIENTE',
+            tecnicoId,
+            clienteNombre: client?.empresa || 'Empresa'
+          });
+
+          // 2. Crear Ficha Técnica en Operaciones (Bandeja de Entrada)
+          await api.post('/operaciones/fichas-tecnicas', {
+            clienteId: clientId,
+            tecnicoId: tecnicoId,
+            fechaVisita: fecha,
+            observaciones: observaciones,
+            estado: 'PENDIENTE'
+          });
+
+          // 3. Registrar en Bitácora de Seguimiento (CRM)
+          const fechaFmt = format(new Date(fecha), "dd/MM/yyyy HH:mm");
+          await api.post('/crm/interacciones', {
+            clientId,
+            fecha: new Date().toISOString(),
+            tipo: 'Visita',
+            accion: 'Visita Técnica Programada',
+            observaciones: `Se programó una visita técnica para el ${fechaFmt}. Notas: ${observaciones || 'Sin observaciones'}`,
+            usuario: user?.nombre || 'Sistema'
+          });
+
+          // 4. Actualizar etapa del cliente
+          await get().changeStage(clientId, 'Visita Agendada');
+          
+          await get().fetchClients(1);
+        } catch (error) {
+          console.error("Error scheduling technical visit:", error);
+          throw error;
         }
       },
     }),

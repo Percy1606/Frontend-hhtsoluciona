@@ -78,6 +78,18 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
   };
 
   const handleFormSubmit = async (data: any) => {
+    // 1. VALIDACIÓN DE DUPLICADOS (NUEVA PROPUESTA)
+    if (!quote) {
+        const { quotes } = useCRMStore.getState();
+        const existingQuote = quotes.find(q => q.clientId === data.clientId);
+        
+        if (existingQuote) {
+            alert("Ya existe una propuesta técnica registrada para este cliente. Solo puede editar la propuesta existente.");
+            return;
+        }
+    }
+
+    // 2. VALIDACIÓN DE DOCUMENTO
     if (!selectedFile && (!quote || !quote.documentos || quote.documentos.length === 0)) {
       alert("Debes cargar un documento (Word o PDF) antes de guardar la cotización.");
       return;
@@ -219,7 +231,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                           step="0.01" 
                           className="h-11 border-slate-200 font-black text-primary text-base" 
                           {...field} 
-                          value={field.value || 0}
+                          onFocus={(e) => e.target.select()}
                           onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
                         />
                       </FormControl>

@@ -1,106 +1,71 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { api } from '@/lib/api';
 
 // ============================================
-// TIPOS PRINCIPALES
+// TIPOS REALES (Sincronizados con Prisma)
 // ============================================
 
-export type Area = 'Steven' | 'Diego' | 'Guillermo' | 'Mario';
+export type EstadoCompra = 'PENDIENTE' | 'APROBADO' | 'RECIBIDO' | 'CANCELADO';
+export type TipoMovimiento = 'ENTRADA' | 'SALIDA';
 
-export type TipoItem = 'Equipo' | 'Material' | 'Herramienta' | 'Consumible';
-
-export type EstadoItem = 'Disponible' | 'Asignado' | 'En Uso' | 'Mantenimiento' | 'Dañado' | 'Reservado';
-
-export type EstadoAsignacion = 'Pendiente' | 'Aprobada' | 'Rechazada' | 'Devuelto';
-
-// ============================================
-// MATERIALES / EQUIPOS
-// ============================================
-
-export interface Material {
+export interface Insumo {
   id: string;
-  codigo: string;
   nombre: string;
   descripcion?: string;
-  tipo: TipoItem;
-  cantidad: number;
-  cantidadMinima: number;
-  unidad: string;
-  estado: EstadoItem;
-  ubicacion?: string;
-  proveedor?: string;
-  costoUnitario?: number;
-  imagen?: string;
-  seriales?: string[]; // Para equipos con serial
-  fechaAdquisicion?: string;
-  vidaUtil?: number; // en meses
-  mantenimientoProximo?: string;
+  unidadMedida: string;
+  stockActual: number;
+  stockMinimo: number;
+  precioReferencial: number;
+  categoria?: string;
+  createdAt: string;
+  updatedAt: string;
+  movimientos?: any[];
+  _count?: { movimientos: number };
 }
 
-// ============================================
-// ASIGNACIONES
-// ============================================
-
-export interface Asignacion {
+export interface Proveedor {
   id: string;
-  materialId: string;
-  proyectoId?: string;
-  usuarioId?: string;
-  cantidad: number;
-  fechaSolicitud: string;
-  fechaAprobacion?: string;
-  fechaAsignacion?: string;
-  fechaDevolucion?: string;
-  estado: EstadoAsignacion;
-  solicitadoPor: string;
-  aprobadoPor?: string;
-  area: Area;
-  observaciones?: string;
-  motivoRechazo?: string;
+  ruc: string;
+  razonSocial: string;
+  contacto?: string;
+  telefono?: string;
+  email?: string;
+  direccion?: string;
 }
 
-// ============================================
-// SOLICITUDES DE MATERIALES
-// ============================================
-
-export interface SolicitudMaterial {
+export interface DetalleOrden {
   id: string;
-  proyectoId: string;
-  solicitante: string;
-  area: Area;
-  fechaSolicitud: string;
-  items: {
-    materialId: string;
-    cantidad: number;
-    observaciones?: string;
-  }[];
-  estado: 'Pendiente' | 'Aprobada' | 'Rechazada' | 'Parcial';
-  fechaAprobacion?: string;
-  aprobadoPor?: string;
-  observaciones?: string;
+  insumoId: string;
+  insumo?: Insumo;
+  cantidad: number;
+  precioUnitario: number;
+  subtotal: number;
 }
-
-// ============================================
-// ORDENES DE COMPRA
-// ============================================
 
 export interface OrdenCompra {
   id: string;
-  numero: string;
-  proveedor: string;
-  ruc: string;
-  fechaOrden: string;
-  fechaEntregaEstimada?: string;
-  items: {
-    materialId: string;
-    nombre: string;
-    cantidad: number;
-    precioUnitario: number;
-    total: number;
-  }[];
-  total: number;
-  estado: 'Pendiente' | 'Aprobada' | 'Enviada' | 'Recibida' | 'Cancelada';
+  codigo: string;
+  proveedorId: string;
+  proveedor?: Proveedor;
+  fechaEmision: string;
+  estado: EstadoCompra;
+  montoTotal: number;
   observaciones?: string;
+  items: DetalleOrden[];
+  createdAt: string;
+}
+
+export interface MovimientoAlmacen {
+  id: string;
+  insumoId: string;
+  insumo?: Insumo;
+  tipo: TipoMovimiento;
+  cantidad: number;
+  fecha: string;
+  motivo?: string;
+  proyectoId?: string;
+  ordenCompraId?: string;
 }
 
 // ============================================
@@ -108,337 +73,366 @@ export interface OrdenCompra {
 // ============================================
 
 interface LogisticaState {
-  materiales: Material[];
-  asignaciones: Asignacion[];
-  solicitudes: SolicitudMaterial[];
-  ordenesCompra: OrdenCompra[];
+  insumos: Insumo[];
+  currentInsumo: Insumo | null;
+  proveedores: Proveedor[];
+  ordenes: OrdenCompra[];
+  movimientosProyecto: MovimientoAlmacen[];
+  totalInsumos: number;
+  insumoPage: number;
+  insumoLimit: number;
+  insumoTotalPages: number;
 
-  // Filtros
-  filtrosMateriales: {
-    searchQuery: string;
-    tipo: string;
-    estado: string;
-    ubicacion: string;
+  // Global Stats
+  inventoryStats: {
+    totalInversion: number;
+    lowStockCount: number;
+    totalItems: number;
   };
 
-  // Acciones de Materiales
-  addMaterial: (material: Omit<Material, 'id' | 'codigo'>) => void;
-  updateMaterial: (material: Material) => void;
-  deleteMaterial: (id: string) => void;
-  updateCantidad: (id: string, cantidad: number) => void;
+  // Ordenes Paginación
+  totalOrdenes: number;
+  ordenPage: number;
+  ordenTotalPages: number;
 
-  // Acciones de Asignaciones
-  addAsignacion: (asignacion: Omit<Asignacion, 'id'>) => void;
-  approveAsignacion: (id: string, aprobadoPor: string) => void;
-  rejectAsignacion: (id: string, motivo: string) => void;
-  devolverMaterial: (id: string) => void;
+  // Movimientos (Kardex) Paginación
+  movimientos: MovimientoAlmacen[];
+  totalMovimientos: number;
+  movimientoPage: number;
+  movimientoTotalPages: number;
 
-  // Acciones de Solicitudes
-  addSolicitud: (solicitud: Omit<SolicitudMaterial, 'id'>) => void;
-  approveSolicitud: (id: string, aprobadoPor: string) => void;
-  rejectSolicitud: (id: string, observaciones: string) => void;
+  loading: boolean;
+  error: string | null;
 
-  // Acciones de Órdenes de Compra
-  addOrdenCompra: (orden: Omit<OrdenCompra, 'id' | 'numero'>) => void;
-  updateOrdenCompra: (orden: OrdenCompra) => void;
+  // Acciones Insumos
+  fetchInsumos: (page?: number, limit?: number, search?: string, categoria?: string, stockStatus?: string) => Promise<void>;
+  fetchInsumoById: (id: string) => Promise<void>;
+  addInsumo: (data: Partial<Insumo>) => Promise<void>;
+  updateInsumo: (id: string, data: Partial<Insumo>) => Promise<void>;
+  removeInsumo: (id: string) => Promise<void>;
+  secureRemoveInsumo: (id: string, password: string) => Promise<void>;
+  
+  // Acciones Proveedores
+  fetchProveedores: () => Promise<void>;
+  addProveedor: (data: Partial<Proveedor>) => Promise<void>;
 
-  // Filtros
-  setFiltroMateriales: (tipo: 'searchQuery' | 'tipo' | 'estado' | 'ubicacion', valor: string) => void;
-  resetFiltrosMateriales: () => void;
+  // Acciones Órdenes de Compra
+  fetchOrdenes: (page?: number, limit?: number, search?: string) => Promise<void>;
+  createOrden: (data: any) => Promise<void>;
+  updateOrden: (id: string, data: any) => Promise<void>;
+  secureRemoveOrden: (id: string, password: string) => Promise<void>;
+  updateEstadoOrden: (id: string, estado: EstadoCompra) => Promise<void>;
+
+  // Acciones Almacén / Despacho / Kardex
+  registrarDespacho: (data: { insumoId: string, cantidad: number, proyectoId: string, motivo?: string }) => Promise<void>;
+  fetchMovimientosProyecto: (proyectoId: string) => Promise<void>;
+  fetchMovimientos: (page?: number, limit?: number, search?: string, tipo?: string) => Promise<void>;
 
   // Utilidades
-  getMaterialesPorEstado: (estado: EstadoItem) => Material[];
-  getMaterialesStockBajo: () => Material[];
-  getAsignacionesActivas: () => Asignacion[];
-  getSolicitudesPendientes: () => SolicitudMaterial[];
+  getInsumosStockBajo: () => Insumo[];
 }
-
-// ============================================
-// DATOS INICIALES
-// ============================================
-
-const MATERIALES_DEFAULT: Material[] = [
-  {
-    id: 'mat_1',
-    codigo: 'EQ-001',
-    nombre: 'Megómetro Digital 5000V',
-    descripcion: 'Equipo para medición de resistencia de aislamiento',
-    tipo: 'Equipo',
-    cantidad: 2,
-    cantidadMinima: 1,
-    unidad: 'und',
-    estado: 'Disponible',
-    ubicacion: 'Almacén Principal',
-    proveedor: 'Instruments Peru',
-    costoUnitario: 2500,
-    seriales: ['MEG-2024-001', 'MEG-2024-002']
-  },
-  {
-    id: 'mat_2',
-    codigo: 'EQ-002',
-    nombre: 'Analizador de Calidad de Energía',
-    descripcion: 'Equipo para análisis de armónicos y factor de potencia',
-    tipo: 'Equipo',
-    cantidad: 1,
-    cantidadMinima: 1,
-    unidad: 'und',
-    estado: 'En Uso',
-    ubicacion: 'En campo - Proyecto RIO VERDE',
-    proveedor: 'Fluke Peru',
-    costoUnitario: 8500,
-    seriales: ['FLK-2023-015']
-  },
-  {
-    id: 'mat_3',
-    codigo: 'MAT-001',
-    nombre: 'Cable NYY 2x4mm',
-    descripcion: 'Cable conductor 2x4mm negro',
-    tipo: 'Material',
-    cantidad: 500,
-    cantidadMinima: 100,
-    unidad: 'ml',
-    estado: 'Disponible',
-    ubicacion: 'Almacén Principal',
-    costoUnitario: 2.5
-  },
-  {
-    id: 'mat_4',
-    codigo: 'HER-001',
-    nombre: 'Juego de Llaves Francesas',
-    descripcion: 'Juego de llaves ajustable 10"',
-    tipo: 'Herramienta',
-    cantidad: 5,
-    cantidadMinima: 2,
-    unidad: 'und',
-    estado: 'Disponible',
-    ubicacion: 'Almacén Principal'
-  },
-  {
-    id: 'mat_5',
-    codigo: 'CON-001',
-    nombre: 'Cinta Aislante 3M',
-    descripcion: 'Cinta aislante de caucho negra 3M',
-    tipo: 'Consumible',
-    cantidad: 20,
-    cantidadMinima: 10,
-    unidad: 'und',
-    estado: 'Disponible',
-    ubicacion: 'Almacén Secundario',
-    costoUnitario: 8
-  },
-  {
-    id: 'mat_6',
-    codigo: 'EQ-003',
-    nombre: 'Cámara Termográfica',
-    descripcion: 'Cámara para detección de puntos calientes',
-    tipo: 'Equipo',
-    cantidad: 1,
-    cantidadMinima: 1,
-    unidad: 'und',
-    estado: 'Mantenimiento',
-    ubicacion: 'Taller',
-    proveedor: 'Fluke Peru',
-    costoUnitario: 12000,
-    mantenimientoProximo: '2026-06-15'
-  }
-];
 
 // ============================================
 // IMPLEMENTACIÓN DEL STORE
 // ============================================
 
-const getNextMaterialCode = (materiales: Material[], tipo: TipoItem): string => {
-  const prefix = tipo === 'Equipo' ? 'EQ' : tipo === 'Herramienta' ? 'HER' : tipo === 'Consumible' ? 'CON' : 'MAT';
-  const count = materiales.filter(m => m.tipo === tipo).length + 1;
-  return `${prefix}-${count.toString().padStart(3, '0')}`;
-};
-
-const getNextOrdenNumber = (ordenes: OrdenCompra[]): string => {
-  const year = new Date().getFullYear();
-  const count = ordenes.length + 1;
-  return `OC-${year.toString().slice(-2)}${count.toString().padStart(4, '0')}`;
-};
-
 export const useLogisticaStore = create<LogisticaState>()(
   persist(
     (set, get) => ({
-      materiales: MATERIALES_DEFAULT,
-      asignaciones: [],
-      solicitudes: [],
-      ordenesCompra: [],
+      insumos: [],
+      currentInsumo: null,
+      proveedores: [],
+      ordenes: [],
+      movimientosProyecto: [],
+      totalInsumos: 0,
+      insumoPage: 1,
+      insumoLimit: 20,
+      insumoTotalPages: 0,
 
-      filtrosMateriales: {
-        searchQuery: '',
-        tipo: 'all',
-        estado: 'all',
-        ubicacion: 'all',
+      inventoryStats: {
+        totalInversion: 0,
+        lowStockCount: 0,
+        totalItems: 0,
       },
 
-      addMaterial: (materialData) => set((state) => {
-        const codigo = getNextMaterialCode(state.materiales, materialData.tipo);
-        const nuevo: Material = {
-          ...materialData,
-          id: `mat_${Date.now()}`,
-          codigo
-        };
-        return { materiales: [...state.materiales, nuevo] };
-      }),
+      totalOrdenes: 0,
+      ordenPage: 1,
+      ordenTotalPages: 0,
 
-      updateMaterial: (materialActualizado) => set((state) => ({
-        materiales: state.materiales.map((m) =>
-          m.id === materialActualizado.id ? materialActualizado : m
-        )
-      })),
+      movimientos: [],
+      totalMovimientos: 0,
+      movimientoPage: 1,
+      movimientoTotalPages: 0,
 
-      deleteMaterial: (id) => set((state) => ({
-        materiales: state.materiales.filter((m) => m.id !== id)
-      })),
+      loading: false,
+      error: null,
 
-      updateCantidad: (id, cantidad) => set((state) => ({
-        materiales: state.materiales.map((m) =>
-          m.id === id ? { ...m, cantidad } : m
-        )
-      })),
+      fetchInsumos: async (page = 1, limit = 20, search = "", categoria = "all", stockStatus = "all") => {
+        set({ loading: true, error: null });
+        try {
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          if (search) queryParams.append('search', search);
+          if (categoria && categoria !== 'all') queryParams.append('categoria', categoria);
+          if (stockStatus && stockStatus !== 'all') queryParams.append('stockStatus', stockStatus);
 
-      addAsignacion: (asignacionData) => set((state) => {
-        const nueva: Asignacion = {
-          ...asignacionData,
-          id: `asig_${Date.now()}`
-        };
+          const response = await api.get(`/logistica/insumos?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
 
-        // Actualizar estado del material
-        const materiales = state.materiales.map((m) => {
-          if (m.id === asignacionData.materialId) {
-            return { ...m, estado: 'Asignado' as EstadoItem };
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || Math.ceil(total / limit) || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+            totalP = Math.ceil(total / limit) || 1;
           }
-          return m;
-        });
 
-        return {
-          asignaciones: [...state.asignaciones, nueva],
-          materiales
-        };
-      }),
-
-      approveAsignacion: (id, aprobadoPor) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
-
-        return {
-          asignaciones: state.asignaciones.map((a) =>
-            a.id === id
-              ? { ...a, estado: 'Aprobada' as EstadoAsignacion, aprobadoPor, fechaAprobacion: today }
-              : a
-          )
-        };
-      }),
-
-      rejectAsignacion: (id, motivo) => set((state) => ({
-        asignaciones: state.asignaciones.map((a) =>
-          a.id === id
-            ? { ...a, estado: 'Rechazada' as EstadoAsignacion, motivoRechazo: motivo }
-            : a
-        )
-      })),
-
-      devolverMaterial: (id) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
-        const asignacion = state.asignaciones.find(a => a.id === id);
-
-        if (!asignacion) return state;
-
-        // Actualizar estado del material a disponible
-        const materiales = state.materiales.map((m) => {
-          if (m.id === asignacion.materialId) {
-            return { ...m, estado: 'Disponible' as EstadoItem };
-          }
-          return m;
-        });
-
-        return {
-          asignaciones: state.asignaciones.map((a) =>
-            a.id === id
-              ? { ...a, estado: 'Devuelto' as EstadoAsignacion, fechaDevolucion: today }
-              : a
-          ),
-          materiales
-        };
-      }),
-
-      addSolicitud: (solicitudData) => set((state) => {
-        const nueva: SolicitudMaterial = {
-          ...solicitudData,
-          id: `sol_${Date.now()}`
-        };
-        return { solicitudes: [...state.solicitudes, nueva] };
-      }),
-
-      approveSolicitud: (id, aprobadoPor) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
-
-        return {
-          solicitudes: state.solicitudes.map((s) =>
-            s.id === id
-              ? { ...s, estado: 'Aprobada' as 'Aprobada', aprobadoPor, fechaAprobacion: today }
-              : s
-          )
-        };
-      }),
-
-      rejectSolicitud: (id, observaciones) => set((state) => ({
-        solicitudes: state.solicitudes.map((s) =>
-          s.id === id
-            ? { ...s, estado: 'Rechazada' as 'Rechazada', observaciones }
-            : s
-        )
-      })),
-
-      addOrdenCompra: (ordenData) => set((state) => {
-        const numero = getNextOrdenNumber(state.ordenesCompra);
-        const nueva: OrdenCompra = {
-          ...ordenData,
-          id: `oc_${Date.now()}`,
-          numero
-        };
-        return { ordenesCompra: [...state.ordenesCompra, nueva] };
-      }),
-
-      updateOrdenCompra: (ordenActualizada) => set((state) => ({
-        ordenesCompra: state.ordenesCompra.map((o) =>
-          o.id === ordenActualizada.id ? ordenActualizada : o
-        )
-      })),
-
-      setFiltroMateriales: (tipo, valor) => set((state) => ({
-        filtrosMateriales: { ...state.filtrosMateriales, [tipo]: valor }
-      })),
-
-      resetFiltrosMateriales: () => set({
-        filtrosMateriales: {
-          searchQuery: '',
-          tipo: 'all',
-          estado: 'all',
-          ubicacion: 'all',
+          set({ 
+            insumos: rawData, 
+            totalInsumos: total,
+            insumoPage: page,
+            insumoLimit: limit,
+            insumoTotalPages: totalP,
+            inventoryStats: response.stats || get().inventoryStats,
+            loading: false 
+          });
+        } catch (err: any) {
+          console.error("Error fetching insumos:", err);
+          set({ error: err.message, loading: false });
         }
-      }),
-
-      getMaterialesPorEstado: (estado) => {
-        return get().materiales.filter(m => m.estado === estado);
       },
 
-      getMaterialesStockBajo: () => {
-        return get().materiales.filter(m => m.cantidad <= m.cantidadMinima);
+      fetchInsumoById: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          const data = await api.get(`/logistica/insumos/${id}`);
+          set({ currentInsumo: data, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
       },
 
-      getAsignacionesActivas: () => {
-        return get().asignaciones.filter(a => a.estado === 'Aprobada' && !a.fechaDevolucion);
+      addInsumo: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post('/logistica/insumos', data);
+          await get().fetchInsumos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
       },
 
-      getSolicitudesPendientes: () => {
-        return get().solicitudes.filter(s => s.estado === 'Pendiente');
+      updateInsumo: async (id, data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.put(`/logistica/insumos/${id}`, data);
+          await get().fetchInsumos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      removeInsumo: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await api.delete(`/logistica/insumos/${id}`);
+          await get().fetchInsumos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      secureRemoveInsumo: async (id, password) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post(`/logistica/insumos/${id}/secure-delete`, { password });
+          await get().fetchInsumos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchProveedores: async () => {
+        set({ loading: true, error: null });
+        try {
+          const data = await api.get('/logistica/proveedores');
+          set({ proveedores: data, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      addProveedor: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post('/logistica/proveedores', data);
+          await get().fetchProveedores();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchOrdenes: async (page = 1, limit = 20, search = "") => {
+        set({ loading: true, error: null });
+        try {
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          if (search) queryParams.append('search', search);
+
+          const response = await api.get(`/logistica/ordenes?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || Math.ceil(total / limit) || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+            totalP = Math.ceil(total / limit) || 1;
+          }
+
+          set({ 
+            ordenes: rawData, 
+            totalOrdenes: total,
+            ordenPage: page,
+            ordenTotalPages: totalP,
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      createOrden: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post('/logistica/ordenes', data);
+          await get().fetchOrdenes();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      updateOrden: async (id, data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.patch(`/logistica/ordenes/${id}`, data);
+          await get().fetchOrdenes();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      secureRemoveOrden: async (id, password) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post(`/logistica/ordenes/${id}/secure-delete`, { password });
+          await get().fetchOrdenes();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      updateEstadoOrden: async (id, estado) => {
+        set({ loading: true, error: null });
+        try {
+          await api.put(`/logistica/ordenes/${id}/estado`, { estado });
+          await Promise.all([
+            get().fetchOrdenes(),
+            get().fetchInsumos()
+          ]);
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      registrarDespacho: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post('/logistica/despacho', data);
+          await get().fetchInsumos();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchMovimientosProyecto: async (proyectoId) => {
+        set({ loading: true, error: null });
+        try {
+          const data = await api.get(`/logistica/proyecto/${proyectoId}/movimientos`);
+          set({ movimientosProyecto: data, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      fetchMovimientos: async (page = 1, limit = 20, search = "", tipo = "all") => {
+        set({ loading: true, error: null });
+        try {
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          if (search) queryParams.append('search', search);
+          if (tipo && tipo !== 'all') queryParams.append('tipo', tipo);
+
+          const response = await api.get(`/logistica/movimientos?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || Math.ceil(total / limit) || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+            totalP = Math.ceil(total / limit) || 1;
+          }
+
+          set({ 
+            movimientos: rawData, 
+            totalMovimientos: total,
+            movimientoPage: page,
+            movimientoTotalPages: totalP,
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      getInsumosStockBajo: () => {
+        return get().insumos.filter(i => i.stockActual <= i.stockMinimo);
       }
     }),
     {
-      name: 'hht-logistica-store',
+      name: 'hht-logistica-store-real',
     }
   )
 );

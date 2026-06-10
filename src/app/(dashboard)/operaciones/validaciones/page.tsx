@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useAuthStore } from "@/store/auth-store";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn, formatDate } from "@/lib/utils";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -34,6 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { EstadoActividad } from "@/lib/types";
 
 
 const statusColors: Record<string, string> = {
@@ -51,11 +54,15 @@ const areaColors: Record<string, string> = {
 };
 
 export default function ValidacionesPage() {
-  const { getValidaciones, aprobarValidacion, rechazarValidacion, responsables } = useOperacionesStore();
+  const { user } = useAuthStore();
+  const { getValidaciones, aprobarValidacion, rechazarValidacion, responsables, updateActividad } = useOperacionesStore();
 
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedArea, setSelectedArea] = useState("all");
-  const [selectedEstado, setSelectedEstado] = useState("all");
+  const [selectedEstado, setSelectedEstado] = useState("Pendiente");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filterMode, setFilterMode] = useState<"all" | "mine" | "urgent">("all");
+  const itemsPerPage = 12; // Aumentamos por página ya que son más pequeñas
 
   // Interaction dialog state
   const [actionDialog, setActionDialog] = useState<{
@@ -74,10 +81,28 @@ export default function ValidacionesPage() {
     observaciones: "",
   });
 
-  const validaciones = getValidaciones();
+  const allValidaciones = getValidaciones();
 
-  // Filter validations
-  const filteredValidaciones = validaciones.filter((v) => {
+  // 1. FILTRAR POR PERMISOS Y MODOS RÁPIDOS
+  const validacionesBase = allValidaciones.filter((v) => {
+    // Seguridad base
+    const isLiderProyecto = user?.responsable?.id === v.proyecto.responsablePrincipalId;
+    const isAdmin = user?.rol === 'ADMIN';
+    if (!isAdmin && !isLiderProyecto) return false;
+
+    // Filtros rápidos
+    if (filterMode === "mine") return isLiderProyecto;
+    if (filterMode === "urgent") {
+        const isCritical = v.actividad.prioridad === 'Crítica';   
+        const isLate = v.actividad.fechaVencimiento && new Date(v.actividad.fechaVencimiento) < new Date();
+        return isCritical || isLate || v.proyecto.semaforo === 'Rojo';
+    }
+    
+    return true;
+  });
+
+  // 2. FILTRAR POR UI
+  const filteredValidaciones = validacionesBase.filter((v) => {
     const matchesSearch =
       v.actividad.descripcion.toLowerCase().includes(searchQuery.toLowerCase()) ||
       v.proyecto.codigo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -88,6 +113,33 @@ export default function ValidacionesPage() {
 
     return matchesSearch && matchesArea && matchesEstado;
   });
+
+  // 3. ORDENAR POR PRIORIDAD (Crítica primero, luego por fecha)
+  const sortedValidaciones = [...filteredValidaciones].sort((a, b) => {
+    // Prioridad crítica arriba
+    const prioA = (a.actividad.prioridad === 'Crítica') ? 1 : 0;
+    const prioB = (b.actividad.prioridad === 'Crítica') ? 1 : 0;
+    if (prioA !== prioB) return prioB - prioA;
+
+    // Luego Pendientes primero que validados
+    if (a.validacion.estado === 'Pendiente' && b.validacion.estado !== 'Pendiente') return -1;
+    if (a.validacion.estado !== 'Pendiente' && b.validacion.estado === 'Pendiente') return 1;
+
+    return 0;
+  });
+
+  // 4. PAGINACIÓN
+  const totalItems = sortedValidaciones.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const paginatedValidaciones = sortedValidaciones.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleOpenAction = (
     type: "aprobar" | "rechazar",
@@ -105,13 +157,35 @@ export default function ValidacionesPage() {
     });
   };
 
-  const handleConfirmAction = () => {
+  const handleConfirmAction = async () => {
     const { type, proyectoId, actividadId, validacionId, observaciones } = actionDialog;
-    if (type === "aprobar") {
-      aprobarValidacion(proyectoId, actividadId, validacionId, observaciones);
-    } else {
-      if (!observaciones.trim()) return; // Required for rejection
-      rechazarValidacion(proyectoId, actividadId, validacionId, observaciones);
+    try {
+      // Caso 1: Validación de Cierre Automática (ID empieza con cierre-)
+      if (validacionId.startsWith('cierre-')) {
+        const nuevoEstado = type === "aprobar" ? "Validada" : "EnProgreso" as EstadoActividad;
+        const vData = validacionesBase.find(v => v.actividad.id === actividadId);
+        if (!vData) return;
+        const actividad = vData.actividad;
+        
+        await updateActividad(proyectoId, {
+          ...actividad,
+          estado: nuevoEstado,
+          observaciones: type === "rechazar" ? observaciones : actividad.observaciones
+        });
+        
+        toast.success(type === "aprobar" ? "Actividad Finalizada" : "Actividad Observada");
+      } 
+      // Caso 2: Puntos de Control Explícitos (Prisma Model)
+      else {
+        if (type === "aprobar") {
+          await aprobarValidacion(proyectoId, actividadId, validacionId, observaciones);
+        } else {
+          if (!observaciones.trim()) return; 
+          await rechazarValidacion(proyectoId, actividadId, validacionId, observaciones);
+        }
+      }
+    } catch (error) {
+      toast.error("Error al procesar validación");
     }
     setActionDialog((prev) => ({ ...prev, open: false }));
   };
@@ -130,168 +204,215 @@ export default function ValidacionesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="bg-primary/10 p-2 rounded-lg">
-          <CheckSquare className="w-6 h-6 text-primary" />
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+            <div className="bg-primary/10 p-2 rounded-lg">
+                <CheckSquare className="w-6 h-6 text-primary" />
+            </div>
+            <div>
+                <h1 className="text-3xl font-black text-primary tracking-tight">Control de Validaciones</h1>
+                <p className="text-muted-foreground mt-0.5 font-medium text-sm italic">Gestión de aprobaciones finales y cumplimiento técnico.</p>
+            </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-black text-primary tracking-tight">Puntos de Control / Validaciones</h1>
-          <p className="text-muted-foreground mt-1 font-medium">Aprobaciones técnicas y operativas para el avance del proyecto.</p>
+
+        {/* MODO DE FILTRADO RÁPIDO */}
+        <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
+            <Button 
+                variant={filterMode === 'all' ? "outline" : "ghost"}
+                size="sm"
+                onClick={() => { setFilterMode('all'); setCurrentPage(1); }}
+                className={cn("h-8 font-black uppercase text-[9px] tracking-widest rounded-lg px-4 shadow-none", filterMode === 'all' && "shadow-sm border-slate-200")}
+            >
+                Todas
+            </Button>
+            <Button 
+                variant={filterMode === 'mine' ? "outline" : "ghost"}
+                size="sm"
+                onClick={() => { setFilterMode('mine'); setCurrentPage(1); }}
+                className={cn("h-8 font-black uppercase text-[9px] tracking-widest rounded-lg px-4 shadow-none", filterMode === 'mine' && "shadow-sm border-slate-200")}
+            >
+                Solo mis proyectos
+            </Button>
+            <Button 
+                variant={filterMode === 'urgent' ? "outline" : "ghost"}
+                size="sm"
+                onClick={() => { setFilterMode('urgent'); setCurrentPage(1); }}
+                className={cn("h-8 font-black uppercase text-[9px] tracking-widest rounded-lg px-4 shadow-none text-error", filterMode === 'urgent' && "bg-error/10 border-error/20")}
+            >
+                Urgentes
+            </Button>
         </div>
       </div>
 
       {/* Stats Quick Cards */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
-          <p className="text-[10px] font-black text-muted-foreground uppercase">Pendientes de Firma</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Pendientes</p>
           <p className="text-2xl font-black text-warning">
-            {validaciones.filter((v) => v.validacion.estado === "Pendiente").length}
+            {validacionesBase.filter((v) => v.validacion.estado === "Pendiente").length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
-          <p className="text-[10px] font-black text-muted-foreground uppercase">Aprobadas</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Aprobadas</p>
           <p className="text-2xl font-black text-success">
-            {validaciones.filter((v) => v.validacion.estado === "Aprobada").length}
+            {validacionesBase.filter((v) => v.validacion.estado === "Aprobada").length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
-          <p className="text-[10px] font-black text-muted-foreground uppercase">Rechazadas</p>
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Rechazadas</p>
           <p className="text-2xl font-black text-error">
-            {validaciones.filter((v) => v.validacion.estado === "Rechazada").length}
+            {validacionesBase.filter((v) => v.validacion.estado === "Rechazada").length}
           </p>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-border shadow-sm bg-primary/5">
+          <p className="text-[9px] font-black text-primary uppercase tracking-widest">Total Vista</p>
+          <p className="text-2xl font-black text-primary">{totalItems}</p>
         </div>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="relative flex-1 w-full md:w-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por código de proyecto o actividad..."
-            className="pl-10 h-10 border-border"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
+      <div className="bg-white p-5 rounded-xl border border-border shadow-sm space-y-4">
+        <div className="flex flex-col md:flex-row gap-4 items-end justify-between">
+          <div className="flex-1 w-full space-y-1.5">
+            <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Buscador de Actividad</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Código de proyecto o actividad..."
+                className="pl-10 h-10 border-border bg-slate-50/50 focus:bg-white transition-all font-bold text-xs rounded-lg shadow-none"
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+              />
+            </div>
+          </div>
 
-        <div className="flex flex-wrap gap-2 w-full md:w-auto">
-          <Select value={selectedArea} onValueChange={(val) => setSelectedArea(val ?? "")}>
-            <SelectTrigger className="w-44 h-10">
-              <SelectValue placeholder="Área Responsable" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas las Áreas</SelectItem>
-              <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
-              <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
-              <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
-              <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-wrap gap-3 w-full md:w-auto">
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Área Responsable</Label>
+              <Select value={selectedArea} onValueChange={(val) => { setSelectedArea(val ?? ""); setCurrentPage(1); }}>
+                <SelectTrigger className="w-44 h-10 font-bold text-xs rounded-lg border-border bg-white shadow-none">
+                  <SelectValue placeholder="Seleccionar Área" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-border shadow-xl">
+                  <SelectItem value="all">Todas las Áreas</SelectItem>
+                  <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
+                  <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
+                  <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
+                  <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones de Campo</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-          <Select value={selectedEstado} onValueChange={(val) => setSelectedEstado(val ?? "")}>
-            <SelectTrigger className="w-40 h-10">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos los Estados</SelectItem>
-              <SelectItem value="Pendiente">Pendientes</SelectItem>
-              <SelectItem value="Aprobada">Aprobadas</SelectItem>
-              <SelectItem value="Rechazada">Rechazadas</SelectItem>
-            </SelectContent>
-          </Select>
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado</Label>
+              <Select value={selectedEstado} onValueChange={(val) => { setSelectedEstado(val ?? ""); setCurrentPage(1); }}>
+                <SelectTrigger className="w-40 h-10 font-bold text-xs rounded-lg border-border bg-white shadow-none">
+                  <SelectValue placeholder="Estado" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-border shadow-xl">
+                  <SelectItem value="all">Todos los Estados</SelectItem>
+                  <SelectItem value="Pendiente">Pendientes</SelectItem>
+                  <SelectItem value="Aprobada">Aprobadas</SelectItem>
+                  <SelectItem value="Rechazada">Rechazadas</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Grid of Validations */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {filteredValidaciones.length === 0 ? (
-          <div className="col-span-2 p-8 text-center text-muted-foreground">
-            No se encontraron puntos de control que requieran validación.
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        {paginatedValidaciones.length === 0 ? (
+          <div className="col-span-full p-12 text-center bg-white rounded-xl border border-dashed border-slate-300">
+            <CheckSquare className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+            <p className="text-slate-400 font-bold italic text-sm uppercase tracking-tight">No se encontraron puntos de control.</p>
           </div>
         ) : (
-          filteredValidaciones.map(({ proyecto, actividad, validacion }) => (
-            <Card key={validacion.id} className="hover:border-primary/30 transition-all flex flex-col">
-              <CardContent className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                {/* Header */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-start gap-2">
-                    <Badge className="bg-primary text-white font-black text-[9px] uppercase tracking-wide">
-                      {proyecto.codigo}
+          paginatedValidaciones.map(({ proyecto, actividad, validacion }) => (
+            <Card key={validacion.id} className="hover:border-primary/30 transition-all flex flex-col border-slate-200 shadow-sm bg-white overflow-hidden group">
+              <CardContent className="p-0 flex-1 flex flex-col">
+                {/* Header Proyecto - Compacto */}
+                <div className="px-4 py-2 bg-slate-50/80 border-b border-slate-100 flex justify-between items-center">
+                  <div className="flex items-center gap-1.5">
+                    <Badge className="bg-primary text-white font-black text-[8px] uppercase tracking-wide rounded px-1.5 h-4 shadow-none">
+                        {proyecto.codigo}
                     </Badge>
-                    <Badge className={cn("text-[9px] font-black uppercase border-none", statusColors[validacion.estado])}>
-                      {validacion.estado}
-                    </Badge>
+                    {(actividad.prioridad === 'Crítica') && (
+                        <Badge className="bg-error text-white font-black text-[7px] uppercase px-1.5 h-3.5 shadow-none">URGENTE</Badge>
+                    )}
                   </div>
-                  <h4 className="font-bold text-sm text-slate-700 tracking-tight leading-snug">
-                    Actividad: {actividad.descripcion}
-                  </h4>
-                  <p className="text-[10px] text-muted-foreground font-black uppercase">
-                    PROYECTO: {proyecto.nombre}
-                  </p>
+                  <Badge className={cn("text-[8px] font-black uppercase border-none px-1.5 h-4 shadow-none", statusColors[validacion.estado])}>
+                    {validacion.estado}
+                  </Badge>
                 </div>
-
-                {/* Validation Info */}
-                <div className="bg-muted/30 p-3 rounded-lg border text-xs space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-slate-600">Tipo: {validacion.tipo}</span>
-                    <Badge className={cn("text-[8px] font-black uppercase border-none", areaColors[validacion.area])}>
-                      Firma: {validacion.area}
-                    </Badge>
-                  </div>
-
-                  {validacion.validadoPor && (
-                    <div className="text-[10px] text-muted-foreground space-y-1 font-bold">
-                      <p className="flex items-center gap-1">
-                        <User className="w-3 h-3" /> Validado por: {validacion.validadoPor}
-                      </p>
-                      {validacion.fechaValidacion && (
-                        <p className="flex items-center gap-1">
-                          <Calendar className="w-3 h-3" /> Fecha: {formatDate(validacion.fechaValidacion)}
-                        </p>
-                      )}
-                    </div>
-                  )}
-
-                  {validacion.observaciones && (
-                    <p className="text-[11px] leading-relaxed text-slate-700 bg-white p-2 rounded border border-dashed mt-1">
-                      <strong>Observaciones:</strong> {validacion.observaciones}
+                
+                <div className="p-4 flex-1 flex flex-col space-y-3">
+                  <div className="space-y-0.5">
+                    <h4 className="font-black text-xs text-slate-800 tracking-tight leading-snug group-hover:text-primary transition-colors min-h-[2.4em] line-clamp-2">
+                      {actividad.descripcion}
+                    </h4>
+                    <p className="text-[9px] text-slate-400 font-black uppercase tracking-tighter truncate">
+                      P: {proyecto.nombre}
                     </p>
-                  )}
-                </div>
-
-                {/* Actions */}
-                <div className="pt-2 border-t flex justify-between items-center gap-2 mt-auto">
-                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground font-bold">
-                    <span>Resp. Principal: {getResponsableName(actividad.responsablePrincipalId)}</span>
                   </div>
 
-                  {validacion.estado === "Pendiente" ? (
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs border-error text-error hover:bg-error hover:text-white font-bold"
-                        onClick={() =>
-                          handleOpenAction("rechazar", proyecto.id, actividad.id, validacion.id)
-                        }
-                      >
-                        <X className="w-3 h-3 mr-1" /> Rechazar
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs bg-success hover:bg-success/90 text-white font-bold"
-                        onClick={() =>
-                          handleOpenAction("aprobar", proyecto.id, actividad.id, validacion.id)
-                        }
-                      >
-                        <Check className="w-3 h-3 mr-1" /> Aprobar
-                      </Button>
+                  {/* Validation Info - Compacto */}
+                  <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100 text-[10px] space-y-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex flex-col gap-0">
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Control</span>
+                        <span className="font-bold text-slate-700 truncate max-w-[100px]">{validacion.tipo}</span>
+                      </div>
+                      <Badge className={cn("text-[7px] font-black uppercase border-none h-3.5 px-1.5", areaColors[validacion.area])}>
+                        {validacion.area.split(' ')[0]}...
+                      </Badge>
                     </div>
-                  ) : (
-                    <div className="text-[10px] font-black text-muted-foreground flex items-center gap-1">
-                      <FileCheck className="w-4 h-4 text-success" /> Validado
+
+                    {validacion.observaciones && (
+                      <div className="bg-white p-2 rounded-md border border-dashed border-slate-200 mt-1">
+                        <p className="text-[9px] leading-tight text-slate-500 line-clamp-2 italic">
+                          "{validacion.observaciones}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Actions - Reducido */}
+                  <div className="pt-3 border-t border-slate-100 flex justify-between items-center gap-2 mt-auto">
+                    <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-black uppercase tracking-tighter truncate max-w-[120px]">
+                      <div className={cn("w-1 h-1 rounded-full", (actividad.prioridad === 'Crítica') ? "bg-error animate-pulse" : "bg-accent")} />
+                      <span className="truncate">{getResponsableName(actividad.responsablePrincipalId)}</span>
                     </div>
-                  )}
+
+                    {validacion.estado === "Pendiente" ? (
+                      <div className="flex gap-1">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="h-7 px-2 text-[9px] border-error text-error hover:bg-error hover:text-white font-black uppercase tracking-widest transition-all"
+                          onClick={() =>
+                            handleOpenAction("rechazar", proyecto.id, actividad.id, validacion.id)
+                          }
+                        >
+                          Obs.
+                        </Button>
+                        <Button
+                          size="sm"
+                          className="h-7 px-2 text-[9px] bg-success hover:bg-success/90 text-white font-black uppercase tracking-widest shadow shadow-success/20 transition-all"
+                          onClick={() =>
+                            handleOpenAction("aprobar", proyecto.id, actividad.id, validacion.id)
+                          }
+                        >
+                          OK
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="text-[8px] font-black text-success flex items-center gap-1 bg-success/10 px-2 py-1 rounded-full uppercase tracking-widest">
+                        <FileCheck className="w-2.5 h-2.5" /> LISTO
+                      </div>
+                    )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
@@ -299,59 +420,101 @@ export default function ValidacionesPage() {
         )}
       </div>
 
+      {/* PAGINACIÓN CONTROLES (Estilo Estandarizado) */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between bg-white p-3 rounded-xl border border-slate-200 shadow-sm mt-4">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                Página {currentPage} de {totalPages} — Total: {totalItems} validaciones
+            </p>
+            <div className="flex gap-2 mr-2">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === 1}
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    className="h-7 px-4 font-black uppercase text-[9px] border-slate-200 bg-white"
+                >
+                    Anterior
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    className="h-7 px-4 font-black uppercase text-[9px] border-slate-200 bg-white"
+                >
+                    Siguiente
+                </Button>
+            </div>
+        </div>
+      )}
+
       {/* Approve/Reject Interaction Dialog */}
       <Dialog open={actionDialog.open} onOpenChange={(open) => setActionDialog((prev) => ({ ...prev, open }))}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className={cn(
-              "flex items-center gap-2 font-black uppercase text-lg",
-              actionDialog.type === "aprobar" ? "text-success" : "text-error"
-            )}>
+        <DialogContent className="max-w-md p-0 border-none bg-white shadow-2xl overflow-hidden rounded-2xl">
+          <DialogHeader className={cn(
+            "p-6 text-white shrink-0",
+            actionDialog.type === "aprobar" ? "bg-success" : "bg-error"
+          )}>
+            <DialogTitle className="flex items-center gap-3 font-black uppercase text-lg tracking-tight">
               {actionDialog.type === "aprobar" ? (
                 <>
-                  <CheckSquare className="w-5 h-5" />
+                  <CheckSquare className="w-6 h-6" />
                   Confirmar Aprobación
                 </>
               ) : (
                 <>
-                  <AlertTriangle className="w-5 h-5" />
-                  Rechazar Punto de Control
+                  <AlertTriangle className="w-6 h-6" />
+                  Observar Punto de Control
                 </>
               )}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-xs text-muted-foreground">
+          
+          <div className="p-6 space-y-5 bg-white">
+            <div className={cn(
+              "p-4 rounded-xl text-xs font-bold leading-relaxed",
+              actionDialog.type === "aprobar" ? "bg-success/10 text-success-foreground" : "bg-error/10 text-error-foreground"
+            )}>
               {actionDialog.type === "aprobar"
-                ? "El punto de control será marcado como aprobado. El progreso del proyecto se recalculará según corresponda."
-                : "Al rechazar el punto de control, la actividad asociada quedará Bloqueada temporalmente hasta que se solventen los hallazgos."}
-            </p>
-            <div className="space-y-1.5">
-              <Label htmlFor="action-obs" className="text-xs font-bold">
-                Observaciones/Comentarios {actionDialog.type === "rechazar" && "*"}
+                ? "Al aprobar, la actividad será marcada como VALIDADA oficialmente. Este cambio bloquea la edición de la tarea y actualiza el progreso real del proyecto."
+                : "Al observar, la actividad regresará al estado EN PROGRESO. El técnico responsable recibirá una notificación con tus comentarios para realizar las correcciones."}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="action-obs" className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">
+                Comentarios / Observaciones {actionDialog.type === "rechazar" && <span className="text-error">*</span>}
               </Label>
               <Textarea
                 id="action-obs"
-                placeholder={actionDialog.type === "aprobar" ? "Observaciones opcionales..." : "Escriba detalladamente el motivo del rechazo..."}
+                placeholder={actionDialog.type === "aprobar" ? "Escriba un comentario opcional..." : "Escriba detalladamente el motivo de la observación..."}
                 value={actionDialog.observaciones}
                 onChange={(e) => setActionDialog((prev) => ({ ...prev, observaciones: e.target.value }))}
-                rows={3}
-                className="text-xs"
+                rows={4}
+                className="text-xs font-bold border-slate-200 bg-slate-50/50 focus:bg-white transition-all rounded-xl shadow-none resize-none"
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setActionDialog((prev) => ({ ...prev, open: false }))}>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100 flex gap-3">
+            <Button 
+              variant="ghost" 
+              onClick={() => setActionDialog((prev) => ({ ...prev, open: false }))}
+              className="h-11 flex-1 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:bg-slate-100"
+            >
               Cancelar
             </Button>
             <Button
               onClick={handleConfirmAction}
               disabled={actionDialog.type === "rechazar" && !actionDialog.observaciones.trim()}
               className={cn(
-                actionDialog.type === "aprobar" ? "bg-success hover:bg-success/90" : "bg-error hover:bg-error/90"
+                "h-11 flex-[2] font-black uppercase text-[10px] tracking-widest shadow-lg transition-all",
+                actionDialog.type === "aprobar" 
+                  ? "bg-success hover:bg-success/90 shadow-success/20" 
+                  : "bg-error hover:bg-error/90 shadow-error/20"
               )}
             >
-              Confirmar
+              {actionDialog.type === "aprobar" ? "Confirmar y Validar" : "Enviar Observación"}
             </Button>
           </DialogFooter>
         </DialogContent>

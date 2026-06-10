@@ -65,6 +65,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuthStore } from "@/store/auth-store";
+import { toast } from "sonner";
 
 const userSchema = z.object({
   username: z.string().min(3, "El usuario debe tener al menos 3 caracteres"),
@@ -186,13 +187,16 @@ export default function UsuariosPage() {
       if (editingUser) {
         if (!payload.password) delete payload.password;
         await api.patch(`/config/usuarios/${editingUser.id}`, payload);
+        toast.success("Usuario actualizado correctamente");
       } else {
         await api.post("/config/usuarios", payload);
+        toast.success("Usuario creado correctamente");
       }
       setIsModalOpen(false);
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving user:", error);
+      toast.error(error.message || "Error al guardar el usuario");
     } finally {
       setIsSubmitting(false);
     }
@@ -201,9 +205,11 @@ export default function UsuariosPage() {
   const toggleUserStatus = async (user: User) => {
     try {
       await api.patch(`/config/usuarios/${user.id}`, { activo: !user.activo });
+      toast.success(`Usuario ${user.activo ? "desactivado" : "activado"} correctamente`);
       fetchData();
     } catch (error) {
       console.error("Error toggling user status:", error);
+      toast.error("Error al cambiar el estado del usuario");
     }
   };
 
@@ -473,16 +479,18 @@ export default function UsuariosPage() {
                       value={field.value || ""}
                     >
                       <FormControl>
-                        <SelectTrigger className="rounded-xl w-full">
-                          <Briefcase className="mr-2 h-4 w-4 text-slate-400" />
-                          <SelectValue placeholder="Seleccione un trabajador (opcional)" />
+                        <SelectTrigger className="rounded-xl w-full bg-white border-slate-200">
+                          <div className="flex items-center gap-2">
+                            <Briefcase className="h-4 w-4 text-slate-400" />
+                            <SelectValue placeholder="Seleccione un trabajador (opcional)" />
+                          </div>
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="">Sin vincular</SelectItem>
+                      <SelectContent className="bg-white border-slate-100 shadow-xl z-[100]">
+                        <SelectItem value="" className="font-medium text-slate-500">Sin vincular</SelectItem>
                         {responsables.map((r) => (
-                          <SelectItem key={r.id} value={r.id}>
-                            {r.nombre} ({r.area})
+                          <SelectItem key={r.id} value={r.id} className="cursor-pointer">
+                            {r.nombre}
                           </SelectItem>
                         ))}
                       </SelectContent>

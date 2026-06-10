@@ -1,0 +1,354 @@
+"use client";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Plus,
+  Search,
+  TrendingDown,
+  Loader2,
+  Calendar,
+  Filter,
+  MoreVertical,
+  Download,
+  Trash2,
+  ChevronLeft,
+  ChevronRight,
+  Edit2
+} from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { cn, formatDate } from "@/lib/utils";
+import { useEffect, useState } from "react";
+import { api } from "@/lib/api";
+import { Gasto } from "@/types/finanzas";
+import { ModernDialog } from "@/components/ui/modern-dialog";
+import { GastoForm } from "@/components/finanzas/gasto-form";
+import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
+import { toast } from "sonner";
+
+const gastoStatus: Record<string, string> = {
+  "PAGADO": "bg-green-100 text-green-700 border-green-200",
+  "PENDIENTE": "bg-red-100 text-red-700 border-red-200",
+  "ANULADO": "bg-slate-100 text-slate-700 border-slate-200",
+};
+
+export default function EgresosPage() {
+  const [gastos, setGastos] = useState<Gasto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [gastoToDelete, setGastoToDelete] = useState<{id: string, name: string} | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
+
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/finanzas/gastos');
+      setGastos(res);
+    } catch (e) {
+      console.error("Error fetching expenses", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleCreateOrUpdateGasto = async (data: any) => {
+    try {
+      if (editingGasto) {
+        await api.patch(`/finanzas/gastos/${editingGasto.id}`, data);
+        toast.success("Gasto actualizado exitosamente");
+      } else {
+        await api.post('/finanzas/gastos', data);
+        toast.success("Gasto registrado exitosamente");
+      }
+      setIsModalOpen(false);
+      setEditingGasto(null);
+      fetchData();
+    } catch (e) {
+      console.error("Error saving expense", e);
+      toast.error(editingGasto ? "Error al actualizar el gasto" : "Error al registrar el gasto");
+    }
+  };
+
+  const handleSecureDelete = async (password: string) => {
+    if (!gastoToDelete) return;
+    try {
+      setDeleting(true);
+      await api.post(`/finanzas/gastos/${gastoToDelete.id}/secure-delete`, { password });
+      toast.success("Gasto eliminado correctamente");
+      setDeleteModalOpen(false);
+      fetchData();
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const filteredGastos = gastos.filter(g => {
+    const matchesSearch = g.concepto.toLowerCase().includes(search.toLowerCase()) ||
+                          g.proveedor?.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
+                          g.codigo?.toLowerCase().includes(search.toLowerCase());
+    
+    let matchesDate = true;
+    if (dateFrom || dateTo) {
+      const gDate = new Date(g.fechaEmision).getTime();
+      const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
+      const toTime = dateTo ? new Date(dateTo).getTime() : Infinity;
+      matchesDate = gDate >= fromTime && gDate <= toTime;
+    }
+
+    return matchesSearch && matchesDate;
+  });
+
+  const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
+  const paginatedGastos = filteredGastos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  if (loading && gastos.length === 0) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
+        <Loader2 className="w-12 h-12 text-primary animate-spin" />
+        <p className="font-black text-primary uppercase text-xs tracking-widest">Cargando Egresos...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-8 pb-10">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-border shadow-sm">
+        <div className="space-y-2">
+          <div className="flex items-center gap-3">
+            <div className="bg-error/10 p-3 rounded-2xl">
+              <TrendingDown className="w-8 h-8 text-error" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-primary tracking-tight">Egresos / Gastos</h1>
+              <p className="text-muted-foreground font-medium text-xs mt-1">Control de gastos operativos y pagos a proveedores.</p>
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button variant="outline" className="h-10 px-4 gap-2 text-xs font-black border-2 border-primary/10 text-primary rounded-xl">
+            <Download className="w-4 h-4" /> Exportar
+          </Button>
+          <Button 
+            onClick={() => setIsModalOpen(true)}
+            className="h-10 px-6 gap-2 text-xs font-black bg-error hover:bg-error/90 shadow-lg shadow-error/20 rounded-xl text-white"
+          >
+            <Plus className="w-4 h-4" /> Nuevo Gasto
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-white p-3 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row items-end gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input 
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar por concepto, proveedor o comprobante..." 
+            className="pl-9 h-10 border-none bg-muted/30 rounded-lg text-xs font-medium" 
+          />
+        </div>
+        <div className="flex items-center gap-2 border-r pr-3">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
+            <Input 
+              type="date" 
+              value={dateFrom} 
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="h-10 w-36 border-slate-200 rounded-lg text-xs font-bold text-slate-500"
+            />
+          </div>
+          <span className="text-slate-300 font-bold mt-4">-</span>
+          <div className="space-y-1">
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
+            <Input 
+              type="date" 
+              value={dateTo} 
+              onChange={(e) => setDateTo(e.target.value)}
+              className="h-10 w-36 border-slate-200 rounded-lg text-xs font-bold text-slate-500"
+            />
+          </div>
+        </div>
+        <Button 
+          variant="outline" 
+          onClick={() => { setDateFrom(""); setDateTo(""); setSearch(""); }}
+          className="h-10 px-4 gap-2 text-xs font-bold rounded-lg border-border text-slate-500 hover:text-slate-700"
+        >
+          Limpiar
+        </Button>
+      </div>
+
+      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
+        <Table>
+          <TableHeader className="bg-muted/50 h-12">
+            <TableRow className="hover:bg-transparent border-none">
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-6 w-[50px]">Item</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Comprobante</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto / Proveedor</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Tipo</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Fecha Emisión</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Monto Total</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-center">Estado</TableHead>
+              <TableHead className="w-[70px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {paginatedGastos.map((g, index) => (
+              <TableRow key={g.id} className="hover:bg-muted/10 transition-colors border-border group h-16">
+                <TableCell className="pl-6 text-[11px] font-bold text-slate-400">
+                  {(currentPage - 1) * itemsPerPage + index + 1}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-red-50 p-1.5 rounded-md">
+                      <TrendingDown className="w-3.5 h-3.5 text-error" />
+                    </div>
+                    <span className="font-black text-xs text-primary">{g.codigo || 'S/N'}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="max-w-[250px]">
+                    <p className="font-black text-xs text-primary group-hover:text-error transition-colors truncate">{g.concepto}</p>
+                    <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-tighter opacity-70">{g.proveedor?.razonSocial || 'GASTO SIN PROVEEDOR'}</p>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter border-slate-200 text-slate-500">
+                    {g.tipo}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-slate-400" /> {formatDate(g.fechaEmision)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-right">
+                  <span className="font-black text-xs text-error">
+                    {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(g.montoTotal)}
+                  </span>
+                </TableCell>
+                <TableCell className="text-center">
+                  <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado])}>
+                    {g.estado}
+                  </Badge>
+                </TableCell>
+                <TableCell className="pr-4">
+                  <div className="flex items-center gap-0.5">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-md hover:bg-blue-50 hover:text-blue-600 text-slate-400 h-7 w-7"
+                      onClick={() => {
+                        setEditingGasto(g);
+                        setIsModalOpen(true);
+                      }}
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="rounded-md hover:bg-red-50 hover:text-red-600 text-slate-400 h-7 w-7"
+                      onClick={() => {
+                        setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` });
+                        setDeleteModalOpen(true);
+                      }}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredGastos.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={8} className="h-40 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2 opacity-30">
+                    <TrendingDown className="w-12 h-12" />
+                    <p className="font-black text-xs uppercase tracking-widest">No se encontraron gastos</p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+
+        {/* PAGINATION CONTROLS */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredGastos.length)} de {filteredGastos.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 border-slate-200"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs font-black text-primary px-2">
+                Página {currentPage} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 border-slate-200"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <ModernDialog
+        isOpen={isModalOpen}
+        onOpenChange={(open) => setIsModalOpen(open)}
+        title={editingGasto ? "Editar Gasto" : "Registrar Nuevo Gasto"}
+      >
+        <GastoForm 
+          initialData={editingGasto}
+          onSubmit={handleCreateOrUpdateGasto}
+          onCancel={() => {
+            setIsModalOpen(false);
+            setEditingGasto(null);
+          }}
+        />
+      </ModernDialog>
+
+      <GenericSecureDeleteModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleSecureDelete}
+        entityName={gastoToDelete?.name || ''}
+        loading={deleting}
+      />
+    </div>
+  );
+}

@@ -48,13 +48,15 @@ export function KPIStats() {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
       {kpiConfig.map((kpi) => (
-        <Card key={kpi.label} className="border-none shadow-sm overflow-hidden">
-          <CardContent className="p-4 flex flex-col items-center text-center">
-            <div className={`p-2 rounded-full mb-3 ${kpi.color}`}>
+        <Card key={kpi.label} className="border-none shadow-sm overflow-hidden bg-white hover:shadow-md transition-all hover:-translate-y-1 rounded-[1.5rem]">
+          <CardContent className="p-5 flex flex-col items-center text-center gap-2">
+            <div className={`p-2.5 rounded-2xl shrink-0 ${kpi.color} mb-1`}>
               <kpi.icon className="w-5 h-5" />
             </div>
-            <p className="text-xs font-bold text-muted-foreground uppercase tracking-tight">{kpi.label}</p>
-            <h3 className="text-lg font-black mt-1">{formatValue(kpi)}</h3>
+            <div className="min-w-0">
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{kpi.label}</p>
+              <h3 className="text-lg font-bold text-slate-800 truncate mt-0.5">{formatValue(kpi)}</h3>
+            </div>
           </CardContent>
         </Card>
       ))}

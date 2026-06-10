@@ -22,11 +22,11 @@ export function CRMHeader({ title, subtitle, icon }: CRMHeaderProps) {
       <div>
         <div className="flex items-center gap-3">
           <div className="bg-primary/10 p-2 rounded-lg">
-            {icon || <LayoutDashboard className="w-6 h-6 text-primary" />}
+            {icon || <LayoutDashboard className="w-5 h-5 text-primary" />}
           </div>
-          <h1 className="text-3xl font-black text-primary tracking-tight uppercase">{title}</h1>
+          <h1 className="text-xl font-black text-primary tracking-tight uppercase">{title}</h1>
         </div>
-        <p className="text-muted-foreground mt-1 font-medium">{subtitle}</p>
+        <p className="text-[11px] text-muted-foreground mt-1 font-bold uppercase tracking-wide">{subtitle}</p>
       </div>
       <Button 
         variant="outline" 

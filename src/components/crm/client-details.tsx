@@ -33,9 +33,12 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { cn, formatDate } from "@/lib/utils";
 import { useCRMStore, getDaysSinceContact, isFollowUpOverdue } from "@/store/crm-store";
+import { useAuthStore } from "@/store/auth-store";
+import { useOperacionesStore } from "@/store/operaciones-store";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { VisitModal } from "./visit-modal";
 
 interface ClientDetailsProps {
   client: Client | null;
@@ -53,6 +56,7 @@ const sellerList = ["Angie", "Valentina", "Ariana", "Nicoll"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile } = useCRMStore();
+  const { responsables } = useOperacionesStore();
   const [activeTab, setActiveTab] = useState("general");
   
   const [intType, setIntType] = useState<Interaction['tipo']>("Llamada");
@@ -60,8 +64,22 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const [intObs, setIntObs] = useState("");
   const [intUser, setIntUser] = useState("Angie");
   const [isAddingInt, setIsAddingInt] = useState(false);
+  const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
 
   if (!client) return null;
+
+  const getUsuarioNombre = (usuario: string) => {
+    if (!usuario) return "Sistema";
+    
+    // Si es un UUID, buscar en responsables
+    if (usuario.includes('-') && usuario.length > 20) {
+      const resp = responsables.find(r => r.id === usuario);
+      if (resp) return resp.nombre.toUpperCase();
+      return "RESPONSABLE TÉCNICO";
+    }
+    
+    return usuario.toUpperCase();
+  };
 
   const daysSinceContact = getDaysSinceContact(client.ultimoContacto);
   const overdue = isFollowUpOverdue(client);
@@ -69,7 +87,12 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const handleAddInteraction = (e: React.FormEvent) => {
     e.preventDefault();
     if (!intAction) return;
-    addInteraction(client.id, intType, intAction, intObs, intUser);
+    addInteraction(client.id, {
+      tipo: intType,
+      accion: intAction,
+      observaciones: intObs,
+      usuario: intUser
+    });
     setIntAction("");
     setIntObs("");
     setIsAddingInt(false);
@@ -83,11 +106,14 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
       ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
       : `${(file.size / 1024).toFixed(0)} KB`;
 
+    const user = useAuthStore.getState().user;
+
     attachFile(client.id, {
       nombre: file.name,
       tipo: file.type || "application/octet-stream",
       url: "#",
-      tamano: sizeStr
+      tamano: sizeStr,
+      subidoPor: user?.nombre || "Sistema"
     });
   };
 
@@ -100,12 +126,18 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
     const phoneWithCountry = cleanPhone.startsWith('51') ? cleanPhone : `51${cleanPhone}`;
     const message = encodeURIComponent(`Hola ${client.contacto}, te saludo de HH T Soluciona. Queremos dar seguimiento a la gestión de ${client.empresa}.`);
     const whatsappUrl = `https://wa.me/${phoneWithCountry}?text=${message}`;
-    addInteraction(client.id, "WhatsApp", "Contacto por WhatsApp", "Se inició conversación por WhatsApp para seguimiento.", intUser);
+    addInteraction(client.id, {
+        tipo: "WhatsApp",
+        accion: "Contacto por WhatsApp",
+        observaciones: "Se inició conversación por WhatsApp para seguimiento.",
+        usuario: intUser
+    });
     window.open(whatsappUrl, '_blank');
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <>
+      <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl w-full max-h-[92vh] overflow-hidden p-0 border-none bg-white shadow-2xl flex flex-col">
         <DialogHeader className="p-8 bg-primary text-white shrink-0 relative">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
@@ -285,6 +317,14 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                   <Button 
                     size="sm" 
                     variant="outline"
+                    onClick={() => setIsVisitModalOpen(true)}
+                    className="border-primary text-primary hover:bg-primary/5 font-bold text-[10px] uppercase"
+                  >
+                    <Calendar className="w-4 h-4 mr-1" /> Agendar Visita
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="outline"
                     onClick={handleWhatsAppDirect}
                     className="border-success text-success hover:bg-green-50 font-bold text-[10px] uppercase"
                   >
@@ -350,7 +390,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                           <Badge className="text-[9px] uppercase font-bold bg-primary/10 text-primary border-none">{item.tipo}</Badge>
                         </div>
                         <div className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                          <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{item.usuario}</span>
+                          <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{getUsuarioNombre(item.usuario)}</span>
                           <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(item.fecha)}</span>
                         </div>
                       </div>
@@ -404,5 +444,13 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
         </Tabs>
       </DialogContent>
     </Dialog>
-  );
+
+    <VisitModal 
+      clientId={client.id}
+      clientName={client.empresa}
+      isOpen={isVisitModalOpen}
+      onClose={() => setIsVisitModalOpen(false)}
+    />
+  </>
+);
 }

@@ -29,10 +29,14 @@ import {
   CheckSquare,
   ClipboardList,
   Truck,
-  Search
+  Search,
+  ShoppingCart,
+  History,
+  Receipt,
+  TrendingDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLayoutStore } from "@/store/layout-store";
+import { useSidebar } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
 
@@ -43,9 +47,9 @@ const menuItems = [
     label: "CRM Comercial",
     href: "/crm",
     subItems: [
-      { icon: Table, label: "Clientes", href: "/crm/cartera" },
+      { icon: Table, label: "Base de Datos Clientes", href: "/crm/cartera" },
       { icon: Grid, label: "Proceso de ventas", href: "/crm/pipeline" },
-      { icon: Calendar, label: "Seguimiento", href: "/crm/seguimiento" },
+      { icon: Clock, label: "Seguimiento y Actividades", href: "/crm/seguimiento" },
       { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: BarChart, label: "Informes", href: "/crm/estadisticas" },
     ]
@@ -55,6 +59,7 @@ const menuItems = [
     label: "Operaciones",
     href: "/operaciones",
     subItems: [
+      { icon: ClipboardList, label: "Bandeja Técnica", href: "/operaciones/bandeja" },
       { icon: FolderKanban, label: "Proyectos", href: "/operaciones/proyectos" },
       { icon: ClipboardList, label: "Actividades", href: "/operaciones/actividades" },
       { icon: Clock, label: "Timeline", href: "/operaciones/timeline" },
@@ -63,26 +68,26 @@ const menuItems = [
     ]
   },
   {
-    icon: FileCheck,
-    label: "Gestión Documental",
-    href: "/documental",
-    subItems: [
-      { icon: FileSpreadsheet, label: "Documentos", href: "/documental" },
-      { icon: FolderKanban, label: "Expedientes", href: "/documental/expedientes" },
-      { icon: FileCheck, label: "Pendientes", href: "/documental/pendientes" },
-    ]
-  },
-  {
     icon: Truck,
     label: "Logística",
     href: "/logistica",
     subItems: [
-      { icon: Package, label: "Inventario", href: "/logistica/inventario" },
-      { icon: Truck, label: "Asignaciones", href: "/logistica/asignaciones" },
-      { icon: AlertTriangle, label: "Stock Bajo", href: "/logistica/stock" },
+      { icon: Package, label: "Almacén Central", href: "/logistica/inventario" },
+      { icon: ShoppingCart, label: "Órdenes de Compra", href: "/logistica/ordenes" },
+      { icon: History, label: "Kardex / Movimientos", href: "/logistica/kardex" },
+      { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
     ]
   },
-  { icon: BarChart3, label: "Finanzas", href: "/finanzas" },
+  {
+    icon: BarChart3,
+    label: "Finanzas",
+    href: "/finanzas",
+    subItems: [
+      { icon: BarChart, label: "Reportes", href: "/finanzas" },
+      { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
+      { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
+    ]
+  },
   {
     icon: Settings,
     label: "Configuración",
@@ -91,6 +96,7 @@ const menuItems = [
       { icon: Users, label: "Usuarios", href: "/configuracion/usuarios" },
       { icon: LayoutDashboard, label: "Trabajadores", href: "/configuracion/trabajadores" },
       { icon: FileCheck, label: "Manual de Usuario", href: "/configuracion/manual" },
+      { icon: Search, label: "Auditoría", href: "/auditoria" },
     ]
   },
 ];
@@ -98,7 +104,8 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { sidebarCollapsed, toggleSidebar } = useLayoutStore();
+  const { state, toggleSidebar } = useSidebar();
+  const sidebarCollapsed = state === "collapsed";
   const { user, logout } = useAuthStore();
 
   const userModules = user?.modulos || ["dashboard"];
@@ -237,15 +244,6 @@ export function Sidebar() {
           {!sidebarCollapsed && <span className="font-medium animate-in fade-in duration-300">Cerrar Sesión</span>}
         </button>
       </div>
-
-      <Button
-        variant="ghost"
-        size="icon"
-        onClick={toggleSidebar}
-        className="absolute -right-4 top-1/2 -translate-y-1/2 bg-white text-primary border border-border rounded-full w-8 h-8 shadow-md hover:bg-slate-50 hover:text-primary z-50 hidden md:flex"
-      >
-        {sidebarCollapsed ? <ChevronRight className="w-4 h-4" /> : <ChevronLeft className="w-4 h-4" />}
-      </Button>
     </div>
   );
 }

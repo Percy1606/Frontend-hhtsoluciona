@@ -1,0 +1,213 @@
+import { create } from 'zustand';
+import { api } from '@/lib/api';
+import { toast } from 'sonner';
+
+export type Notification = {
+  id: string;
+  usuarioId?: string;
+  titulo: string;
+  mensaje: string;
+  tipo: 'SEGUIMIENTO' | 'VISITA' | 'COTIZACION' | 'CLIENTE' | 'SISTEMA' | 'TECNICO';
+  leida: boolean;
+  esGlobal: boolean;
+  fechaProgramada?: string;
+  actividadComercialId?: string;
+  createdAt: string;
+};
+
+export type NotificationState = {
+  notifications: Notification[];
+  unreadCount: number;
+  totalNotifications: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+  loading: boolean;
+  sseConnected: boolean;
+  fetchNotifications: (page?: number, limit?: number) => Promise<void>;
+  fetchUnreadCount: () => Promise<void>;
+  markAsRead: (id: string) => Promise<void>;
+  markAsUnread: (id: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+  setupSSE: (token: string) => () => void;
+}
+
+export const useNotificationStore = create<NotificationState>((set, get) => ({
+  notifications: [],
+  unreadCount: 0,
+  totalNotifications: 0,
+  page: 1,
+  limit: 50,
+  totalPages: 0,
+  loading: false,
+  sseConnected: false,
+
+  setupSSE: (token: string) => {
+    if (typeof window === 'undefined') return () => {};
+    if (!token) {
+      console.warn("[SSE] No se puede iniciar conexión: Token ausente");
+      return () => {};
+    }
+    
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const sseUrl = `${baseUrl}/notificaciones/stream?token=${token}`;
+    console.log("[SSE] Intentando conectar a:", sseUrl);
+
+    // EventSource nativo no soporta headers. Usaremos un query param para el token.
+    // Añadimos withCredentials para manejar cookies si fuera necesario por CORS
+    const eventSource = new EventSource(sseUrl, {
+      withCredentials: true
+    });
+
+    eventSource.onopen = () => {
+      set({ sseConnected: true });
+      console.log("[SSE] Conectado exitosamente al servidor de notificaciones");
+    };
+
+    eventSource.onmessage = (event) => {
+      if (!event.data) return;
+      try {
+        const payload = JSON.parse(event.data);
+        
+        // Ignorar heartbeats
+        if (payload.type === 'heartbeat') return;
+
+        const newNotif: Notification = payload;
+        const { notifications, unreadCount } = get();
+        
+        // Evitar duplicados si el polling ya la trajo
+        if (!notifications.some(n => n.id === newNotif.id)) {
+          set({
+            notifications: [newNotif, ...notifications].slice(0, 100),
+            unreadCount: unreadCount + 1
+          });
+
+          // Disparar Toast
+          const toastFn = (newNotif.tipo === 'TECNICO' || newNotif.tipo === 'VISITA') ? toast.warning : toast.info;
+          toastFn(newNotif.titulo, {
+            description: newNotif.mensaje,
+            duration: 8000,
+          });
+        }
+      } catch (err) {
+        console.error("[SSE] Error procesando mensaje entrante:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("[SSE] Error en conexión. Estado:", eventSource.readyState);
+      set({ sseConnected: false });
+      
+      // No cerramos inmediatamente para permitir que el navegador intente reconectar automáticamente
+      // si el error fue temporal (ej: micro-corte de red).
+      // Si el estado es CLOSED (2), el navegador NO reconectará automáticamente, así que ahí sí cerramos.
+      if (eventSource.readyState === EventSource.CLOSED) {
+        console.log("[SSE] Conexión cerrada permanentemente por el servidor o error fatal.");
+        eventSource.close();
+      }
+    };
+
+    return () => {
+      console.log("[SSE] Cerrando conexión de forma controlada");
+      eventSource.close();
+      set({ sseConnected: false });
+    };
+  },
+
+  fetchNotifications: async (page = 1, limit = 50) => {
+    const currentNotifications = get().notifications;
+    set({ loading: true });
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+      });
+      const response = await api.get(`/notificaciones?${queryParams.toString()}`);
+
+      let rawData: Notification[] = [];
+      let total = 0;
+      let totalP = 1;
+
+      if (response && response.data && Array.isArray(response.data)) {
+        rawData = response.data;
+        total = response.total || rawData.length;
+        totalP = response.totalPages || 1;
+      } else if (Array.isArray(response)) {
+        rawData = response;
+        total = rawData.length;
+      }
+
+      // DETECCIÓN DE NUEVAS NOTIFICACIONES PARA TOASTS (SOLO SI SSE NO ESTÁ ACTIVO PARA ESTA NOTIF)
+      if (page === 1 && currentNotifications.length > 0 && rawData.length > 0) {
+        const newOnes = rawData.filter(
+          n => !n.leida && !currentNotifications.some(existing => existing.id === n.id)
+        );
+        
+        newOnes.forEach(n => {
+          const toastFn = (n.tipo === 'TECNICO' || n.tipo === 'VISITA') ? toast.warning : toast.info;
+          toastFn(n.titulo, {
+            description: n.mensaje,
+            duration: 8000,
+          });
+        });
+      }
+
+      set({ 
+        notifications: rawData, 
+        totalNotifications: total,
+        page: page,
+        limit: limit,
+        totalPages: totalP,
+        loading: false 
+      });
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+      set({ loading: false });
+    }
+  },
+
+  fetchUnreadCount: async () => {
+    try {
+      const { count } = await api.get('/notificaciones/unread-count');
+      set({ unreadCount: count });
+    } catch (error) {
+      console.error("Error fetching unread count:", error);
+    }
+  },
+
+  markAsRead: async (id) => {
+    try {
+      await api.put(`/notificaciones/${id}/read`, {});
+      set((state) => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, leida: true } : n),
+        unreadCount: Math.max(0, state.unreadCount - 1)
+      }));
+    } catch (error) {
+      console.error("Error marking notification as read:", error);
+    }
+  },
+
+  markAsUnread: async (id) => {
+    try {
+      await api.put(`/notificaciones/${id}/unread`, {});
+      set((state) => ({
+        notifications: state.notifications.map(n => n.id === id ? { ...n, leida: false } : n),
+        unreadCount: state.unreadCount + 1
+      }));
+    } catch (error) {
+      console.error("Error marking notification as unread:", error);
+    }
+  },
+
+  markAllAsRead: async () => {
+    try {
+      await api.put('/notificaciones/read-all', {});
+      set((state) => ({
+        notifications: state.notifications.map(n => ({ ...n, leida: true })),
+        unreadCount: 0
+      }));
+    } catch (error) {
+      console.error("Error marking all notifications as read:", error);
+    }
+  }
+}));

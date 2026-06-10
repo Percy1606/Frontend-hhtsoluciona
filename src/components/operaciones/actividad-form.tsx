@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -31,25 +31,43 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import type { Actividad, Responsable } from "@/lib/types";
+import { format, parseISO } from "date-fns";
 import { Loader2, ClipboardList, AlertCircle, Search, Check, ChevronsUpDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 const actividadSchema = z.object({
   proyectoId: z.string().min(1, "El proyecto es requerido"),
   descripcion: z.string().min(3, "La descripción es requerida"),
-  tipo: z.enum(["Técnica", "Administrativa", "Logística", "Documental", "Validación"]),
+  tipo: z.enum(["Técnica", "Administrativa", "Logística", "Documental", "Validación", "Tecnica", "Logistica", "Validacion"]),
   prioridad: z.enum(["Baja", "Media", "Alta", "Crítica"]),
-  estado: z.enum(["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"]),
-  fechaInicio: z.string().optional(),
+  estado: z.enum(["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada", "EnProgreso"]),
+  fechaInicio: z.string().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    return date.getFullYear() >= 2000;
+  }, "La fecha no puede ser anterior al año 2000").optional(),
   fechaFin: z.string().optional(),
-  fechaVencimiento: z.string().optional(),
+  fechaVencimiento: z.string().refine((val) => {
+    if (!val) return true;
+    const date = new Date(val);
+    return date.getFullYear() >= 2000;
+  }, "La fecha no puede ser anterior al año 2000").optional(),
   responsablePrincipalId: z.string().min(1, "El responsable es requerido"),
   responsablesApoyo: z.array(z.string()),
   ponderacion: z.number().optional(),
   orden: z.number(),
   observaciones: z.string().optional(),
+}).refine((data) => {
+  if (data.fechaInicio && data.fechaVencimiento) {
+    return new Date(data.fechaVencimiento) >= new Date(data.fechaInicio);
+  }
+  return true;
+}, {
+  message: "La fecha de vencimiento no puede ser anterior a la fecha de inicio",
+  path: ["fechaVencimiento"],
 });
 
 type ActividadFormValues = z.infer<typeof actividadSchema>;
@@ -62,7 +80,7 @@ interface ActividadFormProps {
 }
 
 export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: ActividadFormProps) {
-  const { proyectos, responsables, addActividad, updateActividad, loading, error } = useOperacionesStore();
+  const { proyectos, responsables, addActividad, updateActividad, loading, error, fetchProyectos } = useOperacionesStore();
   
   // States for searchable project selector
   const [projectSearch, setProjectSearch] = useState("");
@@ -81,6 +99,23 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
     r.nombre.toLowerCase().includes(responsibleSearch.toLowerCase()) || 
     r.area.toLowerCase().includes(responsibleSearch.toLowerCase())
   );
+  
+  const fetchProyectosRef = React.useRef(fetchProyectos);
+  React.useEffect(() => {
+    fetchProyectosRef.current = fetchProyectos;
+  }, [fetchProyectos]);
+  
+  // Fetch projects when the modal opens if not already loaded
+  useEffect(() => {
+    if (isOpen) {
+      console.log("[ActividadForm] Modal opened, projects count:", proyectos.length);
+      // Fetch a larger amount to ensure we get most/all projects
+      console.log("[ActividadForm] Fetching projects...");
+      fetchProyectosRef.current(1, 1000).catch(err => console.error("[ActividadForm] Error fetching projects:", err));
+    }
+  }, [isOpen]); // Removed proyectos.length from dependencies to avoid re-fetching loop if fetch doesn't change length
+  
+  // Removed debugging useEffect as it was causing issues
 
   const form = useForm<ActividadFormValues>({
     resolver: zodResolver(actividadSchema),
@@ -90,7 +125,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
       tipo: "Técnica",
       prioridad: "Media",
       estado: "Pendiente",
-      fechaInicio: new Date().toISOString().split("T")[0],
+      fechaInicio: format(new Date(), "yyyy-MM-dd"),
       fechaFin: "",
       fechaVencimiento: "",
       responsablePrincipalId: "",
@@ -109,7 +144,10 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         tipo: actividad.tipo,
         prioridad: actividad.prioridad,
         estado: actividad.estado,
-        fechaInicio: actividad.fechaInicio ? actividad.fechaInicio.split("T")[0] : "",
+        // Al EDITAR: Priorizar fechaInicio original, si no existe usar la de CREACIÓN (no la de hoy)
+        fechaInicio: actividad.fechaInicio 
+          ? actividad.fechaInicio.split("T")[0] 
+          : (actividad.fechaCreacion ? actividad.fechaCreacion.split("T")[0] : ""),
         fechaFin: actividad.fechaFin ? actividad.fechaFin.split("T")[0] : "",
         fechaVencimiento: actividad.fechaVencimiento ? actividad.fechaVencimiento.split("T")[0] : "",
         responsablePrincipalId: actividad.responsablePrincipalId,
@@ -125,7 +163,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         tipo: "Técnica",
         prioridad: "Media",
         estado: "Pendiente",
-        fechaInicio: new Date().toISOString().split("T")[0],
+        fechaInicio: format(new Date(), "yyyy-MM-dd"),
         fechaFin: "",
         fechaVencimiento: "",
         responsablePrincipalId: "",
@@ -138,29 +176,52 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   }, [actividad, proyectoId, form, isOpen]);
 
   const onSubmit = async (values: ActividadFormValues) => {
+    // Helper para convertir YYYY-MM-DD a ISO manteniendo el día local (mediodía)
+    const toLocalISO = (dateStr?: string) => {
+        if (!dateStr) return undefined;
+        // Si ya tiene T es un ISO completo, si no, es YYYY-MM-DD
+        const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
+        return new Date(normalized).toISOString();
+    };
+
     try {
       if (actividad) {
-        await updateActividad(values.proyectoId, { ...actividad, ...values });
+        await updateActividad(values.proyectoId, { 
+            ...actividad, 
+            ...values,
+            fechaInicio: toLocalISO(values.fechaInicio),
+            fechaVencimiento: toLocalISO(values.fechaVencimiento)
+        });
+        toast.success("Actividad Actualizada", { description: "Los cambios se guardaron correctamente." });
       } else {
         await addActividad(values.proyectoId, {
           ...values,
-          fechaCreacion: new Date().toISOString().split("T")[0],
+          fechaCreacion: new Date().toISOString(),
+          fechaInicio: toLocalISO(values.fechaInicio),
+          fechaVencimiento: toLocalISO(values.fechaVencimiento),
           subtareas: [],
           validacionesRequeridas: [],
           comentarios: [],
           evidencias: [],
           progreso: 0,
         });
+        toast.success("Actividad Creada", { description: "La nueva tarea ha sido registrada." });
       }
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving actividad", error);
+      const isNotFound = error.message?.includes("no encontrada") || error.message?.includes("404");
+      toast.error("Error al Guardar", { 
+        description: isNotFound 
+          ? "Esta actividad no existe en el servidor. Por favor, refresca la página para limpiar datos obsoletos."
+          : (error.message || "No se pudo procesar la solicitud.")
+      });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto">
+      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto z-[100]">
         <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
           <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
             <ClipboardList className="w-6 h-6 text-accent" />
@@ -183,14 +244,16 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Proyecto / Operación *</FormLabel>
-                  <Popover open={isProjectSelectOpen} onOpenChange={setIsProjectSelectOpen}>
-                    <PopoverTrigger
+                  <div className="relative">
+                    <button
+                      type="button"
                       disabled={!!proyectoId && !actividad}
                       className={cn(
                         buttonVariants({ variant: "outline" }),
                         "h-12 w-full justify-between border-slate-200 bg-slate-50/50 hover:bg-white transition-colors focus:ring-primary shadow-none font-medium text-left px-4",
                         !field.value && "text-muted-foreground"
                       )}
+                      onClick={() => setIsProjectSelectOpen(!isProjectSelectOpen)}
                     >
                       <span className="truncate">
                         {field.value
@@ -201,54 +264,56 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                           : "Seleccionar proyecto"}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border-slate-200" align="start">
-                      <div className="p-2 border-b">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input
-                            placeholder="Buscar proyecto..."
-                            className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
-                            value={projectSearch}
-                            onChange={(e) => setProjectSearch(e.target.value)}
-                          />
+                    </button>
+                    {isProjectSelectOpen && (
+                      <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-[200] p-0">
+                        <div className="p-2 border-b">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                              placeholder="Buscar proyecto..."
+                              className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
+                              value={projectSearch}
+                              onChange={(e) => setProjectSearch(e.target.value)}
+                            />
+                          </div>
                         </div>
+                        <ScrollArea className="h-60">
+                          <div className="p-1">
+                            {filteredProyectos.length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-500 italic">
+                                No se encontraron proyectos
+                              </div>
+                            ) : (
+                              filteredProyectos.map((p) => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  className={cn(
+                                    "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
+                                    field.value === p.id && "bg-slate-100 border border-slate-200"
+                                  )}
+                                  onClick={() => {
+                                    form.setValue("proyectoId", p.id);
+                                    setIsProjectSelectOpen(false);
+                                    setProjectSearch("");
+                                  }}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
+                                    <span className="text-[10px] text-slate-500 group-focus:text-white/80 line-clamp-1">{p.nombre}</span>
+                                  </div>
+                                  {field.value === p.id && (
+                                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </ScrollArea>
                       </div>
-                      <ScrollArea className="h-60">
-                        <div className="p-1">
-                          {filteredProyectos.length === 0 ? (
-                            <div className="py-6 text-center text-xs text-slate-500 italic">
-                              No se encontraron proyectos
-                            </div>
-                          ) : (
-                            filteredProyectos.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className={cn(
-                                  "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
-                                  field.value === p.id && "bg-slate-100 border border-slate-200"
-                                )}
-                                onClick={() => {
-                                  form.setValue("proyectoId", p.id);
-                                  setIsProjectSelectOpen(false);
-                                  setProjectSearch("");
-                                }}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
-                                  <span className="text-[10px] text-slate-500 group-focus:text-white/80 line-clamp-1">{p.nombre}</span>
-                                </div>
-                                {field.value === p.id && (
-                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                )}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                    )}
+                  </div>
                   <FormMessage className="text-[10px] font-black uppercase" />
                 </FormItem>
               )}
@@ -328,9 +393,15 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-white border-slate-200">
-                        {["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"].map(e => (
+                        {["Pendiente", "En Progreso", "Completada"].map(e => (
                           <SelectItem key={e} value={e} className="font-medium">{e}</SelectItem>
                         ))}
+                        {/* Validada solo aparece si ya está en ese estado o viene del módulo de validaciones */}
+                        {((field.value as any) === "Validada" || (field.value as any) === "Bloqueada" || (field.value as any) === "EnProgreso") && (
+                          <SelectItem value={field.value} className="font-medium">
+                            {field.value === "EnProgreso" ? "En Progreso" : field.value}
+                          </SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -375,13 +446,15 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Responsable Principal *</FormLabel>
-                  <Popover open={isResponsibleSelectOpen} onOpenChange={setIsResponsibleSelectOpen}>
-                    <PopoverTrigger
+                  <div className="relative">
+                    <button
+                      type="button"
                       className={cn(
                         buttonVariants({ variant: "outline" }),
                         "h-12 w-full justify-between border-slate-200 bg-slate-50/50 hover:bg-white transition-colors focus:ring-primary shadow-none font-medium text-left px-4",
                         !field.value && "text-muted-foreground"
                       )}
+                      onClick={() => setIsResponsibleSelectOpen(!isResponsibleSelectOpen)}
                     >
                       <span className="truncate">
                         {field.value
@@ -392,54 +465,56 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                           : "Seleccionar responsable"}
                       </span>
                       <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border-slate-200" align="start">
-                      <div className="p-2 border-b">
-                        <div className="relative">
-                          <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                          <Input
-                            placeholder="Buscar responsable..."
-                            className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
-                            value={responsibleSearch}
-                            onChange={(e) => setResponsibleSearch(e.target.value)}
-                          />
+                    </button>
+                    {isResponsibleSelectOpen && (
+                      <div className="absolute top-full left-0 w-full mt-1 bg-white border border-slate-200 rounded-md shadow-lg z-[200] p-0">
+                        <div className="p-2 border-b">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                              placeholder="Buscar responsable..."
+                              className="pl-8 h-9 text-xs border-none bg-slate-100 focus:bg-white"
+                              value={responsibleSearch}
+                              onChange={(e) => setResponsibleSearch(e.target.value)}
+                            />
+                          </div>
                         </div>
+                        <ScrollArea className="h-60">
+                          <div className="p-1">
+                            {filteredResponsables.length === 0 ? (
+                              <div className="py-6 text-center text-xs text-slate-500 italic">
+                                No se encontraron responsables
+                              </div>
+                            ) : (
+                              filteredResponsables.map((r) => (
+                                <button
+                                  key={r.id}
+                                  type="button"
+                                  className={cn(
+                                    "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
+                                    field.value === r.id && "bg-slate-100 border border-slate-200"
+                                  )}
+                                  onClick={() => {
+                                    form.setValue("responsablePrincipalId", r.id);
+                                    setIsResponsibleSelectOpen(false);
+                                    setResponsibleSearch("");
+                                  }}
+                                >
+                                  <div className="flex flex-col">
+                                    <span className="font-bold text-sm text-slate-700 group-focus:text-white uppercase">{r.nombre}</span>
+                                    <span className="text-[10px] text-slate-400 group-focus:text-white/80">{r.area}</span>
+                                  </div>
+                                  {field.value === r.id && (
+                                    <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        </ScrollArea>
                       </div>
-                      <ScrollArea className="h-60">
-                        <div className="p-1">
-                          {filteredResponsables.length === 0 ? (
-                            <div className="py-6 text-center text-xs text-slate-500 italic">
-                              No se encontraron responsables
-                            </div>
-                          ) : (
-                            filteredResponsables.map((r) => (
-                              <button
-                                key={r.id}
-                                type="button"
-                                className={cn(
-                                  "w-full flex flex-col items-start px-3 py-2 rounded-lg text-left transition-colors hover:bg-slate-100 focus:bg-primary focus:text-white group relative",
-                                  field.value === r.id && "bg-slate-100 border border-slate-200"
-                                )}
-                                onClick={() => {
-                                  form.setValue("responsablePrincipalId", r.id);
-                                  setIsResponsibleSelectOpen(false);
-                                  setResponsibleSearch("");
-                                }}
-                              >
-                                <div className="flex flex-col">
-                                  <span className="font-bold text-sm text-slate-700 group-focus:text-white uppercase">{r.nombre}</span>
-                                  <span className="text-[10px] text-slate-400 group-focus:text-white/80">{r.area}</span>
-                                </div>
-                                {field.value === r.id && (
-                                  <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
-                                )}
-                              </button>
-                            ))
-                          )}
-                        </div>
-                      </ScrollArea>
-                    </PopoverContent>
-                  </Popover>
+                    )}
+                  </div>
                   <FormMessage className="text-[10px] font-black uppercase" />
                 </FormItem>
               )}

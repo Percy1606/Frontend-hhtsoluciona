@@ -3,19 +3,40 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { useLayoutStore } from "@/store/layout-store";
+import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useAuthStore } from "@/store/auth-store";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 
+function DashboardInner({ children }: { children: React.ReactNode }) {
+  const { state } = useSidebar();
+  const sidebarCollapsed = state === "collapsed";
+
+  return (
+    <div className="flex min-h-screen bg-background w-full">
+      <Sidebar />
+      <div className={cn(
+        "flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0",
+        sidebarCollapsed ? "ml-20" : "ml-64"
+      )}>
+        <Header />
+        <main className="flex-1 p-8">
+          <TooltipProvider>
+            {children}
+          </TooltipProvider>
+        </main>
+      </div>
+    </div>
+  );
+}
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const { sidebarCollapsed } = useLayoutStore();
   const { fetchProyectos, fetchResponsables } = useOperacionesStore();
   const { isAuthenticated } = useAuthStore();
   const router = useRouter();
@@ -40,19 +61,8 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <Sidebar />
-      <div className={cn(
-        "flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0",
-        sidebarCollapsed ? "ml-20" : "ml-64"
-      )}>
-        <Header />
-        <main className="flex-1 p-8">
-          <TooltipProvider>
-            {children}
-          </TooltipProvider>
-        </main>
-      </div>
-    </div>
+    <SidebarProvider>
+      <DashboardInner>{children}</DashboardInner>
+    </SidebarProvider>
   );
 }
