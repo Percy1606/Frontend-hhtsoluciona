@@ -178,10 +178,15 @@ export default function UsuariosPage() {
   const onSubmit = async (values: z.infer<typeof userSchema>) => {
     try {
       setIsSubmitting(true);
-      const payload = { 
-        ...values,
-        responsableId: values.responsableId || null 
-      };
+      
+      // Filtrar el payload para no enviar campos inválidos
+      const payload: any = { ...values };
+      
+      // Validar responsableId: solo enviar si es un UUID válido
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      if (!payload.responsableId || !uuidRegex.test(payload.responsableId)) {
+        delete payload.responsableId;
+      }
       
       if (editingUser) {
         if (!payload.password) delete payload.password;
