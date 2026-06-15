@@ -121,12 +121,14 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   control={form.control}
                   name="ruc"
                   rules={{ 
-                    required: "Requerido",
+                    required: form.watch("etapaComercial") !== "Prospecto" ? "Requerido para esta etapa" : false,
                     pattern: { value: /^\d{11}$/, message: "11 dígitos" } 
                   }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">RUC <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">
+                        RUC {form.watch("etapaComercial") !== "Prospecto" && <span className="text-error">*</span>}
+                      </FormLabel>
                       <FormControl>
                         <Input placeholder="20..." maxLength={11} {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
                       </FormControl>

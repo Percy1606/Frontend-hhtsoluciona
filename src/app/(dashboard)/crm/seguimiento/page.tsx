@@ -69,38 +69,38 @@ export default function SeguimientoPage() {
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-red-50 border-red-100">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-red-100 p-2.5 rounded-lg text-red-600">
+        <Card className="bg-red-50 border-red-100 shadow-sm">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="bg-red-100 p-2 rounded-lg text-red-600">
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-red-400 uppercase tracking-wider">Seguimientos Vencidos</p>
-              <p className="text-2xl font-black text-red-700">{totalVencidos}</p>
+              <p className="text-[10px] font-black text-red-400 uppercase tracking-wider leading-tight">Seguimientos Vencidos</p>
+              <p className="text-xl font-black text-red-700 leading-none mt-0.5">{totalVencidos}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-orange-50 border-orange-100">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-orange-100 p-2.5 rounded-lg text-orange-600">
+        <Card className="bg-orange-50 border-orange-100 shadow-sm">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
               <Bell className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-orange-400 uppercase tracking-wider">Sin Fecha Programada</p>
-              <p className="text-2xl font-black text-orange-700">{totalPendientes}</p>
+              <p className="text-[10px] font-black text-orange-400 uppercase tracking-wider leading-tight">Sin Fecha Programada</p>
+              <p className="text-xl font-black text-orange-700 leading-none mt-0.5">{totalPendientes}</p>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-blue-50 border-blue-100">
-          <CardContent className="p-4 flex items-center gap-4">
-            <div className="bg-blue-100 p-2.5 rounded-lg text-blue-600">
+        <Card className="bg-blue-50 border-blue-100 shadow-sm">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider">Gestiones para Hoy</p>
-              <p className="text-2xl font-black text-blue-700">{totalHoy}</p>
+              <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider leading-tight">Gestiones para Hoy</p>
+              <p className="text-xl font-black text-blue-700 leading-none mt-0.5">{totalHoy}</p>
             </div>
           </CardContent>
         </Card>

@@ -34,7 +34,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
       <div className="bg-white/95 backdrop-blur-md border border-slate-200 p-4 rounded-2xl shadow-xl">
         <p className="font-bold text-slate-800 mb-1">{label || payload[0].name}</p>
         <p className="text-sm font-medium" style={{ color: payload[0].fill || payload[0].color }}>
-          Valor: {payload[0].value} {payload[0].dataKey === 'sales' ? 'S/.' : payload[0].dataKey === 'progress' ? '%' : ''}
+          Valor: {payload[0].value} {payload[0].dataKey === 'sales' ? 'S/' : payload[0].dataKey === 'progress' ? '%' : ''}
         </p>
       </div>
     );

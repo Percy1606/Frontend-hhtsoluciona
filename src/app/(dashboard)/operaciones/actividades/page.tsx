@@ -212,17 +212,17 @@ export default function ActividadesPage() {
             <Button 
                 variant="outline" 
                 onClick={handleForceRefresh}
-                className="h-12 px-6 font-black uppercase text-xs tracking-widest border-2 hover:bg-slate-50 gap-2 rounded-xl"
+                className="h-10 px-5 font-black uppercase text-[10px] tracking-widest border-2 hover:bg-slate-50 gap-2 rounded-xl"
                 title="Limpiar caché local y forzar sincronización"
             >
-                <Clock className="w-4 h-4" />
+                <Clock className="w-3.5 h-3.5" />
                 Sincronizar
             </Button>
             <Button
-                className="h-12 gap-2 font-black uppercase text-xs bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-8"
+                className="h-10 gap-2 font-black uppercase text-[10px] bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-6"
                 onClick={() => { setEditingActividad(null); setIsFormOpen(true); }}
             >
-                <Plus className="w-5 h-5" /> Nueva Actividad
+                <Plus className="w-4 h-4" /> Nueva Actividad
             </Button>
         </div>
       </div>
@@ -236,57 +236,67 @@ export default function ActividadesPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-6">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
-          <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1 mb-1.5 block">Buscador Global</span>
+          <span className="text-[9px] font-black uppercase text-primary tracking-widest ml-1 mb-1 block">Buscador Global</span>
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
               placeholder="Buscar por actividad o proyecto..." 
-              className="pl-12 h-14 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-base rounded-xl" 
+              className="pl-10 h-10 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-sm rounded-xl" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-4 w-full lg:w-auto">
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado Operativo</span>
+        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+          <div className="flex flex-col gap-1 min-w-[180px]">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado Operativo</span>
             <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val || "all")}>
-              <SelectTrigger className="h-11 border-slate-200 bg-white font-black text-[10px] uppercase rounded-xl shadow-sm">
-                <SelectValue placeholder="SELECCIONAR ESTADO" />
+              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
+                <SelectValue placeholder="Estado">
+                  {filtroEstado !== "all" ? 
+                    <span className="text-[10px] font-bold uppercase">{filtroEstado}</span> : 
+                    <span className="text-[9px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</span>
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="font-black text-[10px] uppercase">TODOS LOS ESTADOS</SelectItem>
-                <SelectItem value="Pendiente" className="font-black text-[10px] uppercase">PENDIENTE</SelectItem>
-                <SelectItem value="En Progreso" className="font-black text-[10px] uppercase">EN PROGRESO</SelectItem>
-                <SelectItem value="Completada" className="font-black text-[10px] uppercase">COMPLETADA</SelectItem>
-                <SelectItem value="Validada" className="font-black text-[10px] uppercase">VALIDADA</SelectItem>
+                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</SelectItem>
+                <SelectItem value="Pendiente" className="uppercase text-[10px] font-bold">PENDIENTE</SelectItem>
+                <SelectItem value="En Progreso" className="uppercase text-[10px] font-bold">EN PROGRESO</SelectItem>
+                <SelectItem value="Completada" className="uppercase text-[10px] font-bold">COMPLETADA</SelectItem>
+                <SelectItem value="Validada" className="uppercase text-[10px] font-bold">VALIDADA</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex flex-col gap-1.5 min-w-[220px]">
-            <span className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Responsable</span>
+          <div className="flex flex-col gap-1 min-w-[200px]">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable</span>
             <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val || "all")}>
-              <SelectTrigger className="h-11 border-slate-200 bg-white font-black text-[10px] uppercase rounded-xl shadow-sm">
-                <SelectValue placeholder="SELECCIONAR RESPONSABLE" />
+              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
+                <SelectValue placeholder="Responsable">
+                  {filtroResponsable !== "all" ? 
+                    <span className="text-[10px] font-bold uppercase">{getResponsableName(filtroResponsable)}</span> : 
+                    <span className="text-[9px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</span>
+                  }
+                </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="font-black text-[10px] uppercase">TODOS LOS RESPONSABLES</SelectItem>
+                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</SelectItem>
                 {responsables.map(r => (
-                  <SelectItem key={r.id} value={r.id} className="font-black text-[10px] uppercase">{r.nombre}</SelectItem>
+                  <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-bold">{r.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex items-end self-end h-11">
+          <div className="flex items-end self-end h-10">
             <Button 
               variant="ghost" 
               onClick={resetFiltros} 
-              className="h-11 w-11 text-slate-400 hover:text-error hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl"
+              className="h-10 w-10 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl shadow-none"
               title="Limpiar filtros"
             >
               <FilterX className="w-5 h-5" />

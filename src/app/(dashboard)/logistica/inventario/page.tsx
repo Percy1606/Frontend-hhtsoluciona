@@ -46,15 +46,15 @@ import { SecureDeleteModal } from "@/components/logistica/secure-delete-modal";
 import { toast } from "sonner";
 
 const StatsCard = ({ label, value, icon, color, bgColor, isCurrency = false }: any) => (
-  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
-    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+  <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white", bgColor)}>
+    <div className={cn("p-2.5 rounded-lg bg-white shadow-sm", color)}>
       {icon}
     </div>
-    <div>
+    <div className="min-w-0">
       <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
-      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>
+      <p className={cn("text-lg font-black leading-none tracking-tight truncate", color)}>
         {isCurrency 
-            ? new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
+            ? new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(value)
             : value
         }
       </p>
@@ -181,7 +181,7 @@ export default function InventarioPage() {
       <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col lg:flex-row gap-6 mb-8 items-end">
             <div className="flex-1 w-full space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Buscador de Insumos</Label>
+                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Buscador de Insumos</Label>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input 
@@ -195,30 +195,40 @@ export default function InventarioPage() {
             
             <div className="flex flex-wrap gap-4 w-full lg:w-auto">
                 <div className="space-y-1.5 min-w-[200px]">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Filtrar Categoría</Label>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Filtrar Categoría</Label>
                     <Select value={filterCategory} onValueChange={handleCategoryChange}>
-                        <SelectTrigger className="h-11 border-slate-200 font-bold text-[10px] uppercase rounded-xl bg-white shadow-sm">
-                            <SelectValue placeholder="Categoría" />
+                        <SelectTrigger className="h-11 border-slate-200 font-bold text-xs rounded-xl bg-white shadow-sm">
+                            <SelectValue placeholder="Categoría">
+                              {filterCategory !== "all" ? 
+                                <span className="uppercase">{filterCategory}</span> : 
+                                <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS CATEGORÍAS</span>
+                              }
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">Todas las categorías</SelectItem>
+                            <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS CATEGORÍAS</SelectItem>
                             {categories.map(cat => (
-                                <SelectItem key={cat} value={cat || ""} className="text-[10px] font-bold uppercase">{cat}</SelectItem>
+                                <SelectItem key={cat} value={cat || ""} className="text-xs font-medium uppercase">{cat}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
 
                 <div className="space-y-1.5 min-w-[180px]">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado de Inventario</Label>
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado de Inventario</Label>
                     <Select value={filterStock} onValueChange={handleStockChange}>
-                        <SelectTrigger className="h-11 border-slate-200 font-bold text-[10px] uppercase rounded-xl bg-white shadow-sm">
-                            <SelectValue placeholder="Estado Stock" />
+                        <SelectTrigger className="h-11 border-slate-200 font-bold text-xs rounded-xl bg-white shadow-sm">
+                            <SelectValue placeholder="Estado Stock">
+                              {filterStock !== "all" ? 
+                                <span className="uppercase">{filterStock === 'disponible' ? 'DISPONIBLE' : 'STOCK BAJO'}</span> : 
+                                <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">VER TODO EL STOCK</span>
+                              }
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">Ver todo el stock</SelectItem>
-                            <SelectItem value="disponible" className="text-[10px] font-bold uppercase text-success">Disponible</SelectItem>
-                            <SelectItem value="bajo" className="text-[10px] font-bold uppercase text-error">Stock Bajo / Crítico</SelectItem>
+                            <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">VER TODO EL STOCK</SelectItem>
+                            <SelectItem value="disponible" className="text-xs font-medium uppercase text-success">DISPONIBLE</SelectItem>
+                            <SelectItem value="bajo" className="text-xs font-medium uppercase text-error">STOCK BAJO / CRÍTICO</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -273,7 +283,7 @@ export default function InventarioPage() {
                                         {item.stockActual <= item.stockMinimo && <AlertCircle className="w-3.5 h-3.5 text-error animate-pulse" />}
                                     </div>
                                 </TableCell>
-                                <TableCell className="font-black text-xs text-slate-700">S/ {item.precioReferencial.toFixed(2)}</TableCell>
+                                <TableCell className="font-black text-xs text-slate-700">S/ {Number(item.precioReferencial || 0).toFixed(2)}</TableCell>
                                 <TableCell className="text-right pr-6">
                                     <div className="flex justify-end gap-1">
                                         <Button 

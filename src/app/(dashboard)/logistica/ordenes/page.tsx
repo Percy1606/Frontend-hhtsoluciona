@@ -26,6 +26,13 @@ import {
   ChevronRight
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { useLogisticaStore } from "@/store/logistica-store";
 import { useAuthStore } from "@/store/auth-store";
@@ -34,13 +41,13 @@ import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-
 import { toast } from "sonner";
 
 const StatsCard = ({ label, value, icon, color, bgColor, isCurrency = false }: any) => (
-  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
-    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+  <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white", bgColor)}>
+    <div className={cn("p-2 rounded-lg bg-white shadow-sm", color)}>
       {icon}
     </div>
     <div>
-      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
-      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>
+      <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
+      <p className={cn("text-lg font-black leading-none tracking-tight", color)}>
         {isCurrency 
             ? new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value)
             : value
@@ -75,6 +82,9 @@ export default function OrdenesCompraPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isOrdenModalOpen, setIsOrdenModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("TODOS");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   
   const [editingOrden, setEditingOrden] = useState<any>(null);
   const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
@@ -87,10 +97,10 @@ export default function OrdenesCompraPage() {
     fetchInsumos();
   }, [fetchProveedores, fetchInsumos]);
 
-  // Sincronización de Ordenes (Paginación + Búsqueda)
+  // Sincronización de Ordenes (Paginación + Búsqueda + Filtros)
   useEffect(() => {
-    fetchOrdenes(currentPage, 20, searchTerm);
-  }, [fetchOrdenes, currentPage, searchTerm]);
+    fetchOrdenes(currentPage, 20, searchTerm, statusFilter, dateFrom, dateTo);
+  }, [fetchOrdenes, currentPage, searchTerm, statusFilter, dateFrom, dateTo]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -145,7 +155,7 @@ export default function OrdenesCompraPage() {
             <div className="bg-primary/10 p-2 rounded-lg">
               <ShoppingCart className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Órdenes de Compra</h1>
+            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Órdenes de Servicio</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Gestión de adquisiciones y abastecimiento.</p>
         </div>
@@ -163,14 +173,63 @@ export default function OrdenesCompraPage() {
       </div>
 
       <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
-        <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input 
-                placeholder="Buscar por código u proveedor..." 
-                className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs shadow-none focus:bg-white transition-all"
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-            />
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6">
+            <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Búsqueda</label>
+                <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                        placeholder="Buscar código o proveedor..." 
+                        className="pl-10 h-10 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs shadow-none focus:bg-white transition-all"
+                        value={searchTerm}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                    />
+                </div>
+            </div>
+            <div>
+                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Estado</label>
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "TODOS")}>
+                    <SelectTrigger className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1">
+                        <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="TODOS" className="font-bold text-xs uppercase text-slate-600">Todos los Estados</SelectItem>
+                        <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-slate-500">Pendiente</SelectItem>
+                        <SelectItem value="APROBADO" className="font-bold text-xs uppercase text-blue-600">Aprobado</SelectItem>
+                        <SelectItem value="RECIBIDO" className="font-bold text-xs uppercase text-green-600">Recibido</SelectItem>
+                        <SelectItem value="CANCELADO" className="font-bold text-xs uppercase text-red-600">Cancelado</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div>
+                <label htmlFor="date-from" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
+                <Input 
+                    id="date-from"
+                    type="date" 
+                    value={dateFrom} 
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
+                />
+            </div>
+            <div>
+                <label htmlFor="date-to" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
+                <Input 
+                    id="date-to"
+                    type="date" 
+                    value={dateTo} 
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
+                />
+            </div>
+            <div>
+                <Button 
+                    variant="outline" 
+                    onClick={() => { setDateFrom(""); setDateTo(""); setSearchTerm(""); setStatusFilter("TODOS"); }}
+                    className="h-10 w-full px-4 gap-2 text-xs font-bold rounded-lg border-border text-slate-500 hover:text-slate-700"
+                >
+                    Limpiar Filtros
+                </Button>
+            </div>
         </div>
 
         <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
@@ -179,6 +238,8 @@ export default function OrdenesCompraPage() {
                     <TableRow>
                         <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6">Código</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Proveedor</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px]">Materiales</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Emisión</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Total</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Estado</TableHead>
@@ -187,33 +248,39 @@ export default function OrdenesCompraPage() {
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</TableCell></TableRow>
                     ) : ordenes.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de compra.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de compra.</TableCell></TableRow>
                     ) : (
                         ordenes.map((oc) => (
                             <TableRow key={oc.id} className="hover:bg-slate-50/50 transition-colors group">
                                 <TableCell className="pl-6 font-black text-primary text-xs uppercase group-hover:translate-x-1 transition-transform">{oc.codigo}</TableCell>
                                 <TableCell className="font-bold text-xs uppercase text-slate-600">{oc.proveedor?.razonSocial}</TableCell>
+                                <TableCell className="font-bold text-[10px] uppercase text-slate-500 max-w-[150px] truncate">{oc.gasto?.proyecto?.nombre || "Stock General"}</TableCell>
+                                <TableCell className="font-medium text-[10px] text-slate-500">
+                                  {oc.items && oc.items.length > 0 ? (
+                                    <div className="flex flex-wrap items-center gap-1" title={oc.items.map((item: any) => item.insumo?.nombre).join(", ")}>
+                                      <span className="truncate max-w-[150px]">
+                                        {oc.items.slice(0, 2).map((item: any) => item.insumo?.nombre || "Material").join(", ")}
+                                      </span>
+                                      {oc.items.length > 2 && (
+                                        <Badge variant="secondary" className="text-[8px] h-4 px-1 py-0 bg-slate-100 text-slate-500 hover:bg-slate-200">
+                                          +{oc.items.length - 2}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  ) : "Sin materiales"}
+                                </TableCell>
                                 <TableCell className="text-[10px] text-slate-500 font-bold">{new Date(oc.fechaEmision).toLocaleDateString()}</TableCell>
-                                <TableCell className="font-black text-xs text-slate-800">S/ {oc.montoTotal.toFixed(2)}</TableCell>
+                                <TableCell className="font-black text-xs text-slate-800">S/ {Number(oc.montoTotal || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                     <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none", estadoCompraColors[oc.estado])}>{oc.estado}</Badge>
                                 </TableCell>
                                 <TableCell className="text-right pr-6">
                                     <div className="flex justify-end gap-1">
-                                        {oc.estado !== 'RECIBIDO' && oc.estado !== 'CANCELADO' && (
-                                            <Button 
-                                                size="sm" 
-                                                onClick={() => handleRecibirOrden(oc)}
-                                                className="h-8 bg-success hover:bg-success/90 text-white font-black uppercase text-[8px] tracking-widest rounded-lg px-3"
-                                            >
-                                                <PackageCheck className="w-3.5 h-3.5 mr-1.5" /> Recibir
-                                            </Button>
-                                        )}
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"><Eye className="w-4 h-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-8 w-8 text-primary"><Eye className="w-4 h-4"/></Button>
                                         
-                                        {oc.estado !== 'RECIBIDO' && (
+                                        {oc.estado !== 'RECIBIDO' && oc.estado !== 'CANCELADO' && (
                                             <>
                                                 <Button 
                                                     variant="ghost" 

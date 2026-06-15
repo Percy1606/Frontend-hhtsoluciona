@@ -1,6 +1,8 @@
 // HH-FRONTEND/src/types/finanzas.ts
 
-export type EstadoFactura = 'PENDIENTE' | 'PAGADA_PARCIAL' | 'PAGADA' | 'ANULADA';
+export type EstadoFactura = 'PENDIENTE' | 'PAGO_PARCIAL' | 'PAGADA' | 'ANULADA' | 'VENCIDA';
+
+export type ClasificacionFinanciera = 'VENTA_SERVICIO' | 'PROYECTO' | 'ALQUILER_EQUIPOS';
 
 export interface Factura {
   id: string;
@@ -10,6 +12,7 @@ export interface Factura {
   proyectoId?: string | null;
   proyecto?: { nombre: string; codigo: string };
   cotizacionId?: string | null;
+  clasificacion: ClasificacionFinanciera;
   montoSubtotal: number;
   montoIgv: number;
   montoTotal: number;
@@ -19,12 +22,18 @@ export interface Factura {
   estado: EstadoFactura;
   observaciones?: string | null;
   archivoUrl?: string | null;
+  esRecurrente?: boolean;
+  frecuencia?: string | null;
+  proximaFacturacion?: string | null;
+  saldoAnterior?: number;
+  totalAcumulado?: number;
+  saldoTotalCliente?: number;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export type EstadoGasto = 'PENDIENTE' | 'PAGADO' | 'ANULADO';
-export type TipoGasto = 'OPERATIVO' | 'ADMINISTRATIVO' | 'FINANCIERO';
+export type TipoGasto = 'OPERATIVO' | 'ADMINISTRATIVO' | 'FINANCIERO' | 'PROYECTO' | 'PERSONAL';
 
 export interface Gasto {
   id: string;
@@ -34,7 +43,10 @@ export interface Gasto {
   proyectoId?: string | null;
   proyecto?: { nombre: string; codigo: string };
   ordenCompraId?: string | null;
+  cajaId?: string | null;
   tipo: TipoGasto;
+  clasificacion: ClasificacionFinanciera;
+  categoriaDistribucion?: string | null;
   concepto: string;
   montoTotal: number;
   fechaEmision: string;
@@ -61,11 +73,19 @@ export interface FinanceStats {
   totalEgresos: number;
   totalFacturado: number;
   totalCobrado: number;
+  totalPendiente: number;
   totalGastos: number;
+  totalGastosPagados: number;
+  totalGastosPendientes: number;
+  utilidadNeta: number;
+  margenNeto: number;
+  crecimientoIngresos: number;
+  crecimientoEgresos: number;
   utilidadProyectada: number;
   balance: number;
   facturasPendientes: number;
-  gastosPendientes: number;
+  facturasParciales: number;
   facturasVencidas: number;
   facturasCriticas: FacturaCritica[];
+  desgloseGastos: { tipo: string; monto: number }[];
 }

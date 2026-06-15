@@ -316,6 +316,8 @@ export interface Proyecto {
   cotizacion?: {
     estado: string;
   };
+  cotizacionOrigen?: any;
+  montoCotizado?: number;
 
   // Auditoría
   creadoPor?: string;

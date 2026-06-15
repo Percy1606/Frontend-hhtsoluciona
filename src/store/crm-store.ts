@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { api } from '@/lib/api';
 import { format } from 'date-fns';
 import { useAuthStore } from './auth-store';
+import { useNotificationStore } from './notification-store';
 import { Client, Interaction, AttachedFile } from '@/types/crm';
 import { toast } from 'sonner';
 
@@ -62,9 +63,20 @@ export const getDaysSinceContact = (dateString?: string) => {
 
 export const calculateClientSemaforo = (client: Client) => {
   const days = getDaysSinceContact(client.ultimoContacto);
-  if (days <= 7) return 'Verde';
-  if (days <= 15) return 'Amarillo';
-  return 'Rojo';
+  const isOverdue = isFollowUpOverdue(client);
+  if (isOverdue || days > 15) return 'Rojo';
+  if (days > 7) return 'Amarillo';
+  return 'Verde';
+};
+
+const safeNumber = (val: any) => {
+  if (val === null || val === undefined || val === '') return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  
+  // Limpieza agresiva: dejar solo números, punto decimal y signo negativo
+  const cleaned = String(val).replace(/[^0-9.-]/g, '');
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? 0 : num;
 };
 
 interface CRMState {
@@ -109,6 +121,7 @@ interface CRMState {
   
   reassignSeller: (clientId: string, seller: string) => Promise<void>;
   attachFile: (clientId: string, file: { nombre: string, url: string, tipo: string, tamano: string, subidoPor: string }) => Promise<void>;
+  uploadClientFile: (file: File) => Promise<any>;
   deleteFile: (clientId: string, fileId: string) => Promise<void>;
 
   addQuote: (quote: Omit<Quote, 'id'>) => Promise<void>;
@@ -343,7 +356,10 @@ export const useCRMStore = create<CRMState>()(
           const payload = {
             ...clientData,
             semaforo: (clientData as any).semaforo || "Verde",
-            temperatura: (clientData as any).temperatura || "Tibio"
+            temperatura: (clientData as any).temperatura || "Tibio",
+            montoEstimado: safeNumber((clientData as any).montoEstimado),
+            ventaProyectada: safeNumber((clientData as any).ventaProyectada),
+            probabilidad: safeNumber((clientData as any).probabilidad),
           };
           await api.post('/crm/clientes', payload);
           await get().fetchClients(1);
@@ -369,7 +385,14 @@ export const useCRMStore = create<CRMState>()(
             ...data 
           } = client as any;
           
-          await api.put(`/crm/clientes/${id}`, data);
+          const payload = {
+            ...data,
+            montoEstimado: safeNumber(data.montoEstimado),
+            ventaProyectada: safeNumber(data.ventaProyectada),
+            probabilidad: safeNumber(data.probabilidad),
+          };
+          
+          await api.put(`/crm/clientes/${id}`, payload);
           await get().fetchClients(1);
         } catch (error) {
           console.error("Error updating client:", error);
@@ -426,7 +449,10 @@ export const useCRMStore = create<CRMState>()(
           
           await api.put(`/crm/clientes/${clientId}`, { 
             ...data, 
-            asignadoA: seller 
+            asignadoA: seller,
+            montoEstimado: safeNumber(data.montoEstimado),
+            ventaProyectada: safeNumber(data.ventaProyectada),
+            probabilidad: safeNumber(data.probabilidad),
           });
           
           await get().fetchClients(1);
@@ -448,6 +474,19 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
+      uploadClientFile: async (file: File) => {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const response = await api.post('/crm/upload', formData);
+          return response;
+        } catch (error) {
+          console.error("Error uploading client file:", error);
+          throw error;
+        }
+      },
+
       deleteFile: async (clientId, fileId) => {
         try {
           await api.delete(`/crm/documentos/${fileId}`);
@@ -462,9 +501,7 @@ export const useCRMStore = create<CRMState>()(
       addQuote: async (quote) => {
         set({ loading: true });
         try {
-          // Limpiamos campos que el backend no acepta en el CreateCotizacionDto
           const { empresa, contacto, ...cleanData } = quote as any;
-          
           await api.post('/crm/cotizaciones', cleanData);
           await get().fetchQuotes();
         } catch (error) {
@@ -477,7 +514,6 @@ export const useCRMStore = create<CRMState>()(
         try {
           const formData = new FormData();
           formData.append('file', file);
-          
           const response = await api.post('/crm/cotizaciones/upload', formData);
           return response;
         } catch (error) {
@@ -501,7 +537,13 @@ export const useCRMStore = create<CRMState>()(
       importClients: async (clientsData) => {
         set({ loading: true });
         try {
-          await api.post('/crm/clientes/bulk', clientsData);
+          const sanitizedData = clientsData.map(c => ({
+            ...c,
+            montoEstimado: safeNumber(c.montoEstimado),
+            ventaProyectada: safeNumber(c.ventaProyectada),
+            probabilidad: safeNumber(c.probabilidad),
+          }));
+          await api.post('/crm/clientes/bulk', sanitizedData);
           await get().fetchClients(1);
           toast.success(`${clientsData.length} clientes importados.`);
         } catch (error) {
@@ -515,25 +557,12 @@ export const useCRMStore = create<CRMState>()(
       updateQuote: async (updatedQuote) => {
         try {
           const { 
-            id, 
-            cliente, 
-            documentos, 
-            interacciones, 
-            empresa, 
-            contacto, 
-            codigo, 
-            fechaCreacion, 
-            fechaActualizacion,
-            proyectoGenerado,
-            proyectoGeneradoId,
-            ...cleanData 
+            id, cliente, documentos, interacciones, empresa, contacto, codigo, fechaCreacion, fechaActualizacion, proyectoGenerado, proyectoGeneradoId, ...cleanData 
           } = updatedQuote as any;
-          
           const payload = {
             ...cleanData,
             fecha: cleanData.fecha ? new Date(cleanData.fecha).toISOString() : new Date().toISOString()
           };
-          
           await api.put(`/crm/cotizaciones/${id}`, payload);
           await get().fetchQuotes();
           return { success: true, quoteStatus: payload.estado };
@@ -567,17 +596,9 @@ export const useCRMStore = create<CRMState>()(
         try {
           const originalQuote = get().quotes.find(q => q.id === id);
           if (!originalQuote) return;
-          
           const newVersion = (originalQuote.version || 1) + 1;
           const { id: _, codigo: __, ...rest } = originalQuote;
-          
-          const payload = {
-            ...rest,
-            version: newVersion,
-            cotizacionPadreId: originalQuote.id,
-            fecha: new Date().toISOString()
-          };
-
+          const payload = { ...rest, version: newVersion, cotizacionPadreId: originalQuote.id, fecha: new Date().toISOString() };
           await api.post('/crm/cotizaciones', payload);
           await get().fetchQuotes();
         } catch (error) {
@@ -590,40 +611,13 @@ export const useCRMStore = create<CRMState>()(
         try {
           const client = get().clients.find(c => c.id === id);
           if (!client) return;
-          
-          const { 
-            id: _, 
-            interacciones, 
-            documentos, 
-            proyectos, 
-            historialInteracciones, 
-            archivosAdjuntos,
-            fechaCreacion,
-            fechaActualizacion,
-            deletedAt,
-            ...data 
-          } = client as any;
-          
-          // Actualización optimista local para fluidez total
-          set((state) => ({
-            clients: state.clients.map(c => c.id === id ? { ...c, etapaComercial: newStage } : c)
-          }));
-
-          await api.put(`/crm/clientes/${id}`, { 
-            ...data, 
-            etapaComercial: newStage 
-          });
-          
-          // Sincronizar suavemente sin resetear la vista
+          const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, ...data } = client as any;
+          set((state) => ({ clients: state.clients.map(c => c.id === id ? { ...c, etapaComercial: newStage } : c) }));
+          await api.put(`/crm/clientes/${id}`, { ...data, etapaComercial: newStage, montoEstimado: safeNumber(data.montoEstimado), ventaProyectada: safeNumber(data.ventaProyectada), probabilidad: safeNumber(data.probabilidad) });
           const response = await api.get(`/crm/clientes/${id}`);
-          if (response) {
-            set((state) => ({
-                clients: state.clients.map(c => c.id === id ? response : c)
-            }));
-          }
+          if (response) { set((state) => ({ clients: state.clients.map(c => c.id === id ? response : c) })); }
         } catch (error) {
           console.error("Error changing stage:", error);
-          // Revertir en caso de error
           await get().fetchClients(1);
         }
       },
@@ -631,29 +625,12 @@ export const useCRMStore = create<CRMState>()(
       scheduleFollowUp: async (clientId, fecha, accion, tipo) => {
         try {
           const user = useAuthStore.getState().user;
-          
-          // 1. Registrar interacción
-          await api.post('/crm/interacciones', {
-            clientId,
-            fecha: new Date().toISOString(),
-            tipo,
-            accion: 'Seguimiento registrado',
-            observaciones: accion,
-            usuario: user?.nombre || 'Admin'
-          });
-
-          // 2. Actualizar datos del cliente (Próximo seguimiento y última acción)
+          await api.post('/crm/interacciones', { clientId, fecha: new Date().toISOString(), tipo, accion: 'Seguimiento registrado', observaciones: accion, usuario: user?.nombre || 'Admin' });
           const client = get().clients.find(c => c.id === clientId);
           if (client) {
-            const { id: _, interacciones, documentos, proyectos, ...cleanData } = client as any;
-            await api.put(`/crm/clientes/${clientId}`, {
-              ...cleanData,
-              proximoSeguimiento: fecha,
-              accion: accion,
-              ultimoContacto: new Date().toISOString()
-            });
+            const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, ...cleanData } = client as any;
+            await api.put(`/crm/clientes/${clientId}`, { ...cleanData, proximoSeguimiento: fecha, accion: accion, ultimoContacto: new Date().toISOString(), montoEstimado: safeNumber(cleanData.montoEstimado), ventaProyectada: safeNumber(cleanData.ventaProyectada), probabilidad: safeNumber(cleanData.probabilidad) });
           }
-          
           await get().fetchClients(1);
         } catch (error) {
           console.error("Error scheduling follow up:", error);
@@ -665,42 +642,9 @@ export const useCRMStore = create<CRMState>()(
         try {
           const user = useAuthStore.getState().user;
           const client = get().clients.find(c => c.id === clientId);
-          
-          // 1. Crear Actividad Comercial en CRM (esto disparará la notificación en el backend)
-          await api.post('/crm/actividades', {
-            clienteId: clientId,
-            usuarioId: user?.id || 'Sistema',
-            tipoActividad: 'VISITA_TECNICA',
-            descripcion: observaciones,
-            fechaActividad: fecha,
-            estado: 'PENDIENTE',
-            tecnicoId,
-            clienteNombre: client?.empresa || 'Empresa'
-          });
-
-          // 2. Crear Ficha Técnica en Operaciones (Bandeja de Entrada)
-          await api.post('/operaciones/fichas-tecnicas', {
-            clienteId: clientId,
-            tecnicoId: tecnicoId,
-            fechaVisita: fecha,
-            observaciones: observaciones,
-            estado: 'PENDIENTE'
-          });
-
-          // 3. Registrar en Bitácora de Seguimiento (CRM)
-          const fechaFmt = format(new Date(fecha), "dd/MM/yyyy HH:mm");
-          await api.post('/crm/interacciones', {
-            clientId,
-            fecha: new Date().toISOString(),
-            tipo: 'Visita',
-            accion: 'Visita Técnica Programada',
-            observaciones: `Se programó una visita técnica para el ${fechaFmt}. Notas: ${observaciones || 'Sin observaciones'}`,
-            usuario: user?.nombre || 'Sistema'
-          });
-
-          // 4. Actualizar etapa del cliente
+          await api.post('/crm/actividades', { clienteId: clientId, usuarioId: user?.id || 'Sistema', tipoActividad: 'VISITA_TECNICA', descripcion: observaciones, fechaActividad: fecha, estado: 'PENDIENTE', tecnicoId, clienteNombre: client?.empresa || 'Empresa' });
+          await api.post('/operaciones/fichas-tecnicas', { clienteId: clientId, tecnicoId: tecnicoId, fechaVisita: fecha, observaciones: observaciones, estado: 'PENDIENTE' });
           await get().changeStage(clientId, 'Visita Agendada');
-          
           await get().fetchClients(1);
         } catch (error) {
           console.error("Error scheduling technical visit:", error);

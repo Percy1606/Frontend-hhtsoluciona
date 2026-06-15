@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +8,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Client, Interaction } from "@/types/crm";
 import { 
@@ -27,7 +35,12 @@ import {
   Paperclip,
   Trash2,
   MessageSquare,
-  Plus
+  Plus,
+  Package,
+  DollarSign,
+  ClipboardList,
+  Clock,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -39,6 +52,12 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VisitModal } from "./visit-modal";
+
+// IMPORTACIÓN DE PANELES OPERATIVOS PARA FUSIÓN 360
+import { ActividadesPanel } from "../operaciones/actividades-panel";
+import { TimelinePanel } from "../operaciones/timeline-panel";
+import { FinancePanel } from "../operaciones/finance-panel";
+import { ProyectoDetail } from "../operaciones/proyecto-detail"; // Usaremos sus sub-componentes
 
 interface ClientDetailsProps {
   client: Client | null;
@@ -56,7 +75,7 @@ const sellerList = ["Angie", "Valentina", "Ariana", "Nicoll"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile } = useCRMStore();
-  const { responsables } = useOperacionesStore();
+  const { responsables, proyectos, fetchProjectProfitability } = useOperacionesStore();
   const [activeTab, setActiveTab] = useState("general");
   
   const [intType, setIntType] = useState<Interaction['tipo']>("Llamada");
@@ -65,6 +84,32 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const [intUser, setIntUser] = useState("Angie");
   const [isAddingInt, setIsAddingInt] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+
+  // Lógica de Fusión: Buscar si este cliente tiene un proyecto operativo
+  const vinculadoProyecto = useMemo(() => {
+    if (!client) return null;
+    return proyectos.find(p => p.clientId === client.id);
+  }, [client, proyectos]);
+
+  const [financeData, setFinanceData] = useState<any>(null);
+  const [loadingFinance, setLoadingFinance] = useState(false);
+
+  useEffect(() => {
+    if (vinculadoProyecto && (activeTab === 'logistica' || activeTab === 'profitability')) {
+      const loadFinance = async () => {
+        setLoadingFinance(true);
+        try {
+          const data = await fetchProjectProfitability(vinculadoProyecto.id);
+          setFinanceData(data);
+        } catch (error) {
+          console.error("Error loading project finance for CRM fusion:", error);
+        } finally {
+          setLoadingFinance(false);
+        }
+      };
+      loadFinance();
+    }
+  }, [vinculadoProyecto, activeTab, fetchProjectProfitability]);
 
   if (!client) return null;
 
@@ -98,23 +143,27 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
     setIsAddingInt(false);
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const sizeStr = file.size > 1024 * 1024 
-      ? `${(file.size / (1024 * 1024)).toFixed(1)} MB` 
-      : `${(file.size / 1024).toFixed(0)} KB`;
+    try {
+      const uploadRes = await useCRMStore.getState().uploadClientFile(file);
+      
+      const user = useAuthStore.getState().user;
 
-    const user = useAuthStore.getState().user;
-
-    attachFile(client.id, {
-      nombre: file.name,
-      tipo: file.type || "application/octet-stream",
-      url: "#",
-      tamano: sizeStr,
-      subidoPor: user?.nombre || "Sistema"
-    });
+      await attachFile(client.id, {
+        nombre: uploadRes.nombre || file.name,
+        tipo: uploadRes.tipo || file.type || "application/octet-stream",
+        url: uploadRes.url,
+        tamano: uploadRes.tamano || `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        subidoPor: user?.nombre || "Sistema"
+      });
+      
+      e.target.value = ""; // Limpiar input
+    } catch (error) {
+      console.error("Error al subir archivo:", error);
+    }
   };
 
   const handleWhatsAppDirect = () => {
@@ -234,11 +283,43 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
               >
                 Bitácora ({client.historialInteracciones?.length || 0})
               </TabsTrigger>
+              <TabsTrigger 
+                value="files" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full"
+              >
+                Documentos ({client.archivosAdjuntos?.length || 0})
+              </TabsTrigger>
+
+              {/* PESTAÑAS DE FUSIÓN OPERATIVA (SOLO SI HAY PROYECTO) */}
+              {vinculadoProyecto && (
+                <>
+                  <TabsTrigger 
+                    value="actividades" 
+                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-orange-600 data-[state=active]:text-primary"
+                  >
+                    <ClipboardList className="w-4 h-4" /> Actividades ({vinculadoProyecto.actividades?.length || 0})
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="logistica" 
+                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-blue-600 data-[state=active]:text-primary"
+                  >
+                    <Package className="w-4 h-4" /> Logística y Costos
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="profitability" 
+                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-emerald-600 data-[state=active]:text-primary"
+                  >
+                    <DollarSign className="w-4 h-4" /> Rentabilidad Real
+                  </TabsTrigger>
+                </>
+              )}
               </TabsList>
               </div>
 
               <div className="flex-1 overflow-y-auto p-8">
+              {/* CONTENIDO EXISTENTE */}
               <TabsContent value="general" className="mt-0 space-y-6">
+                {/* ... (resto del contenido general ya existente) */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <h4 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
@@ -415,31 +496,136 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                 {client.archivosAdjuntos && client.archivosAdjuntos.length > 0 ? (
                   client.archivosAdjuntos.map((file) => (
-                    <div key={file.id} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <FileText className="w-5 h-5 text-red-400 shrink-0" />
+                    <div key={file.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-primary/30 transition-colors">
+                      <div className="flex items-center gap-2 overflow-hidden">
+                        <FileText className="w-4 h-4 text-red-400 shrink-0" />
                         <div className="overflow-hidden">
-                          <p className="text-[11px] font-bold text-slate-800 truncate">{file.nombre}</p>
-                          <p className="text-[9px] text-slate-400 font-bold uppercase">{formatDate(file.fecha)} • {file.tamano || "—"}</p>
+                          <p className="text-[10px] font-bold text-slate-800 truncate leading-tight">{file.nombre}</p>
+                          <p className="text-[8px] text-slate-400 font-bold uppercase">{formatDate(file.fecha)} • {file.tamano || "—"}</p>
                         </div>
                       </div>
-                      <div className="flex gap-1">
-                        <Button size="icon" variant="ghost" className="h-7 w-7 text-slate-400 hover:text-error" onClick={() => deleteFile(client.id, file.id)}>
-                          <Trash2 className="w-3.5 h-3.5" />
+                      <div className="flex gap-0.5">
+                        <Button 
+                          size="icon" 
+                          variant="ghost" 
+                          className="h-6 w-6 text-primary hover:text-primary/80" 
+                          onClick={() => {
+                            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                            const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
+                            window.open(fullUrl, '_blank');
+                          }}
+                        >
+                          <Download className="w-3 h-3" />
+                        </Button>
+                        <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-error" onClick={() => deleteFile(client.id, file.id)}>
+                          <Trash2 className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <div className="col-span-2 text-center py-10 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
+                  <div className="col-span-full text-center py-8 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
                     <p className="text-[10px] font-black text-slate-400 uppercase italic">No se han adjuntado documentos</p>
                   </div>
                 )}
               </div>
             </TabsContent>
+
+            {/* CONTENIDO DE FUSIÓN OPERATIVA (SOLO SI HAY PROYECTO) */}
+            {vinculadoProyecto && (
+              <>
+                <TabsContent value="actividades" className="mt-0 space-y-6">
+                   <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                            <ClipboardList className="w-5 h-5 text-orange-600" />
+                         </div>
+                         <div>
+                            <h4 className="text-sm font-black uppercase text-primary">Cronograma de Ejecución</h4>
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Proyecto: {vinculadoProyecto.codigo} — Avance: {vinculadoProyecto.avanceCalculado}%</p>
+                         </div>
+                      </div>
+                      <Badge className="bg-primary text-white font-black text-[10px] px-3 py-1">{vinculadoProyecto.estado}</Badge>
+                   </div>
+                   <ActividadesPanel proyecto={vinculadoProyecto} />
+                </TabsContent>
+
+                <TabsContent value="logistica" className="mt-0 space-y-6">
+                   {/* Reutilizamos el LogisticaPanel de ProyectoDetail */}
+                   {/* Nota: Necesitamos que ProyectoDetail exporte o tener acceso al componente local */}
+                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3 mb-6">
+                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                         <Package className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div>
+                         <h4 className="text-sm font-black uppercase text-primary">Control de Insumos y Costos Directos</h4>
+                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Reporte real de materiales despachados a la obra.</p>
+                      </div>
+                   </div>
+                   
+                   {/* Inyectamos la lógica de LogisticaPanel directamente para asegurar compatibilidad */}
+                   <div className="space-y-8">
+                      {loadingFinance ? (
+                        <div className="flex flex-col items-center justify-center py-20 gap-3">
+                          <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculando costos reales...</p>
+                        </div>
+                      ) : financeData ? (
+                        <div className="space-y-8 animate-in fade-in duration-500">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Presupuesto</span>
+                                <p className="text-lg font-black text-primary">S/ {financeData.montoCotizado?.toLocaleString() || '0.00'}</p>
+                             </div>
+                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Inversión Actual</span>
+                                <p className="text-lg font-black text-orange-600">S/ {financeData.egresos?.costoTotal?.toLocaleString() || '0.00'}</p>
+                             </div>
+                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Utilidad Estimada</span>
+                                <p className={cn("text-lg font-black", (financeData.montoCotizado - financeData.egresos?.costoTotal) > 0 ? "text-emerald-600" : "text-red-600")}>
+                                  S/ {(financeData.montoCotizado - financeData.egresos?.costoTotal)?.toLocaleString() || '0.00'}
+                                </p>
+                             </div>
+                          </div>
+
+                          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                            <Table>
+                              <TableHeader className="bg-slate-50/50">
+                                <TableRow>
+                                  <TableHead className="font-black uppercase text-[9px] py-3 pl-4">Material / Insumo</TableHead>
+                                  <TableHead className="font-black uppercase text-[9px] text-center">Cantidad</TableHead>
+                                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Subtotal S/.</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {financeData.historialMateriales?.length > 0 ? (
+                                  financeData.historialMateriales.map((m: any, idx: number) => (
+                                    <TableRow key={idx} className="hover:bg-slate-50/30">
+                                      <TableCell className="py-2.5 pl-4 font-bold text-[10px] uppercase">{m.material}</TableCell>
+                                      <TableCell className="text-center font-bold text-[10px]">{m.cantidad}</TableCell>
+                                      <TableCell className="text-right pr-4 font-black text-[10px] text-primary">S/ {m.costoTotal?.toLocaleString()}</TableCell>
+                                    </TableRow>
+                                  ))
+                                ) : (
+                                  <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase italic">Sin movimientos registrados</TableCell></TableRow>
+                                )}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      ) : null}
+                   </div>
+                </TabsContent>
+
+                <TabsContent value="profitability" className="mt-0 space-y-6">
+                   <FinancePanel proyectoId={vinculadoProyecto.id} />
+                </TabsContent>
+              </>
+            )}
           </div>
         </Tabs>
       </DialogContent>

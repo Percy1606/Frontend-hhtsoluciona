@@ -62,8 +62,15 @@ interface OperacionesState {
   borradoresImpresion: Record<string, any>;
   borradoresConstancia: Record<string, any>;
 
+  timelineEvents: any[];
+  totalTimeline: number;
+  timelinePage: number;
+  timelineLimit: number;
+  timelineTotalPages: number;
+
   fetchProyectos: (page?: number, limit?: number) => Promise<void>;
   fetchActividades: (page?: number, limit?: number, filters?: any) => Promise<void>;
+  fetchTimeline: (page?: number, limit?: number, filters?: any) => Promise<void>;
   fetchResponsables: () => Promise<void>;
     fetchFichasTecnicas: (page?: number, limit?: number, tecnicoId?: string, search?: string, startDate?: string, endDate?: string) => Promise<void>;
   fetchActiveVisit: (clientId: string) => Promise<any | null>;
@@ -116,6 +123,7 @@ interface OperacionesState {
   deleteDocumento: (proyectoId: string, documentoId: string) => Promise<void>;
 
   fetchProjectCosts: (proyectoId: string) => Promise<any>;
+  fetchProjectProfitability: (proyectoId: string) => Promise<any>;
 
   addResponsable: (responsable: Omit<Responsable, 'id'>) => Promise<void>;
   updateResponsable: (responsable: Responsable) => Promise<void>;
@@ -362,6 +370,12 @@ export const useOperacionesStore = create<OperacionesState>()(
       actividadLimit: 20,
       actividadTotalPages: 0,
 
+      timelineEvents: [],
+      totalTimeline: 0,
+      timelinePage: 1,
+      timelineLimit: 20,
+      timelineTotalPages: 0,
+
       alertas: [],
       kpis: [],
       loading: false,
@@ -464,6 +478,48 @@ export const useOperacionesStore = create<OperacionesState>()(
         }
       },
 
+      fetchTimeline: async (page = 1, limit = 20, filters = {}) => {
+        set({ loading: true });
+        try {
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          if (filters.search) queryParams.append('search', filters.search);
+          if (filters.proyectoId && filters.proyectoId !== 'all') queryParams.append('proyectoId', filters.proyectoId);
+          if (filters.tipo && filters.tipo !== 'all') queryParams.append('tipo', filters.tipo);
+
+          const response = await api.get(`/operaciones/timeline?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+          }
+
+          set({ 
+            timelineEvents: rawData.map((h: any) => ({
+              ...h,
+              area: mapAreaToFrontend(h.area)
+            })),
+            totalTimeline: total,
+            timelinePage: page,
+            timelineLimit: limit,
+            timelineTotalPages: totalP,
+            loading: false 
+          });
+        } catch (error: any) {
+          set({ error: error.message, loading: false });
+        }
+      },
+
       fetchResponsables: async () => {
         set({ loading: true, error: null });
         try {
@@ -536,68 +592,41 @@ export const useOperacionesStore = create<OperacionesState>()(
       submitFichaTecnica: async (id, data) => {
         set({ loading: true });
         try {
-          // 1. Actualizar la ficha SOLO con el estado completado para evitar errores 500 con relaciones complejas
+          // 1. Actualizar la ficha con el estado COMPLETADA y los datos técnicos
+          // El backend se encargará de: 
+          // - Notificar al asesor comercial
+          // - Actualizar la etapa del cliente a "Inspección Realizada"
+          // - Registrar la interacción en la bitácora
           await api.put(`/operaciones/fichas-tecnicas/${id}`, {
+            ...data,
             estado: 'COMPLETADA'
           });
 
-          // 2. Obtener la ficha para saber el cliente
+          // 2. Sincronizar actividad en CRM (Marcar como completada si existe una visita técnica pendiente)
           const ficha = get().fichasTecnicas.find(f => f.id === id);
           if (ficha) {
-            // 3. Actualizar cliente a INSPECCIONADO y sincronizar hallazgos/soluciones
-            // Convertimos los textos a arrays si vienen como string (separados por saltos de línea)
-            const parseToArray = (text: string) => {
-              if (!text) return [];
-              return text.split('\n').map(s => s.trim()).filter(s => s !== '');
-            };
-
-            await api.put(`/crm/clientes/${ficha.clienteId}`, {
-              etapaComercial: 'Inspección Realizada',
-              accion: 'Realizar Cotización',
-              proximoSeguimiento: new Date().toISOString(),
-              hallazgosTecnicos: parseToArray(data.hallazgos),
-              solucionesPropuestas: parseToArray(data.recomendaciones)
-            });
-
-            // 4. Sincronizar actividad en CRM (Marcar como completada)
             const user = useAuthStore.getState().user;
-            
             try {
-              // Intentar buscar una actividad de VISITA_TECNICA pendiente para este cliente
               const actividades = await api.get(`/crm/actividades?clienteId=${ficha.clienteId}`);
               const actividadPendiente = Array.isArray(actividades) 
                 ? actividades.find((a: any) => a.tipoActividad === 'VISITA_TECNICA' && a.estado === 'PENDIENTE')
                 : null;
 
               if (actividadPendiente) {
-                // Actualizar la existente
                 await api.put(`/crm/actividades/${actividadPendiente.id}`, {
                   estado: 'COMPLETADA',
-                  descripcion: `Inspección técnica completada el ${format(new Date(), "dd/MM/yyyy")}. Hallazgos sincronizados.`
-                });
-              } else {
-                // Crear una nueva si no había una pendiente
-                await api.post('/crm/actividades', {
-                  clienteId: ficha.clienteId,
-                  usuarioId: user?.id || 'Sistema',
-                  tipoActividad: 'VISITA_TECNICA',
-                  descripcion: 'Inspección técnica completada. Ficha de datos y hallazgos sincronizados al perfil del cliente.',
-                  estado: 'COMPLETADA'
+                  descripcion: `Inspección técnica finalizada. Datos sincronizados.`
                 });
               }
 
-              // La notificación y la bitácora ahora las genera el backend automáticamente
-              // para evitar duplicidad y asegurar la integridad de los datos.
+              // Refrescar notificaciones globales para ver la alerta de inspección finalizada
               const notifStore = useNotificationStore.getState();
               await Promise.all([
                 notifStore.fetchNotifications(),
                 notifStore.fetchUnreadCount()
               ]);
-
             } catch (crmError) {
               console.error("Error sincronizando actividad CRM:", crmError);
-              // No bloqueamos el flujo principal si falla la sincronización de actividad, 
-              // ya que el cliente ya se actualizó arriba.
             }
           }
 
@@ -1053,6 +1082,15 @@ export const useOperacionesStore = create<OperacionesState>()(
           return await api.get(`/operaciones/proyectos/${proyectoId}/costos`);
         } catch (error: any) {
           console.error("Error fetching project costs:", error);
+          throw error;
+        }
+      },
+
+      fetchProjectProfitability: async (proyectoId) => {
+        try {
+          return await api.get(`/finanzas/proyectos/${proyectoId}/rentabilidad`);
+        } catch (error: any) {
+          console.error("Error fetching project profitability:", error);
           throw error;
         }
       },

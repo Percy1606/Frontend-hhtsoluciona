@@ -16,8 +16,10 @@ import {
   Calendar,
   CheckCircle2,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 import { CashFlowChart } from "@/components/finanzas/cash-flow-chart";
+import { CashStatus } from "@/components/finanzas/cash-status";
+import { ExecutivePanel } from "@/components/finanzas/executive-panel";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
@@ -75,6 +77,7 @@ export default function FinanzasReportesPage() {
         api.get<any[]>(`/finanzas/cash-flow${queryString}`)
       ]);
       setStats(statsRes);
+      // Backend returns 12 months, we can filter or use as is
       setCashFlow(cashFlowRes);
     } catch (e) {
       console.error("Error fetching finance reports", e);
@@ -130,26 +133,36 @@ export default function FinanzasReportesPage() {
               <h1 className="text-xl font-black text-primary tracking-tight">Reportes Financieros</h1>
               <div className="flex items-center gap-4 text-muted-foreground font-bold text-xs mt-2">
                 <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-widest">Filtro por Mes:</label>
+                  <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Filtro por Mes:</label>
                   <Select value={selectedMes} onValueChange={(v) => setSelectedMes(v || "all")}>
-                    <SelectTrigger className="h-8 text-xs font-bold border-slate-200 w-32 bg-white">
-                      <SelectValue>
-                        {MESES.find(m => m.value === selectedMes)?.label || "Mes"}
+                    <SelectTrigger className="h-8 text-xs font-bold border-slate-200 w-36 bg-white rounded-lg shadow-none">
+                      <SelectValue placeholder="Mes">
+                        {selectedMes !== "all" ? 
+                          <span className="uppercase">{MESES.find(m => m.value === selectedMes)?.label}</span> : 
+                          <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS MESES</span>
+                        }
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {MESES.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS MESES</SelectItem>
+                      {MESES.map(m => <SelectItem key={m.value} value={m.value} className="uppercase text-xs font-medium">{m.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <label className="text-[10px] uppercase tracking-widest">Año:</label>
+                  <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Año:</label>
                   <Select value={selectedAnio} onValueChange={(v) => setSelectedAnio(v || "all")}>
-                    <SelectTrigger className="h-8 text-xs font-bold border-slate-200 w-24 bg-white">
-                      <SelectValue />
+                    <SelectTrigger className="h-8 text-xs font-bold border-slate-200 w-28 bg-white rounded-lg shadow-none">
+                      <SelectValue placeholder="Año">
+                        {selectedAnio !== "all" ? 
+                          <span className="uppercase">{selectedAnio}</span> : 
+                          <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS</span>
+                        }
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-white">
-                      {ANIOS.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}
+                    <SelectContent className="bg-white border-slate-200">
+                      <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS AÑOS</SelectItem>
+                      {ANIOS.map(a => <SelectItem key={a} value={a} className="text-xs font-medium">{a}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -157,7 +170,7 @@ export default function FinanzasReportesPage() {
                   variant="ghost" 
                   size="sm"
                   onClick={() => { setSelectedMes("all"); setSelectedAnio("all"); }}
-                  className="h-8 px-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                  className="h-8 px-3 text-[9px] font-black uppercase tracking-widest text-slate-400 hover:text-red-600 hover:bg-red-50 transition-all rounded-lg"
                 >
                   Limpiar Filtro
                 </Button>
@@ -182,35 +195,58 @@ export default function FinanzasReportesPage() {
         </div>
       </div>
 
+      {/* EXECUTIVE DASHBOARD - BI PANEL */}
+      <ExecutivePanel />
+
+      {/* CASH STATUS - MOTOR DE SEGURIDAD */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+            <div className="h-4 w-1.5 bg-primary rounded-full" />
+            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Estado de Caja y Fondos Comprometidos</h2>
+        </div>
+        <CashStatus />
+      </div>
+
       {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatsCard 
           label="Total Facturado" 
           value={stats?.totalFacturado || 0} 
           icon={<Receipt className="w-6 h-6 text-blue-600" />} 
           color="bg-blue-500"
+          description={`Facturas: ${stats?.facturasPendientes || 0} pnd., ${stats?.facturasParciales || 0} parc.`}
         />
         <StatsCard 
           label="Cobranza Efectiva" 
           value={stats?.totalCobrado || 0} 
           icon={<Wallet className="w-6 h-6 text-green-600" />} 
           color="bg-green-500"
-          percentage={`${stats?.totalFacturado ? Math.round((stats.totalCobrado / stats.totalFacturado) * 100) : 0}%`}
-          isUp={true}
-          description="Total cobrado vs facturado"
+          percentage={`${stats?.crecimientoIngresos ? Math.abs(Number(stats.crecimientoIngresos.toFixed(1))) : 0}%`}
+          isUp={stats?.crecimientoIngresos ? stats.crecimientoIngresos >= 0 : true}
+          description="Total cobrado acumulado"
         />
         <StatsCard 
-          label="Gastos Operativos" 
-          value={stats?.totalGastos || 0} 
-          icon={<TrendingDown className="w-6 h-6 text-error" />} 
-          color="bg-error"
+          label="Pendiente de Cobro" 
+          value={stats?.totalPendiente || 0} 
+          icon={<DollarSign className="w-6 h-6 text-orange-600" />} 
+          color="bg-orange-500"
+          description={`${stats?.facturasVencidas || 0} facturas vencidas`}
         />
         <StatsCard 
-          label="Utilidad Bruta" 
-          value={stats?.utilidadProyectada || 0} 
-          icon={<TrendingUp className="w-6 h-6 text-secondary" />} 
-          color="bg-secondary"
-          description="Ingresos menos gastos"
+          label="Egresos Pagados" 
+          value={stats?.totalGastosPagados || 0} 
+          icon={<ArrowDownRight className="w-6 h-6 text-red-600" />} 
+          color="bg-red-500"
+          percentage={`${stats?.crecimientoEgresos ? Math.abs(Number(stats.crecimientoEgresos.toFixed(1))) : 0}%`}
+          isUp={stats?.crecimientoEgresos ? stats.crecimientoEgresos < 0 : false}
+          description={`S/ ${(stats?.totalGastosPendientes || 0).toLocaleString()} pendientes`}
+        />
+        <StatsCard 
+          label="Utilidad Neta" 
+          value={stats?.utilidadNeta || 0} 
+          icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} 
+          color="bg-emerald-500"
+          description={`${Number(stats?.margenNeto || 0).toFixed(1)}% margen real`}
         />
       </div>
 
@@ -307,12 +343,14 @@ function StatsCard({ label, value, icon, color, percentage, isUp, description }:
       <div className="space-y-1">
         <p className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.15em]">{label}</p>
         <div className="flex items-baseline gap-1">
-          <p className="text-2xl font-black text-primary tracking-tighter">
+          <p className={cn(
+            "font-black text-primary tracking-tighter truncate",
+            value >= 1000000 ? "text-base" : "text-lg"
+          )}>
             {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(value)}
           </p>
-          <span className="text-[10px] font-bold text-muted-foreground">PEN</span>
         </div>
-        {description && <p className="text-[10px] font-medium text-slate-400 mt-2 italic">{description}</p>}
+        {description && <p className="text-[9px] font-medium text-slate-400 mt-1 italic leading-tight">{description}</p>}
       </div>
     </div>
   );

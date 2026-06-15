@@ -63,15 +63,15 @@ import { toast } from "sonner";
 
 // Componente local para estadísticas
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
-    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+  <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white", bgColor)}>
+    <div className={cn("p-2.5 rounded-lg bg-white shadow-sm", color)}>
       {icon}
     </div>
-    <div>
+    <div className="min-w-0">
       <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
-      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>
-        {typeof value === 'number' && label.includes('S/') ? 
-          new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(value) : 
+      <p className={cn("text-lg font-black leading-none tracking-tight truncate", color)}>
+        {typeof value === 'number' && (label.includes('S/') || label.includes('Monto')) ? 
+          new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(value) : 
           value}
       </p>
     </div>
@@ -273,9 +273,11 @@ export default function CotizacionesInboxPage() {
       const parts = lastDoc.url.split('/').filter(Boolean);
       const folder = parts[1] || 'cotizaciones';
       const filename = parts[parts.length - 1];
-      const previewUrl = `${API_URL}/files/preview/${folder}/${filename}`;
+      
+      const { token } = useAuthStore.getState();
+      const previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
 
-      const viewerUrl = `/api/viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}`;
+      const viewerUrl = `/api/viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}&token=${token}`;
       window.open(viewerUrl, '_blank');
       return;
     }

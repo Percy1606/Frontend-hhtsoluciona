@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { KPIStats } from "@/components/dashboard/kpi-stats";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { Card, CardContent } from "@/components/ui/card";
@@ -33,6 +34,7 @@ import { useAuthStore } from "@/store/auth-store";
 import { useLogisticaStore } from "@/store/logistica-store";
 import { useDocumentalStore } from "@/store/documental-store";
 import { useNotificationStore } from "@/store/notification-store";
+import { useFinanzasStore } from "@/store/finanzas-store";
 import {
   Tabs,
   TabsContent,
@@ -41,6 +43,7 @@ import {
 } from "@/components/ui/tabs";
 
 export default function DashboardPage() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const { 
     proyectos, 
@@ -67,9 +70,11 @@ export default function DashboardPage() {
   } = useDocumentalStore();
 
   const { fetchUnreadCount } = useNotificationStore();
+  const { fetchGlobalKPIs } = useFinanzasStore();
 
   const [loading, setLoading] = useState(true);
   const [onlineUsers, setOnlineUsers] = useState<any[]>([]);
+  const [accessDenied, setAccessDenied] = useState(false);
 
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -81,25 +86,69 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const init = async () => {
-      await Promise.all([
-        fetchProyectos(), 
-        fetchResponsables(),
-        fetchClients(),
-        fetchQuotes(),
-        fetchOrdenes(),
-        fetchInsumos(),
-        fetchUnreadCount(),
-        fetchOnlineUsers()
-      ]);
-      setLoading(false);
-    };
-    init();
+    const checkAccessAndLoad = async () => {
+      if (!user) return;
 
-    // Poll online users every 30 seconds
-    const interval = setInterval(fetchOnlineUsers, 30000);
+      const userModules = user.modulos || [];
+      const hasDashboardAccess = user.rol === "ADMIN" || userModules.includes("dashboard");
+
+      if (!hasDashboardAccess) {
+        setAccessDenied(true);
+        // Redirigir al primer módulo disponible
+        if (userModules.includes("crm")) {
+          router.replace("/crm/cartera");
+        } else if (userModules.includes("operaciones")) {
+          router.replace("/operaciones/proyectos");
+        } else if (userModules.includes("logistica")) {
+          router.replace("/logistica/ordenes");
+        } else if (userModules.includes("finanzas")) {
+          router.replace("/finanzas/facturacion");
+        } else {
+          // Fallback
+          router.replace("/perfil"); 
+        }
+        return; // Detener la ejecución si no tiene acceso
+      }
+
+      // Si tiene acceso, cargar datos defensivamente
+      try {
+        await Promise.allSettled([
+          fetchProyectos(), 
+          fetchResponsables(),
+          fetchClients(),
+          fetchQuotes(),
+          fetchOrdenes(),
+          fetchInsumos(),
+          fetchUnreadCount(),
+          fetchOnlineUsers(),
+          fetchGlobalKPIs()
+        ]);
+      } catch (error) {
+        console.error("Error durante la carga inicial del dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAccessAndLoad();
+
+    // Poll online users every 30 seconds, only if not denied
+    let interval: NodeJS.Timeout;
+    if (!accessDenied) {
+      interval = setInterval(fetchOnlineUsers, 30000);
+    }
     return () => clearInterval(interval);
-  }, [fetchProyectos, fetchResponsables, fetchClients, fetchQuotes, fetchOrdenes, fetchInsumos, fetchUnreadCount, fetchOnlineUsers]);
+  }, [user, fetchProyectos, fetchResponsables, fetchClients, fetchQuotes, fetchOrdenes, fetchInsumos, fetchUnreadCount, fetchOnlineUsers, fetchGlobalKPIs, router, accessDenied]);
+
+  // Si no tiene acceso, mostrar un mensaje mínimo mientras redirige
+  if (accessDenied) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] gap-4 text-slate-500">
+        <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-medium animate-pulse">Redirigiendo a su área de trabajo...</p>
+      </div>
+    );
+  }
 
   // Áreas Operativas
   const areas = [

@@ -33,6 +33,7 @@ import { ModernDialog } from "@/components/ui/modern-dialog";
 import { GastoForm } from "@/components/finanzas/gasto-form";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 import { toast } from "sonner";
+import { ExportButtons } from "@/components/finanzas/export-buttons";
 
 const gastoStatus: Record<string, string> = {
   "PAGADO": "bg-green-100 text-green-700 border-green-200",
@@ -60,10 +61,13 @@ export default function EgresosPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await api.get('/finanzas/gastos');
-      setGastos(res);
+      // Solicitamos un límite alto para mantener el filtrado/búsqueda del lado del cliente por ahora
+      const res = await api.get('/finanzas/gastos?limit=1000');
+      const data = Array.isArray(res) ? res : (res.data || []);
+      setGastos(data);
     } catch (e) {
       console.error("Error fetching expenses", e);
+      setGastos([]);
     } finally {
       setLoading(false);
     }
@@ -104,7 +108,7 @@ export default function EgresosPage() {
     }
   };
 
-  const filteredGastos = gastos.filter(g => {
+  const filteredGastos = (gastos || []).filter(g => {
     const matchesSearch = g.concepto.toLowerCase().includes(search.toLowerCase()) ||
                           g.proveedor?.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
                           g.codigo?.toLowerCase().includes(search.toLowerCase());
@@ -147,9 +151,7 @@ export default function EgresosPage() {
           </div>
         </div>
         <div className="flex gap-3">
-          <Button variant="outline" className="h-10 px-4 gap-2 text-xs font-black border-2 border-primary/10 text-primary rounded-xl">
-            <Download className="w-4 h-4" /> Exportar
-          </Button>
+          <ExportButtons type="gastos" filters={{ search, dateFrom, dateTo }} />
           <Button 
             onClick={() => setIsModalOpen(true)}
             className="h-10 px-6 gap-2 text-xs font-black bg-error hover:bg-error/90 shadow-lg shadow-error/20 rounded-xl text-white"
@@ -206,6 +208,7 @@ export default function EgresosPage() {
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-6 w-[50px]">Item</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Comprobante</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto / Proveedor</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proyecto</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Tipo</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Fecha Emisión</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Monto Total</TableHead>
@@ -232,6 +235,16 @@ export default function EgresosPage() {
                     <p className="font-black text-xs text-primary group-hover:text-error transition-colors truncate">{g.concepto}</p>
                     <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-tighter opacity-70">{g.proveedor?.razonSocial || 'GASTO SIN PROVEEDOR'}</p>
                   </div>
+                </TableCell>
+                <TableCell>
+                  {g.proyecto ? (
+                    <div className="max-w-[180px]">
+                      <p className="font-black text-[10px] text-primary truncate uppercase">{g.proyecto.nombre}</p>
+                      <p className="text-[9px] text-muted-foreground font-bold tracking-tighter opacity-70 italic">{g.proyecto.codigo}</p>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-bold text-slate-300 italic uppercase tracking-tighter">Gasto General</span>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter border-slate-200 text-slate-500">

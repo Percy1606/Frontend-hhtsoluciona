@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,7 @@ import {
   Package,
   DollarSign,
   LineChart,
+  TrendingDown,
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
@@ -39,7 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatCurrency, getSecureUrl } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { Proyecto } from "@/lib/types";
 import { ActividadesPanel } from "./actividades-panel";
 import { TimelinePanel } from "./timeline-panel";
+import { FinancePanel } from "./finance-panel";
 
 // ============================================
 // CONSTANTES
@@ -80,29 +82,30 @@ interface ProyectoDetailProps {
 }
 
 export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
-  const { responsables, fetchProjectCosts } = useOperacionesStore();
+  const { user } = useAuthStore();
+  const { responsables, fetchProjectProfitability, addDocumento, deleteDocumento } = useOperacionesStore();
   const { clients: crmClients } = useCRMStore();
   const [activeTab, setActiveTab] = useState("actividades");
-  const [costsData, setCostsData] = useState<any>(null);
-  const [loadingCosts, setLoadingCosts] = useState(false);
+  const [financeData, setFinanceData] = useState<any>(null);
+  const [loadingFinance, setLoadingFinance] = useState(false);
 
   const clientName = crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo";
   const responsableName = responsables.find(r => r.id === proyecto.responsablePrincipalId)?.nombre || "Sin asignar";
 
   useEffect(() => {
-    const loadCosts = async () => {
-      setLoadingCosts(true);
+    const loadFinance = async () => {
+      setLoadingFinance(true);
       try {
-        const data = await fetchProjectCosts(proyecto.id);
-        setCostsData(data);
+        const data = await fetchProjectProfitability(proyecto.id);
+        setFinanceData(data);
       } catch (error) {
-        console.error("Error loading costs:", error);
+        console.error("Error loading finance data:", error);
       } finally {
-        setLoadingCosts(false);
+        setLoadingFinance(false);
       }
     };
-    loadCosts();
-  }, [proyecto.id, fetchProjectCosts]);
+    loadFinance();
+  }, [proyecto.id, fetchProjectProfitability]);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -183,6 +186,9 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                 <TabsTrigger value="logistica" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <Package className="w-4 h-4" /> Logística y Costos
                 </TabsTrigger>
+                <TabsTrigger value="finanzas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
+                    <DollarSign className="w-4 h-4" /> Finanzas y Rentabilidad
+                </TabsTrigger>
                 <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <FileText className="w-4 h-4" /> Documentos ({proyecto.documentos?.length || 0})
                 </TabsTrigger>
@@ -199,7 +205,11 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
               </TabsContent>
 
               <TabsContent value="logistica" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
-                <LogisticaPanel proyecto={proyecto} data={costsData} loading={loadingCosts} />
+                <LogisticaPanel proyecto={proyecto} data={financeData} loading={loadingFinance} />
+              </TabsContent>
+
+              <TabsContent value="finanzas" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
+                <FinancePanel proyectoId={proyecto.id} />
               </TabsContent>
 
               <TabsContent value="historial" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
@@ -240,8 +250,30 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
 
   if (!data) return null;
 
+  const montoCotizado = Number(data.montoCotizado || 0);
+  const costoTotal = Number(data.egresos?.costoTotal || 0);
+  const historialMateriales = data.historialMateriales || [];
+  const historialGastos = data.historialGastos || [];
+  const presupuestoExcedido = data.presupuestoExcedido || (costoTotal > montoCotizado && montoCotizado > 0);
+
+  const porcentajeConsumo = montoCotizado > 0 ? Math.round((costoTotal / montoCotizado) * 100) : 0;
+  const margenRestante = montoCotizado - costoTotal;
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
+      {/* ALERTA DE PRESUPUESTO EXCEDIDO */}
+      {presupuestoExcedido && (
+        <div className="bg-red-600 text-white p-4 rounded-2xl flex items-center gap-4 shadow-lg shadow-red-200">
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                <AlertCircle className="w-6 h-6 text-white" />
+            </div>
+            <div>
+                <h4 className="text-sm font-black uppercase">¡ALERTA DE SOBRECOSTO!</h4>
+                <p className="text-[10px] font-bold opacity-90 uppercase">Este proyecto ha dejado de ser rentable. Los costos superan el presupuesto en S/ {Math.abs(margenRestante).toLocaleString()}.</p>
+            </div>
+        </div>
+      )}
+
       {/* RESUMEN FINANCIERO REDUCIDO */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
@@ -249,9 +281,9 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
             <div className="p-1.5 bg-white rounded-lg shadow-sm">
               <TrendingUp className="w-3.5 h-3.5 text-primary" />
             </div>
-            <span className="text-[8px] font-black text-primary uppercase tracking-widest">Presupuesto</span>
+            <span className="text-[8px] font-black text-primary uppercase tracking-widest">Presupuesto Base</span>
           </div>
-          <p className="text-lg font-black text-primary tracking-tight">S/ {data.presupuesto?.toLocaleString() || '0.00'}</p>
+          <p className="text-lg font-black text-primary tracking-tight">S/ {montoCotizado?.toLocaleString() || '0.00'}</p>
         </div>
 
         <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
@@ -259,31 +291,31 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
             <div className="p-1.5 bg-white rounded-lg shadow-sm">
               <DollarSign className="w-3.5 h-3.5 text-orange-600" />
             </div>
-            <span className="text-[8px] font-black text-orange-600 uppercase tracking-widest">Costo Real</span>
+            <span className="text-[8px] font-black text-orange-600 uppercase tracking-widest">Inversión Actual</span>
           </div>
-          <p className="text-lg font-black text-orange-600 tracking-tight">S/ {data.costoTotalReal?.toLocaleString() || '0.00'}</p>
+          <p className="text-lg font-black text-orange-600 tracking-tight">S/ {costoTotal?.toLocaleString() || '0.00'}</p>
         </div>
 
-        <div className={cn("p-4 rounded-2xl border", data.porcentajeConsumo > 90 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100")}>
+        <div className={cn("p-4 rounded-2xl border", porcentajeConsumo > 90 ? "bg-red-50 border-red-100" : "bg-emerald-50 border-emerald-100")}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-white rounded-lg shadow-sm">
               <LineChart className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <span className="text-[8px] font-black uppercase tracking-widest">Consumo</span>
+            <span className="text-[8px] font-black uppercase tracking-widest">Ejecución</span>
           </div>
-          <p className={cn("text-lg font-black tracking-tight", data.porcentajeConsumo > 90 ? "text-red-600" : "text-emerald-600")}>
-            {data.porcentajeConsumo}%
+          <p className={cn("text-lg font-black tracking-tight", porcentajeConsumo > 90 ? "text-red-600" : "text-emerald-600")}>
+            {porcentajeConsumo}%
           </p>
         </div>
 
-        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
+        <div className={cn("p-4 rounded-2xl border", margenRestante < 0 ? "bg-red-600 text-white" : "bg-blue-50 border-blue-100")}>
           <div className="flex items-center gap-2 mb-2">
             <div className="p-1.5 bg-white rounded-lg shadow-sm">
-              <History className="w-3.5 h-3.5 text-blue-600" />
+              <History className={cn("w-3.5 h-3.5", margenRestante < 0 ? "text-red-600" : "text-blue-600")} />
             </div>
-            <span className="text-[8px] font-black text-blue-600 uppercase tracking-widest">Margen</span>
+            <span className={cn("text-[8px] font-black uppercase tracking-widest", margenRestante < 0 ? "text-white" : "text-blue-600")}>Disponible</span>
           </div>
-          <p className="text-lg font-black text-blue-600 tracking-tight">S/ {data.margenRestante?.toLocaleString() || '0.00'}</p>
+          <p className="text-lg font-black tracking-tight">S/ {margenRestante?.toLocaleString() || '0.00'}</p>
         </div>
       </div>
 
@@ -295,10 +327,10 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
               <div className="w-8 h-8 bg-primary/10 rounded-xl flex items-center justify-center">
                 <Package className="w-4 h-4 text-primary" />
               </div>
-              <h3 className="text-sm font-black uppercase tracking-tight">Insumos</h3>
+              <h3 className="text-sm font-black uppercase tracking-tight">Detalle de Materiales (Kardex)</h3>
             </div>
             <Badge className="bg-primary/5 text-primary border-primary/10 font-black text-[9px] px-2 py-0.5">
-              Total: S/ {data.desglose?.materialesLogistica?.toLocaleString() || '0.00'}
+              S/ {Number(data.egresos?.materiales || 0).toLocaleString()}
             </Badge>
           </div>
 
@@ -306,27 +338,34 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="border-b border-slate-100">
-                  <TableHead className="font-black uppercase text-[9px] py-2.5 pl-4">Material</TableHead>
+                  <TableHead className="font-black uppercase text-[9px] py-2.5 pl-4">Material / Fecha</TableHead>
                   <TableHead className="font-black uppercase text-[9px] text-center">Cant.</TableHead>
-                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Costo</TableHead>
+                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Costo S/.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.historialMateriales?.length > 0 ? (
-                  data.historialMateriales.map((item: any, idx: number) => (
+                {historialMateriales?.length > 0 ? (
+                  historialMateriales.map((item: any, idx: number) => (
                     <TableRow key={idx} className="border-b border-slate-50 hover:bg-slate-50/30">
                       <TableCell className="py-2.5 pl-4">
                         <p className="font-bold text-[10px] uppercase text-slate-700">{item.material}</p>
-                        <p className="text-[8px] font-medium text-slate-400">{formatDate(item.fecha)}</p>
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <p className="text-[8px] font-medium text-slate-400">{formatDate(item.fecha)}</p>
+                          {item.origen && (
+                             <Badge variant="outline" className="text-[7px] h-3 px-1 py-0 bg-slate-50 text-slate-400 border-slate-200">
+                               {item.origen}
+                             </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center font-bold text-[10px]">{item.cantidad}</TableCell>
-                      <TableCell className="text-right pr-4 font-black text-[10px] text-primary">S/ {item.costoCalculado?.toLocaleString()}</TableCell>
+                      <TableCell className="text-right pr-4 font-black text-[10px] text-primary">S/ {item.costoTotal?.toLocaleString()}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} className="py-12 text-center">
-                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sin despachos</p>
+                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sin despachos de almacén</p>
                     </TableCell>
                   </TableRow>
                 )}
@@ -335,17 +374,17 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
           </div>
         </div>
 
-        {/* LISTADO DE GASTOS */}
+        {/* LISTADO DE GASTOS DIRECTOS */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center">
                 <DollarSign className="w-4 h-4 text-orange-600" />
               </div>
-              <h3 className="text-sm font-black uppercase tracking-tight">Gastos</h3>
+              <h3 className="text-sm font-black uppercase tracking-tight">Gastos y Servicios Directos</h3>
             </div>
             <Badge className="bg-orange-50 text-orange-600 border-orange-100 font-black text-[9px] px-2 py-0.5">
-              Total: S/ {data.desglose?.gastosFinanzas?.toLocaleString() || '0.00'}
+              S/ {Number(data.egresos?.gastosDirectos || 0).toLocaleString()}
             </Badge>
           </div>
 
@@ -353,25 +392,34 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="border-b border-slate-100">
-                  <TableHead className="font-black uppercase text-[9px] py-2.5 pl-4">Concepto</TableHead>
-                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Monto</TableHead>
+                  <TableHead className="font-black uppercase text-[9px] py-2.5 pl-4">Concepto / Comprobante</TableHead>
+                  <TableHead className="font-black uppercase text-[9px] text-center">Estado</TableHead>
+                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Monto S/.</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {data.historialGastos?.length > 0 ? (
-                  data.historialGastos.map((g: any, idx: number) => (
+                {historialGastos?.length > 0 ? (
+                  historialGastos.map((g: any, idx: number) => (
                     <TableRow key={idx} className="border-b border-slate-50 hover:bg-slate-50/30">
                       <TableCell className="py-2.5 pl-4">
-                        <p className="font-bold text-[10px] uppercase text-slate-700">{g.concepto}</p>
-                        <p className="text-[8px] font-medium text-slate-400">{formatDate(g.fecha)}</p>
+                        <p className="font-bold text-[10px] uppercase text-slate-700 truncate max-w-[200px]">{g.concepto}</p>
+                        <p className="text-[8px] font-black text-primary uppercase">{g.codigo || 'S/N'}</p>
+                      </TableCell>
+                      <TableCell className="text-center">
+                         <Badge className={cn(
+                           "text-[7px] font-black uppercase h-4",
+                           g.estado === 'PAGADO' ? "bg-green-100 text-green-700" : "bg-orange-100 text-orange-700"
+                         )}>
+                            {g.estado}
+                         </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-4 font-black text-[10px] text-orange-600">S/ {g.monto?.toLocaleString()}</TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={2} className="py-12 text-center">
-                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sin gastos</p>
+                    <TableCell colSpan={3} className="py-12 text-center">
+                      <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Sin gastos registrados</p>
                     </TableCell>
                   </TableRow>
                 )}
@@ -544,8 +592,7 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
                   variant="ghost" 
                   className="flex-1 h-8 text-[9px] font-black uppercase text-primary hover:bg-primary/5"
                   onClick={() => {
-                    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                    const fullUrl = doc.url.startsWith('http') ? doc.url : `${API_URL}${doc.url}`;
+                    const fullUrl = getSecureUrl(doc.url);
                     window.open(fullUrl, '_blank');
                   }}
                 >
@@ -572,7 +619,7 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
 
       {isUploadOpen && (
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-            <DialogContent className="max-w-md p-0 border-none overflow-hidden rounded-2xl shadow-2xl">
+            <DialogContent className="max-w-md p-0 border-none overflow-hidden rounded-2xl shadow-2xl bg-white">
                 <DialogHeader className="p-4 bg-primary text-white shrink-0">
                     <DialogTitle className="text-sm font-black uppercase flex items-center gap-2">
                         <Upload className="w-4 h-4 text-accent" /> Subir al Expediente

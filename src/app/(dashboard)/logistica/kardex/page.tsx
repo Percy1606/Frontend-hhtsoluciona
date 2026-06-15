@@ -40,13 +40,13 @@ import {
 } from "@/components/ui/select";
 
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
-    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+  <div className={cn("p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white", bgColor)}>
+    <div className={cn("p-2.5 rounded-lg bg-white shadow-sm", color)}>
       {icon}
     </div>
-    <div>
+    <div className="min-w-0">
       <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
-      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>{value}</p>
+      <p className={cn("text-lg font-black leading-none tracking-tight truncate", color)}>{value}</p>
     </div>
   </div>
 );
@@ -117,7 +117,7 @@ export default function KardexPage() {
       <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col lg:flex-row gap-6 mb-8 items-end">
             <div className="flex-1 w-full space-y-1.5">
-                <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Buscar en Historial</Label>
+                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Buscar en Historial</Label>
                 <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input 
@@ -130,31 +130,38 @@ export default function KardexPage() {
             </div>
             
             <div className="flex flex-wrap gap-4 w-full lg:w-auto">
-                <div className="space-y-1.5 min-w-[200px]">
-                    <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Tipo de Movimiento</Label>
+                <div className="space-y-1.5 min-w-[220px]">
+                    <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Tipo de Movimiento</Label>
                     <Select value={filterTipo} onValueChange={handleTipoChange}>
-                        <SelectTrigger className="h-11 border-slate-200 font-bold text-[10px] uppercase rounded-xl bg-white shadow-sm">
-                            <SelectValue placeholder="Filtrar por tipo" />
+                        <SelectTrigger className="h-11 border-slate-200 font-bold text-xs rounded-xl bg-white shadow-sm">
+                            <SelectValue placeholder="Tipo">
+                              {filterTipo !== "all" ? 
+                                <span className="uppercase">{filterTipo === 'ENTRADA' ? 'ENTRADAS (INGRESOS)' : 'SALIDAS (DESPACHOS)'}</span> : 
+                                <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS TIPOS</span>
+                              }
+                            </SelectValue>
                         </SelectTrigger>
                         <SelectContent className="bg-white border-slate-200">
-                            <SelectItem value="all" className="text-[10px] font-bold uppercase">Todos los tipos</SelectItem>
-                            <SelectItem value="ENTRADA" className="text-[10px] font-bold uppercase text-emerald-600 font-black tracking-tighter">Entradas (Ingresos)</SelectItem>
-                            <SelectItem value="SALIDA" className="text-[10px] font-bold uppercase text-orange-600 font-black tracking-tighter">Salidas (Despachos)</SelectItem>
+                            <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS TIPOS</SelectItem>
+                            <SelectItem value="ENTRADA" className="text-xs font-medium uppercase text-emerald-600">ENTRADAS (INGRESOS)</SelectItem>
+                            <SelectItem value="SALIDA" className="text-xs font-medium uppercase text-orange-600">SALIDAS (DESPACHOS)</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
 
-                {(searchTerm || filterTipo !== "all") && (
-                    <div className="pb-0.5">
-                        <Button 
-                            variant="ghost" 
-                            onClick={() => { setSearchTerm(""); setFilterTipo("all"); }}
-                            className="h-11 px-4 text-error font-black text-[10px] uppercase hover:bg-red-50 rounded-xl border border-transparent hover:border-red-100 transition-all"
-                        >
-                            <FilterX className="w-4 h-4 mr-2" /> Limpiar
-                        </Button>
-                    </div>
-                )}
+                <div className="flex items-end self-end h-11">
+                    <Button 
+                        variant="ghost" 
+                        onClick={() => { setSearchTerm(""); setFilterTipo("all"); setCurrentPage(1); }}
+                        className={cn(
+                          "h-11 w-11 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl shadow-none",
+                          (searchTerm === "" && filterTipo === "all") && "opacity-0 pointer-events-none"
+                        )}
+                        title="Limpiar filtros"
+                    >
+                        <FilterX className="w-5 h-5" />
+                    </Button>
+                </div>
             </div>
         </div>
 

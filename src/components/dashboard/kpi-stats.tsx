@@ -10,20 +10,22 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { useCRMStore } from "@/store/crm-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useFinanzasStore } from "@/store/finanzas-store";
+import { cn } from "@/lib/utils";
 
 export function KPIStats() {
   const { clients, quotes } = useCRMStore();
   const { proyectos } = useOperacionesStore();
+  const { globalKPIs } = useFinanzasStore();
 
-  const totalClientes = clients.length;
+  const totalClientes = globalKPIs?.totalClientes ?? clients.length;
   const prospectos = clients.filter(c => c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido').length;
-  const cotizacionesEnviadas = quotes.length;
-  const proyectosActivos = proyectos.filter(p => p.estado === 'En Ejecución').length;
-  const montoEstimado = clients.reduce((acc, c) => acc + (c.montoEstimado || 0), 0);
-  const ventaProyectada = clients.reduce((acc, c) => acc + (c.ventaProyectada || 0), 0);
+  const cotizacionesEnviadas = globalKPIs?.cotizacionesTotal ?? quotes.length;
+  const proyectosActivos = globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución').length;
   
-  // % Cobranza simulado por ahora si no hay datos de facturación
-  const porcentajeCobranza = 85; 
+  const montoEstimado = globalKPIs?.montoEstimado ?? 0;
+  const ventaProyectada = globalKPIs?.ventaProyectada ?? 0;
+  const porcentajeCobranza = globalKPIs?.porcentajeCobranza ?? 0; 
 
   const kpiConfig = [
     { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
@@ -35,9 +37,22 @@ export function KPIStats() {
     { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true },
   ];
 
+  const formatFinancialValue = (val: number) => {
+    if (val >= 1_000_000_000) {
+      return `S/ ${(val / 1_000_000_000).toFixed(1).replace(/\.0$/, '')}B`;
+    }
+    if (val >= 1_000_000) {
+      return `S/ ${(val / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
+    }
+    if (val >= 100_000) {
+      return `S/ ${(val / 1_000).toFixed(0)}k`;
+    }
+    return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(val);
+  };
+
   const formatValue = (kpi: typeof kpiConfig[0]) => {
     if (kpi.isCurrency) {
-      return new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(kpi.value);
+      return formatFinancialValue(kpi.value);
     }
     if (kpi.isPercent) {
       return `${kpi.value}%`;
@@ -53,9 +68,14 @@ export function KPIStats() {
             <div className={`p-2.5 rounded-2xl shrink-0 ${kpi.color} mb-1`}>
               <kpi.icon className="w-5 h-5" />
             </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest truncate">{kpi.label}</p>
-              <h3 className="text-lg font-bold text-slate-800 truncate mt-0.5">{formatValue(kpi)}</h3>
+            <div className="min-w-0 w-full px-1">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mb-0.5">{kpi.label}</p>
+              <h3 className={cn(
+                "font-black text-slate-800 leading-none tracking-tight truncate",
+                kpi.isCurrency ? "text-base" : "text-lg"
+              )}>
+                {formatValue(kpi)}
+              </h3>
             </div>
           </CardContent>
         </Card>

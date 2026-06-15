@@ -226,14 +226,24 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                     <FormItem>
                       <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión (S/)</FormLabel>
                       <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01" 
-                          className="h-11 border-slate-200 font-black text-primary text-base" 
-                          {...field} 
-                          onFocus={(e) => e.target.select()}
-                          onChange={e => field.onChange(parseFloat(e.target.value) || 0)}
-                        />
+                        <div className="relative">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black text-sm">S/</span>
+                          <Input 
+                            type="text" 
+                            className="h-11 border-slate-200 font-black text-primary text-base pl-8" 
+                            placeholder="0"
+                            value={new Intl.NumberFormat('es-PE').format(field.value || 0)}
+                            onFocus={(e) => e.target.select()}
+                            onChange={(e) => {
+                              // Solo permitir números y un punto decimal
+                              const val = e.target.value.replace(/[^0-9.]/g, '');
+                              // Evitar múltiples puntos
+                              const parts = val.split('.');
+                              const sanitizedVal = parts[0] + (parts.length > 1 ? '.' + parts[1] : '');
+                              field.onChange(parseFloat(sanitizedVal) || 0);
+                            }}
+                          />
+                        </div>
                       </FormControl>
                     </FormItem>
                   )}

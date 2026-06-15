@@ -28,6 +28,7 @@ import {
   Calendar,
   User,
   Paperclip,
+  FilterX,
 } from "lucide-react";
 import {
   Select,
@@ -139,6 +140,14 @@ export default function ValidacionesPage() {
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const resetFiltros = () => {
+    setSearchQuery("");
+    setSelectedArea("all");
+    setSelectedEstado("all");
+    setCurrentPage(1);
+    setFilterMode("all");
   };
 
   const handleOpenAction = (
@@ -288,13 +297,18 @@ export default function ValidacionesPage() {
 
           <div className="flex flex-wrap gap-3 w-full md:w-auto">
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Área Responsable</Label>
+              <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Área Responsable</Label>
               <Select value={selectedArea} onValueChange={(val) => { setSelectedArea(val ?? ""); setCurrentPage(1); }}>
                 <SelectTrigger className="w-44 h-10 font-bold text-xs rounded-lg border-border bg-white shadow-none">
-                  <SelectValue placeholder="Seleccionar Área" />
+                  <SelectValue placeholder="Área">
+                    {selectedArea !== "all" ? 
+                      <span className="uppercase">{selectedArea}</span> : 
+                      <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS ÁREAS</span>
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-border shadow-xl">
-                  <SelectItem value="all">Todas las Áreas</SelectItem>
+                  <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS ÁREAS</SelectItem>
                   <SelectItem value="Logística y Recursos">Logística y Recursos</SelectItem>
                   <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería y Supervisión Técnica</SelectItem>
                   <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Gestión Documentaria</SelectItem>
@@ -304,18 +318,34 @@ export default function ValidacionesPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Estado</Label>
+              <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Filtrar por Estado</Label>
               <Select value={selectedEstado} onValueChange={(val) => { setSelectedEstado(val ?? ""); setCurrentPage(1); }}>
                 <SelectTrigger className="w-40 h-10 font-bold text-xs rounded-lg border-border bg-white shadow-none">
-                  <SelectValue placeholder="Estado" />
+                  <SelectValue placeholder="Estado">
+                    {selectedEstado !== "all" ? 
+                      <span className="uppercase">{selectedEstado}</span> : 
+                      <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</span>
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-border shadow-xl">
-                  <SelectItem value="all">Todos los Estados</SelectItem>
-                  <SelectItem value="Pendiente">Pendientes</SelectItem>
-                  <SelectItem value="Aprobada">Aprobadas</SelectItem>
-                  <SelectItem value="Rechazada">Rechazadas</SelectItem>
+                  <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</SelectItem>
+                  <SelectItem value="Pendiente">PENDIENTE</SelectItem>
+                  <SelectItem value="Aprobada">APROBADA</SelectItem>
+                  <SelectItem value="Rechazada">RECHAZADA</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="flex items-end self-end h-10">
+              <Button 
+                variant="ghost" 
+                onClick={resetFiltros} 
+                className="h-10 w-10 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl shadow-none"
+                title="Limpiar filtros"
+              >
+                <FilterX className="w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>

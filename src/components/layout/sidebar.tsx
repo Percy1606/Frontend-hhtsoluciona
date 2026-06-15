@@ -33,7 +33,8 @@ import {
   ShoppingCart,
   History,
   Receipt,
-  TrendingDown
+  TrendingDown,
+  Wallet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -73,8 +74,7 @@ const menuItems = [
     href: "/logistica",
     subItems: [
       { icon: Package, label: "Almacén Central", href: "/logistica/inventario" },
-      { icon: ShoppingCart, label: "Órdenes de Compra", href: "/logistica/ordenes" },
-      { icon: History, label: "Kardex / Movimientos", href: "/logistica/kardex" },
+      { icon: ShoppingCart, label: "Órdenes de Servicio", href: "/logistica/ordenes" },
       { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
     ]
   },
@@ -83,9 +83,10 @@ const menuItems = [
     label: "Finanzas",
     href: "/finanzas",
     subItems: [
-      { icon: BarChart, label: "Reportes", href: "/finanzas" },
+      { icon: Wallet, label: "Cajas y Cuentas", href: "/finanzas/cajas" },
       { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
+      { icon: BarChart, label: "Reportes", href: "/finanzas" },
     ]
   },
   {
@@ -108,12 +109,14 @@ export function Sidebar() {
   const sidebarCollapsed = state === "collapsed";
   const { user, logout } = useAuthStore();
 
-  const userModules = user?.modulos || ["dashboard"];
+  const userModules = user?.modulos || [];
   const isAdmin = user?.rol === "ADMIN";
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (item.href === "/") return true;
     if (isAdmin) return true;
+    if (item.href === "/") {
+      return userModules.includes("dashboard");
+    }
     const moduleId = item.href.split("/")[1];
     return userModules.includes(moduleId);
   });

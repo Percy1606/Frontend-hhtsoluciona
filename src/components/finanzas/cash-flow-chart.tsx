@@ -48,7 +48,7 @@ export function CashFlowChart({ data, isPrint = false }: CashFlowChartProps) {
             axisLine={false} 
             tickLine={false} 
             tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}}
-            tickFormatter={(value) => `S/. ${value/1000}k`}
+            tickFormatter={(value) => `S/ ${value/1000}k`}
           />
           <Tooltip 
             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', fontSize: '12px' }}

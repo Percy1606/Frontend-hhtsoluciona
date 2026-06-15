@@ -54,10 +54,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     console.log("[SSE] Intentando conectar a:", sseUrl);
 
     // EventSource nativo no soporta headers. Usaremos un query param para el token.
-    // Añadimos withCredentials para manejar cookies si fuera necesario por CORS
-    const eventSource = new EventSource(sseUrl, {
-      withCredentials: true
-    });
+    const eventSource = new EventSource(sseUrl);
 
     eventSource.onopen = () => {
       set({ sseConnected: true });
@@ -152,9 +149,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         });
       }
 
+      const newNotifications = rawData.map((n: any) => ({
+        ...n,
+        createdAt: n.createdAt || new Date().toISOString()
+      }));
+
+      // Calculamos el conteo de no leídas de la muestra actual como respaldo
+      const localUnreadCount = newNotifications.filter((n: any) => !n.leida).length;
+
       set({ 
-        notifications: rawData, 
+        notifications: newNotifications, 
         totalNotifications: total,
+        unreadCount: response.unreadCount !== undefined ? response.unreadCount : localUnreadCount,
         page: page,
         limit: limit,
         totalPages: totalP,
@@ -178,10 +184,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
   markAsRead: async (id) => {
     try {
       await api.put(`/notificaciones/${id}/read`, {});
-      set((state) => ({
-        notifications: state.notifications.map(n => n.id === id ? { ...n, leida: true } : n),
-        unreadCount: Math.max(0, state.unreadCount - 1)
-      }));
+      set((state) => {
+        const notif = state.notifications.find(n => n.id === id);
+        // Solo restamos si la notificación existe localmente y no estaba leída
+        const shouldDecrement = notif && !notif.leida;
+        return {
+          notifications: state.notifications.map(n => n.id === id ? { ...n, leida: true } : n),
+          unreadCount: shouldDecrement ? Math.max(0, state.unreadCount - 1) : state.unreadCount
+        };
+      });
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }

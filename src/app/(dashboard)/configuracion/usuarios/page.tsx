@@ -80,7 +80,6 @@ const AVAILABLE_MODULES = [
   { id: "dashboard", label: "Dashboard" },
   { id: "crm", label: "CRM Comercial" },
   { id: "operaciones", label: "Operaciones" },
-  { id: "documental", label: "Gestión Documental" },
   { id: "logistica", label: "Logística" },
   { id: "finanzas", label: "Finanzas" },
   { id: "configuracion", label: "Configuración" },

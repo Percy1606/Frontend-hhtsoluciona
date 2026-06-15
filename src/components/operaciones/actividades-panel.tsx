@@ -164,11 +164,11 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-black flex items-center gap-2">
-          <ClipboardList className="w-5 h-5 text-primary" />
+        <h3 className="text-lg font-black flex items-center gap-2 text-primary">
+          <ClipboardList className="w-5 h-5" />
           Listado de Actividades
         </h3>
-        <Button onClick={() => { setEditingActividad(null); setIsFormOpen(true); }} className="gap-2 font-black uppercase text-xs">
+        <Button onClick={() => { setEditingActividad(null); setIsFormOpen(true); }} className="gap-2 font-black uppercase text-[10px] h-9 px-4">
           <Plus className="w-4 h-4" /> Nueva Actividad
         </Button>
       </div>
@@ -176,7 +176,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
       {activeFilters.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-4 animate-in fade-in slide-in-from-top-2">
           {activeFilters.map(filter => (
-            <Badge key={filter.id} variant="secondary" className="gap-1.5 px-3 py-1.5 rounded-xl font-black text-[10px] uppercase bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10 transition-colors group shadow-none">
+            <Badge key={filter.id} variant="secondary" className="gap-1.5 px-3 py-1 rounded-xl font-black text-[9px] uppercase bg-primary/5 text-primary border border-primary/10 hover:bg-primary/10 transition-colors group shadow-none">
               {filter.label}
               <button onClick={filter.clear} className="text-primary/40 group-hover:text-red-500 transition-colors">
                 <X className="w-3.5 h-3.5" />
@@ -187,62 +187,70 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
       )}
 
       {/* Barra de Filtros de Actividades */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-6">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center gap-4">
         <div className="relative flex-1 w-full">
-          <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-2 block">Búsqueda de actividad</span>
+          <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1 mb-1.5 block">Búsqueda de actividad</span>
           <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input 
               placeholder="Buscar actividad por nombre..." 
-              className="pl-12 h-14 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-medium text-base rounded-xl" 
+              className="pl-10 h-10 border-slate-200 bg-white focus:bg-white transition-all shadow-none font-bold text-sm rounded-xl" 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
         
-        <div className="flex flex-wrap items-end gap-4 w-full md:w-auto">
-          <div className="flex flex-col gap-2 min-w-[180px]">
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado de Actividad</span>
+        <div className="flex flex-wrap items-end gap-3 w-full md:w-auto">
+          <div className="flex flex-col gap-1.5 min-w-[160px]">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado</span>
             <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val ?? "")}>
-              <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
-                <SelectValue placeholder="Estado" />
-              </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</SelectItem>
-                {["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"].map(e => (
-                  <SelectItem key={e} value={e} className="uppercase">{e}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex flex-col gap-2 min-w-[220px]">
-            <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable Ejecución</span>
-            <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val ?? "")}>
-              <SelectTrigger className="h-14 border-slate-200 bg-white text-base font-medium shadow-none rounded-xl">
-                <SelectValue placeholder="Responsable">
-                  {filtroResponsable !== "all" ? responsables.find(r => r.id === filtroResponsable)?.nombre : "TODOS LOS RESPONSABLES"}
+              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
+                <SelectValue placeholder="Estado">
+                  {filtroEstado !== "all" ? 
+                    <span className="text-[10px] font-bold uppercase">{filtroEstado}</span> : 
+                    <span className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS</span>
+                  }
                 </SelectValue>
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</SelectItem>
-                {responsables.map(r => (
-                  <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
+                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS</SelectItem>
+                {["Pendiente", "En Progreso", "Completada", "Validada", "Bloqueada"].map(e => (
+                  <SelectItem key={e} value={e} className="uppercase text-[10px] font-bold">{e}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
 
-          <div className="flex items-end h-14">
+          <div className="flex flex-col gap-1.5 min-w-[200px]">
+            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable</span>
+            <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val ?? "")}>
+              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
+                <SelectValue placeholder="Responsable">
+                  {filtroResponsable !== "all" ? 
+                    <span className="text-[10px] font-bold uppercase">{responsables.find(r => r.id === filtroResponsable)?.nombre}</span> : 
+                    <span className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS</span>
+                  }
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent className="bg-white border-slate-200">
+                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS</SelectItem>
+                {responsables.map(r => (
+                  <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-bold">{r.nombre}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="flex items-end h-10">
             <Button 
               variant="ghost" 
               size="icon" 
               onClick={() => { setFiltroEstado("all"); setFiltroResponsable("all"); setSearchQuery(""); }} 
-              className="h-14 w-14 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl"
+              className="h-10 w-10 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl"
               title="Limpiar filtros"
             >
-              <FilterX className="w-6 h-6" />
+              <FilterX className="w-5 h-5" />
             </Button>
           </div>
         </div>

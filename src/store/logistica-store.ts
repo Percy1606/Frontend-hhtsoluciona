@@ -53,6 +53,7 @@ export interface OrdenCompra {
   montoTotal: number;
   observaciones?: string;
   items: DetalleOrden[];
+  gasto?: any;
   createdAt: string;
 }
 
@@ -117,7 +118,7 @@ interface LogisticaState {
   addProveedor: (data: Partial<Proveedor>) => Promise<void>;
 
   // Acciones Órdenes de Compra
-  fetchOrdenes: (page?: number, limit?: number, search?: string) => Promise<void>;
+  fetchOrdenes: (page?: number, limit?: number, search?: string, estado?: string, dateFrom?: string, dateTo?: string) => Promise<void>;
   createOrden: (data: any) => Promise<void>;
   updateOrden: (id: string, data: any) => Promise<void>;
   secureRemoveOrden: (id: string, password: string) => Promise<void>;
@@ -284,7 +285,7 @@ export const useLogisticaStore = create<LogisticaState>()(
         }
       },
 
-      fetchOrdenes: async (page = 1, limit = 20, search = "") => {
+      fetchOrdenes: async (page = 1, limit = 20, search = "", estado?: string, dateFrom?: string, dateTo?: string) => {
         set({ loading: true, error: null });
         try {
           const queryParams = new URLSearchParams({
@@ -292,6 +293,9 @@ export const useLogisticaStore = create<LogisticaState>()(
             limit: limit.toString(),
           });
           if (search) queryParams.append('search', search);
+          if (estado && estado !== "ALL" && estado !== "TODOS") queryParams.append('estado', estado);
+          if (dateFrom) queryParams.append('dateFrom', dateFrom);
+          if (dateTo) queryParams.append('dateTo', dateTo);
 
           const response = await api.get(`/logistica/ordenes?${queryParams.toString()}`);
           

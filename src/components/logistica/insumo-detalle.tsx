@@ -65,7 +65,7 @@ export function InsumoDetalle({ isOpen, onClose, insumo }: InsumoDetalleProps) {
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Unitario</p>
                     <p className="text-2xl font-black text-emerald-600">
-                        S/ {insumo.precioReferencial.toFixed(2)}
+                        S/ {Number(insumo.precioReferencial || 0).toFixed(2)}
                     </p>
                 </div>
             </div>

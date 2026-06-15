@@ -11,7 +11,12 @@ export async function middleware(request: NextRequest) {
   // 1. Proteger API routes (Problema 7.1)
   if (pathname.startsWith('/api/') && !pathname.startsWith('/api/auth')) {
     const authHeader = request.headers.get('authorization');
-    const token = authHeader?.split(' ')[1];
+    let token = authHeader?.split(' ')[1];
+
+    // SOPORTE PARA TOKEN POR URL (Para previsualización en nuevas pestañas)
+    if (!token) {
+      token = request.nextUrl.searchParams.get('token') || undefined;
+    }
 
     if (!token) {
       return NextResponse.json(

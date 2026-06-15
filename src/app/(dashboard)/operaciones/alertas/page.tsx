@@ -199,7 +199,7 @@ export default function AlertasPage() {
       {/* Filtros Compactos */}
       <div className="flex flex-col md:flex-row gap-4 items-end">
         <div className="relative flex-1 w-full space-y-1">
-          <Label className="text-[9px] font-bold uppercase text-primary tracking-widest ml-1">Buscador de Riesgos</Label>
+          <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Buscador de Riesgos</Label>
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input
@@ -211,17 +211,23 @@ export default function AlertasPage() {
           </div>
         </div>
 
-        <div className="w-full md:w-48 space-y-1">
-            <Label className="text-[9px] font-bold uppercase text-primary tracking-widest ml-1">Gravedad</Label>
+        <div className="w-full md:w-56 space-y-1">
+            <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Gravedad</Label>
             <Select value={selectedPrioridad} onValueChange={(val) => { setSelectedPrioridad(val ?? ""); setCurrentPage(1); }}>
-                <SelectTrigger className="w-full h-10 border-none shadow-sm bg-white font-bold uppercase text-[9px] tracking-widest rounded-xl">
-                    <SelectValue placeholder="PRIORIDAD" />
+                <SelectTrigger className="w-full h-10 border-none shadow-sm bg-white font-medium rounded-xl">
+                  <SelectValue placeholder="Prioridad">
+                    {selectedPrioridad !== "all" ? 
+                      <span className="text-[11px] font-bold uppercase">{selectedPrioridad}</span> : 
+                      <span className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS GRAVEDADES</span>
+                    }
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-none shadow-2xl rounded-xl">
-                    <SelectItem value="all">Todas las gravedades</SelectItem>
-                    <SelectItem value="Crítica">Urgente / Crítica</SelectItem>
-                    <SelectItem value="Alta">Riesgo Alto</SelectItem>
-                    <SelectItem value="Media">Atención Media</SelectItem>
+                    <SelectItem value="all" className="text-[11px] text-slate-400 uppercase tracking-tighter italic">TODAS LAS GRAVEDADES</SelectItem>
+                    <SelectItem value="Crítica" className="text-sm font-medium">URGENTE / CRÍTICA</SelectItem>
+                    <SelectItem value="Alta" className="text-sm font-medium">RIESGO ALTO</SelectItem>
+                    <SelectItem value="Media" className="text-sm font-medium">ATENCIÓN MEDIA</SelectItem>
+                    <SelectItem value="Baja" className="text-sm font-medium">RIESGO BAJO</SelectItem>
                 </SelectContent>
             </Select>
         </div>
