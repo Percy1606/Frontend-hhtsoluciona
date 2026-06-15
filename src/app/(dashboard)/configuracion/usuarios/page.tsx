@@ -182,9 +182,8 @@ export default function UsuariosPage() {
       // Filtrar el payload para no enviar campos inválidos
       const payload: any = { ...values };
       
-      // Validar responsableId: si no es un UUID válido, enviar null para desvincular
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (!payload.responsableId || !uuidRegex.test(payload.responsableId)) {
+      // Validar responsableId: si está vacío, enviar null para desvincular
+      if (!payload.responsableId || payload.responsableId === "") {
         payload.responsableId = null;
       }
       
