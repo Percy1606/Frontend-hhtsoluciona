@@ -65,21 +65,16 @@ export default function BandejaTecnicaPage() {
   const [searchTerm, setSearchQuery] = useState<string>("");
 
   useEffect(() => {
-    const isAdminOrSupervisor = user?.rol === 'ADMIN' || user?.rol === 'SUPERVISOR';
-    const tecnicoId = isAdminOrSupervisor ? undefined : user?.responsable?.id;
-    fetchFichasTecnicas(1, 20, tecnicoId, searchTerm, startDate, endDate);
-  }, [fetchFichasTecnicas, user, searchTerm, startDate, endDate]);
+    // Ya no filtramos por técnico automáticamente, mostramos todo
+    fetchFichasTecnicas(1, 20, undefined, searchTerm, startDate, endDate);
+  }, [fetchFichasTecnicas, searchTerm, startDate, endDate]);
 
   const handlePageChange = (newPage: number) => {
-    const isAdminOrSupervisor = user?.rol === 'ADMIN' || user?.rol === 'SUPERVISOR';
-    const tecnicoId = isAdminOrSupervisor ? undefined : user?.responsable?.id;
-    fetchFichasTecnicas(newPage, 20, tecnicoId, searchTerm, startDate, endDate);
+    fetchFichasTecnicas(newPage, 20, undefined, searchTerm, startDate, endDate);
   };
 
   const handleRefresh = () => {
-    const isAdminOrSupervisor = user?.rol === 'ADMIN' || user?.rol === 'SUPERVISOR';
-    const tecnicoId = isAdminOrSupervisor ? undefined : user?.responsable?.id;
-    fetchFichasTecnicas(fichaPage, 20, tecnicoId, searchTerm, startDate, endDate);
+    fetchFichasTecnicas(fichaPage, 20, undefined, searchTerm, startDate, endDate);
     toast.info("Sincronizando...", { description: "Actualizando lista de visitas técnicas." });
   };
 
