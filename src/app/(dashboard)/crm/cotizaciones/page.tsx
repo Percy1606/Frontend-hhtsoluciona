@@ -296,7 +296,7 @@ export default function CotizacionesInboxPage() {
         previewUrl = `${API_URL}/uploads/${filename}?token=${token}`;
       }
 
-      const viewerUrl = `/api/viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}&token=${token}`;
+      const viewerUrl = `/file-viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}&token=${token}`;
       window.open(viewerUrl, '_blank');
       return;
     }
