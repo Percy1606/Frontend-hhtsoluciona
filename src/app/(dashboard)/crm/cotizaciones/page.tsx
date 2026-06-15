@@ -270,12 +270,31 @@ export default function CotizacionesInboxPage() {
       })[0];
       
       const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      const parts = lastDoc.url.split('/').filter(Boolean);
-      const folder = parts[1] || 'cotizaciones';
-      const filename = parts[parts.length - 1];
       
+      // Parsear la URL para extraer carpeta y nombre de archivo
+      // Formato esperado: /uploads/carpeta/archivo.ext o /uploads/archivo.ext
+      const parts = lastDoc.url.split('/').filter(Boolean);
+      
+      let folder = 'cotizaciones';
+      let filename = parts[parts.length - 1];
+
+      if (parts.length >= 3) {
+        // Caso: uploads/carpeta/archivo.ext
+        folder = parts[1];
+        filename = parts[2];
+      } else if (parts.length === 2) {
+        // Caso: uploads/archivo.ext
+        folder = 'root'; // El backend maneja uploads/:filename directamente
+      }
+
       const { token } = useAuthStore.getState();
-      const previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
+      
+      // Construir la URL de previsualización según las rutas del backend
+      let previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
+      
+      if (folder === 'root') {
+        previewUrl = `${API_URL}/uploads/${filename}?token=${token}`;
+      }
 
       const viewerUrl = `/api/viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}&token=${token}`;
       window.open(viewerUrl, '_blank');
