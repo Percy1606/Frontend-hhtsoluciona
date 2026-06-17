@@ -267,7 +267,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Etapa</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        value={field.value}
+                        disabled={client?.etapaComercial === 'Ganado'}
+                      >
                         <FormControl>
                           <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
                             <SelectValue />

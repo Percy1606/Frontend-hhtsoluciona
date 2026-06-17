@@ -336,8 +336,8 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                     {fields.map((field, index) => (
                         <div key={field.id} className="flex gap-2 items-end bg-slate-50 p-2 rounded-xl border border-slate-100 group">
                             
-                            <div className="w-10 pb-2 text-center">
-                              <span className="text-[10px] font-black text-slate-400">{(index + 1).toString().padStart(2, '0')}</span>
+                            <div className="w-16 pb-2 text-left pl-2">
+                              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Item {index + 1}</span>
                             </div>
 
                             <div className="flex-1">

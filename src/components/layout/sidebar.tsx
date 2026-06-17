@@ -60,6 +60,7 @@ const menuItems = [
     label: "Operaciones",
     href: "/operaciones",
     subItems: [
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: ClipboardList, label: "Bandeja Técnica", href: "/operaciones/bandeja" },
       { icon: FolderKanban, label: "Proyectos", href: "/operaciones/proyectos" },
       { icon: ClipboardList, label: "Actividades", href: "/operaciones/actividades" },
@@ -73,6 +74,7 @@ const menuItems = [
     label: "Logística",
     href: "/logistica",
     subItems: [
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: Package, label: "Almacén Central", href: "/logistica/inventario" },
       { icon: ShoppingCart, label: "Órdenes de Servicio", href: "/logistica/ordenes" },
       { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
@@ -83,6 +85,7 @@ const menuItems = [
     label: "Finanzas",
     href: "/finanzas",
     subItems: [
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: Wallet, label: "Cajas y Cuentas", href: "/finanzas/cajas" },
       { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },

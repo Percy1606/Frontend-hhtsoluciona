@@ -160,9 +160,9 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                             t.tipo === 'INGRESO' ? "text-emerald-600" : 
                                             t.tipo === 'EGRESO' ? "text-red-600" : "text-slate-800"
                                         )}>
-                                            {t.tipo === 'EGRESO' ? "-" : "+"}{formatCurrency(Number(t.monto))}
+                                            {t.tipo === 'EGRESO' ? "-" : "+"}{formatCurrency(Number(t.monto), caja.moneda)}
                                         </p>
-                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">SALDO: {formatCurrency(Number(t.saldoRealNuevo))}</p>
+                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">SALDO: {formatCurrency(Number(t.saldoRealNuevo), caja.moneda)}</p>
                                     </TableCell>
                                     <TableCell className="pr-4">
                                         <Button 

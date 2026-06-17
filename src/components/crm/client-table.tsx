@@ -43,9 +43,10 @@ import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 
 interface ClientTableProps {
   mode?: "cartera" | "seguimiento" | "full";
+  data?: Client[];
 }
 
-export function ClientTable({ mode = "cartera" }: ClientTableProps) {
+export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
   const { clients, updateClient, deleteClientSecure, fetchClients, fetchClientById, loading, totalClients, page, totalPages } = useCRMStore();
   const { responsables } = useOperacionesStore();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
@@ -133,7 +134,7 @@ export function ClientTable({ mode = "cartera" }: ClientTableProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
 
-  const filteredData = clients;
+  const filteredData = data || clients;
 
   const handleOpenDetails = async (client: Client) => {
     setSelectedClient(client);

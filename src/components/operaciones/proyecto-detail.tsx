@@ -92,18 +92,19 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
   const clientName = crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo";
   const responsableName = responsables.find(r => r.id === proyecto.responsablePrincipalId)?.nombre || "Sin asignar";
 
+  const loadFinance = async () => {
+    setLoadingFinance(true);
+    try {
+      const data = await fetchProjectProfitability(proyecto.id);
+      setFinanceData(data);
+    } catch (error) {
+      console.error("Error loading finance data:", error);
+    } finally {
+      setLoadingFinance(false);
+    }
+  };
+
   useEffect(() => {
-    const loadFinance = async () => {
-      setLoadingFinance(true);
-      try {
-        const data = await fetchProjectProfitability(proyecto.id);
-        setFinanceData(data);
-      } catch (error) {
-        console.error("Error loading finance data:", error);
-      } finally {
-        setLoadingFinance(false);
-      }
-    };
     loadFinance();
   }, [proyecto.id, fetchProjectProfitability]);
 
@@ -183,9 +184,6 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                 <TabsTrigger value="actividades" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <ClipboardList className="w-4 h-4" /> Actividades ({proyecto.actividades.length})
                 </TabsTrigger>
-                <TabsTrigger value="logistica" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
-                    <Package className="w-4 h-4" /> Logística y Costos
-                </TabsTrigger>
                 <TabsTrigger value="finanzas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <DollarSign className="w-4 h-4" /> Finanzas y Rentabilidad
                 </TabsTrigger>
@@ -205,7 +203,7 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
               </TabsContent>
 
               <TabsContent value="logistica" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
-                <LogisticaPanel proyecto={proyecto} data={financeData} loading={loadingFinance} />
+                <LogisticaPanel proyecto={proyecto} data={financeData} loading={loadingFinance} onRefresh={loadFinance} />
               </TabsContent>
 
               <TabsContent value="finanzas" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
@@ -238,7 +236,7 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
 // COMPONENTE: LogisticaPanel
 // ============================================
 
-function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data: any, loading: boolean }) {
+function LogisticaPanel({ proyecto, data, loading, onRefresh }: { proyecto: Proyecto, data: any, loading: boolean, onRefresh: () => void }) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -273,6 +271,21 @@ function LogisticaPanel({ proyecto, data, loading }: { proyecto: Proyecto, data:
             </div>
         </div>
       )}
+
+      <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-4 w-1 bg-primary rounded-full" />
+            <h2 className="text-xs font-black uppercase tracking-widest text-slate-500">Análisis Logístico del Proyecto</h2>
+          </div>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onRefresh}
+            className="h-8 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5"
+          >
+            <History className="w-3.5 h-3.5 mr-1.5" /> Refrescar Kardex
+          </Button>
+      </div>
 
       {/* RESUMEN FINANCIERO REDUCIDO */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

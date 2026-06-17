@@ -46,12 +46,14 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       proyectoId: initialData?.proyectoId || "",
       cajaId: (initialData as any)?.cajaId || "",
       tipo: initialData?.tipo || "OPERATIVO",
+      prioridad: initialData?.prioridad || "MEDIA",
       clasificacion: initialData?.clasificacion || "VENTA_SERVICIO",
       categoriaDistribucion: initialData?.categoriaDistribucion || "",
       concepto: initialData?.concepto || "",
       montoTotal: initialData?.montoTotal || 0,
       fechaEmision: initialData?.fechaEmision ? new Date(initialData.fechaEmision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       fechaVencimiento: initialData?.fechaVencimiento ? new Date(initialData.fechaVencimiento).toISOString().split('T')[0] : "",
+      fechaProgramadaPago: initialData?.fechaProgramadaPago ? new Date(initialData.fechaProgramadaPago).toISOString().split('T')[0] : "",
       estado: initialData?.estado || "PENDIENTE",
     },
   });
@@ -115,6 +117,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       proyectoId: data.proyectoId === "none" ? null : data.proyectoId,
       proveedorId: data.proveedorId || null,
       fechaVencimiento: data.fechaVencimiento || null,
+      fechaProgramadaPago: data.fechaProgramadaPago || null,
       categoriaDistribucion: data.categoriaDistribucion || null
     };
     onSubmit(finalData);
@@ -174,22 +177,60 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="fechaProgramadaPago"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[9px] uppercase text-blue-600 tracking-wider">Programación Pago</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} className="bg-white border-blue-100 h-10 font-bold text-blue-600 text-xs shadow-sm" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
-              <FormField
-                control={form.control}
-                name="concepto"
-                rules={{ required: "Requerido" }}
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Concepto / Glosa del Gasto</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ej: Pago de servicios de transporte, materiales, etc." {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FormField
+                  control={form.control}
+                  name="concepto"
+                  rules={{ required: "Requerido" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Concepto / Glosa del Gasto</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Pago de servicios de transporte, materiales, etc." {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="prioridad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Prioridad</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
+                            <SelectValue placeholder="Prioridad" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="BAJA" className="font-bold text-xs">BAJA</SelectItem>
+                          <SelectItem value="MEDIA" className="font-bold text-xs">MEDIA</SelectItem>
+                          <SelectItem value="ALTA" className="font-bold text-xs text-orange-600">ALTA</SelectItem>
+                          <SelectItem value="CRITICA" className="font-bold text-xs text-red-600">CRÍTICA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* SECCIÓN 2: ASOCIACIÓN Y CLASIFICACIÓN */}
@@ -277,6 +318,12 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                           <SelectItem value="FINANCIERO" className="font-bold text-xs">FINANCIERO</SelectItem>
                           <SelectItem value="PROYECTO" className="font-bold text-xs">PROYECTO</SelectItem>
                           <SelectItem value="PERSONAL" className="font-bold text-xs">PERSONAL</SelectItem>
+                          <SelectItem value="PLANILLA" className="font-bold text-xs">PLANILLA</SelectItem>
+                          <SelectItem value="IMPUESTOS" className="font-bold text-xs">IMPUESTOS</SelectItem>
+                          <SelectItem value="VIATICOS" className="font-bold text-xs">VIATICOS</SelectItem>
+                          <SelectItem value="COMBUSTIBLE" className="font-bold text-xs">COMBUSTIBLE</SelectItem>
+                          <SelectItem value="MANTENIMIENTO" className="font-bold text-xs">MANTENIMIENTO</SelectItem>
+                          <SelectItem value="SERVICIOS" className="font-bold text-xs">SERVICIOS</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />

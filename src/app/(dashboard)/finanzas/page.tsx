@@ -20,6 +20,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 import { CashFlowChart } from "@/components/finanzas/cash-flow-chart";
 import { CashStatus } from "@/components/finanzas/cash-status";
 import { ExecutivePanel } from "@/components/finanzas/executive-panel";
+import { ProjectionPanel } from "@/components/finanzas/projection-panel";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
@@ -31,6 +32,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+import { CashFlowForecast } from "@/components/finanzas/cash-flow-forecast";
+import { AgingReport } from "@/components/finanzas/aging-report";
+import { ApprovalInbox } from "@/components/finanzas/approval-inbox";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 
 const MESES = [
   { value: "1", label: "Enero" },
@@ -130,7 +141,7 @@ export default function FinanzasReportesPage() {
               <BarChart3 className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-primary tracking-tight">Reportes Financieros</h1>
+              <h1 className="text-xl font-black text-primary tracking-tight">Gestión Financiera</h1>
               <div className="flex items-center gap-4 text-muted-foreground font-bold text-xs mt-2">
                 <div className="flex items-center gap-2">
                   <label className="text-[9px] font-black uppercase text-slate-400 tracking-widest">Filtro por Mes:</label>
@@ -184,7 +195,7 @@ export default function FinanzasReportesPage() {
             onClick={() => window.open(`/print/finanzas?mes=${selectedMes}&anio=${selectedAnio}`, '_blank')}
             className="h-10 px-4 gap-2 text-xs font-black border-2 border-primary/20 text-primary hover:bg-primary/5 rounded-xl transition-all"
           >
-            <Download className="w-4 h-4" /> Descargar PDF
+            <Download className="w-4 h-4" /> Exportar BI
           </Button>
           <Button 
             onClick={() => window.print()}
@@ -195,121 +206,136 @@ export default function FinanzasReportesPage() {
         </div>
       </div>
 
-      {/* EXECUTIVE DASHBOARD - BI PANEL */}
-      <ExecutivePanel />
+      <Tabs defaultValue="overview" className="space-y-8">
+        <TabsList className="bg-white border border-border p-1 rounded-2xl h-14 w-full md:w-auto flex flex-wrap md:grid md:grid-cols-4 gap-2 shadow-sm">
+          <TabsTrigger value="overview" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Resumen Gerencial</TabsTrigger>
+          <TabsTrigger value="approvals" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white flex-1">Aprobaciones</TabsTrigger>
+          <TabsTrigger value="cashflow" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Flujo de Caja Proyectado</TabsTrigger>
+          <TabsTrigger value="aging" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Cartera por Cobrar</TabsTrigger>
+        </TabsList>
 
-      {/* CASH STATUS - MOTOR DE SEGURIDAD */}
-      <div className="space-y-4">
-        <div className="flex items-center gap-2">
-            <div className="h-4 w-1.5 bg-primary rounded-full" />
-            <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Estado de Caja y Fondos Comprometidos</h2>
-        </div>
-        <CashStatus />
-      </div>
+        <TabsContent value="approvals" className="animate-in zoom-in-95 duration-500">
+          <ApprovalInbox />
+        </TabsContent>
 
-      {/* STATS GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
-        <StatsCard 
-          label="Total Facturado" 
-          value={stats?.totalFacturado || 0} 
-          icon={<Receipt className="w-6 h-6 text-blue-600" />} 
-          color="bg-blue-500"
-          description={`Facturas: ${stats?.facturasPendientes || 0} pnd., ${stats?.facturasParciales || 0} parc.`}
-        />
-        <StatsCard 
-          label="Cobranza Efectiva" 
-          value={stats?.totalCobrado || 0} 
-          icon={<Wallet className="w-6 h-6 text-green-600" />} 
-          color="bg-green-500"
-          percentage={`${stats?.crecimientoIngresos ? Math.abs(Number(stats.crecimientoIngresos.toFixed(1))) : 0}%`}
-          isUp={stats?.crecimientoIngresos ? stats.crecimientoIngresos >= 0 : true}
-          description="Total cobrado acumulado"
-        />
-        <StatsCard 
-          label="Pendiente de Cobro" 
-          value={stats?.totalPendiente || 0} 
-          icon={<DollarSign className="w-6 h-6 text-orange-600" />} 
-          color="bg-orange-500"
-          description={`${stats?.facturasVencidas || 0} facturas vencidas`}
-        />
-        <StatsCard 
-          label="Egresos Pagados" 
-          value={stats?.totalGastosPagados || 0} 
-          icon={<ArrowDownRight className="w-6 h-6 text-red-600" />} 
-          color="bg-red-500"
-          percentage={`${stats?.crecimientoEgresos ? Math.abs(Number(stats.crecimientoEgresos.toFixed(1))) : 0}%`}
-          isUp={stats?.crecimientoEgresos ? stats.crecimientoEgresos < 0 : false}
-          description={`S/ ${(stats?.totalGastosPendientes || 0).toLocaleString()} pendientes`}
-        />
-        <StatsCard 
-          label="Utilidad Neta" 
-          value={stats?.utilidadNeta || 0} 
-          icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} 
-          color="bg-emerald-500"
-          description={`${Number(stats?.margenNeto || 0).toFixed(1)}% margen real`}
-        />
-      </div>
+        <TabsContent value="overview" className="space-y-8 animate-in fade-in duration-500">
+          {/* EXECUTIVE DASHBOARD - BI PANEL */}
+          <ExecutivePanel />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 bg-white p-8 rounded-3xl border border-border shadow-sm">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="font-black text-primary uppercase tracking-tighter flex items-center gap-2 text-xl">
-                Flujo de Caja Mensual
-              </h3>
-              <p className="text-muted-foreground text-sm font-medium">Comparativa de ingresos y egresos registrados.</p>
+          {/* CASH STATUS - MOTOR DE SEGURIDAD */}
+          <div className="space-y-4">
+            <div className="flex items-center gap-2">
+                <div className="h-4 w-1.5 bg-primary rounded-full" />
+                <h2 className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Estado de Caja y Fondos Comprometidos</h2>
             </div>
-            <div className="flex gap-6">
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-200" />
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Ingresos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-full bg-error shadow-lg shadow-error/20" />
-                <span className="text-[10px] font-black uppercase text-muted-foreground">Egresos</span>
-              </div>
-            </div>
+            <CashStatus />
           </div>
-          <div className="h-[350px]">
-            <CashFlowChart data={cashFlow} />
-          </div>
-        </div>
 
-        <div className="bg-white p-8 rounded-3xl border border-border shadow-sm flex flex-col">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="font-black text-primary uppercase tracking-tighter flex items-center gap-2 text-xl">
-              Cobranzas Críticas
-            </h3>
-            <Badge className="bg-error/10 text-error border-none font-black text-[10px]">{stats?.facturasCriticas.length || 0}</Badge>
+          {/* STATS GRID */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            <StatsCard 
+              label="Total Facturado" 
+              value={stats?.totalFacturado || 0} 
+              icon={<Receipt className="w-6 h-6 text-blue-600" />} 
+              color="bg-blue-500"
+              description={`Facturas: ${stats?.facturasPendientes || 0} pnd., ${stats?.facturasParciales || 0} parc.`}
+            />
+            <StatsCard 
+              label="Cobranza Efectiva" 
+              value={stats?.totalCobrado || 0} 
+              icon={<Wallet className="w-6 h-6 text-green-600" />} 
+              color="bg-green-500"
+              description="Total cobrado acumulado"
+            />
+            <StatsCard 
+              label="Pendiente de Cobro" 
+              value={stats?.totalPendiente || 0} 
+              icon={<DollarSign className="w-6 h-6 text-orange-600" />} 
+              color="bg-orange-500"
+              description={`${stats?.facturasVencidas || 0} facturas vencidas`}
+            />
+            <StatsCard 
+              label="Egresos Pagados" 
+              value={stats?.totalGastosPagados || 0} 
+              icon={<ArrowDownRight className="w-6 h-6 text-red-600" />} 
+              color="bg-red-500"
+              description={`S/ ${(stats?.totalGastosPendientes || 0).toLocaleString()} pendientes`}
+            />
+            <StatsCard 
+              label="Utilidad del Mes" 
+              value={stats?.utilidadMes || 0} 
+              icon={<TrendingUp className="w-6 h-6 text-emerald-600" />} 
+              color="bg-emerald-500"
+              description={`${Number(stats?.margenNeto || 0).toFixed(1)}% margen real`}
+            />
           </div>
-          <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
-            {stats?.facturasCriticas.map((fc: any) => (
-              <AlertItem 
-                key={fc.id}
-                project={fc.proyecto} 
-                client={fc.cliente}
-                invoice={fc.codigo} 
-                amount={fc.saldo} 
-                days={fc.diasVencidos} 
-              />
-            ))}
-            {stats?.facturasCriticas.length === 0 && (
-              <div className="h-full flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-100 rounded-3xl">
-                <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="w-8 h-8 text-green-500" />
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div>
+                    <h3 className="font-black text-primary uppercase tracking-tighter flex items-center gap-2 text-xl">
+                      Flujo de Caja Mensual
+                    </h3>
+                    <p className="text-muted-foreground text-sm font-medium">Comparativa de ingresos y egresos registrados.</p>
+                  </div>
+                  <div className="flex gap-6">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-green-500 shadow-lg shadow-green-200" />
+                      <span className="text-[10px] font-black uppercase text-muted-foreground">Ingresos</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-error shadow-lg shadow-error/20" />
+                      <span className="text-[10px] font-black uppercase text-muted-foreground">Egresos</span>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Cartera al día<br/><span className="text-[10px]">No hay facturas vencidas</span></p>
+                <div className="h-[350px]">
+                  <CashFlowChart data={cashFlow} />
+                </div>
               </div>
-            )}
+            </div>
+
+            <div className="bg-white p-8 rounded-3xl border border-border shadow-sm flex flex-col">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="font-black text-primary uppercase tracking-tighter flex items-center gap-2 text-xl">
+                  Cobranzas Críticas
+                </h3>
+                <Badge className="bg-error/10 text-error border-none font-black text-[10px]">{stats?.facturasCriticas.length || 0}</Badge>
+              </div>
+              <div className="space-y-4 flex-1 overflow-y-auto max-h-[400px] pr-2 custom-scrollbar">
+                {stats?.facturasCriticas.map((fc: any) => (
+                  <AlertItem 
+                    key={fc.id}
+                    project={fc.proyecto} 
+                    client={fc.cliente}
+                    invoice={fc.codigo} 
+                    amount={fc.saldo} 
+                    days={fc.diasVencidos} 
+                  />
+                ))}
+                {stats?.facturasCriticas.length === 0 && (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-100 rounded-3xl">
+                    <div className="w-16 h-16 bg-green-50 rounded-full flex items-center justify-center mb-4">
+                      <CheckCircle2 className="w-8 h-8 text-green-500" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-400 uppercase tracking-widest leading-tight">Cartera al día<br/><span className="text-[10px]">No hay facturas vencidas</span></p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <Button 
-            variant="outline" 
-            className="w-full mt-6 h-12 font-black text-xs uppercase tracking-widest border-2 border-primary/10 text-primary hover:bg-primary/5 rounded-2xl"
-          >
-            Ver Detalle de Cobranzas
-          </Button>
-        </div>
-      </div>
+        </TabsContent>
+
+        <TabsContent value="cashflow" className="animate-in slide-in-from-left-4 duration-500">
+          <CashFlowForecast />
+        </TabsContent>
+
+        <TabsContent value="aging" className="animate-in slide-in-from-right-4 duration-500">
+          <AgingReport />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

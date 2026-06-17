@@ -340,6 +340,94 @@ export function FinancePanel({ proyectoId }: FinancePanelProps) {
         </CardContent>
       </Card>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* LISTADO DE MATERIALES (KARDEX) */}
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2">
+              <Package className="w-4 h-4 text-primary" /> Detalle de Materiales (Kardex)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader className="bg-slate-50/50 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="text-[9px] font-black uppercase pl-6">Material</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase text-center">Cant.</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase pr-6 text-right">Total S/.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data?.historialMateriales?.length > 0 ? (
+                    data.historialMateriales.map((item: any, idx: number) => (
+                      <TableRow key={idx} className="hover:bg-slate-50 transition-colors">
+                        <TableCell className="pl-6">
+                            <p className="text-[10px] font-black text-slate-800 uppercase">{item.material}</p>
+                            <p className="text-[8px] font-bold text-slate-400">{formatDate(item.fecha)} • {item.origen}</p>
+                        </TableCell>
+                        <TableCell className="text-center text-[10px] font-bold">{item.cantidad}</TableCell>
+                        <TableCell className="text-right pr-6 font-black text-[10px] text-primary">S/ {Number(item.costoTotal || 0).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-20 text-slate-400 font-bold text-[10px] uppercase italic">
+                        Sin consumos de materiales registrados
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* LISTADO DE GASTOS DIRECTOS */}
+        <Card className="border-slate-200 shadow-sm overflow-hidden">
+          <CardHeader className="pb-3 border-b border-slate-100 bg-slate-50/50">
+            <CardTitle className="text-xs font-black uppercase tracking-widest text-slate-600 flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-orange-500" /> Gastos Directos y Servicios
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[300px]">
+              <Table>
+                <TableHeader className="bg-slate-50/50 sticky top-0 z-10">
+                  <TableRow>
+                    <TableHead className="text-[9px] font-black uppercase pl-6">Concepto</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase">Tipo</TableHead>
+                    <TableHead className="text-[9px] font-black uppercase pr-6 text-right">Monto S/.</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {data?.historialGastos?.length > 0 ? (
+                    data.historialGastos.map((g: any) => (
+                      <TableRow key={g.id} className="hover:bg-slate-50 transition-colors">
+                        <TableCell className="pl-6">
+                            <p className="text-[10px] font-black text-slate-800 uppercase truncate max-w-[150px]">{g.concepto}</p>
+                            <p className="text-[8px] font-bold text-slate-400">{formatDate(g.fecha)} • {g.codigo || 'S/N'}</p>
+                        </TableCell>
+                        <TableCell>
+                           <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1">{g.tipo}</Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-6 font-black text-[10px] text-orange-600">S/ {Number(g.monto || 0).toLocaleString()}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center py-20 text-slate-400 font-bold text-[10px] uppercase italic">
+                        No hay gastos registrados
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      </div>
+
       <AdvanceModal 
         isOpen={isAdvanceModalOpen} 
         onClose={() => setIsAdvanceModalOpen(false)} 

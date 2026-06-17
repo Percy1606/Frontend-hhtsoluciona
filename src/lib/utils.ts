@@ -42,11 +42,17 @@ export const formatDate = (dateStr: string | null | undefined, includeTime = fal
   }
 };
 
-export const formatCurrency = (amount: number, compact = false) => {
-  return new Intl.NumberFormat('es-PE', {
+export const formatCurrency = (amount: number, currency: 'PEN' | 'USD' = 'PEN', compact = false) => {
+  const options: Intl.NumberFormatOptions = {
     style: 'currency',
-    currency: 'PEN',
+    currency: currency,
     maximumFractionDigits: compact ? 0 : 2,
     minimumFractionDigits: compact ? 0 : 2,
-  }).format(amount || 0).replace('PEN', 'S/');
+  };
+
+  if (currency === 'PEN') {
+    return new Intl.NumberFormat('es-PE', options).format(amount || 0).replace('PEN', 'S/');
+  } else {
+    return new Intl.NumberFormat('en-US', options).format(amount || 0);
+  }
 };

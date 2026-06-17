@@ -251,7 +251,8 @@ export default function InventarioPage() {
             <Table>
                 <TableHeader className="bg-slate-50/50">
                     <TableRow>
-                        <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6">Insumo / Material</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6 w-16">Item</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px] py-4">Insumo / Material</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Categoría</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Unidad</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Stock Actual</TableHead>
@@ -261,13 +262,18 @@ export default function InventarioPage() {
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400">CARGANDO ALMACÉN...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400">CARGANDO ALMACÉN...</TableCell></TableRow>
                     ) : insumos.length === 0 ? (
-                        <TableRow><TableCell colSpan={6} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron insumos.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron insumos.</TableCell></TableRow>
                     ) : (
-                        insumos.map((item) => (
+                        insumos.map((item, index) => (
                             <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors group">
                                 <TableCell className="pl-6">
+                                    <span className="text-[9px] font-black uppercase text-slate-400 tracking-widest bg-slate-100 px-2 py-1 rounded-md">
+                                        {(currentPage - 1) * 10 + index + 1}
+                                    </span>
+                                </TableCell>
+                                <TableCell className="">
                                     <p className="font-black text-slate-800 text-sm uppercase group-hover:text-primary transition-colors">{item.nombre}</p>
                                     <p className="text-[9px] text-slate-400 font-bold uppercase">{item.descripcion || 'Sin descripción'}</p>
                                 </TableCell>

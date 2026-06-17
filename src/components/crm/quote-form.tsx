@@ -20,10 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Quote, useCRMStore } from "@/store/crm-store";
 import { useEffect, useMemo, useState } from "react";
-import { FileUp, FileText, X, User, Building2, Smartphone, Mail, Hash, MapPin, CheckCircle2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { FileUp, FileText, X, User, Building2, Smartphone, Mail, List, MapPin, CheckCircle2, Wallet, AlertTriangle, Plus, Hash } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Combobox } from "@/components/ui/combobox";
 import { cn } from "@/lib/utils";
+import { api } from "@/lib/api";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 interface QuoteFormProps {
   quote?: Quote | null;
@@ -35,20 +39,97 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
   const { clients, uploadQuoteFile } = useCRMStore();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [cajas, setCajas] = useState<any[]>([]);
   
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    diferencia: number;
+    data: any;
+  }>({ open: false, title: "", description: "", diferencia: 0, data: null });
+
   const form = useForm({
     defaultValues: quote ? {
       ...quote,
+      cajaId: "",
     } : {
       clientId: "",
       empresa: "",
       contacto: "",
       monto: 0,
+      moneda: "PEN",
       estado: "Pendiente",
       fecha: new Date().toISOString().split('T')[0],
       referencia: "",
+      cajaId: "",
     },
   });
+
+  const [hitos, setHitos] = useState<any[]>(
+    quote?.hitosPago && quote.hitosPago.length > 0
+      ? quote.hitosPago.map((h: any) => ({ ...h, monto: Number(h.monto), porcentaje: Number(h.porcentaje), estado: h.estado || 'PENDIENTE' }))
+      : [
+          { descripcion: "Adelanto inicial", porcentaje: 40, monto: 0, estado: 'COBRADO' },
+          { descripcion: "Finalización de obra", porcentaje: 60, monto: 0, estado: 'PENDIENTE' },
+        ]
+  );
+
+  const totalMonto = form.watch("monto") || 0;
+
+  // Recalcular montos cuando cambie el monto total o los porcentajes
+  useEffect(() => {
+    setHitos(prev => prev.map(h => ({
+      ...h,
+      monto: Number(((totalMonto * Number(h.porcentaje)) / 100).toFixed(2))
+    })));
+  }, [totalMonto]);
+
+  const handleHitoChange = (index: number, field: string, value: any) => {
+    const newHitos = [...hitos];
+    newHitos[index][field] = value;
+    
+    if (field === 'porcentaje') {
+      newHitos[index].monto = Number(((totalMonto * Number(value)) / 100).toFixed(2));
+    } else if (field === 'monto') {
+      newHitos[index].porcentaje = totalMonto > 0 ? Number(((Number(value) / totalMonto) * 100).toFixed(2)) : 0;
+    }
+    
+    // Automatización: Si se marca como COBRADO, la cotización debe estar Aprobada
+    if (field === 'estado' && value === 'COBRADO') {
+      if (form.getValues("estado") !== "Aprobado") {
+        form.setValue("estado", "Aprobado");
+      }
+    }
+    
+    setHitos(newHitos);
+  };
+
+  const addHito = () => {
+    const totalActual = hitos.reduce((acc, h) => acc + Number(h.porcentaje), 0);
+    const restante = Math.max(0, 100 - totalActual);
+    setHitos([...hitos, { descripcion: "Nueva Valorización", porcentaje: restante, monto: (totalMonto * restante) / 100 }]);
+  };
+
+  const removeHito = (index: number) => {
+    if (hitos.length <= 1) return;
+    setHitos(hitos.filter((_, i) => i !== index));
+  };
+
+  const totalPorcentaje = hitos.reduce((acc, h) => acc + Number(h.porcentaje), 0);
+  const isPlanValid = Math.abs(totalPorcentaje - 100) < 0.1;
+
+  useEffect(() => {
+    const fetchCajas = async () => {
+      try {
+        const data = await api.get('/finanzas/cajas');
+        if (Array.isArray(data)) setCajas(data);
+      } catch (error) {
+        console.error("Error fetching cajas:", error);
+      }
+    };
+    fetchCajas();
+  }, []);
 
   const clientOptions = useMemo(() => 
     clients.map(c => ({
@@ -59,6 +140,12 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
   );
 
   const selectedClientId = form.watch("clientId");
+  const currentEstado = form.watch("estado");
+  const isApproved = currentEstado === "Aprobado";
+  const hasCobradoHitos = hitos.some(h => h.estado === 'COBRADO');
+  const needsCaja = isApproved || hasCobradoHitos;
+  const currentMoneda = form.watch("moneda");
+
   const selectedClient = useMemo(() => 
     clients.find(c => c.id === selectedClientId),
     [clients, selectedClientId]
@@ -77,24 +164,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
     }
   };
 
-  const handleFormSubmit = async (data: any) => {
-    // 1. VALIDACIÓN DE DUPLICADOS (NUEVA PROPUESTA)
-    if (!quote) {
-        const { quotes } = useCRMStore.getState();
-        const existingQuote = quotes.find(q => q.clientId === data.clientId);
-        
-        if (existingQuote) {
-            alert("Ya existe una propuesta técnica registrada para este cliente. Solo puede editar la propuesta existente.");
-            return;
-        }
-    }
-
-    // 2. VALIDACIÓN DE DOCUMENTO
-    if (!selectedFile && (!quote || !quote.documentos || quote.documentos.length === 0)) {
-      alert("Debes cargar un documento (Word o PDF) antes de guardar la cotización.");
-      return;
-    }
-
+  const executeSubmit = async (data: any) => {
     try {
       setIsUploading(true);
       let fileData = {};
@@ -107,17 +177,71 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
           fileType: response.tipo,
         };
       }
+
+      // Limpiar datos para el DTO del Backend
+      const { empresa, contacto, ...dtoData } = data;
       
-      await onSubmit({ ...data, ...fileData });
-    } catch (error) {
+      await onSubmit({ 
+        ...dtoData, 
+        ...fileData,
+        hitos: hitos.map(h => ({
+          descripcion: h.descripcion,
+          porcentaje: Number(h.porcentaje),
+          monto: Number(h.monto),
+          estado: h.estado || 'PENDIENTE'
+        }))
+      });
+      setConfirmDialog(prev => ({ ...prev, open: false }));
+    } catch (error: any) {
       console.error("Error al procesar el formulario:", error);
-      alert("Hubo un error al guardar la cotización o el documento.");
+      const errorMessage = error.response?.data?.message 
+        || error.message 
+        || "Hubo un error al guardar la cotización o el documento.";
+      alert(errorMessage);
     } finally {
       setIsUploading(false);
     }
   };
 
+  const handleFormSubmit = async (data: any) => {
+    if (!selectedFile && (!quote || !quote.documentos || quote.documentos.length === 0)) {
+      alert("Debes cargar un documento (Word o PDF) antes de guardar la cotización.");
+      return;
+    }
+
+    if (needsCaja && !data.cajaId) {
+      alert("Debes seleccionar una caja de destino para el ingreso del dinero.");
+      return;
+    }
+
+    if (quote && needsCaja && (quote.estado === 'Aprobado' || hasCobradoHitos)) {
+      const nuevoMonto = Number(data.monto);
+      const montoAnterior = Number(quote.monto);
+      const diferencia = nuevoMonto - montoAnterior;
+
+      if (diferencia !== 0) {
+        const signo = diferencia > 0 ? '+' : '-';
+        const simboloMoneda = data.moneda === 'PEN' ? 'S/' : '$';
+        setConfirmDialog({
+          open: true,
+          title: "Ajuste en Caja Requerido",
+          description: `La cotización pasará de ${simboloMoneda} ${montoAnterior.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} a ${simboloMoneda} ${nuevoMonto.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}.
+
+Se generará un ajuste de ${signo}${simboloMoneda} ${Math.abs(diferencia).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})} en la caja seleccionada.
+
+¿Desea continuar?`,
+          diferencia,
+          data
+        });
+        return; 
+      }
+    }
+
+    await executeSubmit(data);
+  };
+
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-0">
         <div className="p-6 space-y-8 overflow-y-auto max-h-[70vh]">
@@ -169,24 +293,6 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                     <p className="text-sm font-bold text-slate-700">{selectedClient.contacto}</p>
                   </div>
                 </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
-                  <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                    <MapPin className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400">Dirección Fiscal</p>
-                    <p className="text-sm font-bold text-slate-700 truncate max-w-[200px]" title={selectedClient.direccion}>{selectedClient.direccion}</p>
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
-                  <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
-                    <Smartphone className="w-4 h-4 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400">Teléfono / Celular</p>
-                    <p className="text-sm font-bold text-slate-700">{selectedClient.telefono || "No registrado"}</p>
-                  </div>
-                </div>
               </div>
             )}
           </div>
@@ -218,33 +324,66 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                 )}
               />
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="moneda"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Moneda</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex items-center space-x-4 pt-2"
+                        >
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <RadioGroupItem value="PEN" id="r1" />
+                            </FormControl>
+                            <FormLabel htmlFor="r1" className="font-bold text-sm">S/</FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-2">
+                            <FormControl>
+                              <RadioGroupItem value="USD" id="r2" />
+                            </FormControl>
+                            <FormLabel htmlFor="r2" className="font-bold text-sm">$</FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="monto"
+                  rules={{ 
+                    required: "El monto es obligatorio",
+                    min: { value: 0, message: "El monto no puede ser negativo" },
+                    max: { value: 1000000000, message: "El monto no puede exceder los 1,000 millones" }
+                  }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión (S/)</FormLabel>
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black text-sm">S/</span>
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black text-sm">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
                           <Input 
-                            type="text" 
+                            type="number" 
+                            step="0.01"
+                            min="0"
+                            max="1000000000"
                             className="h-11 border-slate-200 font-black text-primary text-base pl-8" 
-                            placeholder="0"
-                            value={new Intl.NumberFormat('es-PE').format(field.value || 0)}
-                            onFocus={(e) => e.target.select()}
+                            placeholder="0.00"
+                            {...field}
                             onChange={(e) => {
-                              // Solo permitir números y un punto decimal
-                              const val = e.target.value.replace(/[^0-9.]/g, '');
-                              // Evitar múltiples puntos
-                              const parts = val.split('.');
-                              const sanitizedVal = parts[0] + (parts.length > 1 ? '.' + parts[1] : '');
-                              field.onChange(parseFloat(sanitizedVal) || 0);
+                              const val = e.target.value;
+                              field.onChange(val === '' ? 0 : parseFloat(val));
                             }}
                           />
                         </div>
                       </FormControl>
+                      <FormMessage className="text-[10px] font-black uppercase mt-1" />
                     </FormItem>
                   )}
                 />
@@ -254,7 +393,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                   name="estado"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Estado Inicial</FormLabel>
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Estado</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-11 border-slate-200 font-bold text-xs uppercase">
@@ -273,11 +412,180 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
                 />
               </div>
             </div>
+
+            {needsCaja && (
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="bg-white p-2 rounded-lg border border-blue-100 shadow-sm">
+                    <Wallet className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-black uppercase text-blue-700 leading-none">Ingreso a Tesorería</h4>
+                    <p className="text-[9px] text-blue-600 font-bold uppercase tracking-wide mt-1">
+                      {hasCobradoHitos 
+                        ? "Se han detectado hitos marcados como COBRADO. Seleccione la caja de destino." 
+                        : "La cotización está aprobada. Seleccione la caja de destino para el dinero."}
+                    </p>
+                  </div>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="cajaId"
+                  rules={{ required: needsCaja ? "Debe seleccionar una caja" : false }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="h-11 border-blue-200 bg-white font-black text-xs uppercase text-blue-700 shadow-sm">
+                            <SelectValue placeholder="SELECCIONAR CAJA DE DESTINO..." />
+                          </SelectTrigger>
+                          <SelectContent className="bg-white">
+                            {cajas.filter(c => c.moneda === currentMoneda).map(caja => (
+                              <SelectItem key={caja.id} value={caja.id} className="text-xs font-bold uppercase">
+                                {caja.nombre} ({caja.moneda})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                      <FormMessage className="text-[10px] font-black uppercase mt-1" />
+                    </FormItem>
+                  )}
+                />
+
+                {quote && (
+                  <div className="mt-3 flex items-center gap-2 bg-white/50 p-2 rounded-lg border border-blue-50">
+                    <AlertTriangle className="w-3 h-3 text-blue-400" />
+                    <p className="text-[8px] font-bold text-blue-400 uppercase tracking-tighter">Nota: Solo se registrará en caja la diferencia si el monto cobrado ha cambiado.</p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          <Separator className="opacity-50" />
+
+          {/* SECCIÓN 3: PLAN DE FACTURACIÓN (HITOS) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                <Wallet className="w-4 h-4" />
+                Plan de Facturación y Adelantos
+              </h3>
+              <Button 
+                type="button" 
+                variant="ghost" 
+                size="sm"
+                onClick={addHito}
+                className="h-7 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
+              >
+                <List className="w-3 h-3 mr-1" /> Añadir Hito
+              </Button>
+            </div>
+
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
+              <div className="grid grid-cols-12 gap-3 text-[9px] font-black uppercase text-slate-400 px-2">
+                <div className="col-span-4">Descripción del Hito</div>
+                <div className="col-span-2 text-center">Estado</div>
+                <div className="col-span-2 text-center">%</div>
+                <div className="col-span-3 text-right">Monto Estimado</div>
+                <div className="col-span-1"></div>
+              </div>
+
+              <div className="space-y-2">
+                {hitos.map((hito, idx) => (
+                  <div key={idx} className="grid grid-cols-12 gap-3 items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm animate-in fade-in slide-in-from-left-2 duration-300">
+                    <div className="col-span-4">
+                      <Input 
+                        value={hito.descripcion} 
+                        onChange={(e) => handleHitoChange(idx, 'descripcion', e.target.value)}
+                        placeholder="Ej: Adelanto inicial"
+                        className="h-9 text-xs font-bold border-transparent bg-slate-50/50 focus:bg-white rounded-lg"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Select 
+                        value={hito.estado || 'PENDIENTE'} 
+                        onValueChange={(val) => handleHitoChange(idx, 'estado', val)}
+                      >
+                        <SelectTrigger className="h-9 border-transparent bg-slate-50/50 text-[10px] font-black uppercase rounded-lg">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          <SelectItem value="PENDIENTE" className="text-[10px] font-black uppercase">Pendiente</SelectItem>
+                          <SelectItem value="FACTURADO" className="text-[10px] font-black uppercase text-blue-600">Facturado</SelectItem>
+                          <SelectItem value="COBRADO" className="text-[10px] font-black uppercase text-success">Aprobado / Cobrado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2">
+                      <div className="relative">
+                        <Input 
+                          type="number"
+                          value={hito.porcentaje} 
+                          onChange={(e) => handleHitoChange(idx, 'porcentaje', e.target.value)}
+                          className="h-9 text-center text-xs font-black text-primary border-transparent bg-slate-50/50 focus:bg-white pr-4 rounded-lg"
+                        />
+                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">%</span>
+                      </div>
+                    </div>
+                    <div className="col-span-3">
+                      <div className="relative">
+                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
+                        <Input 
+                          type="number"
+                          value={hito.monto} 
+                          onChange={(e) => handleHitoChange(idx, 'monto', e.target.value)}
+                          className="h-9 text-right text-xs font-black text-primary border-transparent bg-slate-50/50 focus:bg-white pl-6 rounded-lg"
+                        />
+                      </div>
+                    </div>
+                    <div className="col-span-1 text-right">
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeHito(idx)}
+                        disabled={hitos.length <= 1}
+                        className="h-8 w-8 text-slate-300 hover:text-error hover:bg-red-50 rounded-full"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-2 px-2 border-t border-dashed border-slate-200 mt-4">
+                <div className="flex items-center gap-4">
+                   <div className="flex flex-col">
+                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Suma Total</span>
+                      <span className={cn(
+                        "text-xs font-black",
+                        isPlanValid ? "text-success" : "text-error"
+                      )}>
+                        {totalPorcentaje.toFixed(1)}% / 100%
+                      </span>
+                   </div>
+                   {!isPlanValid && (
+                     <div className="flex items-center gap-1.5 text-error animate-pulse">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        <span className="text-[8px] font-black uppercase">Debe sumar 100%</span>
+                     </div>
+                   )}
+                </div>
+                <div className="text-right">
+                   <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Total Programado</span>
+                   <p className="text-sm font-black text-primary">{currentMoneda === 'PEN' ? 'S/' : '$'} {totalMonto.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <Separator className="opacity-50" />
 
-          {/* SECCIÓN 3: ARCHIVO WORD/PDF */}
+          {/* SECCIÓN 4: ARCHIVO WORD/PDF */}
           <div className="space-y-4">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <FileUp className="w-4 h-4" />
@@ -359,7 +667,7 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
           </Button>
           <Button 
             type="submit" 
-            disabled={isUploading || !selectedClientId}
+            disabled={isUploading || !selectedClientId || !isPlanValid}
             className="bg-primary hover:bg-primary/90 text-white font-black px-10 shadow-lg shadow-primary/20 h-11 uppercase text-[10px] gap-2"
           >
             {isUploading ? (
@@ -374,6 +682,39 @@ export function QuoteForm({ quote, onSubmit, onCancel }: QuoteFormProps) {
         </div>
       </form>
     </Form>
+
+    <Dialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>
+        <DialogContent className="max-w-md bg-white border-none shadow-2xl rounded-3xl p-6 overflow-hidden">
+          <DialogHeader>
+            <div className="mx-auto w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-4">
+              <AlertTriangle className="w-6 h-6 text-blue-600" />
+            </div>
+            <DialogTitle className="text-center text-lg font-black uppercase tracking-tighter text-slate-900">
+              {confirmDialog.title}
+            </DialogTitle>
+            <DialogDescription className="text-center text-sm font-bold text-slate-500 mt-2 whitespace-pre-wrap">
+              {confirmDialog.description}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="mt-6 flex gap-3 sm:justify-center">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmDialog(prev => ({ ...prev, open: false }))}
+              className="flex-1 rounded-xl h-11 font-black text-[10px] uppercase text-slate-500 border-slate-200"
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={() => executeSubmit(confirmDialog.data)}
+              className="flex-1 rounded-xl h-11 font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
+            >
+              Confirmar Ajuste
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
-

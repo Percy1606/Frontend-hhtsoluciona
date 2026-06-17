@@ -31,6 +31,7 @@ export type Quote = {
   proyectoGeneradoId?: string;
   documentos?: any[];
   interacciones?: any[];
+  hitosPago?: any[];
 };
 
 export interface CRMFilters {
@@ -121,6 +122,7 @@ interface CRMState {
   
   reassignSeller: (clientId: string, seller: string) => Promise<void>;
   attachFile: (clientId: string, file: { nombre: string, url: string, tipo: string, tamano: string, subidoPor: string }) => Promise<void>;
+  attachQuoteFile: (cotizacionId: string, clientId: string, file: { nombre: string, url: string, tipo: string, subtype?: string, tamano: string, subidoPor: string }) => Promise<void>;
   uploadClientFile: (file: File) => Promise<any>;
   deleteFile: (clientId: string, fileId: string) => Promise<void>;
 
@@ -194,6 +196,8 @@ export const useCRMStore = create<CRMState>()(
           if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
           if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
           if (filters.estado) queryParams.append('estado', filters.estado);
+          if (filters.fechaDesde) queryParams.append('startDate', filters.fechaDesde);
+          if (filters.fechaHasta) queryParams.append('endDate', filters.fechaHasta);
 
           const response = await api.get(`/crm/clientes?${queryParams.toString()}`);
           
@@ -474,6 +478,17 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
+      attachQuoteFile: async (cotizacionId, clientId, fileData) => {
+        try {
+          await api.post('/crm/documentos', { ...fileData, cotizacionId, clientId });
+          await get().fetchQuotes();
+          toast.success("Documento Contractual", { description: "La Orden de Servicio/Contrato ha sido vinculada." });
+        } catch (error) {
+          console.error("Error attaching quote file:", error);
+          toast.error("Error al Adjuntar", { description: "No se pudo vincular el documento contractual." });
+        }
+      },
+
       uploadClientFile: async (file: File) => {
         try {
           const formData = new FormData();
@@ -557,7 +572,7 @@ export const useCRMStore = create<CRMState>()(
       updateQuote: async (updatedQuote) => {
         try {
           const { 
-            id, cliente, documentos, interacciones, empresa, contacto, codigo, fechaCreacion, fechaActualizacion, proyectoGenerado, proyectoGeneradoId, ...cleanData 
+            id, cliente, documentos, interacciones, empresa, contacto, codigo, fechaCreacion, fechaActualizacion, proyectoGenerado, proyectoGeneradoId, hitosPago, ...cleanData 
           } = updatedQuote as any;
           const payload = {
             ...cleanData,
@@ -611,9 +626,42 @@ export const useCRMStore = create<CRMState>()(
         try {
           const client = get().clients.find(c => c.id === id);
           if (!client) return;
+
+          if (client.etapaComercial === 'Ganado' && newStage !== 'Ganado') {
+            toast.error("Acción Bloqueada", { 
+              description: "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO." 
+            });
+            return;
+          }
+
           const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, ...data } = client as any;
-          set((state) => ({ clients: state.clients.map(c => c.id === id ? { ...c, etapaComercial: newStage } : c) }));
-          await api.put(`/crm/clientes/${id}`, { ...data, etapaComercial: newStage, montoEstimado: safeNumber(data.montoEstimado), ventaProyectada: safeNumber(data.ventaProyectada), probabilidad: safeNumber(data.probabilidad) });
+          
+          const payload: any = { 
+            ...data, 
+            etapaComercial: newStage, 
+            montoEstimado: safeNumber(data.montoEstimado), 
+            ventaProyectada: safeNumber(data.ventaProyectada), 
+            probabilidad: safeNumber(data.probabilidad) 
+          };
+
+          // Programación automática de fidelización si es GANADO
+          if (newStage === 'Ganado') {
+            const nextDate = new Date();
+            nextDate.setDate(nextDate.getDate() + 30);
+            payload.proximoSeguimiento = nextDate.toISOString();
+            payload.accion = "Fidelización Mensual (Post-Venta)";
+          }
+
+          set((state) => ({ 
+            clients: state.clients.map(c => c.id === id ? { 
+              ...c, 
+              etapaComercial: newStage,
+              proximoSeguimiento: payload.proximoSeguimiento || c.proximoSeguimiento,
+              accion: payload.accion || c.accion
+            } : c) 
+          }));
+
+          await api.put(`/crm/clientes/${id}`, payload);
           const response = await api.get(`/crm/clientes/${id}`);
           if (response) { set((state) => ({ clients: state.clients.map(c => c.id === id ? response : c) })); }
         } catch (error) {

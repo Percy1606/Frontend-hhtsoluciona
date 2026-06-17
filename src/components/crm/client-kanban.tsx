@@ -175,6 +175,12 @@ export function ClientKanban() {
 
   const moveStage = (e: React.MouseEvent, client: Client, direction: "prev" | "next") => {
     e.stopPropagation();
+    
+    if (client.etapaComercial === 'Ganado') {
+      showError("Acción Bloqueada", "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO.");
+      return;
+    }
+
     const currentIndex = columns.findIndex(c => c.id === client.etapaComercial);
     if (direction === "prev" && currentIndex > 0) {
       changeStage(client.id, columns[currentIndex - 1].id as any);

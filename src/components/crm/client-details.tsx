@@ -24,6 +24,7 @@ import {
   MapPin, 
   Phone, 
   FileText, 
+  FileCheck,
   History,
   Download,
   Calendar,
@@ -486,51 +487,107 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
               </div>
             </TabsContent>
 
-            <TabsContent value="files" className="mt-0 space-y-6">
-              <div className="flex justify-between items-center">
-                <h4 className="text-xs font-black uppercase tracking-wider text-primary">Archivos y Expedientes</h4>
-                <div className="relative">
-                  <input id="cl-file" type="file" className="hidden" onChange={handleFileUpload} />
-                  <Button size="sm" className="bg-accent text-white font-bold text-[10px] uppercase" onClick={() => document.getElementById("cl-file")?.click()}>
-                    <Paperclip className="w-4 h-4 mr-1" /> Adjuntar
-                  </Button>
+            <TabsContent value="files" className="mt-0 space-y-8">
+              {/* DOCUMENTOS CONTRACTUALES */}
+              <div className="space-y-4">
+                <div className="flex justify-between items-center border-b border-blue-100 pb-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-600 flex items-center gap-2">
+                    <FileCheck className="w-4 h-4" /> Órdenes de Servicio y Contratos
+                  </h4>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {client?.archivosAdjuntos && client.archivosAdjuntos.filter(f => (f as any).subtype === 'ORDEN_SERVICIO' || (f as any).subtype === 'CONTRATO').length > 0 ? (
+                    client.archivosAdjuntos
+                      .filter(f => (f as any).subtype === 'ORDEN_SERVICIO' || (f as any).subtype === 'CONTRATO')
+                      .map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-4 bg-blue-50/50 border border-blue-100 rounded-xl shadow-sm hover:border-blue-300 transition-all group">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center text-blue-600 shrink-0 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                              <FileText className="w-6 h-6" />
+                            </div>
+                            <div className="overflow-hidden">
+                              <p className="text-[11px] font-black text-slate-800 uppercase truncate leading-tight">{file.nombre}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge className="text-[8px] bg-blue-600 text-white font-black uppercase h-4 px-1 border-none">{(file as any).subtype || 'CONTRATO'}</Badge>
+                                <p className="text-[9px] text-slate-400 font-bold uppercase">{formatDate(file.fecha)}</p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex gap-1">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-8 w-8 text-blue-600 hover:bg-blue-100" 
+                              onClick={() => {
+                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                                const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
+                                window.open(fullUrl, '_blank');
+                              }}
+                            >
+                              <Download className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="col-span-full text-center py-6 bg-slate-50 border-2 border-dashed border-slate-100 rounded-xl">
+                      <p className="text-[9px] font-black text-slate-300 uppercase italic">Sin documentos contractuales registrados</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                {client.archivosAdjuntos && client.archivosAdjuntos.length > 0 ? (
-                  client.archivosAdjuntos.map((file) => (
-                    <div key={file.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-primary/30 transition-colors">
-                      <div className="flex items-center gap-2 overflow-hidden">
-                        <FileText className="w-4 h-4 text-red-400 shrink-0" />
-                        <div className="overflow-hidden">
-                          <p className="text-[10px] font-bold text-slate-800 truncate leading-tight">{file.nombre}</p>
-                          <p className="text-[8px] text-slate-400 font-bold uppercase">{formatDate(file.fecha)} • {file.tamano || "—"}</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-0.5">
-                        <Button 
-                          size="icon" 
-                          variant="ghost" 
-                          className="h-6 w-6 text-primary hover:text-primary/80" 
-                          onClick={() => {
-                            const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                            const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
-                            window.open(fullUrl, '_blank');
-                          }}
-                        >
-                          <Download className="w-3 h-3" />
-                        </Button>
-                        <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-error" onClick={() => deleteFile(client.id, file.id)}>
-                          <Trash2 className="w-3 h-3" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-8 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
-                    <p className="text-[10px] font-black text-slate-400 uppercase italic">No se han adjuntado documentos</p>
+
+              {/* OTROS ADJUNTOS */}
+              <div className="space-y-4 pt-4">
+                <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                    <Paperclip className="w-4 h-4" /> Archivos Generales y Expedientes
+                  </h4>
+                  <div className="relative">
+                    <input id="cl-file" type="file" className="hidden" onChange={handleFileUpload} />
+                    <Button size="sm" variant="ghost" className="h-7 text-primary font-black text-[10px] uppercase hover:bg-primary/5" onClick={() => document.getElementById("cl-file")?.click()}>
+                      <Plus className="w-3 h-3 mr-1" /> Adjuntar Nuevo
+                    </Button>
                   </div>
-                )}
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                  {client.archivosAdjuntos && client.archivosAdjuntos.filter(f => (f as any).subtype !== 'ORDEN_SERVICIO' && (f as any).subtype !== 'CONTRATO').length > 0 ? (
+                    client.archivosAdjuntos
+                      .filter(f => (f as any).subtype !== 'ORDEN_SERVICIO' && (f as any).subtype !== 'CONTRATO')
+                      .map((file) => (
+                        <div key={file.id} className="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg shadow-sm hover:border-primary/30 transition-colors">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="w-4 h-4 text-red-400 shrink-0" />
+                            <div className="overflow-hidden">
+                              <p className="text-[10px] font-bold text-slate-800 truncate leading-tight">{file.nombre}</p>
+                              <p className="text-[8px] text-slate-400 font-bold uppercase">{formatDate(file.fecha)} • {file.tamano || "—"}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-0.5">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 text-primary hover:text-primary/80" 
+                              onClick={() => {
+                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                                const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
+                                window.open(fullUrl, '_blank');
+                              }}
+                            >
+                              <Download className="w-3 h-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-6 w-6 text-slate-400 hover:text-error" onClick={() => deleteFile(client.id, file.id)}>
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))
+                  ) : (
+                    <div className="col-span-full text-center py-8 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
+                      <p className="text-[10px] font-black text-slate-400 uppercase italic">No se han adjuntado documentos generales</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
 

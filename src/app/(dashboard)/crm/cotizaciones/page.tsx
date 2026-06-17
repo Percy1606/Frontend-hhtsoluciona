@@ -37,7 +37,9 @@ import {
   ExternalLink,
   Pencil,
   ShieldAlert,
-  Lock
+  Lock,
+  Calendar,
+  X as CloseIcon
 } from "lucide-react";
 import { 
   DropdownMenu, 
@@ -100,10 +102,15 @@ export default function CotizacionesInboxPage() {
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [selectedQuote, setSelectedQuote] = useState<Quote | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isVersionUpdate, setIsVersionUpdate] = useState(false);
   const [historyQuote, setHistoryQuote] = useState<Quote | null>(null);
+  const [isContractModalOpen, setIsContractModalOpen] = useState(false);
+  const [contractFile, setContractFile] = useState<File | null>(null);
+  const [isUploadingContract, setIsUploadingContract] = useState(false);
 
   // Secure Delete State
   const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
@@ -139,9 +146,19 @@ export default function CotizacionesInboxPage() {
                             (q.codigo && q.codigo.toLowerCase().includes(search.toLowerCase())) ||
                             (q.referencia && q.referencia.toLowerCase().includes(search.toLowerCase()));
       const matchesStatus = statusFilter === "all" || q.estado === statusFilter;
-      return matchesSearch && matchesStatus;
+      
+      const quoteDate = new Date(q.fecha);
+      const start = startDate ? new Date(startDate) : null;
+      const end = endDate ? new Date(endDate) : null;
+      
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
+      
+      const matchesDate = (!start || quoteDate >= start) && (!end || quoteDate <= end);
+      
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [quotes, search, statusFilter]);
+  }, [quotes, search, statusFilter, startDate, endDate]);
 
   // Modern Dialog State
   const [modernDialog, setModernDialog] = useState<{
@@ -255,6 +272,36 @@ export default function CotizacionesInboxPage() {
     setIsSecureDeleteOpen(true);
   };
 
+  const handleUploadContract = async () => {
+    if (!selectedQuote || !contractFile) return;
+
+    try {
+      setIsUploadingContract(true);
+      const { uploadQuoteFile, attachQuoteFile } = useCRMStore.getState();
+      
+      // 1. Subir el archivo físicamente
+      const uploadRes = await uploadQuoteFile(contractFile);
+      
+      // 2. Vincularlo como documento de la cotización
+      await attachQuoteFile(selectedQuote.id, selectedQuote.clientId, {
+        nombre: uploadRes.nombre,
+        url: uploadRes.url,
+        tipo: 'Administrativa',
+        subtype: 'ORDEN_SERVICIO',
+        tamano: uploadRes.tamano,
+        subidoPor: currentUser?.nombre || 'Admin'
+      });
+
+      showSuccess("OS/Contrato Vinculado", "El documento ha sido cargado y vinculado exitosamente a esta cotización.");
+      setIsContractModalOpen(false);
+      setContractFile(null);
+    } catch (err) {
+      showError("Error de Carga", "No se pudo subir el documento contractual.");
+    } finally {
+      setIsUploadingContract(false);
+    }
+  };
+
   const openModal = (quote: Quote | null = null, versionUpdate = false) => {
     setSelectedQuote(quote);
     setIsVersionUpdate(versionUpdate);
@@ -325,12 +372,11 @@ export default function CotizacionesInboxPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatsCard label="Total" value={stats.total} icon={<FileText />} color="text-primary" bgColor="bg-primary/5" />
         <StatsCard label="Pendientes" value={stats.pendientes} icon={<History />} color="text-warning" bgColor="bg-yellow-50" />
         <StatsCard label="Enviadas" value={stats.enviadas} icon={<Mail />} color="text-blue-600" bgColor="bg-blue-50" />
         <StatsCard label="Aprobadas" value={stats.aprobadas} icon={<FileCheck />} color="text-success" bgColor="bg-green-50" />
-        <StatsCard label="Monto Aprob." value={new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(stats.montoAprobado)} icon={<AlertCircle />} color="text-purple-600" bgColor="bg-purple-50" />
       </div>
 
       {/* Filtros Estilo Documental */}
@@ -344,7 +390,24 @@ export default function CotizacionesInboxPage() {
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <div className="flex items-center gap-2 bg-white border border-border rounded-xl px-3 h-10 shadow-sm">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <input 
+              type="date" 
+              className="bg-transparent border-none text-[10px] font-black uppercase focus:outline-none w-28"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+            <span className="text-slate-300 font-bold">-</span>
+            <input 
+              type="date" 
+              className="bg-transparent border-none text-[10px] font-black uppercase focus:outline-none w-28"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
+
           <Select value={statusFilter === "all" ? "" : statusFilter} onValueChange={(val) => setStatusFilter(val || "all")}>
             <SelectTrigger className="w-48 h-10 text-[10px] font-black uppercase border-border bg-white rounded-xl shadow-sm">
               <SelectValue placeholder="SELECCIONAR ESTADO" />
@@ -357,10 +420,10 @@ export default function CotizacionesInboxPage() {
             </SelectContent>
           </Select>
 
-          {(search !== "" || statusFilter !== "all") && (
+          {(search !== "" || statusFilter !== "all" || startDate !== "" || endDate !== "") && (
             <Button 
               variant="ghost" 
-              onClick={() => { setSearch(""); setStatusFilter("all"); }}
+              onClick={() => { setSearch(""); setStatusFilter("all"); setStartDate(""); setEndDate(""); }}
               className="h-10 text-error hover:bg-red-50 font-black text-[10px] uppercase gap-2"
             >
               <FilterX className="w-4 h-4" /> Limpiar
@@ -374,7 +437,8 @@ export default function CotizacionesInboxPage() {
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
-              <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6">CÓDIGO</TableHead>
+              <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6 w-[50px]">#</TableHead>
+              <TableHead className="font-black text-primary uppercase text-[10px]">CÓDIGO</TableHead>
               <TableHead className="font-black text-primary uppercase text-[10px]">DOCUMENTO</TableHead>
               <TableHead className="font-black text-primary uppercase text-[10px]">TIPO</TableHead>
               <TableHead className="font-black text-primary uppercase text-[10px]">ÁREA</TableHead>
@@ -386,17 +450,20 @@ export default function CotizacionesInboxPage() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-20 uppercase text-[10px] font-black text-slate-400 animate-pulse">Sincronizando con Gestión Documental...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={9} className="text-center py-20 uppercase text-[10px] font-black text-slate-400 animate-pulse">Sincronizando con Gestión Documental...</TableCell></TableRow>
             ) : filteredQuotes.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center py-20 text-muted-foreground uppercase text-[10px] font-bold">
+                <TableCell colSpan={9} className="text-center py-20 text-muted-foreground uppercase text-[10px] font-bold">
                   No hay proformas registradas en esta bandeja.
                 </TableCell>
               </TableRow>
             ) : (
-              filteredQuotes.map((quote) => (
+              filteredQuotes.map((quote, index) => (
                 <TableRow key={quote.id} className="hover:bg-muted/10 transition-colors group">
-                  <TableCell className="font-black text-xs text-primary pl-6">
+                  <TableCell className="font-black text-[10px] text-slate-400 pl-6 w-[40px]">
+                    {(quotePage - 1) * quoteLimit + index + 1}
+                  </TableCell>
+                  <TableCell className="font-black text-xs text-primary">
                     {quote.codigo || "—"}
                   </TableCell>
                   <TableCell>
@@ -440,12 +507,27 @@ export default function CotizacionesInboxPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600" onClick={() => setHistoryQuote(quote)} title="Ver Historial">
                         <History className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => openModal(quote, true)} title="Importar Nueva Versión">
-                        <FileUp className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-error hover:bg-red-50" onClick={() => handleDeleteQuote(quote.id)} title="Eliminar">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      
+                      <DropdownMenu>
+                        <DropdownMenuTrigger className="h-8 w-8 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-muted transition-colors outline-none cursor-pointer">
+                          <MoreVertical className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
+                          <DropdownMenuItem 
+                            className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary"
+                            onClick={() => {
+                              setSelectedQuote(quote);
+                              setIsContractModalOpen(true);
+                            }}
+                          >
+                            <FileCheck className="w-4 h-4" /> Subir OS / Contrato
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-red-50" onClick={() => handleDeleteQuote(quote.id)}>
+                            <Trash2 className="w-4 h-4" /> Eliminar Permanente
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -628,6 +710,94 @@ export default function CotizacionesInboxPage() {
         showCancel={modernDialog.showCancel}
         onConfirm={modernDialog.onConfirm}
       />
+
+      {/* Modal de Carga de OS/Contrato */}
+      <Dialog open={isContractModalOpen} onOpenChange={(open) => {
+        setIsContractModalOpen(open);
+        if (!open) {
+          setSelectedQuote(null);
+          setContractFile(null);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[500px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
+          <DialogHeader className="p-8 bg-blue-600 text-white flex flex-col items-center gap-4">
+            <div className="bg-white/20 p-4 rounded-full">
+              <FileUp className="w-12 h-12 text-white" />
+            </div>
+            <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">
+              Sustento Contractual
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-8 space-y-6">
+            <DialogDescription className="text-center text-slate-600 font-bold text-sm leading-relaxed">
+              Suba la Orden de Servicio o Contrato firmado por el cliente para la cotización <span className="text-blue-600 font-black">{selectedQuote?.codigo}</span>.
+            </DialogDescription>
+            
+            <div className="space-y-4">
+              <div 
+                className={cn(
+                  "border-2 border-dashed rounded-2xl p-8 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer",
+                  contractFile ? "border-success bg-green-50/50" : "border-slate-200 bg-slate-50 hover:bg-slate-100 hover:border-blue-300"
+                )}
+                onClick={() => document.getElementById('contract-upload')?.click()}
+              >
+                <input 
+                  id="contract-upload"
+                  type="file" 
+                  className="hidden" 
+                  accept=".pdf,.doc,.docx,.jpg,.png"
+                  onChange={(e) => setContractFile(e.target.files?.[0] || null)}
+                />
+                
+                {contractFile ? (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center text-success">
+                      <FileCheck className="w-6 h-6" />
+                    </div>
+                    <div className="text-center">
+                      <p className="text-xs font-black text-slate-700 uppercase truncate max-w-[250px]">{contractFile.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400">{(contractFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-black uppercase text-error" onClick={(e) => { e.stopPropagation(); setContractFile(null); }}>
+                      Cambiar Archivo
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <p className="text-xs font-black text-slate-500 uppercase tracking-widest text-center">Haga clic o arrastre para subir</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase text-center">Formatos aceptados: PDF, Word, Imagen</p>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setIsContractModalOpen(false);
+                setContractFile(null);
+              }}
+              className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200"
+              disabled={isUploadingContract}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleUploadContract}
+              disabled={isUploadingContract || !contractFile}
+              className="h-12 px-10 font-black uppercase text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20"
+            >
+              {isUploadingContract ? "Procesando..." : "Cargar y Vincular"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

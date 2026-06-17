@@ -95,11 +95,16 @@ export default function IngresosPage() {
 
   const handleCreateOrUpdateFactura = async (data: any) => {
     try {
+      const payload = {
+        ...data,
+        proyectoId: (data.proyectoId === 'none' || !data.proyectoId) ? undefined : data.proyectoId,
+      };
+
       if (editingFactura) {
-        await api.patch(`/finanzas/facturas/${editingFactura.id}`, data);
+        await api.patch(`/finanzas/facturas/${editingFactura.id}`, payload);
         toast.success("Factura actualizada exitosamente");
       } else {
-        await api.post('/finanzas/facturas', data);
+        await api.post('/finanzas/facturas', payload);
         toast.success("Factura registrada exitosamente");
       }
       setIsModalOpen(false);
@@ -116,8 +121,10 @@ export default function IngresosPage() {
     try {
       setDeleting(true);
       const response = await api.post(`/finanzas/facturas/${facturaToDelete.id}/secure-delete`, { password });
-      console.log("[DEBUG] Respuesta de anulación:", response);
-      toast.success(`Factura ${response.codigo} ANULADA correctamente y saldo revertido`);
+      
+      const facturaCodigo = response?.codigo || facturaToDelete.name;
+      toast.success(`Factura ${facturaCodigo} ANULADA correctamente y saldo revertido`);
+      
       setDeleteModalOpen(false);
       fetchData();
     } catch (e: any) {

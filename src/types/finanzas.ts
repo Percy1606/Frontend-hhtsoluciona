@@ -19,6 +19,7 @@ export interface Factura {
   saldoPendiente: number;
   fechaEmision: string;
   fechaVencimiento: string;
+  fechaEstimadaCobro?: string | null;
   estado: EstadoFactura;
   observaciones?: string | null;
   archivoUrl?: string | null;
@@ -32,8 +33,22 @@ export interface Factura {
   updatedAt?: string;
 }
 
-export type EstadoGasto = 'PENDIENTE' | 'PAGADO' | 'ANULADO';
-export type TipoGasto = 'OPERATIVO' | 'ADMINISTRATIVO' | 'FINANCIERO' | 'PROYECTO' | 'PERSONAL';
+export type EstadoGasto = 'SOLICITADO' | 'APROBADO' | 'PENDIENTE' | 'PAGADO' | 'ANULADO';
+export type TipoGasto = 
+  | 'OPERATIVO' 
+  | 'ADMINISTRATIVO' 
+  | 'FINANCIERO' 
+  | 'PROYECTO' 
+  | 'PERSONAL'
+  | 'PLANILLA'
+  | 'IMPUESTOS'
+  | 'PRESTAMO'
+  | 'VIATICOS'
+  | 'COMBUSTIBLE'
+  | 'MANTENIMIENTO'
+  | 'SERVICIOS';
+
+export type PrioridadGasto = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
 export interface Gasto {
   id: string;
@@ -45,15 +60,25 @@ export interface Gasto {
   ordenCompraId?: string | null;
   cajaId?: string | null;
   tipo: TipoGasto;
+  prioridad?: PrioridadGasto;
   clasificacion: ClasificacionFinanciera;
   categoriaDistribucion?: string | null;
   concepto: string;
+  justificacion?: string | null;
+  area?: string | null;
   montoTotal: number;
   fechaEmision: string;
   fechaVencimiento?: string | null;
+  fechaProgramadaPago?: string | null;
   fechaPago?: string | null;
   estado: EstadoGasto;
   comprobanteUrl?: string | null;
+  solicitanteId?: string;
+  nivelAprobacion?: 'PENDIENTE_FINANZAS' | 'PENDIENTE_GERENCIA' | 'APROBADO' | 'RECHAZADO';
+  nivelActual?: number;
+  aprobaciones?: any[];
+  montoRendido?: number;
+  estadoRendicion?: 'PENDIENTE' | 'COMPLETADA' | 'EXCEDIDA';
   registradoPorId?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -68,6 +93,14 @@ export interface FacturaCritica {
   diasVencidos: number;
 }
 
+export interface ProyeccionFinanciera {
+  dias: number;
+  fecha: string;
+  cobros: number;
+  pagos: number;
+  saldoProyectado: number;
+}
+
 export interface FinanceStats {
   totalIngresos: number;
   totalEgresos: number;
@@ -77,6 +110,7 @@ export interface FinanceStats {
   totalGastos: number;
   totalGastosPagados: number;
   totalGastosPendientes: number;
+  utilidadMes: number;
   utilidadNeta: number;
   margenNeto: number;
   crecimientoIngresos: number;
@@ -88,4 +122,5 @@ export interface FinanceStats {
   facturasVencidas: number;
   facturasCriticas: FacturaCritica[];
   desgloseGastos: { tipo: string; monto: number }[];
+  proyeccion90Dias?: ProyeccionFinanciera[];
 }

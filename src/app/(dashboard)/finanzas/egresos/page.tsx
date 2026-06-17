@@ -34,14 +34,19 @@ import { GastoForm } from "@/components/finanzas/gasto-form";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
+import { useAuthStore } from "@/store/auth-store";
+import { CheckCircle, Info } from "lucide-react";
 
 const gastoStatus: Record<string, string> = {
   "PAGADO": "bg-green-100 text-green-700 border-green-200",
   "PENDIENTE": "bg-red-100 text-red-700 border-red-200",
   "ANULADO": "bg-slate-100 text-slate-700 border-slate-200",
+  "SOLICITADO": "bg-amber-100 text-amber-700 border-amber-200",
+  "APROBADO": "bg-blue-100 text-blue-700 border-blue-200",
 };
 
 export default function EgresosPage() {
+  const { user } = useAuthStore();
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -79,11 +84,17 @@ export default function EgresosPage() {
 
   const handleCreateOrUpdateGasto = async (data: any) => {
     try {
+      // Formatear payload para asegurar que no se envíe un 'none' o string vacío como proyectoId
+      const payload = {
+        ...data,
+        proyectoId: (data.proyectoId === 'none' || !data.proyectoId) ? undefined : data.proyectoId,
+      };
+
       if (editingGasto) {
-        await api.patch(`/finanzas/gastos/${editingGasto.id}`, data);
+        await api.patch(`/finanzas/gastos/${editingGasto.id}`, payload);
         toast.success("Gasto actualizado exitosamente");
       } else {
-        await api.post('/finanzas/gastos', data);
+        await api.post('/finanzas/gastos', payload);
         toast.success("Gasto registrado exitosamente");
       }
       setIsModalOpen(false);
@@ -105,6 +116,16 @@ export default function EgresosPage() {
       fetchData();
     } finally {
       setDeleting(false);
+    }
+  };
+
+  const handleApproveGasto = async (id: string) => {
+    try {
+      await api.post(`/finanzas/gastos/${id}/aprobar`, {});
+      toast.success("Gasto aprobado con éxito");
+      fetchData();
+    } catch (error: any) {
+      toast.error("Error al aprobar", { description: error.message });
     }
   };
 
@@ -209,8 +230,8 @@ export default function EgresosPage() {
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Comprobante</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto / Proveedor</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proyecto</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Tipo</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Fecha Emisión</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Prioridad</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Programación</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Monto Total</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-center">Estado</TableHead>
               <TableHead className="w-[70px]"></TableHead>
@@ -247,13 +268,18 @@ export default function EgresosPage() {
                   )}
                 </TableCell>
                 <TableCell>
-                  <Badge variant="outline" className="text-[8px] font-black uppercase tracking-tighter border-slate-200 text-slate-500">
-                    {g.tipo}
+                  <Badge variant="outline" className={cn(
+                    "text-[8px] font-black uppercase tracking-tighter border-slate-200",
+                    g.prioridad === 'CRITICA' ? "text-red-600 border-red-100 bg-red-50" :
+                    g.prioridad === 'ALTA' ? "text-orange-600 border-orange-100 bg-orange-50" :
+                    "text-slate-500"
+                  )}>
+                    {g.prioridad || 'MEDIA'}
                   </Badge>
                 </TableCell>
                 <TableCell>
                   <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-slate-400" /> {formatDate(g.fechaEmision)}
+                    <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaProgramadaPago ? formatDate(g.fechaProgramadaPago) : 'Sin fecha'}
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
@@ -268,6 +294,17 @@ export default function EgresosPage() {
                 </TableCell>
                 <TableCell className="pr-4">
                   <div className="flex items-center gap-0.5">
+                    {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="rounded-md hover:bg-emerald-50 hover:text-emerald-600 text-amber-500 h-7 w-7"
+                        title="Aprobar Gasto"
+                        onClick={() => handleApproveGasto(g.id)}
+                      >
+                        <CheckCircle className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     <Button 
                       variant="ghost" 
                       size="icon" 

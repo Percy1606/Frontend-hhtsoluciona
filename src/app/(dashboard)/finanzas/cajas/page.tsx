@@ -322,16 +322,32 @@ function CajaCard({ caja, onEdit, onDelete, onHistory, onToggleProtect }: any) {
                                     </div>
                                 )}
                             </div>
-                            <Badge variant="outline" className={cn(
-                                "text-[8px] font-black uppercase mt-1 px-2 py-0 border-none",
-                                isProtected ? "bg-white/10 text-primary" : "bg-slate-100 text-slate-500"
-                            )}>
-                                {caja.tipo}
-                            </Badge>
+                            <div className="flex items-center gap-1.5 mt-1">
+                                <Badge variant="outline" className={cn(
+                                    "text-[8px] font-black uppercase px-2 py-0 border-none",
+                                    isProtected ? "bg-white/10 text-primary" : "bg-slate-100 text-slate-500"
+                                )}>
+                                    {caja.tipo}
+                                </Badge>
+                                <Badge className={cn(
+                                    "text-[8px] font-black uppercase px-2 py-0 border-none",
+                                    caja.subtipo === 'OBLIGACIONES' ? "bg-orange-100 text-orange-600" :
+                                    caja.subtipo === 'RESERVA' ? "bg-emerald-100 text-emerald-600" :
+                                    "bg-blue-100 text-blue-600"
+                                )}>
+                                    {caja.subtipo}
+                                </Badge>
+                            </div>
                         </div>
                     </div>
 
                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
+                        {Number(caja.porcentajeProvision) > 0 && (
+                            <div className="flex flex-col items-end justify-center mr-2">
+                                <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter">Provisión</span>
+                                <span className="text-xs font-black text-blue-600">{Number(caja.porcentajeProvision)}%</span>
+                            </div>
+                        )}
                         <Button variant="ghost" size="icon" onClick={onHistory} className={cn("h-8 w-8 rounded-full", isProtected ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400")}>
                             <History className="w-4 h-4" />
                         </Button>

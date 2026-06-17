@@ -4,18 +4,23 @@ import { ClientTable } from "@/components/crm/client-table";
 import { CRMHeader } from "@/components/crm/crm-header";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import { 
   Calendar, 
   AlertCircle, 
   Clock, 
   CheckCircle2,
-  Bell
+  Bell,
+  Target,
+  Users
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function SeguimientoPage() {
   const { clients, fetchClients } = useCRMStore();
+  const [activeTab, setActiveTab] = useState("ventas");
 
   useEffect(() => {
     fetchClients();
@@ -28,15 +33,22 @@ export default function SeguimientoPage() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const totalPendientes = clients.filter(c => !c.proximoSeguimiento && c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido").length;
-  const totalVencidos = clients.filter(c => isFollowUpOverdue(c)).length;
-  const totalHoy = clients.filter(c => {
+  // Filtrado por contexto
+  const salesClients = clients.filter(c => c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido");
+  const wonClients = clients.filter(c => c.etapaComercial === "Ganado");
+
+  // Métricas según el tab activo
+  const currentClients = activeTab === "ventas" ? salesClients : wonClients;
+
+  const totalPendientes = currentClients.filter(c => !c.proximoSeguimiento).length;
+  const totalVencidos = currentClients.filter(c => isFollowUpOverdue(c)).length;
+  const totalHoy = currentClients.filter(c => {
     if (!c.proximoSeguimiento) return false;
     const followUpDate = c.proximoSeguimiento.split('T')[0];
-    return followUpDate === todayStr && c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido";
+    return followUpDate === todayStr;
   }).length;
   
-  const clientsToReview = clients.filter(c => 
+  const clientsToReview = salesClients.filter(c => 
     c.diaTrabajo === (dayName.toLowerCase().includes('martes') ? 'Martes' : 'Jueves')
   );
 
@@ -47,81 +59,107 @@ export default function SeguimientoPage() {
         subtitle="Control de actividades, recordatorios y alertas de clientes desatendidos." 
       />
 
-      {isReviewDay && (
-        <div className="bg-primary p-4 rounded-xl border-2 border-accent/10 shadow-lg animate-in fade-in slide-in-from-top-2 duration-500">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="bg-white/10 p-2.5 rounded-xl backdrop-blur-sm border border-white/20">
-                <Calendar className="w-5 h-5 text-accent animate-pulse" />
+      <Tabs defaultValue="ventas" onValueChange={setActiveTab} className="space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <TabsList className="bg-slate-100 p-1 rounded-xl h-12 border border-slate-200">
+            <TabsTrigger 
+              value="ventas" 
+              className="rounded-lg px-6 font-black text-[10px] uppercase data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm gap-2"
+            >
+              <Target className="w-4 h-4" /> Embudo de Ventas
+            </TabsTrigger>
+            <TabsTrigger 
+              value="fidelizacion" 
+              className="rounded-lg px-6 font-black text-[10px] uppercase data-[state=active]:bg-white data-[state=active]:text-success data-[state=active]:shadow-sm gap-2"
+            >
+              <Users className="w-4 h-4" /> Cartera Ganada
+            </TabsTrigger>
+          </TabsList>
+
+          {activeTab === "ventas" && isReviewDay && (
+            <div className="bg-primary px-4 py-2 rounded-xl border border-primary/20 shadow-lg animate-in fade-in slide-in-from-right-2">
+              <div className="flex items-center gap-3">
+                <Calendar className="w-4 h-4 text-accent animate-pulse" />
+                <div>
+                  <h2 className="text-[10px] font-black text-white uppercase tracking-tighter leading-none">Comité Comercial</h2>
+                  <p className="text-[8px] text-accent/80 font-bold uppercase tracking-wide mt-0.5">{currentReviewDay}: {clientsToReview.length} Clientes</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-red-50" : "bg-emerald-50")}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600")}>
+                <AlertCircle className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-sm font-black text-white uppercase tracking-tighter">Comité de Revisión Comercial</h2>
-                <p className="text-[10px] text-accent/80 font-bold uppercase tracking-wide">Hoy es {currentReviewDay} — Foco en Prospección y Seguimiento</p>
+                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-red-400" : "text-emerald-500")}>
+                  {activeTab === "ventas" ? "Seguimientos Vencidos" : "Fidelización Pendiente"}
+                </p>
+                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-red-700" : "text-emerald-700")}>{totalVencidos}</p>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-orange-50" : "bg-blue-50")}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600")}>
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-orange-400" : "text-blue-500")}>
+                  {activeTab === "ventas" ? "Sin Fecha Programada" : "Sin Recordatorio"}
+                </p>
+                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-orange-700" : "text-blue-700")}>{totalPendientes}</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-blue-50" : "bg-primary/5")}>
+            <CardContent className="p-4 flex items-center gap-4">
+              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-blue-100 text-blue-600" : "bg-primary/10 text-primary")}>
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-blue-400" : "text-primary/60")}>Gestiones para Hoy</p>
+                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-blue-700" : "text-primary")}>{totalHoy}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <TabsContent value="ventas" className="mt-0 space-y-6">
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <Badge className="bg-accent text-primary font-black px-3 py-1 rounded-md text-[9px] uppercase shadow-sm">
-                {clientsToReview.length} Clientes para Revisar
-              </Badge>
+              <div className="w-3 h-3 rounded-full bg-success shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Seguimiento al día</span>
+            </div>
+            <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+              <div className="w-3 h-3 rounded-full bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase">7-15 días sin contacto</span>
+            </div>
+            <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
+              <div className="w-3 h-3 rounded-full bg-error shadow-[0_0_8px_rgba(227,6,19,0.5)]" />
+              <span className="text-[10px] font-bold text-slate-500 uppercase">Crítico (+15 días)</span>
             </div>
           </div>
-        </div>
-      )}
+          <ClientTable mode="seguimiento" data={salesClients} />
+        </TabsContent>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-red-50 border-red-100 shadow-sm">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="bg-red-100 p-2 rounded-lg text-red-600">
-              <AlertCircle className="w-5 h-5" />
+        <TabsContent value="fidelizacion" className="mt-0 space-y-6">
+          <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-sm flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span className="text-[10px] font-black text-emerald-700 uppercase">Fidelización de Clientes Reales</span>
             </div>
-            <div>
-              <p className="text-[10px] font-black text-red-400 uppercase tracking-wider leading-tight">Seguimientos Vencidos</p>
-              <p className="text-xl font-black text-red-700 leading-none mt-0.5">{totalVencidos}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-orange-50 border-orange-100 shadow-sm">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
-              <Bell className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-orange-400 uppercase tracking-wider leading-tight">Sin Fecha Programada</p>
-              <p className="text-xl font-black text-orange-700 leading-none mt-0.5">{totalPendientes}</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-blue-50 border-blue-100 shadow-sm">
-          <CardContent className="p-3 flex items-center gap-3">
-            <div className="bg-blue-100 p-2 rounded-lg text-blue-600">
-              <Calendar className="w-5 h-5" />
-            </div>
-            <div>
-              <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider leading-tight">Gestiones para Hoy</p>
-              <p className="text-xl font-black text-blue-700 leading-none mt-0.5">{totalHoy}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-success shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
-          <span className="text-[10px] font-bold text-slate-500 uppercase">Seguimiento al día</span>
-        </div>
-        <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
-          <div className="w-3 h-3 rounded-full bg-warning shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-          <span className="text-[10px] font-bold text-slate-500 uppercase">7-15 días sin contacto</span>
-        </div>
-        <div className="flex items-center gap-2 border-l border-slate-200 pl-4">
-          <div className="w-3 h-3 rounded-full bg-error shadow-[0_0_8px_rgba(227,6,19,0.5)]" />
-          <span className="text-[10px] font-bold text-slate-500 uppercase">Crítico (+15 días)</span>
-        </div>
-      </div>
-
-      <ClientTable mode="seguimiento" />
+            <p className="text-[10px] text-emerald-600 font-bold ml-auto uppercase tracking-tighter">Mantén el contacto mensual para asegurar la recompra.</p>
+          </div>
+          <ClientTable mode="seguimiento" data={wonClients} />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
