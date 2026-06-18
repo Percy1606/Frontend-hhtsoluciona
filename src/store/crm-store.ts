@@ -119,10 +119,8 @@ interface CRMState {
   addClient: (client: Omit<Client, 'id' | 'codigo' | 'ventaProyectada' | 'semaforo'>) => Promise<void>;
   updateClient: (client: Client) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
-  deleteClientSecure: (id: string, password: string) => Promise<void>;
 
   addInteraction: (clientId: string, data: { tipo: string, accion: string, observaciones: string, usuario: string }) => Promise<void>;
-  
   reassignSeller: (clientId: string, seller: string) => Promise<void>;
   attachFile: (clientId: string, file: { nombre: string, url: string, tipo: string, tamano: string, subidoPor: string }) => Promise<void>;
   attachQuoteFile: (cotizacionId: string, clientId: string, file: { nombre: string, url: string, tipo: string, subtype?: string, tamano: string, subidoPor: string }) => Promise<void>;
@@ -135,8 +133,8 @@ interface CRMState {
   importClients: (clients: Partial<Client>[]) => Promise<void>;
   updateQuote: (quote: Quote) => Promise<any>;
   deleteQuote: (id: string) => Promise<void>;
-  deleteQuoteSecure: (id: string, password: string) => Promise<void>;
   cloneQuote: (id: string) => Promise<void>;
+
   changeStage: (id: string, newStage: Client['etapaComercial']) => Promise<void>;
   scheduleFollowUp: (clientId: string, fecha: string, accion: string, tipo: Interaction['tipo']) => Promise<void>;
   scheduleTechnicalVisit: (clientId: string, tecnicoId: string, fecha: string, observaciones: string) => Promise<void>;
@@ -417,16 +415,6 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
-      deleteClientSecure: async (id, password) => {
-        try {
-          await api.post(`/crm/clientes/${id}/secure-delete`, { password });
-          await get().fetchClients(1);
-        } catch (error: any) {
-          console.error("Error in secure delete client:", error);
-          throw error;
-        }
-      },
-
       addInteraction: async (clientId, data) => {
         try {
           await api.post('/crm/interacciones', { ...data, clientId });
@@ -596,16 +584,6 @@ export const useCRMStore = create<CRMState>()(
           await get().fetchQuotes();
         } catch (error: any) {
           console.error("Error deleting quote:", error);
-          throw error;
-        }
-      },
-
-      deleteQuoteSecure: async (id, password) => {
-        try {
-          await api.post(`/crm/cotizaciones/${id}/secure-delete`, { password });
-          await get().fetchQuotes();
-        } catch (error: any) {
-          console.error("Error in secure delete:", error);
           throw error;
         }
       },

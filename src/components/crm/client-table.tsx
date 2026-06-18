@@ -47,14 +47,13 @@ interface ClientTableProps {
 }
 
 export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
-  const { clients, updateClient, deleteClientSecure, fetchClients, fetchClientById, loading, totalClients, page, totalPages } = useCRMStore();
+  const { clients, updateClient, deleteClient, fetchClients, fetchClientById, loading, totalClients, page, totalPages } = useCRMStore();
   const { responsables } = useOperacionesStore();
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   
-  // Secure Delete State
-  const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
+  // Delete State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
-  const [adminPassword, setAdminPassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Modern Dialog State
@@ -96,25 +95,19 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
     });
   };
 
-  const handleSecureDelete = async () => {
-    if (!clientToDeleteId || !adminPassword) {
-        showError("Contraseña Requerida", "Por favor ingrese la contraseña de administrador.");
-        return;
-    }
+  const handleDeleteClientConfirm = async () => {
+    if (!clientToDeleteId) return;
 
     try {
         setIsDeleting(true);
-        await deleteClientSecure(clientToDeleteId, adminPassword);
+        await deleteClient(clientToDeleteId);
         
-        setIsSecureDeleteOpen(false);
+        setIsDeleteDialogOpen(false);
         setClientToDeleteId(null);
-        setAdminPassword("");
         showSuccess("Cliente Eliminado", "El registro del cliente ha sido removido del sistema exitosamente.");
     } catch (err: any) {
         console.error("Error deleting client:", err);
-        const errorMessage = err.message || "La contraseña de administrador es incorrecta.";
-        showError("Acceso Denegado", errorMessage);
-        setAdminPassword("");
+        showError("Error al Eliminar", err.response?.data?.message || "No se pudo eliminar el cliente. Verifique si tiene proyectos asociados.");
     } finally {
         setIsDeleting(false);
     }
@@ -168,7 +161,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
 
   const handleDeleteClient = async (id: string) => {
     setClientToDeleteId(id);
-    setIsSecureDeleteOpen(true);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleWhatsAppContact = (client: Client) => {
@@ -324,37 +317,37 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
 
                     <TableCell className="text-right border-b border-slate-50 sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-5px_0_10px_rgba(0,0,0,0.05)] transition-colors p-2">
                       <DropdownMenu>
-                        <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-slate-200 cursor-pointer outline-none text-slate-400 hover:text-primary transition-all">
+                        <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-primary/10 cursor-pointer outline-none text-slate-400 hover:text-primary transition-all">
                           <MoreHorizontal className="h-5 w-5" />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 p-1 bg-white border border-border shadow-2xl z-50 rounded-xl">
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-primary/5"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
                             onClick={() => handleOpenDetails(client)}
                           >
                             <Eye className="w-4 h-4 text-primary" /> Ver Ficha CRM
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-primary/5"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
                             onClick={() => handleOpenEdit(client)}
                           >
                             <Edit className="w-4 h-4 text-primary" /> Editar Registro
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-primary/5"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
                             onClick={() => handleOpenFollowUp(client)}
                           >
                             <Calendar className="w-4 h-4 text-primary" /> Registrar Acción
                           </DropdownMenuItem>
                           <div className="h-px bg-slate-100 my-1" />
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-success focus:text-success focus:bg-green-50"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-success focus:text-success focus:bg-slate-100"
                             onClick={() => handleWhatsAppContact(client)}
                           >
                             <MessageSquare className="w-4 h-4" /> Contactar WhatsApp
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer text-error focus:text-error focus:bg-red-50 py-3 rounded-lg"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer text-error focus:text-error focus:bg-slate-100 py-3 rounded-lg"
                             onClick={() => handleDeleteClient(client.id)}
                           >
                             <Trash2 className="w-4 h-4" /> Eliminar Cliente
@@ -430,44 +423,29 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isSecureDeleteOpen} onOpenChange={setIsSecureDeleteOpen}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
           <DialogHeader className="p-8 bg-error text-white flex flex-col items-center gap-4">
             <div className="bg-white/20 p-4 rounded-full">
-              <ShieldAlert className="w-12 h-12 text-white" />
+              <Trash2 className="w-12 h-12 text-white" />
             </div>
             <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">
-              Eliminación Restringida
+              ¿Eliminar Cliente?
             </DialogTitle>
           </DialogHeader>
           
           <div className="p-8 space-y-6">
             <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed">
-              Esta acción es crítica. Para eliminar este cliente y todo su historial CRM, se requiere la autorización de un administrador.
+              ¿Estás seguro de eliminar este cliente? Esta acción borrará todo su historial CRM, interacciones y documentos asociados. No se puede deshacer.
             </DialogDescription>
-            
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Contraseña de Administrador</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-10 h-12 border-slate-200 bg-slate-50 focus:bg-white transition-all font-bold text-lg"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSecureDelete()}
-                />
-              </div>
-            </div>
           </div>
 
           <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-center gap-3">
             <Button
               variant="ghost"
               onClick={() => {
-                setIsSecureDeleteOpen(false);
-                setAdminPassword("");
+                setIsDeleteDialogOpen(false);
+                setClientToDeleteId(null);
               }}
               className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200"
               disabled={isDeleting}
@@ -475,11 +453,11 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
               Cancelar
             </Button>
             <Button
-              onClick={handleSecureDelete}
-              disabled={isDeleting || !adminPassword}
+              onClick={handleDeleteClientConfirm}
+              disabled={isDeleting}
               className="h-12 px-10 font-black uppercase text-xs text-white bg-error hover:bg-error/90 shadow-lg shadow-error/20"
             >
-              {isDeleting ? "Autorizando..." : "Confirmar Eliminación"}
+              {isDeleting ? "Eliminando..." : "Sí, Eliminar Todo"}
             </Button>
           </DialogFooter>
         </DialogContent>

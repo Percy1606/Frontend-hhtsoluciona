@@ -91,7 +91,6 @@ export default function CotizacionesInboxPage() {
     addQuote, 
     updateQuote, 
     deleteQuote, 
-    deleteQuoteSecure, 
     loading, 
     fetchQuotes, 
     fetchClients 
@@ -112,10 +111,9 @@ export default function CotizacionesInboxPage() {
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [isUploadingContract, setIsUploadingContract] = useState(false);
 
-  // Secure Delete State
-  const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
+  // Delete State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [quoteToDeleteId, setQuoteToDeleteId] = useState<string | null>(null);
-  const [adminPassword, setAdminPassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
   // Verificación de acceso a Finanzas
@@ -204,25 +202,19 @@ export default function CotizacionesInboxPage() {
     });
   };
 
-  const handleSecureDelete = async () => {
-    if (!quoteToDeleteId || !adminPassword) {
-        showError("Contraseña Requerida", "Por favor ingrese la contraseña de administrador.");
-        return;
-    }
+  const handleDeleteConfirm = async () => {
+    if (!quoteToDeleteId) return;
 
     try {
         setIsDeleting(true);
-        await deleteQuoteSecure(quoteToDeleteId, adminPassword);
+        await deleteQuote(quoteToDeleteId);
         
-        setIsSecureDeleteOpen(false);
+        setIsDeleteDialogOpen(false);
         setQuoteToDeleteId(null);
-        setAdminPassword("");
         showSuccess("Cotización Eliminada", "El registro ha sido removido del sistema exitosamente.");
     } catch (err: any) {
         console.error("Error deleting quote:", err);
-        const errorMessage = err.message || "La contraseña de administrador es incorrecta.";
-        showError("Acceso Denegado", errorMessage);
-        setAdminPassword(""); 
+        showError("Error al Eliminar", err.response?.data?.message || "No se pudo eliminar la cotización.");
     } finally {
         setIsDeleting(false);
     }
@@ -272,7 +264,7 @@ export default function CotizacionesInboxPage() {
 
   const handleDeleteQuote = (id: string) => {
     setQuoteToDeleteId(id);
-    setIsSecureDeleteOpen(true);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleUploadContract = async () => {
@@ -517,12 +509,12 @@ export default function CotizacionesInboxPage() {
                           </Button>
                           
                           <DropdownMenu>
-                            <DropdownMenuTrigger className="h-8 w-8 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-muted transition-colors outline-none cursor-pointer">
+                            <DropdownMenuTrigger className="h-8 w-8 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-primary/10 transition-colors outline-none cursor-pointer">
                               <MoreVertical className="w-4 h-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
                               <DropdownMenuItem 
-                                className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary"
+                                className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:bg-slate-100"
                                 onClick={() => {
                                   setSelectedQuote(quote);
                                   setIsContractModalOpen(true);
@@ -531,7 +523,7 @@ export default function CotizacionesInboxPage() {
                                 <FileCheck className="w-4 h-4" /> Subir OS / Contrato
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-red-50" onClick={() => handleDeleteQuote(quote.id)}>
+                              <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-slate-100" onClick={() => handleDeleteQuote(quote.id)}>
                                 <Trash2 className="w-4 h-4" /> Eliminar Permanente
                               </DropdownMenuItem>
                             </DropdownMenuContent>
@@ -653,45 +645,30 @@ export default function CotizacionesInboxPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Eliminación Segura */}
-      <Dialog open={isSecureDeleteOpen} onOpenChange={setIsSecureDeleteOpen}>
+      {/* Modal de Eliminación */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
           <DialogHeader className="p-8 bg-error text-white flex flex-col items-center gap-4">
             <div className="bg-white/20 p-4 rounded-full">
-              <ShieldAlert className="w-12 h-12 text-white" />
+              <Trash2 className="w-12 h-12 text-white" />
             </div>
             <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">
-              Eliminación Restringida
+              ¿Eliminar Cotización?
             </DialogTitle>
           </DialogHeader>
           
           <div className="p-8 space-y-6">
             <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed">
-              Esta acción es crítica e irreversible. Para eliminar esta cotización, se requiere la autorización de un administrador.
+              ¿Estás seguro de eliminar esta cotización de forma permanente? Esta acción no se puede deshacer y el registro desaparecerá de la bandeja comercial.
             </DialogDescription>
-            
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Contraseña de Administrador</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input 
-                  type="password"
-                  placeholder="••••••••"
-                  className="pl-10 h-12 border-slate-200 bg-slate-50 focus:bg-white transition-all font-bold text-lg"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSecureDelete()}
-                />
-              </div>
-            </div>
           </div>
 
           <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-center gap-3">
             <Button
               variant="ghost"
               onClick={() => {
-                setIsSecureDeleteOpen(false);
-                setAdminPassword("");
+                setIsDeleteDialogOpen(false);
+                setQuoteToDeleteId(null);
               }}
               className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200"
               disabled={isDeleting}
@@ -699,11 +676,11 @@ export default function CotizacionesInboxPage() {
               Cancelar
             </Button>
             <Button
-              onClick={handleSecureDelete}
-              disabled={isDeleting || !adminPassword}
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
               className="h-12 px-10 font-black uppercase text-xs text-white bg-error hover:bg-error/90 shadow-lg shadow-error/20"
             >
-              {isDeleting ? "Autorizando..." : "Confirmar Eliminación"}
+              {isDeleting ? "Eliminando..." : "Sí, Eliminar Permanente"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -63,19 +63,34 @@ const columns = [
 ];
 
 export function ClientKanban() {
-  const { clients, filters, updateClient, deleteClientSecure, changeStage, addInteraction, fetchClients, loading, page, totalPages } = useCRMStore();
+  const { clients, filters, updateClient, deleteClient, changeStage, addInteraction, fetchClients, loading, page, totalPages } = useCRMStore();
+
   const { responsables } = useOperacionesStore();
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [visibleItems, setVisibleItems] = useState<Record<string, number>>({});
   
-  // Secure Delete State
-  const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
+  // Delete State
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
-  const [adminPassword, setAdminPassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // Modern Dialog State
+  const handleDeleteConfirm = async () => {
+    if (!clientToDeleteId) return;
+    try {
+        setIsDeleting(true);
+        await deleteClient(clientToDeleteId); 
+        setIsDeleteDialogOpen(false);
+        setClientToDeleteId(null);
+        showSuccess("Cliente Eliminado", "El registro del cliente ha sido removido exitosamente.");
+    } catch (err: any) {
+        console.error("Error deleting client:", err);
+        showError("Error al Eliminar", err.response?.data?.message || "No se pudo eliminar el cliente. Verifique si tiene proyectos asociados.");
+    } finally {
+        setIsDeleting(false);
+    }
+  };
+
   const [modernDialog, setModernDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -92,35 +107,26 @@ export function ClientKanban() {
     type: "info"
   });
 
-  const closeModernDialog = () => setModernDialog(prev => ({ ...prev, isOpen: false }));
-
   const showSuccess = (title: string, description: string) => {
-    setModernDialog({ isOpen: true, title, description, type: "success", confirmText: "Excelente" });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "success",
+      confirmText: "Excelente"
+    });
   };
 
   const showError = (title: string, description: string) => {
-    setModernDialog({ isOpen: true, title, description, type: "error", confirmText: "Entendido" });
+    setModernDialog({
+      isOpen: true,
+      title,
+      description,
+      type: "error",
+      confirmText: "Entendido"
+    });
   };
 
-  const handleSecureDelete = async () => {
-    if (!clientToDeleteId || !adminPassword) {
-        showError("Contraseña Requerida", "Por favor ingrese la contraseña de administrador.");
-        return;
-    }
-    try {
-        setIsDeleting(true);
-        await deleteClientSecure(clientToDeleteId, adminPassword);
-        setIsSecureDeleteOpen(false);
-        setClientToDeleteId(null);
-        setAdminPassword("");
-        showSuccess("Cliente Eliminado", "El registro del cliente ha sido removido exitosamente.");
-    } catch (err: any) {
-        showError("Acceso Denegado", "La contraseña de administrador es incorrecta.");
-        setAdminPassword("");
-    } finally {
-        setIsDeleting(false);
-    }
-  };
 
   const getAsignadoName = (val: string) => {
     if (!val) return "SIN ASIGNAR";
@@ -249,26 +255,26 @@ export function ClientKanban() {
                           <div className="flex items-center gap-1">
                             <DropdownMenu>
                               <DropdownMenuTrigger 
-                                className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-slate-100 cursor-pointer outline-none opacity-0 group-hover:opacity-100 transition-opacity text-slate-600"
+                                className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-primary/10 cursor-pointer outline-none opacity-0 group-hover:opacity-100 transition-opacity text-slate-600 hover:text-primary"
                                 onClick={(e) => e.stopPropagation()}
                               >
                                 <MoreVertical className="h-3 w-3" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48 p-1 bg-white border border-border shadow-xl z-50 rounded-xl">
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5" onClick={() => handleOpenDetails(client)}>
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={() => handleOpenDetails(client)}>
                                   <Eye className="w-3.5 h-3.5 text-primary" /> Ver Ficha CRM
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditOpen(true); }}>
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditOpen(true); }}>
                                   <Edit className="w-3.5 h-3.5 text-primary" /> Editar Registro
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsFollowUpOpen(true); }}>
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsFollowUpOpen(true); }}>
                                   <Calendar className="w-3.5 h-3.5 text-primary" /> Registrar Acción
                                 </DropdownMenuItem>
                                 <div className="h-px bg-slate-100 my-1" />
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-success focus:text-success focus:bg-green-50" onClick={(e) => { e.stopPropagation(); if (!client.telefono) return alert("Sin teléfono"); window.open(`https://wa.me/51${client.telefono.replace(/\D/g, '')}`, '_blank'); }}>
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-success focus:text-success focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); if (!client.telefono) return alert("Sin teléfono"); window.open(`https://wa.me/51${client.telefono.replace(/\D/g, '')}`, '_blank'); }}>
                                   <MessageSquare className="w-4 h-4" /> WhatsApp
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer text-error focus:text-error focus:bg-red-50 py-2.5" onClick={(e) => { e.stopPropagation(); setClientToDeleteId(client.id); setIsSecureDeleteOpen(true); }}>
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer text-error focus:text-error focus:bg-slate-100 py-2.5" onClick={(e) => { e.stopPropagation(); setClientToDeleteId(client.id); setIsDeleteDialogOpen(true); }}>
                                   <Trash2 className="w-3.5 h-3.5" /> Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
@@ -366,25 +372,18 @@ export function ClientKanban() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isSecureDeleteOpen} onOpenChange={setIsSecureDeleteOpen}>
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[450px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
           <DialogHeader className="p-8 bg-error text-white flex flex-col items-center gap-4">
-            <div className="bg-white/20 p-4 rounded-full"><ShieldAlert className="w-12 h-12 text-white" /></div>
-            <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">Eliminación Restringida</DialogTitle>
+            <div className="bg-white/20 p-4 rounded-full"><Trash2 className="w-12 h-12 text-white" /></div>
+            <DialogTitle className="text-2xl font-black uppercase text-center tracking-tight">¿Eliminar Cliente?</DialogTitle>
           </DialogHeader>
           <div className="p-8 space-y-6">
-            <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed">Requiere contraseña administrativa para eliminar este registro del Pipeline.</DialogDescription>
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Contraseña</Label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <Input type="password" placeholder="••••••••" className="pl-10 h-12 border-slate-200 bg-slate-50 focus:bg-white font-bold text-lg" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSecureDelete()} />
-              </div>
-            </div>
+            <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed">¿Estás seguro de eliminar este cliente del Pipeline? Esta acción borrará todo su historial y documentos. No se puede deshacer.</DialogDescription>
           </div>
           <DialogFooter className="p-6 bg-slate-50 border-t flex flex-row justify-center gap-3">
-            <Button variant="ghost" onClick={() => { setIsSecureDeleteOpen(false); setAdminPassword(""); }} className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200" disabled={isDeleting}>Cancelar</Button>
-            <Button onClick={handleSecureDelete} disabled={isDeleting || !adminPassword} className="h-12 px-10 font-black uppercase text-xs text-white bg-error hover:bg-error/90 shadow-lg shadow-error/20">Eliminar</Button>
+            <Button variant="ghost" onClick={() => { setIsDeleteDialogOpen(false); setClientToDeleteId(null); }} className="h-12 px-8 font-black uppercase text-xs text-slate-500 hover:bg-slate-200" disabled={isDeleting}>Cancelar</Button>
+            <Button onClick={handleDeleteConfirm} disabled={isDeleting} className="h-12 px-10 font-black uppercase text-xs text-white bg-error hover:bg-error/90 shadow-lg shadow-error/20">{isDeleting ? "Eliminando..." : "Sí, Eliminar"}</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
