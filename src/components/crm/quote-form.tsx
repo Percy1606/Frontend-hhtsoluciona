@@ -151,7 +151,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
   const addHito = () => {
     const totalActual = hitos.reduce((acc, h) => acc + Number(h.porcentaje), 0);
     const restante = Math.max(0, 100 - totalActual);
-    setHitos([...hitos, { descripcion: "Nueva Valorización", porcentaje: restante, monto: (totalMonto * restante) / 100 }]);
+    setHitos([...hitos, { descripcion: `Hito ${hitos.length + 1}`, porcentaje: restante, monto: (totalMonto * restante) / 100, estado: 'PENDIENTE' }]);
   };
 
   const removeHito = (index: number) => {
@@ -638,129 +638,57 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
           
           <Separator className="opacity-50" />
 
-          {/* SECCIÓN 3: PLAN DE FACTURACIÓN (HITOS) */}
+          {/* SECCIÓN 3: CONDICIONES DE PAGO (MONTO DIRECTO) */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
                 <Wallet className="w-4 h-4" />
-                Plan de Facturación y Adelantos
+                Condiciones de Pago (Adelanto y Saldo)
               </h3>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                size="sm"
-                onClick={addHito}
-                className="h-7 text-[9px] font-black uppercase tracking-widest text-primary hover:bg-primary/5 rounded-lg"
-              >
-                <List className="w-3 h-3 mr-1" /> Añadir Hito
-              </Button>
             </div>
 
-            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-3">
-              <div className="grid grid-cols-12 gap-3 text-[9px] font-black uppercase text-slate-400 px-2">
-                <div className="col-span-4">Descripción del Hito</div>
-                <div className="col-span-2 text-center">Estado</div>
-                <div className="col-span-2 text-center">%</div>
-                <div className="col-span-3 text-right">Monto Estimado</div>
-                <div className="col-span-1"></div>
+            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1 space-y-2 w-full">
+                <p className="text-[10px] font-black uppercase text-slate-400">Monto de Adelanto (Ingresar)</p>
+                <div className="relative">
+                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-300">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
+                  <Input 
+                    type="number"
+                    value={hitos[0]?.monto || 0} 
+                    onChange={(e) => {
+                       const val = Number(e.target.value);
+                       const safeVal = Math.min(totalMonto, Math.max(0, val));
+                       const perc = totalMonto > 0 ? (safeVal / totalMonto) * 100 : 0;
+                       const newHitos = [
+                         { ...hitos[0], monto: safeVal, porcentaje: perc, descripcion: "Adelanto inicial", estado: hitos[0]?.estado || 'COBRADO' },
+                         { ...hitos[1], monto: Number((totalMonto - safeVal).toFixed(2)), porcentaje: 100 - perc, descripcion: "Saldo contra entrega", estado: 'PENDIENTE' }
+                       ];
+                       setHitos(newHitos);
+                    }}
+                    className="h-12 text-xl font-black text-primary border-slate-200 bg-white pl-12 rounded-xl"
+                  />
+                </div>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">
+                   Equivale al <span className="text-primary">{(hitos[0]?.porcentaje || 0).toFixed(1)}%</span> del total.
+                </p>
               </div>
 
-              <div className="space-y-2">
-                {hitos.map((hito, idx) => (
-                  <div key={idx} className="grid grid-cols-12 gap-3 items-center bg-white p-2 rounded-xl border border-slate-100 shadow-sm animate-in fade-in slide-in-from-left-2 duration-300">
-                    <div className="col-span-4">
-                      <Input 
-                        value={hito.descripcion} 
-                        onChange={(e) => handleHitoChange(idx, 'descripcion', e.target.value)}
-                        placeholder="Ej: Adelanto inicial"
-                        className="h-9 text-xs font-bold border-transparent bg-slate-50/50 focus:bg-white rounded-lg"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Select 
-                        value={hito.estado || 'PENDIENTE'} 
-                        onValueChange={(val) => handleHitoChange(idx, 'estado', val)}
-                      >
-                        <SelectTrigger className="h-9 border-transparent bg-slate-50/50 text-[10px] font-black uppercase rounded-lg">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="PENDIENTE" className="text-[10px] font-black uppercase">Pendiente</SelectItem>
-                          <SelectItem value="FACTURADO" className="text-[10px] font-black uppercase text-blue-600">Facturado</SelectItem>
-                          
-                          {/* Opciones Especiales basadas en Permisos */}
-                          {!canManageFinances && (
-                            <SelectItem value="REPORTE_PAGO" className="text-[10px] font-black uppercase text-warning">Reporte de Pago</SelectItem>
-                          )}
-                          
-                          {canManageFinances && (
-                            <SelectItem value="COBRADO" className="text-[10px] font-black uppercase text-success">Aprobado / Cobrado</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-2">
-                      <div className="relative">
-                        <Input 
-                          type="number"
-                          value={hito.porcentaje} 
-                          onChange={(e) => handleHitoChange(idx, 'porcentaje', e.target.value)}
-                          className="h-9 text-center text-xs font-black text-primary border-transparent bg-slate-50/50 focus:bg-white pr-4 rounded-lg"
-                        />
-                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">%</span>
-                      </div>
-                    </div>
-                    <div className="col-span-3">
-                      <div className="relative">
-                        <span className="absolute left-2 top-1/2 -translate-y-1/2 text-[9px] font-bold text-slate-400">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
-                        <Input 
-                          type="number"
-                          value={hito.monto} 
-                          onChange={(e) => handleHitoChange(idx, 'monto', e.target.value)}
-                          className="h-9 text-right text-xs font-black text-primary border-transparent bg-slate-50/50 focus:bg-white pl-6 rounded-lg"
-                        />
-                      </div>
-                    </div>
-                    <div className="col-span-1 text-right">
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeHito(idx)}
-                        disabled={hitos.length <= 1}
-                        className="h-8 w-8 text-slate-300 hover:text-error hover:bg-red-50 rounded-full"
-                      >
-                        <X className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <div className="w-px h-12 bg-slate-200 hidden md:block" />
 
-              <div className="flex items-center justify-between pt-2 px-2 border-t border-dashed border-slate-200 mt-4">
-                <div className="flex items-center gap-4">
-                   <div className="flex flex-col">
-                      <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Suma Total</span>
-                      <span className={cn(
-                        "text-xs font-black",
-                        isPlanValid ? "text-success" : "text-error"
-                      )}>
-                        {totalPorcentaje.toFixed(1)}% / 100%
-                      </span>
-                   </div>
-                   {!isPlanValid && (
-                     <div className="flex items-center gap-1.5 text-error animate-pulse">
-                        <AlertTriangle className="w-3.5 h-3.5" />
-                        <span className="text-[8px] font-black uppercase">Debe sumar 100%</span>
-                     </div>
-                   )}
-                </div>
-                <div className="text-right">
-                   <span className="text-[8px] font-black uppercase text-slate-400 tracking-tighter">Total Programado</span>
-                   <p className="text-sm font-black text-primary">{currentMoneda === 'PEN' ? 'S/' : '$'} {totalMonto.toLocaleString(undefined, {minimumFractionDigits: 2})}</p>
-                </div>
+              <div className="flex-1 space-y-1 w-full text-right">
+                <p className="text-[10px] font-black uppercase text-slate-400">Saldo Pendiente (Automático)</p>
+                <p className="text-xl font-black text-slate-600">
+                   {currentMoneda === 'PEN' ? 'S/' : '$'} {((hitos[1]?.monto || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
+                </p>
+                <Badge variant="outline" className="bg-white text-[8px] font-black uppercase px-3 py-1 border-slate-200">
+                   { (100 - (hitos[0]?.porcentaje || 0)).toFixed(1) }% restante
+                </Badge>
               </div>
             </div>
+            
+            <p className="text-[9px] text-slate-400 font-bold uppercase text-center italic">
+              * El total de la inversión es {currentMoneda === 'PEN' ? 'S/' : '$'} {totalMonto.toLocaleString()}. Finanzas gestionará los cobros según estos montos.
+            </p>
           </div>
 
           <Separator className="opacity-50" />
