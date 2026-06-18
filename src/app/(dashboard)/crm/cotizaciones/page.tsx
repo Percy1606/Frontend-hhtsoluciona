@@ -118,6 +118,9 @@ export default function CotizacionesInboxPage() {
   const [adminPassword, setAdminPassword] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // Verificación de acceso a Finanzas
+  const canManageFinances = currentUser?.rol === 'ADMIN' || currentUser?.modulos?.includes('finanzas');
+
   useEffect(() => {
     fetchQuotes(quotePage, quoteLimit);
     fetchClients();
@@ -363,12 +366,14 @@ export default function CotizacionesInboxPage() {
           </div>
           <p className="text-[11px] text-muted-foreground mt-1 font-bold uppercase tracking-wide">Control de proformas y propuestas técnicas enviadas a clientes.</p>
         </div>
-        <Button 
-          onClick={() => openModal()}
-          className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 px-6 h-10 uppercase text-[10px]"
-        >
-          <Plus className="w-4 h-4 text-accent" /> Crear Propuesta
-        </Button>
+        {canManageFinances && (
+          <Button 
+            onClick={() => openModal()}
+            className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 px-6 h-10 uppercase text-[10px]"
+          >
+            <Plus className="w-4 h-4 text-accent" /> Crear Propuesta
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -501,33 +506,38 @@ export default function CotizacionesInboxPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" onClick={() => handlePreviewFile(quote)} title="Ver en Nueva Pestaña">
                         <Eye className="w-4 h-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => openModal(quote)} title="Editar">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600" onClick={() => setHistoryQuote(quote)} title="Ver Historial">
-                        <History className="w-4 h-4" />
-                      </Button>
                       
-                      <DropdownMenu>
-                        <DropdownMenuTrigger className="h-8 w-8 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-muted transition-colors outline-none cursor-pointer">
-                          <MoreVertical className="w-4 h-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
-                          <DropdownMenuItem 
-                            className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary"
-                            onClick={() => {
-                              setSelectedQuote(quote);
-                              setIsContractModalOpen(true);
-                            }}
-                          >
-                            <FileCheck className="w-4 h-4" /> Subir OS / Contrato
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-red-50" onClick={() => handleDeleteQuote(quote.id)}>
-                            <Trash2 className="w-4 h-4" /> Eliminar Permanente
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {canManageFinances && (
+                        <>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => openModal(quote)} title="Editar">
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600" onClick={() => setHistoryQuote(quote)} title="Ver Historial">
+                            <History className="w-4 h-4" />
+                          </Button>
+                          
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="h-8 w-8 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-muted transition-colors outline-none cursor-pointer">
+                              <MoreVertical className="w-4 h-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
+                              <DropdownMenuItem 
+                                className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary"
+                                onClick={() => {
+                                  setSelectedQuote(quote);
+                                  setIsContractModalOpen(true);
+                                }}
+                              >
+                                <FileCheck className="w-4 h-4" /> Subir OS / Contrato
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-red-50" onClick={() => handleDeleteQuote(quote.id)}>
+                                <Trash2 className="w-4 h-4" /> Eliminar Permanente
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </>
+                      )}
                     </div>
                   </TableCell>
                 </TableRow>
@@ -592,6 +602,7 @@ export default function CotizacionesInboxPage() {
           <QuoteForm 
             key={selectedQuote?.id ? (isVersionUpdate ? `ver-${selectedQuote.id}` : selectedQuote.id) : 'new'}
             quote={selectedQuote} 
+            canManageFinances={canManageFinances}
             onSubmit={selectedQuote ? handleUpdateQuote : handleCreateQuote} 
             onCancel={() => {
               setIsModalOpen(false);

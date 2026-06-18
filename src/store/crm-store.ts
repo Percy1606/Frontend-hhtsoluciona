@@ -23,6 +23,9 @@ export type Quote = {
   validez?: string;
   formaPago?: string;
   estado: 'Pendiente' | 'Enviado' | 'Revisado' | 'Aprobado' | 'Aprobada' | 'Rechazado' | 'Rechazada' | 'Obsoleto';
+  moneda?: string;
+  observaciones?: string;
+  cajaId?: string;
   version: number;
   fecha: string;
   fechaCreacion?: string;

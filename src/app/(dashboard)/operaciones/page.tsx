@@ -29,7 +29,8 @@ import {
   FileCheck,
   History,
   ClipboardList,
-  Calendar
+  Calendar,
+  HandCoins
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -46,6 +47,7 @@ import { ValidacionPanel } from "@/components/operaciones/validacion-panel";
 import { TimelinePanel } from "@/components/operaciones/timeline-panel";
 import { ProyectoDetail, StatsCard } from "@/components/operaciones/proyecto-detail";
 import { ActividadForm } from "@/components/operaciones/actividad-form";
+import { SolicitudesFondosPanel } from "@/components/operaciones/solicitudes-fondos-panel";
 import type { Proyecto } from "@/lib/types";
 
 const statusColors: Record<string, string> = {
@@ -191,6 +193,9 @@ export default function OperacionesPage() {
         <TabsList className="bg-white border p-1 rounded-xl h-12 gap-1">
           <TabsTrigger value="proyectos" className="gap-2 px-4 font-black uppercase text-[10px]">
             <LayoutDashboard className="w-4 h-4" /> Proyectos
+          </TabsTrigger>
+          <TabsTrigger value="solicitudes" className="gap-2 px-4 font-black uppercase text-[10px]">
+            <HandCoins className="w-4 h-4" /> Solicitudes y Rendiciones
           </TabsTrigger>
           <TabsTrigger value="validaciones" className="gap-2 px-4 font-black uppercase text-[10px]">
             <FileCheck className="w-4 h-4" /> Validaciones
@@ -424,6 +429,10 @@ export default function OperacionesPage() {
               </TableBody>
             </Table>
           </div>
+        </TabsContent>
+
+        <TabsContent value="solicitudes" className="mt-0">
+          <SolicitudesFondosPanel />
         </TabsContent>
 
         <TabsContent value="validaciones" className="mt-0">

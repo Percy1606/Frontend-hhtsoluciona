@@ -514,7 +514,7 @@ export default function IngresosPage() {
                   <p className="font-black text-sm text-secondary">{formatCurrency(selectedFactura.saldoPendiente)}</p>
                 </div>
              </div>
-             <PagoHistorial pagos={selectedFactura.pagos || []} />
+             <PagoHistorial pagos={selectedFactura.pagos || []} onSuccess={fetchData} />
              <div className="flex justify-end">
                 <Button variant="outline" onClick={() => setIsHistoryModalOpen(false)} className="font-black uppercase text-[10px] tracking-widest px-8">
                   Cerrar

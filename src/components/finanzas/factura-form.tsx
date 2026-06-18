@@ -25,7 +25,7 @@ import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { Factura } from "@/types/finanzas";
-import { cn } from "@/lib/utils";
+import { cn, getSecureUrl } from "@/lib/utils";
 import { Loader2, FileText, Wallet, Lock, DollarSign, Calendar } from "lucide-react";
 
 interface FacturaFormProps {
@@ -651,9 +651,7 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
                         size="sm"
                         className="h-10 px-3 border-secondary text-secondary hover:bg-secondary/5 font-black text-[10px] uppercase shrink-0"
                         onClick={() => {
-                          const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                          const url = form.getValues("archivoUrl");
-                          const fullUrl = url.startsWith('http') ? url : `${API_URL}${url}`;
+                          const fullUrl = getSecureUrl(form.getValues("archivoUrl"));
                           window.open(fullUrl, '_blank');
                         }}
                       >

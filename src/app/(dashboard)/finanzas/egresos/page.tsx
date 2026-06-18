@@ -22,7 +22,9 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Edit2
+  Edit2,
+  HandCoins,
+  ArrowRightLeft
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate } from "@/lib/utils";
@@ -159,6 +161,29 @@ export default function EgresosPage() {
 
   return (
     <div className="space-y-8 pb-10">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <SummaryCard 
+          label="Total Egresos" 
+          value={filteredGastos.reduce((acc, g) => acc + g.montoTotal, 0)} 
+          icon={<TrendingDown className="w-5 h-5 text-error" />} 
+          color="text-error"
+        />
+        <SummaryCard 
+          label="Solicitudes Pendientes" 
+          value={gastos.filter(g => g.estado === 'SOLICITADO').length} 
+          icon={<HandCoins className="w-5 h-5 text-amber-500" />} 
+          color="text-amber-600"
+          isCount
+        />
+        <SummaryCard 
+          label="Por Rendir" 
+          value={gastos.filter(g => g.estado === 'PAGADO' && g.estadoRendicion !== 'COMPLETADA').length} 
+          icon={<ArrowRightLeft className="w-5 h-5 text-blue-500" />} 
+          color="text-blue-600"
+          isCount
+        />
+      </div>
+
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-border shadow-sm">
         <div className="space-y-2">
           <div className="flex items-center gap-3">
@@ -399,6 +424,22 @@ export default function EgresosPage() {
         entityName={gastoToDelete?.name || ''}
         loading={deleting}
       />
+    </div>
+  );
+}
+
+function SummaryCard({ label, value, icon, color, isCount }: any) {
+  return (
+    <div className="bg-white p-6 rounded-3xl border border-border shadow-sm flex items-center gap-4 transition-all hover:shadow-md group">
+      <div className={cn("p-4 rounded-2xl bg-slate-50 group-hover:scale-110 transition-transform")}>
+        {icon}
+      </div>
+      <div>
+        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
+        <p className={cn("text-2xl font-black tracking-tighter", color)}>
+          {isCount ? value : `S/ ${value.toLocaleString()}`}
+        </p>
+      </div>
     </div>
   );
 }

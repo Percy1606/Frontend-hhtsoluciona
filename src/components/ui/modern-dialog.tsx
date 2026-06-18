@@ -25,6 +25,8 @@ interface ModernDialogProps {
   cancelText?: string;
   showCancel?: boolean;
   children?: React.ReactNode;
+  className?: string;
+  maxWidth?: string;
 }
 
 const config = {
@@ -71,12 +73,14 @@ export function ModernDialog({
   cancelText = "Cancelar",
   showCancel = false,
   children,
+  className,
+  maxWidth = "sm:max-w-[550px]",
 }: ModernDialogProps) {
   const currentConfig = config[type];
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
+      <DialogContent className={cn(maxWidth, "p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white", className)}>
         <DialogHeader className={cn("p-6 flex flex-col items-center gap-4 text-white", currentConfig.headerBg)}>
           {!children && (
             <div className="bg-white/20 p-3 rounded-full animate-in zoom-in-50 duration-300">

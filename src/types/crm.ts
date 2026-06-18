@@ -55,4 +55,7 @@ export type Client = {
   propuestaTecnicaUrl?: string;
   fechaCreacion: string;
   deletedAt?: string;
+  _count?: {
+    cotizaciones: number;
+  };
 };

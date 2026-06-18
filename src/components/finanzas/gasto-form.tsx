@@ -55,6 +55,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       fechaVencimiento: initialData?.fechaVencimiento ? new Date(initialData.fechaVencimiento).toISOString().split('T')[0] : "",
       fechaProgramadaPago: initialData?.fechaProgramadaPago ? new Date(initialData.fechaProgramadaPago).toISOString().split('T')[0] : "",
       estado: initialData?.estado || "PENDIENTE",
+      justificacion: (initialData as any)?.justificacion || "",
     },
   });
 
@@ -202,6 +203,23 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                       <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Concepto / Glosa del Gasto</FormLabel>
                       <FormControl>
                         <Input placeholder="Ej: Pago de servicios de transporte, materiales, etc." {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="justificacion"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Justificación Detallada</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Explique el motivo del gasto o solicitud de fondos..." 
+                          {...field} 
+                          className="bg-white border-slate-200 min-h-[60px] font-medium text-xs resize-none" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -447,15 +465,18 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                         <FormControl>
                           <SelectTrigger className={cn(
                             "h-11 font-black text-xs rounded-xl border-2 shadow-sm transition-all",
-                            field.value === 'PAGADO' 
-                              ? "bg-green-50 border-green-200 text-green-700 shadow-green-100" 
-                              : "bg-red-50 border-red-200 text-red-700 shadow-red-100"
+                            field.value === 'PAGADO' ? "bg-green-50 border-green-200 text-green-700 shadow-green-100" :
+                            field.value === 'SOLICITADO' ? "bg-amber-50 border-amber-200 text-amber-700 shadow-amber-100" :
+                            field.value === 'APROBADO' ? "bg-blue-50 border-blue-200 text-blue-700 shadow-blue-100" :
+                            "bg-red-50 border-red-200 text-red-700 shadow-red-100"
                           )}>
                             <SelectValue placeholder="Seleccione estado" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="PENDIENTE" className="text-red-600 font-bold text-xs">PENDIENTE</SelectItem>
+                          <SelectItem value="SOLICITADO" className="text-amber-600 font-bold text-xs">SOLICITADO (FONDOS)</SelectItem>
+                          <SelectItem value="APROBADO" className="text-blue-600 font-bold text-xs">APROBADO (POR PAGAR)</SelectItem>
+                          <SelectItem value="PENDIENTE" className="text-red-600 font-bold text-xs">PENDIENTE (CON FACTURA)</SelectItem>
                           <SelectItem value="PAGADO" className="text-green-600 font-bold text-xs">PAGADO</SelectItem>
                           <SelectItem value="ANULADO" className="text-slate-400 font-bold text-xs">ANULADO</SelectItem>
                         </SelectContent>
@@ -481,3 +502,4 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     </Form>
   );
 }
+

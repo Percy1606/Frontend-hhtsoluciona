@@ -27,6 +27,7 @@ import {
   DollarSign,
   LineChart,
   TrendingDown,
+  HandCoins
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
@@ -57,6 +58,7 @@ import type { Proyecto } from "@/lib/types";
 import { ActividadesPanel } from "./actividades-panel";
 import { TimelinePanel } from "./timeline-panel";
 import { FinancePanel } from "./finance-panel";
+import { SolicitudesFondosPanel } from "./solicitudes-fondos-panel";
 
 // ============================================
 // CONSTANTES
@@ -187,6 +189,9 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                 <TabsTrigger value="finanzas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <DollarSign className="w-4 h-4" /> Finanzas y Rentabilidad
                 </TabsTrigger>
+                <TabsTrigger value="solicitudes" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
+                    <HandCoins className="w-4 h-4" /> Solicitudes de Fondos
+                </TabsTrigger>
                 <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <FileText className="w-4 h-4" /> Documentos ({proyecto.documentos?.length || 0})
                 </TabsTrigger>
@@ -208,6 +213,10 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
 
               <TabsContent value="finanzas" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
                 <FinancePanel proyectoId={proyecto.id} />
+              </TabsContent>
+
+              <TabsContent value="solicitudes" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
+                <SolicitudesFondosPanel proyectoId={proyecto.id} />
               </TabsContent>
 
               <TabsContent value="historial" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
