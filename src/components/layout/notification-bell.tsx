@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Check, RotateCcw } from "lucide-react";
+import { Bell, Check, RotateCcw, Trash2 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { useNotificationStore } from "@/store/notification-store";
@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export function NotificationBell() {
   const { 
@@ -25,11 +26,33 @@ export function NotificationBell() {
     markAsRead, 
     markAsUnread,
     markAllAsRead,
+    deleteNotification,
     setupSSE,
     sseConnected
   } = useNotificationStore();
 
   const { token } = useAuthStore();
+  const router = useRouter();
+
+  const getNotificationLink = (n: any) => {
+    if (n.actividadComercialId) return `/clientes/pipeline`;
+    
+    const titulo = n.titulo.toLowerCase();
+    if (titulo.includes('orden')) return '/logistica/ordenes';
+    if (titulo.includes('almacén') || titulo.includes('stock')) return '/logistica/inventario';
+    if (titulo.includes('factura') || titulo.includes('ingreso')) return '/finanzas/ingresos';
+    if (titulo.includes('gasto') || titulo.includes('egreso')) return '/finanzas/egresos';
+    if (titulo.includes('caja') || titulo.includes('transferencia')) return '/finanzas/cajas';
+    if (titulo.includes('proyecto') || titulo.includes('adelanto')) return '/operaciones/proyectos';
+    if (titulo.includes('cotización') || titulo.includes('cotizacion')) return '/operaciones/cotizaciones';
+    if (titulo.includes('cliente')) return '/clientes';
+    
+    if (n.tipo === 'COTIZACION') return '/operaciones/cotizaciones';
+    if (n.tipo === 'CLIENTE') return '/clientes';
+    if (n.tipo === 'VISITA' || n.tipo === 'SEGUIMIENTO') return '/clientes/pipeline';
+    
+    return null;
+  };
 
   useEffect(() => {
     fetchNotifications();
@@ -107,7 +130,11 @@ export function NotificationBell() {
                         ? "bg-[#EFF6FF] hover:bg-[#E0F2FE] border-l-4 border-primary" 
                         : "bg-[#F3F4F6] hover:bg-[#E5E7EB] border-l-4 border-transparent"
                     )}
-                    onClick={() => !n.leida && markAsRead(n.id)}
+                    onClick={() => {
+                      if (!n.leida) markAsRead(n.id);
+                      const url = getNotificationLink(n);
+                      if (url) router.push(url);
+                    }}
                   >
                     <div className="flex items-center justify-between w-full mb-1">
                       <span className={cn(
@@ -147,20 +174,33 @@ export function NotificationBell() {
                     )}
                   </DropdownMenuItem>
 
-                  {/* Botón para marcar como no leída al hacer hover si ya está leída */}
-                  {n.leida && (
+                  {/* Acciones de la notificación al hacer hover */}
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 flex flex-col gap-1 z-20">
+                    {n.leida && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          markAsUnread(n.id);
+                        }}
+                        className="p-1.5 bg-white border border-border rounded-full shadow hover:text-primary hover:scale-110 transition-all"
+                        title="Marcar como no leída"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                     <button
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
-                        markAsUnread(n.id);
+                        deleteNotification(n.id);
                       }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-2 bg-white border border-border rounded-full shadow-lg hover:text-primary hover:scale-110 transition-all z-20"
-                      title="Marcar como no leída"
+                      className="p-1.5 bg-white border border-red-100 rounded-full shadow hover:text-red-500 hover:scale-110 transition-all"
+                      title="Eliminar notificación"
                     >
-                      <RotateCcw className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
-                  )}
+                  </div>
                 </div>
             ))
           )}

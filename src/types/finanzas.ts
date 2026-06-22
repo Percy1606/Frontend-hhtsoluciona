@@ -67,6 +67,7 @@ export interface Gasto {
   justificacion?: string | null;
   area?: string | null;
   montoTotal: number;
+  saldoPendiente?: number;
   fechaEmision: string;
   fechaVencimiento?: string | null;
   fechaProgramadaPago?: string | null;

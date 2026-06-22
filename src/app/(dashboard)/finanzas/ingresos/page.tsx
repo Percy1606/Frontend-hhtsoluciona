@@ -47,11 +47,17 @@ import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
 
 const financeStatus: Record<string, string> = {
-  "PAGADA": "bg-green-100 text-green-700 border-green-200",
+  "PAGADA": "bg-emerald-100 text-emerald-700 border-emerald-200",
   "PAGO_PARCIAL": "bg-yellow-100 text-yellow-700 border-yellow-200",
   "PENDIENTE": "bg-blue-100 text-blue-700 border-blue-200",
   "ANULADA": "bg-slate-100 text-slate-700 border-slate-200",
   "VENCIDA": "bg-red-100 text-red-700 border-red-200",
+};
+
+const CLASIFICACIONES_NEGOCIO: Record<string, string> = {
+  VENTA_SERVICIO: "Servicios Generales",
+  PROYECTO: "Facturación de Proyecto",
+  ALQUILER_EQUIPOS: "Alquiler de Equipos"
 };
 
 export default function IngresosPage() {
@@ -68,6 +74,10 @@ export default function IngresosPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [facturaToDelete, setFacturaToDelete] = useState<{id: string, name: string} | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, statusFilter, dateFrom, dateTo]);
 
   const [editingFactura, setEditingFactura] = useState<any | null>(null);
   const [selectedFactura, setSelectedFactura] = useState<any | null>(null);
@@ -169,15 +179,15 @@ export default function IngresosPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-border shadow-sm">
-        <div className="space-y-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-border shadow-sm">
+        <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-500/10 p-3 rounded-2xl">
-              <Receipt className="w-8 h-8 text-blue-600" />
+            <div className="bg-blue-500/10 p-2 rounded-xl">
+              <Receipt className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-primary tracking-tight">Ingresos / Facturas</h1>
-              <p className="text-muted-foreground font-medium text-xs mt-1">Gestión de comprobantes emitidos y cobranzas.</p>
+              <h1 className="text-lg font-black text-primary tracking-tight">Ingresos / Facturas</h1>
+              <p className="text-muted-foreground font-medium text-[10px] mt-0.5">Gestión de comprobantes emitidos y cobranzas.</p>
             </div>
           </div>
         </div>
@@ -255,16 +265,15 @@ export default function IngresosPage() {
 
       <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
         <Table>
-          <TableHeader className="bg-muted/50 h-12">
+          <TableHeader className="bg-slate-50/80 h-12 border-b border-slate-100">
             <TableRow className="hover:bg-transparent border-none">
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-6 w-[50px]">Item</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Factura</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Cliente / Proyecto</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Emisión / Venc.</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Cobro / Progreso</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Saldo Pendiente</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-center">Estado</TableHead>
-              <TableHead className="w-[100px]"></TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 pl-6 w-[50px]">Item</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Documento</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Cliente y Referencia</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Fechas</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-right">Resumen Financiero</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500 text-center">Estado</TableHead>
+              <TableHead className="w-[120px]"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -272,106 +281,133 @@ export default function IngresosPage() {
               const montoPagado = inv.montoTotal - inv.saldoPendiente;
               const porcentajePagado = inv.montoTotal > 0 ? (montoPagado / inv.montoTotal) * 100 : 0;
               
-              // Determinar si está vencida o por vencer (próximos 2 días)
-              const dueDate = new Date(inv.fechaVencimiento);
-              const today = new Date();
-              const isOverdue = dueDate < today && inv.estado !== 'PAGADA' && inv.estado !== 'ANULADA';
-              const isExpiringSoon = (dueDate.getTime() - today.getTime()) < (48 * 60 * 60 * 1000) && inv.estado !== 'PAGADA' && inv.estado !== 'ANULADA';
+              const isUnpaidWithDate = !!inv.fechaVencimiento && (inv.estado === 'PENDIENTE' || inv.estado === 'PAGO_PARCIAL');
+
+              // Visual Status Mapping
+              let visualStatus = inv.estado;
+              let visualBadgeClass = financeStatus[inv.estado];
+              if (inv.estado === 'PENDIENTE') {
+                  if (inv.montoTotal === 0) {
+                    visualStatus = 'BORRADOR';
+                    visualBadgeClass = "bg-slate-100 text-slate-500 border-slate-200";
+                  } else {
+                    visualStatus = 'PENDIENTE';
+                    visualBadgeClass = "bg-blue-50 text-blue-600 border-blue-200";
+                  }
+              }
+
+              // Hito Description formatting
+              let hitoDesc = "";
+              if (inv.hitoPago) {
+                hitoDesc = inv.hitoPago.descripcion || `Cuota ${inv.hitoPago.codigo || 'asignada'}`;
+              }
 
               return (
-                <TableRow key={inv.id} className="hover:bg-muted/10 transition-colors border-border group h-16">
+                <TableRow key={inv.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 group h-20">
                   <TableCell className="pl-6 text-[11px] font-bold text-slate-400">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </TableCell>
+                  
                   <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="bg-blue-50 p-1.5 rounded-md">
-                        <Receipt className="w-3.5 h-3.5 text-blue-500" />
+                    <div className="flex items-start gap-3">
+                      <div className="bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
+                        <Receipt className="w-4 h-4 text-slate-600" />
                       </div>
-                      <span className="font-black text-xs text-primary">{inv.codigo}</span>
+                      <div className="flex flex-col">
+                        <span className="font-black text-sm text-slate-800">{inv.codigo}</span>
+                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                          {CLASIFICACIONES_NEGOCIO[inv.clasificacion] || 'Venta Directa'}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
+
                   <TableCell>
-                    <div className="max-w-[250px]">
-                      <p className="font-black text-xs text-primary group-hover:text-secondary transition-colors truncate">{inv.cliente?.empresa}</p>
-                      <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-tighter opacity-70">{inv.proyecto?.nombre || 'VENTA DIRECTA'}</p>
+                    <div className="flex flex-col gap-1 max-w-[280px]">
+                      {inv.cliente?.empresa && inv.cliente?.empresa !== "none" ? (
+                        <p className="font-bold text-xs text-slate-800 truncate" title={inv.cliente.empresa}>
+                          {inv.cliente.empresa}
+                        </p>
+                      ) : (
+                        <p className="font-bold text-xs text-red-500 flex items-center gap-1">
+                          ⚠️ Cliente Inválido / No Asignado
+                        </p>
+                      )}
+                      <div className="flex items-center gap-1 flex-wrap">
+                        <p className="text-[10px] text-slate-500 truncate uppercase font-bold tracking-tighter">
+                          {inv.proyecto?.nombre ? `Ref: ${inv.proyecto.nombre}` : 'Sin Referencia'}
+                        </p>
+                        {hitoDesc && (
+                          <Badge variant="outline" className="text-[8px] bg-white py-0 px-1 border-slate-200 text-slate-500">
+                            {hitoDesc}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </TableCell>
+
                   <TableCell>
-                    <div className="flex flex-col">
-                      <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" /> {formatDate(inv.fechaEmision)}
-                      </span>
-                      <span className={cn("text-[9px] font-black uppercase mt-0.5", 
-                        (isOverdue || isExpiringSoon) ? "text-red-600 font-black animate-pulse-slow" : "text-slate-400")}>
-                        Vence: {formatDate(inv.fechaVencimiento)}
-                      </span>
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-1.5" title="Fecha de Emisión">
+                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="text-[11px] font-medium text-slate-600">{formatDate(inv.fechaEmision)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <Clock className={cn("w-3.5 h-3.5", isUnpaidWithDate ? "text-red-500" : "text-slate-400")} />
+                        <span className={cn("text-[11px] font-bold", isUnpaidWithDate ? "text-red-600" : "text-slate-500")}>
+                          {formatDate(inv.fechaVencimiento)}
+                        </span>
+                      </div>
                     </div>
                   </TableCell>
+
                   <TableCell className="text-right">
-                    <div className="flex flex-col items-end">
-                      <span className="font-black text-xs text-primary" title={`Factura: ${formatCurrency(inv.montoTotal)} + Pendiente en otras: ${formatCurrency(inv.saldoAnterior || 0)}`}>
-                        {formatCurrency(inv.montoTotal)}
-                      </span>
-                      {inv.estado === 'PAGO_PARCIAL' && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                            <div 
-                              className="h-full bg-secondary" 
-                              style={{ width: `${porcentajePagado}%` }}
-                            />
-                          </div>
-                          <span className="text-[9px] font-black text-secondary">{Math.round(porcentajePagado)}%</span>
-                        </div>
-                      )}
-                      {inv.saldoAnterior && inv.saldoAnterior > 0 ? (
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                          Total Acumulado: {formatCurrency(inv.totalAcumulado)}
+                    <div className="flex flex-col items-end gap-1">
+                      <div className="flex items-center justify-between w-[140px] text-[10px] font-medium">
+                        <span className="text-slate-500 uppercase">Total</span>
+                        <span className="font-mono font-black text-slate-800">{formatCurrency(inv.montoTotal)}</span>
+                      </div>
+                      <div className="flex items-center justify-between w-[140px] text-[10px] font-medium border-t border-slate-100 pt-0.5">
+                        <span className="text-emerald-600/80 uppercase">Pagado</span>
+                        <span className={cn("font-mono font-bold", montoPagado > 0 ? "text-emerald-600" : "text-slate-300")}>
+                          {formatCurrency(montoPagado)}
                         </span>
-                      ) : (inv.estado === 'PAGO_PARCIAL' || inv.estado === 'PAGADA') && (
-                        <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">
-                          Pagado: {formatCurrency(montoPagado)}
+                      </div>
+                      <div className="flex items-center justify-between w-[140px] text-[10px] font-medium border-t border-slate-100 pt-0.5">
+                        <span className="text-red-500/80 uppercase">Saldo</span>
+                        <span className={cn("font-mono font-black", inv.saldoPendiente > 0 ? "text-red-600" : "text-slate-300")}>
+                          {formatCurrency(inv.saldoPendiente)}
                         </span>
-                      )}
+                      </div>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex flex-col items-end">
-                      <span className={cn("font-black text-xs", inv.saldoPendiente > 0 ? "text-error" : "text-green-500")}>
-                        {formatCurrency(inv.saldoPendiente || 0)}
-                      </span>
-                      {inv.saldoTotalCliente > inv.saldoPendiente && (
-                        <span className="text-[7px] font-black text-slate-400 uppercase tracking-tighter">
-                          Deuda Total: {formatCurrency(inv.saldoTotalCliente)}
-                        </span>
-                      )}
-                    </div>
-                  </TableCell>
+
                   <TableCell className="text-center">
-                    <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md", financeStatus[inv.estado])}>
-                      {inv.estado.replace('_', ' ')}
+                    <Badge className={cn("border font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md", visualBadgeClass)}>
+                      {visualStatus.replace('_', ' ')}
                     </Badge>
                   </TableCell>
+
                   <TableCell className="pr-4">
-                    <div className="flex items-center gap-0.5">
+                    <div className="flex items-center justify-end gap-0.5">
                       {inv.estado !== 'PAGADA' && inv.estado !== 'ANULADA' && (
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="rounded-md hover:bg-green-50 hover:text-green-600 text-slate-400 h-7 w-7"
+                          className="rounded-md hover:bg-emerald-50 hover:text-emerald-600 text-slate-400 h-8 w-8 transition-colors"
                           onClick={() => {
                             setSelectedFactura(inv);
                             setIsPagoModalOpen(true);
                           }}
                           title="Registrar Pago"
                         >
-                          <DollarSign className="w-3.5 h-3.5" />
+                          <DollarSign className="w-4 h-4" />
                         </Button>
                       )}
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-md hover:bg-blue-50 hover:text-blue-600 text-slate-400 h-7 w-7"
+                        className="rounded-md hover:bg-indigo-50 hover:text-indigo-600 text-slate-400 h-8 w-8 transition-colors"
                         onClick={async () => {
                           try {
                             const fullFactura = await api.get(`/finanzas/facturas/${inv.id}`);
@@ -383,31 +419,31 @@ export default function IngresosPage() {
                         }}
                         title="Ver Historial de Pagos"
                       >
-                        <Clock className="w-3.5 h-3.5" />
+                        <Clock className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-md hover:bg-blue-50 hover:text-blue-600 text-slate-400 h-7 w-7"
+                        className="rounded-md hover:bg-blue-50 hover:text-blue-600 text-slate-400 h-8 w-8 transition-colors"
                         onClick={() => {
                           setEditingFactura(inv);
                           setIsModalOpen(true);
                         }}
                         title="Editar Factura"
                       >
-                        <Edit2 className="w-3.5 h-3.5" />
+                        <Edit2 className="w-4 h-4" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-md hover:bg-red-50 hover:text-red-600 text-slate-400 h-7 w-7"
+                        className="rounded-md hover:bg-red-50 hover:text-red-600 text-slate-400 h-8 w-8 transition-colors"
                         onClick={() => {
                           setFacturaToDelete({ id: inv.id, name: `Factura ${inv.codigo}` });
                           setDeleteModalOpen(true);
                         }}
                         title="Eliminar Factura"
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <Trash2 className="w-4 h-4" />
                       </Button>
                     </div>
                   </TableCell>
@@ -464,6 +500,8 @@ export default function IngresosPage() {
         isOpen={isModalOpen}
         onOpenChange={(open) => setIsModalOpen(open)}
         title={editingFactura ? "Editar Factura" : "Registrar Nueva Factura"}
+        maxWidth="sm:max-w-3xl"
+        className="max-h-[90vh] flex flex-col"
       >
         <FacturaForm 
           initialData={editingFactura}
@@ -480,6 +518,7 @@ export default function IngresosPage() {
         isOpen={isPagoModalOpen}
         onOpenChange={(open) => setIsPagoModalOpen(open)}
         title="Registrar Pago de Factura"
+        maxWidth="sm:max-w-xl"
       >
         {selectedFactura && (
           <PagoForm 

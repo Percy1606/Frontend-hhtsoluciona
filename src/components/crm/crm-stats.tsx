@@ -43,13 +43,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function CRMStats() {
   const { clients } = useCRMStore();
-  const [selectedSeller, setSelectedSeller] = useState<string>("all");
+  const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
   const [startDate, setStartDate] = useState<string>("");
   const [endDate, setEndDate] = useState<string>("");
 
   // Filter clients based on selected vendor and dates
   const filteredClients = clients.filter(c => {
-    const matchesSeller = selectedSeller === "all" || c.asignadoA === selectedSeller;
+    const matchesSeller = selectedSeller === "EQUIPO COMPLETO" || c.asignadoA === selectedSeller;
     if (!matchesSeller) return false;
 
     if (startDate || endDate) {
@@ -143,14 +143,14 @@ export function CRMStats() {
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
           <div className="flex-1 space-y-2">
-            <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Filtrar Indicadores por Asesor Comercial</Label>
+            <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Filtrar Indicadores por Asesor Comercial</Label>
             <div className="flex items-center gap-4">
-              <Select value={selectedSeller} onValueChange={(val) => setSelectedSeller(val || "all")}>
-                <SelectTrigger className="w-full md:w-[350px] h-12 text-sm font-bold border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl shadow-sm">
+              <Select value={selectedSeller} onValueChange={(val) => setSelectedSeller(val || "EQUIPO COMPLETO")}>
+                <SelectTrigger className="w-full md:w-[350px] h-12 text-sm font-medium text-slate-700 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors">
                   <SelectValue placeholder="EQUIPO COMPLETO" />
                 </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 shadow-xl font-bold uppercase text-[10px]">
-                  <SelectItem value="all" className="text-slate-400 font-bold uppercase text-[10px] italic">Todo el Equipo Comercial</SelectItem>
+                <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
+                  <SelectItem value="EQUIPO COMPLETO" className="text-slate-500 font-medium text-sm">Todo el Equipo Comercial</SelectItem>
                   <SelectItem value="Angie">ANGIE</SelectItem>
                   <SelectItem value="Valentina">VALENTINA</SelectItem>
                   <SelectItem value="Ariana">ARIANA</SelectItem>
@@ -162,28 +162,28 @@ export function CRMStats() {
 
           <div className="flex flex-col md:flex-row items-end gap-4">
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Desde (Prospercción)</Label>
+              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Desde (Prospección)</Label>
               <Input 
                 type="date" 
                 value={startDate} 
                 onChange={(e) => setStartDate(e.target.value)}
-                className="h-12 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl font-bold text-xs" 
+                className="h-12 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl font-medium text-slate-700 text-sm transition-colors" 
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Hasta</Label>
+              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Hasta</Label>
               <Input 
                 type="date" 
                 value={endDate} 
                 onChange={(e) => setEndDate(e.target.value)}
-                className="h-12 border-slate-200 bg-slate-50/30 focus:bg-white rounded-xl font-bold text-xs" 
+                className="h-12 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl font-medium text-slate-700 text-sm transition-colors" 
               />
             </div>
-            {(startDate || endDate || selectedSeller !== "all") && (
+            {(startDate || endDate || selectedSeller !== "EQUIPO COMPLETO") && (
               <Button 
                 variant="ghost" 
-                onClick={() => { setStartDate(""); setEndDate(""); setSelectedSeller("all"); }}
-                className="h-12 text-error font-black uppercase text-[10px] hover:bg-red-50 gap-2 px-4 rounded-xl"
+                onClick={() => { setStartDate(""); setEndDate(""); setSelectedSeller("EQUIPO COMPLETO"); }}
+                className="h-12 text-slate-500 font-semibold uppercase text-[11px] hover:bg-slate-100 hover:text-slate-700 gap-2 px-4 rounded-xl transition-colors"
               >
                 <FilterX className="w-4 h-4" /> Limpiar Filtros
               </Button>
@@ -198,7 +198,7 @@ export function CRMStats() {
       </div>
 
       {/* Grid de Metricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatsCard 
           label="Total Cartera" 
           value={totalCartera} 
@@ -254,7 +254,7 @@ export function CRMStats() {
               <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-4">
                 <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex justify-between items-center px-2">
                   <span>Embudo de Conversión (Pipeline)</span>
-                  <Badge variant="outline" className="text-[9px] font-black bg-white">{selectedSeller === "all" ? "EQUIPO COMPLETO" : selectedSeller.toUpperCase()}</Badge>
+                  <Badge variant="outline" className="text-[9px] font-black bg-white">{selectedSeller === "EQUIPO COMPLETO" ? "EQUIPO COMPLETO" : selectedSeller.toUpperCase()}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-6">
@@ -453,18 +453,18 @@ export function CRMStats() {
 }
 
 function StatsCard({ label, value, subLabel, icon, color, bgColor }: any) {
-    return (
-      <div className="bg-white p-5 rounded-2xl border border-border shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
-        <div className="flex items-center gap-4">
-          <div className={cn("p-3 rounded-xl transition-transform group-hover:scale-110 shadow-sm", bgColor)}>
-            <div className={cn("w-6 h-6", color)}>{icon}</div>
-          </div>
-          <div className="min-w-0">
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1.5">{label}</p>
-            <p className={cn("text-3xl font-black tracking-tighter leading-none", color)}>{value}</p>
-            <p className="text-[9px] font-bold text-slate-400 uppercase mt-2 italic truncate">{subLabel}</p>
-          </div>
+  return (
+    <div className="bg-white p-3 rounded-xl border border-border shadow-sm transition-all hover:shadow-md hover:border-primary/20 group">
+      <div className="flex items-center gap-3">
+        <div className={cn("p-2 rounded-lg transition-transform group-hover:scale-110 shadow-sm", bgColor)}>
+          <div className={cn("w-4 h-4 [&>svg]:w-4 [&>svg]:h-4", color)}>{icon}</div>
+        </div>
+        <div className="min-w-0">
+          <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
+          <p className={cn("text-xl font-black tracking-tighter leading-none", color)}>{value}</p>
+          <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic truncate">{subLabel}</p>
         </div>
       </div>
-    );
+    </div>
+  );
 }

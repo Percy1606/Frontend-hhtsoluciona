@@ -16,18 +16,21 @@ import {
   TrendingDown,
   Loader2,
   Calendar,
-  Filter,
-  MoreVertical,
-  Download,
   Trash2,
   ChevronLeft,
   ChevronRight,
   Edit2,
   HandCoins,
-  ArrowRightLeft
+  ArrowRightLeft,
+  CalendarClock,
+  CalendarCheck,
+  AlertTriangle,
+  ExternalLink,
+  CheckCircle,
+  AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatLargeCurrency } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
@@ -37,14 +40,13 @@ import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-
 import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
 import { useAuthStore } from "@/store/auth-store";
-import { CheckCircle, Info } from "lucide-react";
 
-const gastoStatus: Record<string, string> = {
-  "PAGADO": "bg-green-100 text-green-700 border-green-200",
-  "PENDIENTE": "bg-red-100 text-red-700 border-red-200",
-  "ANULADO": "bg-slate-100 text-slate-700 border-slate-200",
-  "SOLICITADO": "bg-amber-100 text-amber-700 border-amber-200",
-  "APROBADO": "bg-blue-100 text-blue-700 border-blue-200",
+const gastoStatus: Record<string, { label: string, color: string }> = {
+  "PENDIENTE": { label: "BORRADOR", color: "bg-slate-100 text-slate-600 border-slate-200" },
+  "SOLICITADO": { label: "POR APROBAR", color: "bg-amber-100 text-amber-700 border-amber-200" },
+  "APROBADO": { label: "APROBADO", color: "bg-blue-100 text-blue-700 border-blue-200" },
+  "PAGADO": { label: "EJECUTADO", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  "ANULADO": { label: "ANULADO", color: "bg-red-50 text-red-400 border-red-200 line-through" },
 };
 
 export default function EgresosPage() {
@@ -68,7 +70,6 @@ export default function EgresosPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Solicitamos un límite alto para mantener el filtrado/búsqueda del lado del cliente por ahora
       const res = await api.get('/finanzas/gastos?limit=1000');
       const data = Array.isArray(res) ? res : (res.data || []);
       setGastos(data);
@@ -86,7 +87,6 @@ export default function EgresosPage() {
 
   const handleCreateOrUpdateGasto = async (data: any) => {
     try {
-      // Formatear payload para asegurar que no se envíe un 'none' o string vacío como proyectoId
       const payload = {
         ...data,
         proyectoId: (data.proyectoId === 'none' || !data.proyectoId) ? undefined : data.proyectoId,
@@ -133,8 +133,8 @@ export default function EgresosPage() {
 
   const filteredGastos = (gastos || []).filter(g => {
     const matchesSearch = g.concepto.toLowerCase().includes(search.toLowerCase()) ||
-                          g.proveedor?.razonSocial.toLowerCase().includes(search.toLowerCase()) ||
-                          g.codigo?.toLowerCase().includes(search.toLowerCase());
+                          (g.proveedor?.razonSocial || '').toLowerCase().includes(search.toLowerCase()) ||
+                          (g.codigo || '').toLowerCase().includes(search.toLowerCase());
     
     let matchesDate = true;
     if (dateFrom || dateTo) {
@@ -150,6 +150,21 @@ export default function EgresosPage() {
   const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
   const paginatedGastos = filteredGastos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
+  // KPIs
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  
+  const gastosDelMes = filteredGastos.filter(g => {
+    if (!g.fechaEmision) return false;
+    const d = new Date(g.fechaEmision);
+    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+  }).reduce((acc, g) => acc + Number(g.montoTotal), 0);
+
+  const totalEgresos = filteredGastos.reduce((acc, g) => acc + Number(g.montoTotal), 0);
+  const pendientesAprob = gastos.filter(g => g.estado === 'SOLICITADO').length;
+  const porRendir = gastos.filter(g => g.estado === 'PAGADO' && (g as any).estadoRendicion !== 'COMPLETADA').length;
+  const gastosCriticos = gastos.filter(g => g.prioridad === 'CRITICA' || g.prioridad === 'ALTA').length;
+
   if (loading && gastos.length === 0) {
     return (
       <div className="h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -161,38 +176,53 @@ export default function EgresosPage() {
 
   return (
     <div className="space-y-8 pb-10">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      
+      {/* KPIs SUPERIORES */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <SummaryCard 
           label="Total Egresos" 
-          value={filteredGastos.reduce((acc, g) => acc + g.montoTotal, 0)} 
-          icon={<TrendingDown className="w-5 h-5 text-error" />} 
-          color="text-error"
+          value={totalEgresos} 
+          icon={<TrendingDown className="w-4 h-4 text-slate-600" />} 
+          color="text-slate-800"
         />
         <SummaryCard 
-          label="Solicitudes Pendientes" 
-          value={gastos.filter(g => g.estado === 'SOLICITADO').length} 
-          icon={<HandCoins className="w-5 h-5 text-amber-500" />} 
+          label="Gastos del Mes" 
+          value={gastosDelMes} 
+          icon={<Calendar className="w-4 h-4 text-emerald-600" />} 
+          color="text-emerald-700"
+        />
+        <SummaryCard 
+          label="Por Aprobar" 
+          value={pendientesAprob} 
+          icon={<HandCoins className="w-4 h-4 text-amber-500" />} 
           color="text-amber-600"
           isCount
         />
         <SummaryCard 
           label="Por Rendir" 
-          value={gastos.filter(g => g.estado === 'PAGADO' && g.estadoRendicion !== 'COMPLETADA').length} 
-          icon={<ArrowRightLeft className="w-5 h-5 text-blue-500" />} 
+          value={porRendir} 
+          icon={<ArrowRightLeft className="w-4 h-4 text-blue-500" />} 
           color="text-blue-600"
+          isCount
+        />
+        <SummaryCard 
+          label="Urgentes" 
+          value={gastosCriticos} 
+          icon={<AlertCircle className="w-4 h-4 text-error" />} 
+          color="text-error"
           isCount
         />
       </div>
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 bg-white p-8 rounded-3xl border border-border shadow-sm">
-        <div className="space-y-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-border shadow-sm">
+        <div className="space-y-1">
           <div className="flex items-center gap-3">
-            <div className="bg-error/10 p-3 rounded-2xl">
-              <TrendingDown className="w-8 h-8 text-error" />
+            <div className="bg-error/10 p-2 rounded-xl">
+              <TrendingDown className="w-5 h-5 text-error" />
             </div>
             <div>
-              <h1 className="text-xl font-black text-primary tracking-tight">Egresos / Gastos</h1>
-              <p className="text-muted-foreground font-medium text-xs mt-1">Control de gastos operativos y pagos a proveedores.</p>
+              <h1 className="text-lg font-black text-primary tracking-tight">Egresos / Gastos</h1>
+              <p className="text-muted-foreground font-medium text-[10px] mt-0.5">Control financiero, cuentas por pagar y rendiciones.</p>
             </div>
           </div>
         </div>
@@ -251,79 +281,124 @@ export default function EgresosPage() {
         <Table>
           <TableHeader className="bg-muted/50 h-12">
             <TableRow className="hover:bg-transparent border-none">
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-6 w-[50px]">Item</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Comprobante</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto / Proveedor</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proyecto</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Prioridad</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Programación</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Monto Total</TableHead>
+              <TableHead className="w-[40px] font-black text-[10px] uppercase tracking-widest text-primary pl-4 text-center">Nº</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-4">Doc. & Fechas</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto & Prioridad</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proveedor</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proyecto & Área</TableHead>
+              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Importe</TableHead>
               <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-center">Estado</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
+              <TableHead className="w-[120px] text-right pr-6">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {paginatedGastos.map((g, index) => (
-              <TableRow key={g.id} className="hover:bg-muted/10 transition-colors border-border group h-16">
-                <TableCell className="pl-6 text-[11px] font-bold text-slate-400">
+              <TableRow key={g.id} className="hover:bg-muted/10 transition-colors border-border group py-2">
+                <TableCell className="pl-4 text-center align-top pt-4 font-black text-xs text-slate-400">
                   {(currentPage - 1) * itemsPerPage + index + 1}
                 </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="bg-red-50 p-1.5 rounded-md">
-                      <TrendingDown className="w-3.5 h-3.5 text-error" />
-                    </div>
-                    <span className="font-black text-xs text-primary">{g.codigo || 'S/N'}</span>
+                
+                {/* 1. Doc y Fechas */}
+                <TableCell className="pl-4 align-top pt-4 pb-4">
+                  <div className="font-black text-xs text-primary mb-1.5">{g.codigo || 'S/N'}</div>
+                  <div className="flex flex-col gap-1">
+                    <span className="text-[9px] text-slate-500 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                    </span>
+                    {g.fechaProgramadaPago && (
+                      <span className="text-[9px] text-amber-600 flex items-center gap-1 font-medium">
+                        <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
+                      </span>
+                    )}
+                    {g.fechaPago && (
+                      <span className="text-[9px] text-emerald-600 flex items-center gap-1 font-medium">
+                        <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
+                      </span>
+                    )}
                   </div>
                 </TableCell>
-                <TableCell>
-                  <div className="max-w-[250px]">
-                    <p className="font-black text-xs text-primary group-hover:text-error transition-colors truncate">{g.concepto}</p>
-                    <p className="text-[9px] text-muted-foreground truncate uppercase font-bold tracking-tighter opacity-70">{g.proveedor?.razonSocial || 'GASTO SIN PROVEEDOR'}</p>
+
+                {/* 2. Concepto y Prioridad */}
+                <TableCell className="align-top pt-4 pb-4">
+                  <div className="max-w-[220px]">
+                    <p className="font-bold text-xs text-slate-700 line-clamp-2 leading-tight mb-2" title={g.concepto}>{g.concepto}</p>
+                    <Badge variant="outline" className={cn(
+                      "text-[8px] font-black uppercase tracking-tighter border",
+                      g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
+                      g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
+                      "text-slate-500 bg-slate-50 border-slate-200"
+                    )}>
+                      {g.prioridad || 'MEDIA'}
+                    </Badge>
                   </div>
                 </TableCell>
-                <TableCell>
-                  {g.proyecto ? (
-                    <div className="max-w-[180px]">
-                      <p className="font-black text-[10px] text-primary truncate uppercase">{g.proyecto.nombre}</p>
-                      <p className="text-[9px] text-muted-foreground font-bold tracking-tighter opacity-70 italic">{g.proyecto.codigo}</p>
+
+                {/* 3. Proveedor */}
+                <TableCell className="align-top pt-4 pb-4">
+                  {g.proveedor ? (
+                    <div className="max-w-[150px]">
+                      <p className="font-black text-[10px] text-slate-700 truncate" title={g.proveedor.razonSocial}>{g.proveedor.razonSocial}</p>
+                      <p className="text-[9px] text-slate-400 font-bold mt-0.5">RUC: {g.proveedor.ruc || 'S/N'}</p>
                     </div>
                   ) : (
-                    <span className="text-[10px] font-bold text-slate-300 italic uppercase tracking-tighter">Gasto General</span>
+                    <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 max-w-fit mt-1">
+                      <AlertTriangle className="w-3 h-3" />
+                      <span className="text-[9px] font-black uppercase">Sin Proveedor</span>
+                    </div>
                   )}
                 </TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={cn(
-                    "text-[8px] font-black uppercase tracking-tighter border-slate-200",
-                    g.prioridad === 'CRITICA' ? "text-red-600 border-red-100 bg-red-50" :
-                    g.prioridad === 'ALTA' ? "text-orange-600 border-orange-100 bg-orange-50" :
-                    "text-slate-500"
-                  )}>
-                    {g.prioridad || 'MEDIA'}
+
+                {/* 4. Proyecto y Área */}
+                <TableCell className="align-top pt-4 pb-4">
+                  {g.proyecto ? (
+                    <div className="max-w-[160px]">
+                      <p className="font-black text-[10px] text-blue-700 truncate" title={g.proyecto.nombre}>{g.proyecto.nombre}</p>
+                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'N/A'}</p>
+                    </div>
+                  ) : (
+                    <div className="max-w-[160px]">
+                      <p className="font-black text-[10px] text-slate-500 italic truncate">Gasto General</p>
+                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'ADMINISTRACIÓN'}</p>
+                    </div>
+                  )}
+                </TableCell>
+
+                {/* 5. Importe */}
+                <TableCell className="text-right align-top pt-4 pb-4">
+                  <div className="flex flex-col items-end">
+                    <span className="font-mono font-black text-sm text-slate-800 tracking-tight">
+                      S/ {Number(g.montoTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </span>
+                    {g.estado === 'PAGADO' && Number(g.saldoPendiente) > 0 && (
+                      <span className="font-mono text-[9px] text-red-500 font-bold mt-1">
+                        Saldo: S/ {Number(g.saldoPendiente).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </div>
+                </TableCell>
+
+                {/* 6. Estado */}
+                <TableCell className="text-center align-top pt-4 pb-4">
+                  <Badge className={cn("border font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
+                    {gastoStatus[g.estado]?.label || g.estado}
                   </Badge>
                 </TableCell>
-                <TableCell>
-                  <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaProgramadaPago ? formatDate(g.fechaProgramadaPago) : 'Sin fecha'}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right">
-                  <span className="font-black text-xs text-error">
-                    {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN' }).format(g.montoTotal)}
-                  </span>
-                </TableCell>
-                <TableCell className="text-center">
-                  <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado])}>
-                    {g.estado}
-                  </Badge>
-                </TableCell>
-                <TableCell className="pr-4">
-                  <div className="flex items-center gap-0.5">
+
+                {/* 7. Acciones */}
+                <TableCell className="pr-6 text-right align-top pt-4 pb-4">
+                  <div className="flex items-center justify-end gap-0.5">
+                    {g.comprobanteUrl && (
+                      <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Documento Adjunto">
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-md">
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </Button>
+                      </a>
+                    )}
                     {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="rounded-md hover:bg-emerald-50 hover:text-emerald-600 text-amber-500 h-7 w-7"
+                        className="h-7 w-7 text-amber-500 hover:bg-amber-50 hover:text-amber-600 rounded-md" 
                         title="Aprobar Gasto"
                         onClick={() => handleApproveGasto(g.id)}
                       >
@@ -333,7 +408,8 @@ export default function EgresosPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="rounded-md hover:bg-blue-50 hover:text-blue-600 text-slate-400 h-7 w-7"
+                      className="h-7 w-7 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md" 
+                      title="Editar"
                       onClick={() => {
                         setEditingGasto(g);
                         setIsModalOpen(true);
@@ -344,7 +420,8 @@ export default function EgresosPage() {
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="rounded-md hover:bg-red-50 hover:text-red-600 text-slate-400 h-7 w-7"
+                      className="h-7 w-7 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-md" 
+                      title="Eliminar"
                       onClick={() => {
                         setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` });
                         setDeleteModalOpen(true);
@@ -356,6 +433,7 @@ export default function EgresosPage() {
                 </TableCell>
               </TableRow>
             ))}
+            
             {filteredGastos.length === 0 && (
               <TableRow>
                 <TableCell colSpan={8} className="h-40 text-center">
@@ -369,10 +447,9 @@ export default function EgresosPage() {
           </TableBody>
         </Table>
 
-        {/* PAGINATION CONTROLS */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
               Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredGastos.length)} de {filteredGastos.length}
             </span>
             <div className="flex items-center gap-2">
@@ -385,7 +462,7 @@ export default function EgresosPage() {
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-xs font-black text-primary px-2">
+              <span className="text-[11px] font-black text-primary px-2">
                 Página {currentPage} de {totalPages}
               </span>
               <Button
@@ -406,6 +483,8 @@ export default function EgresosPage() {
         isOpen={isModalOpen}
         onOpenChange={(open) => setIsModalOpen(open)}
         title={editingGasto ? "Editar Gasto" : "Registrar Nuevo Gasto"}
+        maxWidth="sm:max-w-4xl"
+        className="max-h-[90vh] flex flex-col"
       >
         <GastoForm 
           initialData={editingGasto}
@@ -430,14 +509,19 @@ export default function EgresosPage() {
 
 function SummaryCard({ label, value, icon, color, isCount }: any) {
   return (
-    <div className="bg-white p-6 rounded-3xl border border-border shadow-sm flex items-center gap-4 transition-all hover:shadow-md group">
-      <div className={cn("p-4 rounded-2xl bg-slate-50 group-hover:scale-110 transition-transform")}>
-        {icon}
+    <div 
+      className="bg-white p-3 rounded-2xl border border-border shadow-sm flex flex-col justify-center transition-all hover:shadow-md"
+      title={!isCount ? `S/ ${Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : undefined}
+    >
+      <div className="flex items-center gap-2 mb-2">
+        <div className={cn("p-1.5 rounded-lg bg-slate-50")}>
+          {icon}
+        </div>
+        <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
       </div>
       <div>
-        <p className="text-[10px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
-        <p className={cn("text-2xl font-black tracking-tighter", color)}>
-          {isCount ? value : `S/ ${value.toLocaleString()}`}
+        <p className={cn("text-lg font-black tracking-tighter pl-1", color)}>
+          {isCount ? value : formatLargeCurrency(value)}
         </p>
       </div>
     </div>

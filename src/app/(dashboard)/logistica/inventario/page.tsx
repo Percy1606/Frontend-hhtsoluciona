@@ -20,7 +20,6 @@ import {
   Eye,
   Download,
   AlertCircle,
-  Truck,
   Edit2,
   Trash2,
   FilterX,
@@ -40,7 +39,6 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { InsumoForm } from "@/components/logistica/insumo-form";
-import { DespachoForm } from "@/components/logistica/despacho-form";
 import { InsumoDetalle } from "@/components/logistica/insumo-detalle";
 import { SecureDeleteModal } from "@/components/logistica/secure-delete-modal";
 import { toast } from "sonner";
@@ -81,7 +79,6 @@ export default function InventarioPage() {
   const [filterStock, setFilterStock] = useState("all");
 
   const [isInsumoModalOpen, setIsInsumoModalOpen] = useState(false);
-  const [isDespachoModalOpen, setIsDespachoModalOpen] = useState(false);
   const [isDetalleModalOpen, setIsDetalleModalOpen] = useState(false);
   const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
   const [selectedInsumo, setSelectedInsumo] = useState<any>(null);
@@ -111,7 +108,7 @@ export default function InventarioPage() {
   };
 
   const stockBajo = getInsumosStockBajo();
-  const totalInversionPágina = insumos.reduce((acc, i) => acc + (i.stockActual * i.precioReferencial), 0);
+  const totalInversionGlobal = useLogisticaStore(state => state.inventoryStats.totalInversion);
 
   // Extraer categorías de forma que no causen saltos en el Select al paginar
   const categories = useMemo(() => {
@@ -122,10 +119,6 @@ export default function InventarioPage() {
     return Array.from(cats);
   }, [insumos]);
 
-  const handleOpenDespacho = (item?: any) => {
-    setSelectedInsumo(item || null);
-    setIsDespachoModalOpen(true);
-  };
 
   const handleOpenDetalle = async (item: any) => {
     await useLogisticaStore.getState().fetchInsumoById(item.id);
@@ -174,7 +167,7 @@ export default function InventarioPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard label="Items en Almacén" value={totalInsumos} icon={<Package className="w-4 h-4"/>} color="text-primary" bgColor="bg-primary/5" />
         <StatsCard label="Stock Crítico" value={stockBajo.length} icon={<AlertTriangle className="w-4 h-4"/>} color="text-error" bgColor="bg-red-50" />
-        <StatsCard label="Inversión Página" value={totalInversionPágina} icon={<Package className="w-4 h-4"/>} color="text-blue-600" bgColor="bg-blue-50" isCurrency />
+        <StatsCard label="Valor del Inventario" value={totalInversionGlobal} icon={<Package className="w-4 h-4"/>} color="text-blue-600" bgColor="bg-blue-50" isCurrency />
         <StatsCard label="Categorías Visibles" value={categories.length} icon={<Search className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" />
       </div>
 
@@ -257,14 +250,15 @@ export default function InventarioPage() {
                         <TableHead className="font-black text-primary uppercase text-[10px]">Unidad</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Stock Actual</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Precio Ref.</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px]">Valor Total</TableHead>
                         <TableHead className="text-right font-black text-primary uppercase text-[10px] pr-6">Acciones</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400">CARGANDO ALMACÉN...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400">CARGANDO ALMACÉN...</TableCell></TableRow>
                     ) : insumos.length === 0 ? (
-                        <TableRow><TableCell colSpan={7} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron insumos.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={8} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron insumos.</TableCell></TableRow>
                     ) : (
                         insumos.map((item, index) => (
                             <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors group">
@@ -274,6 +268,16 @@ export default function InventarioPage() {
                                     </span>
                                 </TableCell>
                                 <TableCell className="">
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Badge variant="secondary" className="text-[8px] px-1.5 py-0 rounded bg-slate-100 text-slate-500 border-none font-mono">INS-{item.id.substring(0,6).toUpperCase()}</Badge>
+                                        {item.stockActual === 0 ? (
+                                            <Badge variant="destructive" className="text-[8px] px-1.5 py-0 h-4 bg-red-100 text-red-700 hover:bg-red-100 border-none">AGOTADO</Badge>
+                                        ) : item.stockActual <= item.stockMinimo ? (
+                                            <Badge variant="destructive" className="text-[8px] px-1.5 py-0 h-4 bg-orange-100 text-orange-700 hover:bg-orange-100 border-none">CRÍTICO</Badge>
+                                        ) : (
+                                            <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-700 border-emerald-200">DISPONIBLE</Badge>
+                                        )}
+                                    </div>
                                     <p className="font-black text-slate-800 text-sm uppercase group-hover:text-primary transition-colors">{item.nombre}</p>
                                     <p className="text-[9px] text-slate-400 font-bold uppercase">{item.descripcion || 'Sin descripción'}</p>
                                 </TableCell>
@@ -290,6 +294,12 @@ export default function InventarioPage() {
                                     </div>
                                 </TableCell>
                                 <TableCell className="font-black text-xs text-slate-700">S/ {Number(item.precioReferencial || 0).toFixed(2)}</TableCell>
+                                <TableCell className="font-black text-xs text-blue-700">
+                                    S/ {(item.stockActual * (item.precioReferencial || 0)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    <span className="text-[9px] text-slate-400 font-bold ml-1">
+                                        ({totalInversionGlobal > 0 ? ((item.stockActual * (item.precioReferencial || 0)) / totalInversionGlobal * 100).toFixed(1) : '0.0'}%)
+                                    </span>
+                                </TableCell>
                                 <TableCell className="text-right pr-6">
                                     <div className="flex justify-end gap-1">
                                         <Button 
@@ -304,22 +314,27 @@ export default function InventarioPage() {
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="h-8 w-8 text-blue-600" 
-                                            title="Editar Insumo"
-                                            onClick={() => handleEdit(item)}
+                                            className="h-8 w-8 text-amber-600 hover:bg-amber-50" 
+                                            title="Ajuste Rápido de Stock"
+                                            onClick={() => {
+                                                const newStock = window.prompt(`Ajustar stock actual para: ${item.nombre}\nStock Actual: ${item.stockActual}`, item.stockActual.toString());
+                                                if (newStock !== null && !isNaN(Number(newStock))) {
+                                                    useLogisticaStore.getState().updateInsumo(item.id, { stockActual: Number(newStock) }).then(() => toast.success("Stock ajustado"));
+                                                }
+                                            }}
                                         >
-                                            <Edit2 className="w-4 h-4"/>
+                                            <RefreshCw className="w-4 h-4"/>
                                         </Button>
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="h-8 w-8 text-slate-800" 
-                                            title="Despacho a obra"
-                                            onClick={() => handleOpenDespacho(item)}
-                                            disabled={item.stockActual <= 0}
+                                            className="h-8 w-8 text-blue-600" 
+                                            title="Editar Información"
+                                            onClick={() => handleEdit(item)}
                                         >
-                                            <Truck className="w-4 h-4"/>
+                                            <Edit2 className="w-4 h-4"/>
                                         </Button>
+
                                         {user?.rol === 'ADMIN' && (
                                             <Button 
                                                 variant="ghost" 
@@ -371,7 +386,6 @@ export default function InventarioPage() {
       </div>
 
       <InsumoForm isOpen={isInsumoModalOpen} onClose={() => setIsInsumoModalOpen(false)} insumo={selectedInsumo} />
-      <DespachoForm isOpen={isDespachoModalOpen} onClose={() => setIsDespachoModalOpen(false)} initialInsumo={selectedInsumo} />
       <InsumoDetalle isOpen={isDetalleModalOpen} onClose={() => setIsDetalleModalOpen(false)} insumo={currentInsumo || selectedInsumo} />
       <SecureDeleteModal 
         isOpen={isSecureDeleteOpen} 

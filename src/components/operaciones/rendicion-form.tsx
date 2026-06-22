@@ -144,7 +144,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
   };
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-h-[85vh] overflow-hidden">
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-h-[85vh] overflow-hidden p-6 sm:p-8">
       {/* COLUMNA IZQUIERDA: FORMULARIO (8/12) */}
       <div className="lg:col-span-8 space-y-6 overflow-y-auto pr-4 custom-scrollbar pb-6">
         <div className="flex flex-col gap-6">

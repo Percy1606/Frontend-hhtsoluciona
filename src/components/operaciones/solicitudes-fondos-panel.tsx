@@ -30,6 +30,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn, formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
@@ -53,6 +56,7 @@ const statusColors: Record<string, string> = {
 
 export function SolicitudesFondosPanel({ proyectoId }: SolicitudesFondosPanelProps) {
   const { user } = useAuthStore();
+  const isFinanceOrAdmin = user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas');
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGastoModalOpen, setIsGastoModalOpen] = useState(false);
@@ -101,7 +105,8 @@ export function SolicitudesFondosPanel({ proyectoId }: SolicitudesFondosPanelPro
         estado: 'SOLICITADO', // Forzar estado solicitado
         area: 'OperacionesDeCampo',
         solicitanteId: user?.id,
-        proyectoId: proyectoId || data.proyectoId
+        proyectoId: proyectoId || data.proyectoId,
+        fechaEmision: data.fechaEmision || new Date().toISOString()
       };
 
       await api.post('/finanzas/gastos', payload);
@@ -319,15 +324,23 @@ export function SolicitudesFondosPanel({ proyectoId }: SolicitudesFondosPanelPro
         onOpenChange={setIsGastoModalOpen}
         title="Solicitar Fondos para Operaciones"
       >
-        <GastoForm 
-          initialData={{ 
-              estado: 'SOLICITADO', 
-              proyectoId: proyectoId || "",
-              tipo: 'VIATICOS' 
-          } as any}
-          onSubmit={handleCreateRequest}
-          onCancel={() => setIsGastoModalOpen(false)}
-        />
+        {isFinanceOrAdmin ? (
+          <GastoForm 
+            initialData={{ 
+                estado: 'SOLICITADO', 
+                proyectoId: proyectoId || "",
+                tipo: 'VIATICOS' 
+            } as any}
+            onSubmit={handleCreateRequest}
+            onCancel={() => setIsGastoModalOpen(false)}
+          />
+        ) : (
+          <SolicitudOperacionesForm
+            proyectoId={proyectoId || ""}
+            onSubmit={handleCreateRequest}
+            onCancel={() => setIsGastoModalOpen(false)}
+          />
+        )}
       </ModernDialog>
 
       {/* MODAL PARA RENDICIÓN */}
@@ -358,4 +371,88 @@ function Progress({ value, className, indicatorClassName }: { value: number, cla
             />
         </div>
     );
+}
+
+function SolicitudOperacionesForm({ proyectoId, onSubmit, onCancel }: { proyectoId: string, onSubmit: (data: any) => void, onCancel: () => void }) {
+  const [formData, setFormData] = useState({
+    concepto: "",
+    montoTotal: "",
+    tipo: "VIATICOS",
+    justificacion: "",
+    proyectoId: proyectoId
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!formData.concepto || !formData.montoTotal) {
+      toast.error("El concepto y monto son obligatorios");
+      return;
+    }
+    setIsSubmitting(true);
+    await onSubmit({
+      ...formData,
+      montoTotal: Number(formData.montoTotal)
+    });
+    setIsSubmitting(false);
+  };
+
+  return (
+    <div className="space-y-4 animate-in fade-in p-2">
+      <div className="space-y-1">
+        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Concepto / Motivo</Label>
+        <Input 
+          placeholder="Ej. Viáticos para visita técnica..." 
+          value={formData.concepto}
+          onChange={e => setFormData({ ...formData, concepto: e.target.value })}
+          className="font-bold text-xs h-10 rounded-xl"
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-1">
+          <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Monto (S/)</Label>
+          <Input 
+            type="number"
+            step="0.01"
+            placeholder="0.00" 
+            value={formData.montoTotal}
+            onChange={e => setFormData({ ...formData, montoTotal: e.target.value })}
+            className="font-black text-sm text-primary h-10 rounded-xl"
+          />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Tipo</Label>
+          <Select value={formData.tipo} onValueChange={v => setFormData({ ...formData, tipo: v || "" })}>
+            <SelectTrigger className="font-bold text-xs h-10 rounded-xl">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="VIATICOS">Viáticos</SelectItem>
+              <SelectItem value="COMBUSTIBLE">Combustible</SelectItem>
+              <SelectItem value="OPERATIVO">Gasto Operativo</SelectItem>
+              <SelectItem value="PROYECTO">Gasto Proyecto</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Justificación Detallada</Label>
+        <Textarea 
+          placeholder="Explique brevemente para qué se requiere el dinero..." 
+          value={formData.justificacion}
+          onChange={e => setFormData({ ...formData, justificacion: e.target.value })}
+          className="resize-none h-24 text-xs rounded-xl"
+        />
+      </div>
+
+      <div className="flex gap-3 pt-4 border-t border-slate-100">
+        <Button variant="outline" onClick={onCancel} className="flex-1 font-bold uppercase text-[10px] h-10 rounded-xl">Cancelar</Button>
+        <Button onClick={handleSubmit} disabled={isSubmitting} className="flex-1 font-black uppercase text-[10px] h-10 rounded-xl bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+          {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+          Enviar Solicitud
+        </Button>
+      </div>
+    </div>
+  );
 }

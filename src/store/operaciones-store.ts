@@ -1040,7 +1040,8 @@ export const useOperacionesStore = create<OperacionesState>()(
             proyectoId,
             tipo: mapTipoDocumentoToBackend(documentoData.tipo),
             estado: documentoData.estado || 'Borrador',
-            subidoPor: get().usuarioActual || 'Admin'
+            subidoPor: get().usuarioActual || 'Admin',
+            area: (documentoData as any).area || null
           };
           await api.post('/operaciones/documentos', payload);
           await get().fetchProyectos();

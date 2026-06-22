@@ -16,8 +16,8 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Insumo, MovimientoAlmacen } from "@/store/logistica-store";
-import { Package, ArrowUpRight, ArrowDownLeft, Clock, History } from "lucide-react";
+import { Insumo, MovimientoAlmacen, useLogisticaStore } from "@/store/logistica-store";
+import { Package, ArrowUpRight, ArrowDownLeft, Clock, History, Fingerprint } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 
 interface InsumoDetalleProps {
@@ -27,45 +27,68 @@ interface InsumoDetalleProps {
 }
 
 export function InsumoDetalle({ isOpen, onClose, insumo }: InsumoDetalleProps) {
+  const totalInversionGlobal = useLogisticaStore(state => state.inventoryStats.totalInversion);
   if (!insumo) return null;
-
-  // Los movimientos vienen del backend via store cuando se consulta un insumo específico o se carga el kardex
-  // Aquí asumiremos que el store ya tiene los movimientos o los pasamos si es necesario.
-  
+  const valorTotal = insumo.stockActual * (insumo.precioReferencial || 0);
+  const porcentaje = totalInversionGlobal > 0 ? ((valorTotal / totalInversionGlobal) * 100).toFixed(1) : '0.0';
+  const codigoInterno = `INS-${insumo.id.substring(0,6).toUpperCase()}`;
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl p-0 border-none bg-white overflow-hidden rounded-2xl flex flex-col max-h-[85vh]">
         <DialogHeader className="p-6 bg-primary text-white shrink-0">
           <div className="flex justify-between items-start">
-            <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3">
-                <Package className="w-6 h-6 text-accent" />
-                Detalles del Material
+            <DialogTitle className="text-xl font-black tracking-tight flex flex-col gap-1">
+                <div className="flex items-center gap-3">
+                  <Package className="w-6 h-6 text-accent" />
+                  Detalles del Material
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Badge variant="secondary" className="text-[10px] bg-white/10 text-white border-none font-mono flex items-center gap-1">
+                    <Fingerprint className="w-3 h-3" /> {codigoInterno}
+                  </Badge>
+                  {insumo.stockActual === 0 ? (
+                    <Badge className="bg-red-500 text-white border-none text-[9px] uppercase">Agotado</Badge>
+                  ) : insumo.stockActual <= insumo.stockMinimo ? (
+                    <Badge className="bg-orange-500 text-white border-none text-[9px] uppercase">Stock Crítico</Badge>
+                  ) : (
+                    <Badge className="bg-emerald-500 text-white border-none text-[9px] uppercase">Disponible</Badge>
+                  )}
+                </div>
             </DialogTitle>
             <Badge variant="outline" className="text-[10px] font-black border-white/20 text-white uppercase px-3">
-                {insumo.categoria}
+                {insumo.categoria || "Sin Categoría"}
             </Badge>
           </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
             {/* Resumen Superior */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Stock Actual</p>
-                    <p className={cn("text-2xl font-black", insumo.stockActual <= insumo.stockMinimo ? "text-error" : "text-primary")}>
+                    <p className={cn("text-2xl font-black", insumo.stockActual === 0 ? "text-error" : insumo.stockActual <= insumo.stockMinimo ? "text-orange-500" : "text-primary")}>
                         {insumo.stockActual} <span className="text-xs text-slate-400 font-bold uppercase">{insumo.unidadMedida}</span>
                     </p>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Stock Mínimo</p>
                     <p className="text-2xl font-black text-slate-700">
-                        {insumo.stockMinimo}
+                        {insumo.stockMinimo} <span className="text-xs text-slate-400 font-bold uppercase">{insumo.unidadMedida}</span>
                     </p>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Valor Unitario</p>
-                    <p className="text-2xl font-black text-emerald-600">
-                        S/ {Number(insumo.precioReferencial || 0).toFixed(2)}
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Precio Ref.</p>
+                    <p className="text-2xl font-black text-slate-700">
+                        <span className="text-sm">S/</span> {Number(insumo.precioReferencial || 0).toFixed(2)}
+                    </p>
+                </div>
+                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                    <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Valor Total</p>
+                    <p className="text-2xl font-black text-blue-700">
+                        <span className="text-sm">S/</span> {valorTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </p>
+                    <p className="text-[9px] font-bold text-blue-500 mt-1 uppercase">
+                        {porcentaje}% del inventario
                     </p>
                 </div>
             </div>

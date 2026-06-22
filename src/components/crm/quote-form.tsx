@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Quote, useCRMStore } from "@/store/crm-store";
+import { useOperacionesStore } from "@/store/operaciones-store";
 import { useEffect, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { FileUp, FileText, X, User, Building2, Smartphone, Mail, List, MapPin, CheckCircle2, Wallet, AlertTriangle, Plus, Hash } from "lucide-react";
@@ -38,7 +39,13 @@ interface QuoteFormProps {
 
 export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel }: QuoteFormProps) {
   const { clients, uploadQuoteFile, quotes } = useCRMStore();
+  const { responsables, fetchResponsables } = useOperacionesStore();
+  const [selectedLiderId, setSelectedLiderId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    fetchResponsables();
+  }, [fetchResponsables]);
   const [isUploading, setIsUploading] = useState(false);
   const [cajas, setCajas] = useState<any[]>([]);
   
@@ -59,9 +66,9 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       estado: quote.estado || "Pendiente",
       fecha: quote.fecha ? new Date(quote.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       referencia: quote.referencia || "",
-      observaciones: quote.observaciones || "",
       cajaId: quote.cajaId || "",
       cotizacionPadreId: quote.cotizacionPadreId || "",
+      formaPago: quote.formaPago || "",
     } : {
       clientId: "",
       empresa: "",
@@ -73,6 +80,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       referencia: "",
       cajaId: "",
       cotizacionPadreId: "",
+      formaPago: "",
     },
   });
 
@@ -81,15 +89,6 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
   const existingQuotesForClient = useMemo(() => 
     quotes.filter(q => q.clientId === selectedClientId && q.id !== quote?.id),
     [quotes, selectedClientId, quote]
-  );
-
-  const [hitos, setHitos] = useState<any[]>(
-    quote?.hitosPago && quote.hitosPago.length > 0
-      ? quote.hitosPago.map((h: any) => ({ ...h, monto: Number(h.monto), porcentaje: Number(h.porcentaje), estado: h.estado || 'PENDIENTE' }))
-      : [
-          { descripcion: "Adelanto inicial", porcentaje: 40, monto: 0, estado: 'COBRADO' },
-          { descripcion: "Finalización de obra", porcentaje: 60, monto: 0, estado: 'PENDIENTE' },
-        ]
   );
 
   // Sincronizar formulario e hitos cuando cambie la cotización seleccionada (Carga de datos al editar)
@@ -102,65 +101,14 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
         estado: quote.estado || "Pendiente",
         fecha: quote.fecha ? new Date(quote.fecha).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
         referencia: quote.referencia || "",
-        observaciones: quote.observaciones || "",
         cajaId: quote.cajaId || "",
         cotizacionPadreId: quote.cotizacionPadreId || "",
+        formaPago: quote.formaPago || "",
       });
-      
-      if (quote.hitosPago && quote.hitosPago.length > 0) {
-        setHitos(quote.hitosPago.map((h: any) => ({ 
-          ...h, 
-          monto: Number(h.monto), 
-          porcentaje: Number(h.porcentaje), 
-          estado: h.estado || 'PENDIENTE' 
-        })));
-      }
     }
   }, [quote, form]);
 
   const totalMonto = form.watch("monto") || 0;
-
-  // Recalcular montos cuando cambie el monto total o los porcentajes
-  useEffect(() => {
-    setHitos(prev => prev.map(h => ({
-      ...h,
-      monto: Number(((totalMonto * Number(h.porcentaje)) / 100).toFixed(2))
-    })));
-  }, [totalMonto]);
-
-  const handleHitoChange = (index: number, field: string, value: any) => {
-    const newHitos = [...hitos];
-    newHitos[index][field] = value;
-    
-    if (field === 'porcentaje') {
-      newHitos[index].monto = Number(((totalMonto * Number(value)) / 100).toFixed(2));
-    } else if (field === 'monto') {
-      newHitos[index].porcentaje = totalMonto > 0 ? Number(((Number(value) / totalMonto) * 100).toFixed(2)) : 0;
-    }
-    
-    // Automatización: Si se marca como COBRADO, la cotización debe estar Aprobada
-    if (field === 'estado' && value === 'COBRADO') {
-      if (form.getValues("estado") !== "Aprobado") {
-        form.setValue("estado", "Aprobado");
-      }
-    }
-    
-    setHitos(newHitos);
-  };
-
-  const addHito = () => {
-    const totalActual = hitos.reduce((acc, h) => acc + Number(h.porcentaje), 0);
-    const restante = Math.max(0, 100 - totalActual);
-    setHitos([...hitos, { descripcion: `Hito ${hitos.length + 1}`, porcentaje: restante, monto: (totalMonto * restante) / 100, estado: 'PENDIENTE' }]);
-  };
-
-  const removeHito = (index: number) => {
-    if (hitos.length <= 1) return;
-    setHitos(hitos.filter((_, i) => i !== index));
-  };
-
-  const totalPorcentaje = hitos.reduce((acc, h) => acc + Number(h.porcentaje), 0);
-  const isPlanValid = Math.abs(totalPorcentaje - 100) < 0.1;
 
   useEffect(() => {
     const fetchCajas = async () => {
@@ -183,12 +131,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
   );
 
   const currentEstado = form.watch("estado");
-  const isApproved = currentEstado === "Aprobado";
-  // Solo se necesita seleccionar caja si hay hitos COBRADOS (confirmados por finanzas)
-  const hasCobradoHitos = hitos.some(h => h.estado === 'COBRADO');
-  
-  // Si hay algo cobrado o está aprobado, NECESITAMOS saber a qué caja va/fue el dinero
-  const needsCaja = isApproved || hasCobradoHitos;
+  const isApproved = currentEstado === "Ganada";
 
   const currentMoneda = form.watch("moneda");
 
@@ -224,23 +167,15 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
         };
       }
 
-      // Limpiar datos para el DTO del Backend
       const { empresa, contacto, ...dtoData } = data;
       
-      // Sanitizar cotizacionPadreId para que no envíe strings vacíos ni "none"
       if (!dtoData.cotizacionPadreId || dtoData.cotizacionPadreId === "none" || dtoData.cotizacionPadreId === "") {
         delete dtoData.cotizacionPadreId;
       }
       
       await onSubmit({ 
         ...dtoData, 
-        ...fileData,
-        hitos: hitos.map(h => ({
-          descripcion: h.descripcion,
-          porcentaje: Number(h.porcentaje),
-          monto: Number(h.monto),
-          estado: h.estado || 'PENDIENTE'
-        }))
+        ...fileData
       });
       setConfirmDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -260,24 +195,13 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       return;
     }
 
-    if (needsCaja && !data.cajaId) {
-      alert("INGRESO A TESORERÍA\nSE HAN DETECTADO HITOS MARCADOS COMO COBRADO. SELECCIONE LA CAJA DE DESTINO.");
-      return;
-    }
-
-    // NUEVA VALIDACIÓN: Cliente con cotizaciones existentes
     if (!quote && data.clientId) {
       const client = clients.find(c => c.id === data.clientId);
-      
-      // Intentar obtener el conteo de varias fuentes para mayor robustez
       const qCountFromStore = client?._count?.cotizaciones;
       const qCountFromList = quotes.filter(q => q.clientId === data.clientId).length;
-      
-      // Intento desesperado: Parsear del nombre si está ahí (Ej: "EMPRESA (3 COTIZACIONES)")
       const nameMatch = (client?.empresa || selectedClient?.empresa || "").match(/\((\d+)\s+COTIZACIONES\)/i);
       const qCountFromName = nameMatch ? parseInt(nameMatch[1]) : 0;
       
-      // Si el backend envió el conteo, lo usamos. Si no, usamos lo que tenemos en la lista local o en el nombre.
       const qCount = Math.max(
         qCountFromStore !== undefined ? qCountFromStore : qCountFromList,
         qCountFromName
@@ -295,30 +219,30 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       }
     }
 
-    if (quote && needsCaja) {
-      const montoCobradoAnterior = quote.hitosPago
-        ?.filter((h: any) => h.estado === 'COBRADO')
-        .reduce((sum: number, h: any) => sum + Number(h.monto), 0) || 0;
-      
-      const montoCobradoNuevo = hitos
-        .filter((h: any) => h.estado === 'COBRADO')
-        .reduce((sum: number, h: any) => sum + Number(h.monto), 0);
-
-      const diferencia = Number((montoCobradoNuevo - montoCobradoAnterior).toFixed(2));
-
-      if (diferencia > 0) {
-        const simboloMoneda = data.moneda === 'PEN' ? 'S/' : '$';
+    if (quote) {
+      const oldQuoteTotal = Number(quote.monto);
+      const newTotal = Number(data.monto);
+      if (Math.abs(oldQuoteTotal - newTotal) > 0.01) {
         setConfirmDialog({
           open: true,
-          title: "INGRESO A TESORERÍA",
-          description: `Se ha detectado un ingreso adicional de ${simboloMoneda} ${diferencia.toLocaleString()}.
-
-¿Desea confirmar el registro de este monto en la caja seleccionada?`,
-          diferencia,
+          title: "Modificación de Monto",
+          description: `El monto de la cotización ganada ha cambiado. Se generará un ajuste financiero y logístico automático.`,
+          diferencia: newTotal - oldQuoteTotal,
           data
         });
-        return; 
+        return;
       }
+    }
+    
+    if (data.estado === "Ganada" && quote?.estado !== "Ganada") {
+      setConfirmDialog({
+        open: true,
+        title: "¡Cotización Ganada!",
+        description: "Se generará automáticamente el Proyecto, la Orden de Servicio, y se notificará a Finanzas y Logística. ¿Desea continuar?",
+        data,
+        confirmText: "Ganar Cotización"
+      });
+      return;
     }
 
     await executeSubmit(data);
@@ -329,7 +253,6 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-0">
         <div className="p-6 space-y-8 overflow-y-auto max-h-[70vh]">
-          {/* SECCIÓN 1: CLIENTE */}
           <div className="space-y-4">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -389,9 +312,6 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[9px] text-blue-500 font-medium italic mt-1">
-                      * Al seleccionar una anterior, el sistema heredará los pagos ya registrados para no duplicarlos en caja.
-                    </p>
                   </FormItem>
                 )}
               />
@@ -423,273 +343,152 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
 
           <Separator className="opacity-50" />
 
-          {/* SECCIÓN 2: DETALLES DE LA PROPUESTA */}
-          <div className="space-y-4">
+          <div className="space-y-6">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <FileText className="w-4 h-4" />
-              Detalles Comerciales
+              Detalles de la Propuesta
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="referencia"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Referencia / Título del Servicio</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Ej: Mantenimiento de HVAC - Planta Lurín" 
-                        className="h-11 border-slate-200 font-bold text-sm"
-                        {...field} 
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
+              <div className="space-y-6">
                 <FormField
                   control={form.control}
-                  name="moneda"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Moneda</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex items-center space-x-4 pt-2"
-                        >
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <RadioGroupItem value="PEN" id="r1" />
-                            </FormControl>
-                            <FormLabel htmlFor="r1" className="font-bold text-sm">S/</FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                              <RadioGroupItem value="USD" id="r2" />
-                            </FormControl>
-                            <FormLabel htmlFor="r2" className="font-bold text-sm">$</FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="monto"
-                  rules={{ 
-                    required: "El monto es obligatorio",
-                    min: { value: 0, message: "El monto no puede ser negativo" },
-                    max: { value: 1000000000, message: "El monto no puede exceder los 1,000 millones" }
-                  }}
+                  name="referencia"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión</FormLabel>
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Título / Servicio Principal</FormLabel>
                       <FormControl>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-primary font-black text-sm">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
-                          <Input 
-                            type="number" 
-                            step="0.01"
-                            min="0"
-                            max="1000000000"
-                            className="h-11 border-slate-200 font-black text-primary text-base pl-8" 
-                            placeholder="0.00"
-                            {...field}
-                            onChange={(e) => {
-                              const val = e.target.value;
-                              field.onChange(val === '' ? 0 : parseFloat(val));
-                            }}
-                          />
-                        </div>
+                        <Input 
+                          placeholder="Ej: Mantenimiento Preventivo de HVAC" 
+                          className="h-12 bg-slate-50 border-slate-200 font-bold text-sm focus:bg-white transition-colors"
+                          {...field} 
+                        />
                       </FormControl>
-                      <FormMessage className="text-[10px] font-black uppercase mt-1" />
                     </FormItem>
                   )}
                 />
-                
+
+                <FormField
+                  control={form.control}
+                  name="formaPago"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Forma de Pago (Sugerencia)</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Ej: 50% al inicio, 50% al finalizar" 
+                          className="h-12 bg-slate-50 border-slate-200 font-bold text-sm focus:bg-white transition-colors"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <p className="text-[9px] text-slate-400 font-bold italic mt-1.5">
+                        * Finanzas armará el cronograma exacto si se gana.
+                      </p>
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex gap-4">
+                  <FormField
+                    control={form.control}
+                    name="moneda"
+                    render={({ field }) => (
+                      <FormItem className="w-1/3">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Moneda</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="h-12 bg-slate-50 border-slate-200 font-black text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-white">
+                            <SelectItem value="PEN" className="font-bold">S/ (Soles)</SelectItem>
+                            <SelectItem value="USD" className="font-bold">$ (Dólares)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="monto"
+                    rules={{ 
+                      required: "El monto es obligatorio",
+                      min: { value: 0, message: "El monto no puede ser negativo" }
+                    }}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión Total</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 font-black text-lg">
+                              {form.watch("moneda") === 'PEN' ? 'S/' : '$'}
+                            </span>
+                            <Input 
+                              type="number" 
+                              step="0.01"
+                              min="0"
+                              className="h-12 bg-blue-50/30 border-blue-100 font-black text-blue-700 text-lg pl-10 focus:bg-white transition-colors" 
+                              placeholder="0.00"
+                              {...field}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                field.onChange(val === '' ? 0 : parseFloat(val));
+                              }}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage className="text-[10px] font-black uppercase mt-1" />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
                 <FormField
                   control={form.control}
                   name="estado"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Estado</FormLabel>
+                      <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Estado de la Propuesta</FormLabel>
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={quote?.estado === "Aprobado"}
+                        disabled={quote?.estado === "Ganada"}
                       >
                         <FormControl>
                           <SelectTrigger className={cn(
-                            "h-11 border-slate-200 font-bold text-xs uppercase",
-                            quote?.estado === "Aprobado" && "bg-slate-50 text-slate-500 cursor-not-allowed"
+                            "h-12 border-slate-200 font-black text-xs uppercase",
+                            field.value === "Ganada" ? "bg-success/10 text-success border-success/20" :
+                            field.value === "Perdida" ? "bg-error/10 text-error border-error/20" :
+                            field.value === "Enviado" ? "bg-blue-50 text-blue-600 border-blue-200" :
+                            "bg-slate-50"
                           )}>
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
                           <SelectItem value="Pendiente" className="text-xs font-bold uppercase">Pendiente</SelectItem>
-                          <SelectItem value="Enviado" className="text-xs font-bold uppercase text-blue-600">Enviado</SelectItem>
-                          <SelectItem value="Aprobado" className="text-xs font-bold uppercase text-success">Aprobado</SelectItem>
-                          <SelectItem value="Rechazado" className="text-xs font-bold uppercase text-error">Rechazado</SelectItem>
+                          <SelectItem value="Enviado" className="text-xs font-bold uppercase text-blue-600">Enviado al Cliente</SelectItem>
+                          <SelectItem value="Revisión" className="text-xs font-bold uppercase text-amber-600">En Revisión</SelectItem>
+                          <SelectItem value="Ganada" className="text-xs font-black uppercase text-success">Ganada</SelectItem>
+                          <SelectItem value="Perdida" className="text-xs font-bold uppercase text-error">Perdida</SelectItem>
                         </SelectContent>
                       </Select>
-                      {quote?.estado === "Aprobado" && (
-                        <p className="text-[9px] text-success font-black uppercase mt-1 flex items-center gap-1">
-                          <CheckCircle2 className="w-3 h-3" />
-                          Cotización Bloqueada por Aprobación
-                        </p>
-                      )}
                     </FormItem>
                   )}
                 />
               </div>
             </div>
-
-            <div className={cn("grid gap-6 items-start", needsCaja ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1")}>
-              <FormField
-                control={form.control}
-                name="observaciones"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Observaciones Internas</FormLabel>
-                    <FormControl>
-                      <textarea 
-                        {...field}
-                        value={field.value ?? ""}
-                        placeholder="Agregue notas adicionales sobre esta propuesta..."
-                        className="w-full min-h-[115px] p-3 rounded-xl border border-slate-200 text-sm font-bold bg-white focus:border-primary/50 outline-none transition-all resize-none"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-
-              {needsCaja && (
-                <div className="p-4 rounded-xl bg-blue-50 border border-blue-100 animate-in fade-in slide-in-from-top-2 duration-300 h-full flex flex-col justify-center">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="bg-white p-2 rounded-lg border border-blue-100 shadow-sm">
-                      <Wallet className="w-5 h-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <h4 className="text-[11px] font-black uppercase text-blue-700 leading-none">Ingreso a Tesorería</h4>
-                      <p className="text-[9px] text-blue-600 font-bold uppercase tracking-wide mt-1">
-                        {hasCobradoHitos 
-                          ? "Se han detectado hitos marcados como COBRADO. Seleccione la caja de destino." 
-                          : "La cotización está aprobada. Seleccione la caja de destino para el dinero."}
-                      </p>
-                    </div>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="cajaId"
-                    rules={{ required: needsCaja ? "Debe seleccionar una caja" : false }}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            value={field.value || ""}
-                          >
-                            <SelectTrigger className="h-11 w-full border-blue-200 bg-white font-black text-xs uppercase text-blue-700 shadow-sm flex items-center justify-between">
-                              <SelectValue placeholder="SELECCIONAR CAJA DE DESTINO...">
-                                {cajas.find(c => c.id === field.value)?.nombre || "SELECCIONAR CAJA DE DESTINO..."}
-                              </SelectValue>
-                            </SelectTrigger>
-                            <SelectContent className="z-[150] min-w-[300px]">
-                              {cajas.length === 0 ? (
-                                <div className="p-4 text-center text-[10px] font-black uppercase text-slate-400">
-                                  Cargando cajas...
-                                </div>
-                              ) : cajas.filter(c => c.moneda === currentMoneda).length === 0 ? (
-                                <div className="p-4 text-center text-[10px] font-black uppercase text-error">
-                                  No hay cajas en {currentMoneda}
-                                </div>
-                              ) : (
-                                cajas.filter(c => c.moneda === currentMoneda).map(caja => (
-                                  <SelectItem key={caja.id} value={caja.id} className="text-xs font-bold uppercase py-3">
-                                    {caja.nombre} ({caja.moneda}) — S/ {Number(caja.saldoReal).toLocaleString()}
-                                  </SelectItem>
-                                ))
-                              )}
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormMessage className="text-[10px] font-black uppercase mt-1" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {quote && (
-                    <div className="mt-3 flex items-center gap-2 bg-white/50 p-2 rounded-lg border border-blue-50">
-                      <AlertTriangle className="w-3 h-3 text-blue-400" />
-                      <p className="text-[8px] font-bold text-blue-400 uppercase tracking-tighter">Nota: Solo se registrará en caja la diferencia si el monto cobrado ha cambiado.</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
           
           <Separator className="opacity-50" />
 
-          {/* SECCIÓN 3: CONDICIONES DE PAGO (MONTO DIRECTO) */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                <Wallet className="w-4 h-4" />
-                Condiciones de Pago (Adelanto y Saldo)
-              </h3>
-            </div>
+          <Separator className="opacity-50" />
 
-            <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100 flex flex-col md:flex-row items-center gap-8">
-              <div className="flex-1 space-y-2 w-full">
-                <p className="text-[10px] font-black uppercase text-slate-400">Monto de Adelanto (Ingresar)</p>
-                <div className="relative">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-lg font-black text-slate-300">{currentMoneda === 'PEN' ? 'S/' : '$'}</span>
-                  <Input 
-                    type="number"
-                    value={hitos[0]?.monto || 0} 
-                    onChange={(e) => {
-                       const val = Number(e.target.value);
-                       const safeVal = Math.min(totalMonto, Math.max(0, val));
-                       const perc = totalMonto > 0 ? (safeVal / totalMonto) * 100 : 0;
-                       const newHitos = [
-                         { ...hitos[0], monto: safeVal, porcentaje: perc, descripcion: "Adelanto inicial", estado: hitos[0]?.estado || 'COBRADO' },
-                         { ...hitos[1], monto: Number((totalMonto - safeVal).toFixed(2)), porcentaje: 100 - perc, descripcion: "Saldo contra entrega", estado: 'PENDIENTE' }
-                       ];
-                       setHitos(newHitos);
-                    }}
-                    className="h-12 text-xl font-black text-primary border-slate-200 bg-white pl-12 rounded-xl"
-                  />
-                </div>
-                <p className="text-[9px] font-bold text-slate-400 uppercase">
-                   Equivale al <span className="text-primary">{(hitos[0]?.porcentaje || 0).toFixed(1)}%</span> del total.
-                </p>
-              </div>
 
-              <div className="w-px h-12 bg-slate-200 hidden md:block" />
-
-              <div className="flex-1 space-y-1 w-full text-right">
-                <p className="text-[10px] font-black uppercase text-slate-400">Saldo Pendiente (Automático)</p>
-                <p className="text-xl font-black text-slate-600">
-                   {currentMoneda === 'PEN' ? 'S/' : '$'} {((hitos[1]?.monto || 0)).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                </p>
-                <Badge variant="outline" className="bg-white text-[8px] font-black uppercase px-3 py-1 border-slate-200">
-                   { (100 - (hitos[0]?.porcentaje || 0)).toFixed(1) }% restante
-                </Badge>
-              </div>
-            </div>
-            
-            <p className="text-[9px] text-slate-400 font-bold uppercase text-center italic">
-              * El total de la inversión es {currentMoneda === 'PEN' ? 'S/' : '$'} {totalMonto.toLocaleString()}. Finanzas gestionará los cobros según estos montos.
-            </p>
-          </div>
 
           <Separator className="opacity-50" />
 
@@ -775,7 +574,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
           </Button>
           <Button 
             type="submit" 
-            disabled={isUploading || !selectedClientId || !isPlanValid}
+            disabled={isUploading || !selectedClientId}
             className="bg-primary hover:bg-primary/90 text-white font-black px-10 shadow-lg shadow-primary/20 h-11 uppercase text-[10px] gap-2"
           >
             {isUploading ? (
@@ -804,6 +603,25 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
               {confirmDialog.description}
             </DialogDescription>
           </DialogHeader>
+
+          {confirmDialog.title === "¡Cotización Ganada!" && (
+            <div className="mt-4 px-2 animate-in fade-in slide-in-from-bottom-2">
+              <label className="text-[10px] font-black text-slate-500 uppercase mb-2 block">Asignar Líder de Proyecto:</label>
+              <Select value={selectedLiderId} onValueChange={(val) => setSelectedLiderId(val || "")}>
+                <SelectTrigger className="w-full h-11 border-blue-200 bg-blue-50/50 font-bold text-xs text-blue-800">
+                  <SelectValue placeholder="-- SELECCIONAR LÍDER --" />
+                </SelectTrigger>
+                <SelectContent className="bg-white">
+                  {responsables.map(r => (
+                    <SelectItem key={r.id} value={r.id} className="text-xs font-bold uppercase">
+                      {r.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <DialogFooter className="mt-6 flex gap-3 sm:justify-center">
             <Button
               type="button"
@@ -815,7 +633,17 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
             </Button>
             <Button
               type="button"
-              onClick={() => executeSubmit(confirmDialog.data)}
+              onClick={() => {
+                if (confirmDialog.title === "¡Cotización Ganada!") {
+                  if (!selectedLiderId) {
+                    alert("Debe seleccionar obligatoriamente un líder de proyecto para continuar.");
+                    return;
+                  }
+                  executeSubmit({ ...confirmDialog.data, liderId: selectedLiderId });
+                } else {
+                  executeSubmit(confirmDialog.data);
+                }
+              }}
               className="flex-1 rounded-xl h-11 font-black text-[10px] uppercase bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-600/20"
             >
               {confirmDialog.confirmText || "Confirmar Ajuste"}

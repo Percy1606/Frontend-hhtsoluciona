@@ -35,7 +35,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
-import { cn, formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency, formatLargeCurrency } from "@/lib/utils";
 import { CajaForm } from "@/components/finanzas/caja-form";
 import { TransferModal } from "@/components/finanzas/transfer-modal";
 import { TransactionHistoryModal } from "@/components/finanzas/transaction-history-modal";
@@ -138,7 +138,16 @@ export default function CajasPage() {
   );
 
   const totalCapital = cajas.reduce((sum, c) => sum + Number(c.saldoReal || 0), 0);
+  const totalRetenido = cajas.reduce((sum, c) => sum + Number(c.saldoComprometido || 0), 0);
   const totalDisponible = cajas.reduce((sum, c) => sum + Number(c.saldoDisponible || 0), 0);
+
+  const formatCurrencyDynamic = (value: number, moneda: string = 'PEN') => {
+    return new Intl.NumberFormat("es-PE", {
+      style: "currency",
+      currency: moneda,
+      minimumFractionDigits: 2,
+    }).format(value);
+  };
 
   return (
     <div className="p-6 space-y-6 animate-in fade-in duration-500">
@@ -166,28 +175,39 @@ export default function CajasPage() {
       </div>
 
       {/* KPI CARDS */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard 
-            label="Capital Total" 
+            label="Saldo Total en Cajas" 
             value={totalCapital} 
             subLabel="Suma de saldos físicos"
-            icon={<Wallet className="w-4 h-4 text-blue-600" />}
-            color="bg-blue-600"
+            icon={<Wallet className="w-5 h-5 text-slate-700" />}
+            color="bg-slate-100 border-slate-200"
+            textColor="text-slate-900"
           />
           <KPICard 
-            label="Fondo Disponible" 
+            label="Fondos Retenidos" 
+            value={totalRetenido} 
+            subLabel="Por pagar u obligaciones"
+            icon={<Lock className="w-5 h-5 text-orange-600" />}
+            color="bg-orange-50 border-orange-200"
+            textColor="text-orange-900"
+          />
+          <KPICard 
+            label="Saldo Disponible" 
             value={totalDisponible} 
             subLabel="Libre para nuevos gastos"
-            icon={<ArrowUpRight className="w-4 h-4 text-emerald-600" />}
-            color="bg-emerald-600"
+            icon={<ArrowUpRight className="w-5 h-5 text-emerald-600" />}
+            color="bg-emerald-50 border-emerald-200"
+            textColor="text-emerald-900"
           />
           <KPICard 
             label="Cuentas Activas" 
             value={cajas.length} 
             isCurrency={false}
             subLabel="Operativas en sistema"
-            icon={<ShieldCheck className="w-4 h-4 text-primary" />}
-            color="bg-slate-900"
+            icon={<ShieldCheck className="w-5 h-5 text-blue-600" />}
+            color="bg-blue-50 border-blue-200"
+            textColor="text-blue-900"
           />
       </div>
 
@@ -277,185 +297,134 @@ export default function CajasPage() {
 
 function CajaCard({ caja, onEdit, onDelete, onHistory, onToggleProtect }: any) {
     const isProtected = caja.esProtegida;
+    const saldoReal = Number(caja.saldoReal || 0);
+    const retenido = Number(caja.saldoComprometido || 0);
+    const disponible = Number(caja.saldoDisponible || 0);
+    const isOverdrawn = disponible < 0;
 
     return (
         <Card className={cn(
-            "transition-all duration-500 overflow-hidden group relative border-none shadow-md hover:shadow-xl",
-            isProtected 
-                ? "bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white" 
-                : "bg-white text-slate-800 border-slate-200"
+            "transition-all duration-300 overflow-hidden group relative shadow-sm hover:shadow-md border",
+            isOverdrawn ? "border-red-400 bg-red-50/30" : "border-slate-200 bg-white"
         )}>
-            {/* DECORACIÓN SUPERIOR */}
+            {/* Cabecera de la Tarjeta */}
             <div className={cn(
-                "h-1 w-full",
-                isProtected ? "bg-gradient-to-r from-primary via-blue-400 to-primary animate-gradient-x" : "bg-slate-100"
-            )} />
-
-            <CardContent className="p-6 space-y-6">
-                {/* CABECERA */}
-                <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-4">
+                "p-5 border-b",
+                isOverdrawn ? "border-red-100 bg-red-50" : "border-slate-100 bg-slate-50/50"
+            )}>
+                <div className="flex items-start justify-between mb-3">
+                    <div className="flex items-center gap-3">
                         <div className={cn(
-                            "w-12 h-12 rounded-2xl flex items-center justify-center transition-transform duration-500 group-hover:scale-110",
-                            isProtected 
-                                ? "bg-white/5 border border-white/10 shadow-[0_0_15px_rgba(59,130,246,0.3)]" 
-                                : "bg-primary/5 border border-primary/10"
+                            "w-10 h-10 rounded-xl flex items-center justify-center shadow-sm",
+                            isProtected ? "bg-slate-800 text-white" : "bg-white border border-slate-200 text-slate-700"
                         )}>
-                            {isProtected ? (
-                                <Lock className="w-6 h-6 text-primary drop-shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
-                            ) : (
-                                <Wallet className="w-6 h-6 text-primary" />
-                            )}
+                            {isProtected ? <Lock className="w-5 h-5" /> : <Wallet className="w-5 h-5" />}
                         </div>
                         <div>
-                            <div className="flex items-center gap-2">
-                                <h3 className={cn(
-                                    "font-black text-sm uppercase tracking-tighter",
-                                    isProtected ? "text-white" : "text-slate-900"
-                                )}>
-                                    {caja.nombre}
-                                </h3>
-                                {isProtected && (
-                                    <div className="flex h-2 w-2 relative">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
-                                    </div>
-                                )}
-                            </div>
+                            <h3 className="font-black text-sm uppercase tracking-tighter text-slate-900 line-clamp-1" title={caja.nombre}>
+                                {caja.nombre}
+                            </h3>
                             <div className="flex items-center gap-1.5 mt-1">
-                                <Badge variant="outline" className={cn(
-                                    "text-[8px] font-black uppercase px-2 py-0 border-none",
-                                    isProtected ? "bg-white/10 text-primary" : "bg-slate-100 text-slate-500"
-                                )}>
+                                <Badge variant="outline" className="text-[9px] font-bold uppercase px-1.5 py-0 border-slate-200 text-slate-500">
                                     {caja.tipo}
                                 </Badge>
-                                <Badge className={cn(
-                                    "text-[8px] font-black uppercase px-2 py-0 border-none",
-                                    caja.subtipo === 'OBLIGACIONES' ? "bg-orange-100 text-orange-600" :
-                                    caja.subtipo === 'RESERVA' ? "bg-emerald-100 text-emerald-600" :
-                                    "bg-blue-100 text-blue-600"
-                                )}>
+                                <Badge variant="outline" className="text-[9px] font-bold uppercase px-1.5 py-0 border-slate-200 text-slate-500">
                                     {caja.subtipo}
                                 </Badge>
                             </div>
                         </div>
                     </div>
-
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0">
-                        {Number(caja.porcentajeProvision) > 0 && (
-                            <div className="flex flex-col items-end justify-center mr-2">
-                                <span className="text-[8px] font-black text-blue-500 uppercase tracking-tighter">Provisión</span>
-                                <span className="text-xs font-black text-blue-600">{Number(caja.porcentajeProvision)}%</span>
-                            </div>
-                        )}
-                        <Button variant="ghost" size="icon" onClick={onHistory} className={cn("h-8 w-8 rounded-full", isProtected ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400")}>
-                            <History className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={onEdit} className={cn("h-8 w-8 rounded-full", isProtected ? "hover:bg-white/10 text-white/40 hover:text-white" : "hover:bg-slate-100 text-slate-400")}>
-                            <Edit2 className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => onDelete(caja)} className={cn("h-8 w-8 rounded-full", isProtected ? "hover:bg-white/10 text-white/40 hover:text-error" : "hover:bg-red-50 text-slate-400 hover:text-error")}>
-                            <Trash2 className="w-4 h-4" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* SALDOS PRINCIPALES */}
-                <div className="relative">
-                    {/* FONDO DECORATIVO PARA BÓVEDAS */}
-                    {isProtected && (
-                        <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full -z-10" />
+                    {isOverdrawn && (
+                        <Badge variant="destructive" className="bg-red-500 hover:bg-red-600 text-[9px] uppercase font-black px-2 py-0.5 animate-pulse shadow-sm">
+                            Sobregirada
+                        </Badge>
                     )}
-                    
-                    <div className="grid grid-cols-2 gap-6 relative">
-                        <div className="space-y-1">
-                            <p className={cn(
-                                "text-[9px] font-black uppercase tracking-widest",
-                                isProtected ? "text-slate-400" : "text-slate-400"
-                            )}>Saldo Real</p>
-                            <p className={cn(
-                                "text-xl font-black tracking-tighter",
-                                isProtected ? "text-white" : "text-slate-900"
-                            )}>
-                                {formatCurrency(Number(caja.saldoReal))}
-                            </p>
-                        </div>
-                        <div className="space-y-1 text-right">
-                            <p className={cn(
-                                "text-[9px] font-black uppercase tracking-widest",
-                                isProtected ? "text-primary" : "text-slate-400"
-                            )}>Disponible</p>
-                            <p className={cn(
-                                "text-xl font-black tracking-tighter",
-                                isProtected ? "text-blue-400" : "text-emerald-600"
-                            )}>
-                                {formatCurrency(Number(caja.saldoDisponible))}
-                            </p>
-                        </div>
-                    </div>
                 </div>
 
-                {/* PIE DE TARJETA Y ACCIONES RÁPIDAS */}
-                <div className={cn(
-                    "pt-4 border-t flex items-center justify-between",
-                    isProtected ? "border-white/5" : "border-slate-100"
-                )}>
-                    <div className="flex items-center gap-3">
-                         <div 
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-1.5 rounded-xl cursor-pointer transition-all active:scale-95",
-                                isProtected ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-slate-50 text-slate-400 hover:bg-slate-100"
-                            )} 
-                            onClick={onToggleProtect}
-                        >
-                            {isProtected ? <ShieldCheck className="w-3 h-3" /> : <Unlock className="w-3 h-3 opacity-50" />}
-                            <span className="text-[9px] font-black uppercase tracking-widest">
-                                {isProtected ? "Bóveda Activa" : "Cuenta Pública"}
-                            </span>
-                         </div>
+                {/* Saldos Desglose */}
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                    <div className="space-y-1">
+                        <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Saldo Real</p>
+                        <p className="text-sm font-black tracking-tighter text-slate-700">
+                            {new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(saldoReal)}
+                        </p>
                     </div>
-
-                    <div className="flex items-center gap-1 text-slate-400">
-                        <Activity className="w-3 h-3 opacity-30" />
-                        <span className="text-[8px] font-bold uppercase tracking-tighter">
-                            {caja._count?.transacciones || 0} MOV.
-                        </span>
+                    <div className="space-y-1 text-right">
+                        <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Retenido</p>
+                        <p className="text-sm font-black tracking-tighter text-orange-600">
+                            - {new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(retenido)}
+                        </p>
                     </div>
                 </div>
+            </div>
 
-                {/* ALERTA DE FONDOS RETENIDOS */}
-                {Number(caja.saldoComprometido) > 0 && (
-                    <div className={cn(
-                        "mt-2 p-2 rounded-lg flex items-center justify-center gap-2",
-                        isProtected ? "bg-orange-500/10 border border-orange-500/20" : "bg-orange-50 border border-orange-100"
+            {/* Saldo Disponible */}
+            <div className={cn(
+                "p-5 flex items-center justify-between",
+                isOverdrawn ? "bg-red-50" : "bg-white"
+            )}>
+                <div>
+                    <p className={cn(
+                        "text-[10px] font-black uppercase tracking-widest",
+                        isOverdrawn ? "text-red-600" : "text-emerald-600"
+                    )}>Saldo Disponible</p>
+                    <p className={cn(
+                        "text-2xl font-black tracking-tighter leading-none mt-1",
+                        isOverdrawn ? "text-red-600" : "text-emerald-600"
                     )}>
-                        <Clock className="w-3 h-3 text-orange-500 animate-pulse" />
-                        <span className={cn(
-                            "text-[8px] font-black uppercase tracking-tight",
-                            isProtected ? "text-orange-400" : "text-orange-600"
-                        )}>
-                            S/ {Number(caja.saldoComprometido).toLocaleString()} RETENIDOS POR PAGOS
-                        </span>
-                    </div>
-                )}
-            </CardContent>
+                        {new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(disponible)}
+                    </p>
+                </div>
+                
+                {/* Acciones Rápidas Hover */}
+                <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" onClick={onHistory} title="Ver Movimientos" className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-primary">
+                        <History className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={onEdit} title="Editar Caja" className="h-8 w-8 rounded-full hover:bg-slate-100 text-slate-400 hover:text-primary">
+                        <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={() => onDelete(caja)} title="Eliminar Caja" className="h-8 w-8 rounded-full hover:bg-red-50 text-slate-400 hover:text-red-500">
+                        <Trash2 className="w-4 h-4" />
+                    </Button>
+                </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <div 
+                    className="flex items-center gap-1.5 cursor-pointer hover:opacity-70 transition-opacity"
+                    onClick={onToggleProtect}
+                >
+                    {isProtected ? <ShieldCheck className="w-3.5 h-3.5 text-slate-600" /> : <Unlock className="w-3 h-3 text-slate-400" />}
+                    <span className="text-[9px] font-bold uppercase text-slate-500">
+                        {isProtected ? "Bóveda" : "Pública"}
+                    </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                    <Activity className="w-3.5 h-3.5 text-slate-400" />
+                    <span className="text-[9px] font-bold uppercase text-slate-500 tracking-tighter">
+                        {caja._count?.transacciones || 0} Movimientos
+                    </span>
+                </div>
+            </div>
         </Card>
     );
 }
 
-function KPICard({ label, value, subLabel, icon, color, isCurrency = true }: any) {
+function KPICard({ label, value, subLabel, icon, color, textColor, isCurrency = true }: any) {
     return (
-        <Card className="border-slate-200 shadow-sm overflow-hidden">
+        <Card className={cn("border shadow-sm overflow-hidden", color)} title={isCurrency ? formatCurrency(value) : undefined}>
             <CardContent className="p-5 flex items-center gap-4">
-                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 bg-slate-50")}>
+                <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0 bg-white shadow-sm")}>
                     {icon}
                 </div>
                 <div className="space-y-0.5">
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest">{label}</p>
-                    <p className="text-xl font-black tracking-tighter text-slate-900 leading-none">
-                        {isCurrency ? formatCurrency(value) : value}
+                    <p className={cn("text-[9px] font-black uppercase tracking-widest opacity-80", textColor)}>{label}</p>
+                    <p className={cn("text-xl font-black tracking-tighter leading-none", textColor)}>
+                        {isCurrency ? formatLargeCurrency(value) : value}
                     </p>
-                    <p className="text-[9px] font-bold text-slate-500 uppercase tracking-tighter mt-1">{subLabel}</p>
+                    <p className={cn("text-[9px] font-bold uppercase tracking-tighter mt-1 opacity-70", textColor)}>{subLabel}</p>
                 </div>
             </CardContent>
         </Card>

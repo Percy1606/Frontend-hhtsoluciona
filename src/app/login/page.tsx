@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import Image from "next/image";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -39,8 +40,10 @@ const loginSchema = z.object({
   }),
 });
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isExpired = searchParams?.get('expired') === 'true';
   const { setAuth, isAuthenticated } = useAuthStore();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -132,6 +135,21 @@ export default function LoginPage() {
                     />
                 </div>
             </div>
+            
+            {isExpired ? (
+              <div className="mb-6 bg-red-50/80 border border-red-200 rounded-2xl p-4 flex gap-3 text-left items-start shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-red-500 text-white rounded-full p-1.5 shrink-0">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-0.5">Control de Seguridad</h3>
+                  <p className="text-sm font-medium text-red-900 leading-tight">
+                    Tú sesión ha expirado por seguridad. Por favor, inicia sesión nuevamente.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
             <h1 className="text-3xl font-black text-[#001F3F] tracking-tight uppercase">Bienvenido de nuevo</h1>
             <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2 flex items-center justify-center lg:justify-start gap-2">
                 <Lock className="w-3 h-3" /> Ingrese sus credenciales para continuar
@@ -292,5 +310,17 @@ export default function LoginPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="w-8 h-8 animate-spin text-[#001F3F]" />
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   );
 }

@@ -214,7 +214,7 @@ export default function CotizacionesInboxPage() {
         showSuccess("Cotización Eliminada", "El registro ha sido removido del sistema exitosamente.");
     } catch (err: any) {
         console.error("Error deleting quote:", err);
-        showError("Error al Eliminar", err.response?.data?.message || "No se pudo eliminar la cotización.");
+        showError("Error al Eliminar", err.message || "No se pudo eliminar la cotización.");
     } finally {
         setIsDeleting(false);
     }

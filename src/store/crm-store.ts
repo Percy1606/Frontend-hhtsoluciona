@@ -22,7 +22,7 @@ export type Quote = {
   plazo?: string;
   validez?: string;
   formaPago?: string;
-  estado: 'Pendiente' | 'Enviado' | 'Revisado' | 'Aprobado' | 'Aprobada' | 'Rechazado' | 'Rechazada' | 'Obsoleto';
+  estado: 'Pendiente' | 'Enviado' | 'Revisado' | 'Aprobado' | 'Aprobada' | 'Rechazado' | 'Rechazada' | 'Obsoleto' | 'Ganada' | 'Perdida' | 'En negociación';
   moneda?: string;
   observaciones?: string;
   cajaId?: string;
@@ -387,6 +387,7 @@ export const useCRMStore = create<CRMState>()(
             fechaCreacion,
             fechaActualizacion,
             deletedAt,
+            _count,
             ...data 
           } = client as any;
           
@@ -439,6 +440,7 @@ export const useCRMStore = create<CRMState>()(
             fechaCreacion,
             fechaActualizacion,
             deletedAt,
+            _count,
             ...data 
           } = client as any;
           
@@ -615,7 +617,7 @@ export const useCRMStore = create<CRMState>()(
             return;
           }
 
-          const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, ...data } = client as any;
+          const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, _count, ...data } = client as any;
           
           const payload: any = { 
             ...data, 
@@ -657,7 +659,7 @@ export const useCRMStore = create<CRMState>()(
           await api.post('/crm/interacciones', { clientId, fecha: new Date().toISOString(), tipo, accion: 'Seguimiento registrado', observaciones: accion, usuario: user?.nombre || 'Admin' });
           const client = get().clients.find(c => c.id === clientId);
           if (client) {
-            const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, ...cleanData } = client as any;
+            const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, _count, ...cleanData } = client as any;
             await api.put(`/crm/clientes/${clientId}`, { ...cleanData, proximoSeguimiento: fecha, accion: accion, ultimoContacto: new Date().toISOString(), montoEstimado: safeNumber(cleanData.montoEstimado), ventaProyectada: safeNumber(cleanData.ventaProyectada), probabilidad: safeNumber(cleanData.probabilidad) });
           }
           await get().fetchClients(1);

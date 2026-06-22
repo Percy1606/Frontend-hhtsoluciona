@@ -34,7 +34,8 @@ import {
   History,
   Receipt,
   TrendingDown,
-  Wallet
+  Wallet,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -60,9 +61,9 @@ const menuItems = [
     label: "Operaciones",
     href: "/operaciones",
     subItems: [
-      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: ClipboardList, label: "Bandeja Técnica", href: "/operaciones/bandeja" },
       { icon: FolderKanban, label: "Proyectos", href: "/operaciones/proyectos" },
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: ClipboardList, label: "Actividades", href: "/operaciones/actividades" },
       { icon: Clock, label: "Timeline", href: "/operaciones/timeline" },
       { icon: CheckSquare, label: "Validaciones", href: "/operaciones/validaciones" },
@@ -74,9 +75,11 @@ const menuItems = [
     label: "Logística",
     href: "/logistica",
     subItems: [
-      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: CheckSquare, label: "Bandeja de Proyectos", href: "/logistica/bandeja" },
       { icon: Package, label: "Almacén Central", href: "/logistica/inventario" },
-      { icon: ShoppingCart, label: "Órdenes de Servicio", href: "/logistica/ordenes" },
+      { icon: ShoppingCart, label: "Órdenes de Materiales", href: "/logistica/ordenes" },
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: FileText, label: "Documentación Logística", href: "/logistica/documentos" },
       { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
     ]
   },
@@ -85,11 +88,12 @@ const menuItems = [
     label: "Finanzas",
     href: "/finanzas",
     subItems: [
-      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: CheckSquare, label: "Bandeja de Proyectos", href: "/finanzas/bandeja" },
       { icon: Wallet, label: "Cajas y Cuentas", href: "/finanzas/cajas" },
-      { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
-      { icon: BarChart, label: "Reportes", href: "/finanzas" },
+      { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: BarChart, label: "Reportes", href: "/finanzas/reportes" },
     ]
   },
   {

@@ -85,6 +85,7 @@ interface ProyectoDetailProps {
 
 export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
   const { user } = useAuthStore();
+  const isFinanceOrAdmin = user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas');
   const { responsables, fetchProjectProfitability, addDocumento, deleteDocumento } = useOperacionesStore();
   const { clients: crmClients } = useCRMStore();
   const [activeTab, setActiveTab] = useState("actividades");
@@ -186,9 +187,11 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                 <TabsTrigger value="actividades" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <ClipboardList className="w-4 h-4" /> Actividades ({proyecto.actividades.length})
                 </TabsTrigger>
-                <TabsTrigger value="finanzas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
-                    <DollarSign className="w-4 h-4" /> Finanzas y Rentabilidad
-                </TabsTrigger>
+                {isFinanceOrAdmin && (
+                  <TabsTrigger value="finanzas" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
+                      <DollarSign className="w-4 h-4" /> Finanzas y Rentabilidad
+                  </TabsTrigger>
+                )}
                 <TabsTrigger value="solicitudes" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <HandCoins className="w-4 h-4" /> Solicitudes de Fondos
                 </TabsTrigger>
@@ -211,9 +214,11 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                 <LogisticaPanel proyecto={proyecto} data={financeData} loading={loadingFinance} onRefresh={loadFinance} />
               </TabsContent>
 
-              <TabsContent value="finanzas" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
-                <FinancePanel proyectoId={proyecto.id} />
-              </TabsContent>
+              {isFinanceOrAdmin && (
+                <TabsContent value="finanzas" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
+                  <FinancePanel proyectoId={proyecto.id} />
+                </TabsContent>
+              )}
 
               <TabsContent value="solicitudes" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
                 <SolicitudesFondosPanel proyectoId={proyecto.id} />
@@ -488,11 +493,13 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
     tipo: string;
     url: string;
     observaciones: string;
+    area: string;
   }>({
     nombre: "",
     tipo: "",
     url: "",
     observaciones: "",
+    area: "",
   });
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -536,10 +543,10 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
         subidoPor: user?.nombre || "Sistema",
         observaciones: newDoc.observaciones,
         fechaSubida: new Date().toISOString(),
-        validaciones: [],
-      });
+        area: newDoc.area || null
+      } as any);
 
-      setNewDoc({ nombre: "", tipo: "", url: "", observaciones: "" });
+      setNewDoc({ nombre: "", tipo: "", url: "", observaciones: "", area: "" });
       setSelectedFile(null);
       setIsUploadOpen(false);
     } catch (error: any) {
@@ -670,6 +677,20 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
                                             {tipo.label}
                                         </SelectItem>
                                     ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label className="text-[9px] font-black uppercase text-slate-500 tracking-widest">Área Destino</Label>
+                            <Select value={newDoc.area} onValueChange={(v) => setNewDoc(prev => ({ ...prev, area: v || "" }))}>
+                                <SelectTrigger className="h-10 border-slate-200 font-bold text-xs">
+                                    <SelectValue placeholder="Seleccionar área..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    <SelectItem value="LogisticaYRecursos" className="font-bold text-xs">Logística y Recursos</SelectItem>
+                                    <SelectItem value="IngenieriaYSupervision" className="font-bold text-xs">Ingeniería y Supervisión Técnica</SelectItem>
+                                    <SelectItem value="GestionDocumentaria" className="font-bold text-xs">Gestión Documentaria</SelectItem>
+                                    <SelectItem value="OperacionesDeCampo" className="font-bold text-xs">Operaciones de Campo</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

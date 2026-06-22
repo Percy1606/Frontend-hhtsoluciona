@@ -12,10 +12,11 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bell, Check, Clock, FilterX, ChevronLeft, ChevronRight } from "lucide-react";
+import { Bell, Check, Clock, FilterX, ChevronLeft, ChevronRight, Trash2 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export default function HistorialNotificacionesPage() {
   const { 
@@ -26,8 +27,28 @@ export default function HistorialNotificacionesPage() {
     loading,
     totalNotifications,
     page,
-    totalPages
+    totalPages,
+    deleteNotification
   } = useNotificationStore();
+
+  const router = useRouter();
+
+  const getNotificationLink = (n: any) => {
+    if (n.actividadComercialId) return `/clientes/pipeline`;
+    const titulo = n.titulo.toLowerCase();
+    if (titulo.includes('orden')) return '/logistica/ordenes';
+    if (titulo.includes('almacén') || titulo.includes('stock')) return '/logistica/inventario';
+    if (titulo.includes('factura') || titulo.includes('ingreso')) return '/finanzas/ingresos';
+    if (titulo.includes('gasto') || titulo.includes('egreso')) return '/finanzas/egresos';
+    if (titulo.includes('caja') || titulo.includes('transferencia')) return '/finanzas/cajas';
+    if (titulo.includes('proyecto') || titulo.includes('adelanto')) return '/operaciones/proyectos';
+    if (titulo.includes('cotización') || titulo.includes('cotizacion')) return '/operaciones/cotizaciones';
+    if (titulo.includes('cliente')) return '/clientes';
+    if (n.tipo === 'COTIZACION') return '/operaciones/cotizaciones';
+    if (n.tipo === 'CLIENTE') return '/clientes';
+    if (n.tipo === 'VISITA' || n.tipo === 'SEGUIMIENTO') return '/clientes/pipeline';
+    return null;
+  };
 
   useEffect(() => {
     fetchNotifications(1, 50);
@@ -121,14 +142,21 @@ export default function HistorialNotificacionesPage() {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <div className="flex flex-col">
+                    <div 
+                        className="flex flex-col cursor-pointer group"
+                        onClick={() => {
+                            if (!n.leida) markAsRead(n.id);
+                            const url = getNotificationLink(n);
+                            if (url) router.push(url);
+                        }}
+                    >
                         <p className={cn(
-                            "font-black text-xs uppercase leading-tight",
+                            "font-black text-xs uppercase leading-tight group-hover:underline group-hover:text-primary transition-colors",
                             n.leida ? "text-slate-500" : "text-primary"
                         )}>
                             {n.titulo}
                         </p>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1">{n.mensaje}</p>
+                        <p className="text-[11px] text-slate-500 font-medium mt-0.5 line-clamp-1 group-hover:text-slate-700 transition-colors">{n.mensaje}</p>
                     </div>
                   </TableCell>
                   <TableCell className="text-center">
@@ -141,16 +169,27 @@ export default function HistorialNotificacionesPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right pr-6">
-                    {!n.leida && (
-                        <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            onClick={() => markAsRead(n.id)}
-                            className="h-7 text-primary hover:bg-primary/10 font-black text-[9px] uppercase px-3"
+                    <div className="flex items-center justify-end gap-2">
+                        {!n.leida && (
+                            <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={() => markAsRead(n.id)}
+                                className="h-7 text-primary hover:bg-primary/10 font-black text-[9px] uppercase px-3"
+                            >
+                                Marcar leído
+                            </Button>
+                        )}
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => deleteNotification(n.id)}
+                            className="h-7 w-7 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full"
+                            title="Eliminar notificación"
                         >
-                            Marcar leído
+                            <Trash2 className="w-3.5 h-3.5" />
                         </Button>
-                    )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

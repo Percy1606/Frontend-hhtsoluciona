@@ -18,8 +18,9 @@ export function KPIStats() {
   const { proyectos } = useOperacionesStore();
   const { globalKPIs } = useFinanzasStore();
 
-  const totalClientes = globalKPIs?.totalClientes ?? clients.length;
-  const prospectos = clients.filter(c => c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido').length;
+  const realClientStages = ['Ganado', 'Orden de Servicio', 'Servicio Realizado', 'Cotización Enviada', 'Cotizacion Enviada', 'Inspección Realizada', 'Inspeccion Realizada'];
+  const totalClientes = clients.filter(c => realClientStages.includes(c.etapaComercial) || realClientStages.includes(c.estado) || c.tipoCliente === 'CLIENTE').length;
+  const prospectos = clients.filter(c => !realClientStages.includes(c.etapaComercial) && c.etapaComercial !== 'Perdido').length;
   const cotizacionesEnviadas = globalKPIs?.cotizacionesTotal ?? quotes.length;
   const proyectosActivos = globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución').length;
   
@@ -61,18 +62,18 @@ export function KPIStats() {
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
       {kpiConfig.map((kpi) => (
-        <Card key={kpi.label} className="border-none shadow-sm overflow-hidden bg-white hover:shadow-md transition-all hover:-translate-y-1 rounded-[1.5rem]">
-          <CardContent className="p-5 flex flex-col items-center text-center gap-2">
-            <div className={`p-2.5 rounded-2xl shrink-0 ${kpi.color} mb-1`}>
-              <kpi.icon className="w-5 h-5" />
+        <Card key={kpi.label} className="border-none shadow-sm overflow-hidden bg-white hover:shadow-md transition-all hover:-translate-y-1 rounded-2xl">
+          <CardContent className="p-3 flex flex-col items-center text-center gap-1">
+            <div className={`p-2 rounded-xl shrink-0 ${kpi.color} mb-1`}>
+              <kpi.icon className="w-4 h-4" />
             </div>
             <div className="min-w-0 w-full px-1">
-              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest truncate mb-0.5">{kpi.label}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate mb-0.5">{kpi.label}</p>
               <h3 className={cn(
                 "font-black text-slate-800 leading-none tracking-tight truncate",
-                kpi.isCurrency ? "text-base" : "text-lg"
+                kpi.isCurrency ? "text-sm" : "text-base"
               )}>
                 {formatValue(kpi)}
               </h3>

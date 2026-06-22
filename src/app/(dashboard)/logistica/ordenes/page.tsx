@@ -155,9 +155,9 @@ export default function OrdenesCompraPage() {
             <div className="bg-primary/10 p-2 rounded-lg">
               <ShoppingCart className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Órdenes de Servicio</h1>
+            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Órdenes de Materiales</h1>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Gestión de adquisiciones y abastecimiento.</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Gestión de adquisiciones y abastecimiento de materiales.</p>
         </div>
         
         <Button onClick={() => setIsOrdenModalOpen(true)} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
@@ -168,7 +168,7 @@ export default function OrdenesCompraPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard label="Órdenes Pendientes" value={ordenes.filter(o => o.estado === 'PENDIENTE').length} icon={<Clock className="w-4 h-4"/>} color="text-warning" bgColor="bg-yellow-50" />
         <StatsCard label="Items en Página" value={ordenes.length} icon={<ShoppingCart className="w-4 h-4"/>} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Monto Página (OC)" value={ordenes.reduce((acc, o) => acc + o.montoTotal, 0)} icon={<ShoppingCart className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" isCurrency />
+        <StatsCard label="Monto Página (OM)" value={ordenes.reduce((acc, o) => acc + o.montoTotal, 0)} icon={<ShoppingCart className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" isCurrency />
         <StatsCard label="Total Histórico" value={totalOrdenes} icon={<CheckCircle2 className="w-4 h-4"/>} color="text-success" bgColor="bg-green-50" />
       </div>
 
@@ -236,7 +236,8 @@ export default function OrdenesCompraPage() {
             <Table>
                 <TableHeader className="bg-slate-50/50">
                     <TableRow>
-                        <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6">Código</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6 w-12 text-center">Ítem</TableHead>
+                        <TableHead className="font-black text-primary uppercase text-[10px]">Código</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Proveedor</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto</TableHead>
                         <TableHead className="font-black text-primary uppercase text-[10px]">Materiales</TableHead>
@@ -248,13 +249,16 @@ export default function OrdenesCompraPage() {
                 </TableHeader>
                 <TableBody>
                     {loading ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</TableCell></TableRow>
                     ) : ordenes.length === 0 ? (
-                        <TableRow><TableCell colSpan={8} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de compra.</TableCell></TableRow>
+                        <TableRow><TableCell colSpan={9} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de materiales.</TableCell></TableRow>
                     ) : (
-                        ordenes.map((oc) => (
+                        ordenes.map((oc, index) => (
                             <TableRow key={oc.id} className="hover:bg-slate-50/50 transition-colors group">
-                                <TableCell className="pl-6 font-black text-primary text-xs uppercase group-hover:translate-x-1 transition-transform">{oc.codigo}</TableCell>
+                                <TableCell className="pl-6 font-black text-slate-400 text-xs text-center">
+                                    {(currentPage - 1) * 20 + index + 1}
+                                </TableCell>
+                                <TableCell className="font-black text-primary text-xs uppercase group-hover:translate-x-1 transition-transform">{oc.codigo}</TableCell>
                                 <TableCell className="font-bold text-xs uppercase text-slate-600">{oc.proveedor?.razonSocial}</TableCell>
                                 <TableCell className="font-bold text-[10px] uppercase text-slate-500 max-w-[150px] truncate">{oc.gasto?.proyecto?.nombre || "Stock General"}</TableCell>
                                 <TableCell className="font-medium text-[10px] text-slate-500">
@@ -354,7 +358,7 @@ export default function OrdenesCompraPage() {
         isOpen={isSecureDeleteOpen}
         onClose={() => setIsSecureDeleteOpen(false)}
         onConfirm={handleSecureDelete}
-        entityName={ordenToDelete ? `Orden de Compra ${ordenToDelete.codigo}` : ''}
+        entityName={ordenToDelete ? `Orden de Materiales ${ordenToDelete.codigo}` : ''}
         loading={deleting}
       />
     </div>

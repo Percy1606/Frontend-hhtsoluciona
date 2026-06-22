@@ -21,7 +21,8 @@ import {
   ArrowUpRight,
   Activity,
   Layers,
-  Inbox
+  Inbox,
+  Trophy
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
@@ -102,7 +103,7 @@ export default function DashboardPage() {
         } else if (userModules.includes("logistica")) {
           router.replace("/logistica/ordenes");
         } else if (userModules.includes("finanzas")) {
-          router.replace("/finanzas/facturacion");
+          router.replace("/finanzas/bandeja");
         } else {
           // Fallback
           router.replace("/perfil"); 
@@ -231,6 +232,8 @@ export default function DashboardPage() {
     return acc;
   }, {} as Record<string, number>);
 
+  const recentWins = [...clients].filter(c => ['Ganado', 'Orden de Servicio', 'Cotización Enviada', 'Cotizacion Enviada', 'Inspección Realizada', 'Inspeccion Realizada'].includes(c.etapaComercial) || c.estado === 'Ganado').slice(0, 1);
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[80vh] gap-6">
@@ -249,17 +252,17 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8 pb-12 max-w-[1600px] mx-auto px-4 md:px-6">
       {/* Header Premium */}
-      <div className="relative overflow-hidden bg-white p-8 rounded-[2.5rem] border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="relative z-10 flex items-center gap-5">
-          <div className="h-16 w-16 rounded-3xl bg-slate-900 flex items-center justify-center shadow-2xl shadow-slate-900/20 group hover:scale-105 transition-transform">
-            <LayoutDashboard className="w-8 h-8 text-white" />
+      <div className="relative overflow-hidden bg-white p-5 rounded-3xl border shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="relative z-10 flex items-center gap-4">
+          <div className="h-12 w-12 rounded-2xl bg-slate-900 flex items-center justify-center shadow-lg shadow-slate-900/20 group hover:scale-105 transition-transform">
+            <LayoutDashboard className="w-5 h-5 text-white" />
           </div>
           <div>
             <div className="flex items-center gap-2 mb-0.5">
-              <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
-              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-600 font-bold py-0 px-2 text-[9px]">LIVE</Badge>
+              <h1 className="text-xl font-bold text-slate-800 tracking-tight">Panel de Control</h1>
+              <Badge variant="outline" className="bg-emerald-50 border-emerald-200 text-emerald-600 font-bold py-0 px-1.5 text-[8px] h-4">LIVE</Badge>
             </div>
-            <div className="flex items-center gap-3 text-xs text-muted-foreground font-medium uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
               <span className="flex items-center gap-1.5"><Layers className="w-3 h-3" /> HH T Soluciona S.A.C.</span>
               <span className="w-1 h-1 rounded-full bg-slate-300" />
               <span>Resumen Ejecutivo</span>
@@ -269,19 +272,32 @@ export default function DashboardPage() {
 
         <div className="relative z-10 flex flex-wrap items-center gap-3">
           {isReviewDay && (
-            <div className="bg-amber-50 border border-amber-100 text-amber-700 font-bold py-2 px-4 rounded-2xl flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 duration-700">
-              <Calendar className="w-4 h-4" />
+            <div className="bg-amber-50 border border-amber-100 text-amber-700 font-bold py-1.5 px-3 rounded-xl flex items-center gap-2 shadow-sm animate-in fade-in slide-in-from-right-4 duration-700">
+              <Calendar className="w-3 h-3" />
               <div className="text-left">
-                <p className="text-[10px] uppercase leading-none opacity-70 mb-0.5">Comité Comercial</p>
-                <p className="text-xs">{currentReviewDay}</p>
+                <p className="text-[9px] uppercase leading-none opacity-70 mb-0.5">Comité Comercial</p>
+                <p className="text-[11px]">{currentReviewDay}</p>
               </div>
             </div>
           )}
-          <div className="bg-slate-50 border border-slate-100 text-slate-600 font-bold py-2 px-4 rounded-2xl flex items-center gap-3 shadow-sm">
-            <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+
+          {recentWins.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-100 text-emerald-700 font-bold py-1.5 px-3 rounded-xl flex items-center gap-2 shadow-sm animate-in zoom-in-90 slide-in-from-bottom-2 duration-700 hover:scale-105 transition-transform cursor-default">
+              <div className="w-6 h-6 rounded-full bg-emerald-500/20 flex items-center justify-center animate-pulse shrink-0">
+                <Trophy className="w-3 h-3 text-emerald-600" />
+              </div>
+              <div className="text-left">
+                <p className="text-[9px] uppercase leading-none opacity-80 mb-0.5 tracking-widest text-emerald-600/80">¡Nuevo Logro!</p>
+                <p className="text-[11px] uppercase tracking-tight truncate max-w-[150px]">{recentWins[0].empresa || (recentWins[0] as any).nombre}</p>
+              </div>
+            </div>
+          )}
+
+          <div className="bg-slate-50 border border-slate-100 text-slate-600 font-bold py-1.5 px-3 rounded-xl flex items-center gap-2 shadow-sm">
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <div className="text-left">
-              <p className="text-[10px] uppercase leading-none opacity-70 mb-0.5">Estado Global</p>
-              <p className="text-xs uppercase">Activo</p>
+              <p className="text-[9px] uppercase leading-none opacity-70 mb-0.5">Estado Global</p>
+              <p className="text-[11px] uppercase">Activo</p>
             </div>
           </div>
         </div>
@@ -347,25 +363,25 @@ export default function DashboardPage() {
         <TabsContent value="general" className="space-y-8 outline-none">
           {/* Alertas Compactas */}
           {(kpis.proyectos.rojos > 0 || kpis.crm.vencidos > 0) && (
-            <div className="flex flex-wrap items-center gap-4 bg-slate-900 p-4 rounded-3xl shadow-sm text-white">
+            <div className="flex flex-wrap items-center gap-4 bg-slate-900 p-3 rounded-2xl shadow-sm text-white">
               <div className="flex items-center gap-2 px-3 border-r border-white/10">
-                <TrendingUp className="w-4 h-4 text-primary" />
-                <span className="text-xs font-bold uppercase tracking-wider">Foco Operativo</span>
+                <TrendingUp className="w-3 h-3 text-primary" />
+                <span className="text-[10px] font-bold uppercase tracking-wider">Foco Operativo</span>
               </div>
               <div className="flex flex-wrap items-center gap-6 flex-1">
                 {kpis.proyectos.rojos > 0 && (
                   <Link href="/operaciones/alertas" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <Badge className="bg-amber-500/20 text-amber-500 border-none px-2 py-0.5 text-[10px]">{kpis.proyectos.rojos}</Badge>
-                    <span className="text-xs font-medium text-slate-300">Alertas Pendientes</span>
+                    <Badge className="bg-amber-500/20 text-amber-500 border-none px-2 py-0.5 text-[9px]">{kpis.proyectos.rojos}</Badge>
+                    <span className="text-[10px] font-medium text-slate-300">Alertas Pendientes</span>
                   </Link>
                 )}
                 {kpis.crm.vencidos > 0 && (
                   <Link href="/crm/cartera" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-                    <Badge className="bg-red-500/20 text-red-500 border-none px-2 py-0.5 text-[10px]">{kpis.crm.vencidos}</Badge>
-                    <span className="text-xs font-medium text-slate-300">Seguimientos Vencidos</span>
+                    <Badge className="bg-red-500/20 text-red-500 border-none px-2 py-0.5 text-[9px]">{kpis.crm.vencidos}</Badge>
+                    <span className="text-[10px] font-medium text-slate-300">Seguimientos Vencidos</span>
                   </Link>
                 )}
-                <p className="text-[10px] text-slate-500 italic ml-auto hidden md:block">
+                <p className="text-[9px] text-slate-500 italic ml-auto hidden md:block">
                    Priorice estas áreas para optimizar el flujo de trabajo.
                 </p>
               </div>
@@ -379,15 +395,15 @@ export default function DashboardPage() {
               { label: 'Revisiones Doc.', val: kpis.documental.pendientesRevision, icon: Inbox, color: 'text-emerald-600', bg: 'bg-emerald-50/50', border: 'border-emerald-100' },
               { label: 'Stock Crítico', val: kpis.logistica.stockBajo, icon: Layers, color: 'text-rose-600', bg: 'bg-rose-50/50', border: 'border-rose-100' },
             ].map((item, idx) => (
-              <div key={idx} className={cn("p-6 rounded-[2rem] border shadow-sm flex flex-col justify-between bg-white hover:shadow-md transition-all", item.bg)}>
-                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center mb-4 border", item.border)}>
-                  <item.icon className={cn("w-5 h-5", item.color)} />
+              <div key={idx} className={cn("p-4 rounded-2xl border shadow-sm flex flex-col justify-between bg-white hover:shadow-md transition-all", item.bg)}>
+                <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center mb-2 border", item.border)}>
+                  <item.icon className={cn("w-4 h-4", item.color)} />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold uppercase opacity-50 tracking-widest mb-1 block">{item.label}</span>
+                  <span className="text-[9px] font-bold uppercase opacity-50 tracking-widest mb-1 block">{item.label}</span>
                   <div className="flex items-end gap-2">
-                    <span className={cn("text-3xl font-bold leading-none", item.color)}>{item.val}</span>
-                    {item.val > 0 && <ArrowUpRight className={cn("w-4 h-4 mb-1 opacity-50", item.color)} />}
+                    <span className={cn("text-xl font-bold leading-none", item.color)}>{item.val}</span>
+                    {item.val > 0 && <ArrowUpRight className={cn("w-3 h-3 mb-0.5 opacity-50", item.color)} />}
                   </div>
                 </div>
               </div>

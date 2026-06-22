@@ -39,7 +39,7 @@ const insumoSchema = z.object({
   stockActual: z.coerce.number().min(0),
   stockMinimo: z.coerce.number().min(0),
   precioReferencial: z.coerce.number().min(0),
-  categoria: z.string().optional(),
+  categoria: z.string().min(1, "La categoría es requerida"),
 });
 
 type InsumoFormValues = z.infer<typeof insumoSchema>;
@@ -62,7 +62,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
       stockActual: 0,
       stockMinimo: 0,
       precioReferencial: 0,
-      categoria: "General",
+      categoria: "",
     },
   });
 
@@ -75,7 +75,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
         stockActual: insumo.stockActual,
         stockMinimo: insumo.stockMinimo,
         precioReferencial: insumo.precioReferencial,
-        categoria: insumo.categoria || "General",
+        categoria: insumo.categoria || "",
       });
     } else {
       form.reset({
@@ -85,7 +85,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
         stockActual: 0,
         stockMinimo: 0,
         precioReferencial: 0,
-        categoria: "General",
+        categoria: "",
       });
     }
   }, [insumo, form, isOpen]);
@@ -146,7 +146,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white border-slate-200">
-                            {["General", "Eléctrico", "Civil", "EPP", "Herramienta", "Oficina"].map(c => (
+                            {["Material Eléctrico", "Material Civil", "Herramientas", "Equipos EPP", "Consumibles", "Ferretería", "Pinturas", "Cables", "Otros"].map(c => (
                                 <SelectItem key={c} value={c} className="font-bold text-xs">{c}</SelectItem>
                             ))}
                         </SelectContent>

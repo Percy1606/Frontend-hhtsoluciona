@@ -24,8 +24,10 @@ import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { Gasto } from "@/types/finanzas";
-import { cn } from "@/lib/utils";
-import { Wallet, Lock, Loader2 } from "lucide-react";
+import { cn, getSecureUrl } from "@/lib/utils";
+import { Wallet, Lock, Loader2, Link2, AlertTriangle, CheckCircle2, FileText, Building2 } from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface GastoFormProps {
   initialData?: Gasto | null;
@@ -33,29 +35,55 @@ interface GastoFormProps {
   onCancel: () => void;
 }
 
+const getLocalDateString = (date?: string | Date) => {
+  if (!date) {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+  }
+  const d = new Date(date);
+  if (typeof date === 'string' && date.includes('T')) {
+    return date.split('T')[0];
+  }
+  return d.toISOString().split('T')[0];
+};
+
 export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
+  const { user } = useAuthStore();
+  const isFinanzasOrAdmin = user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas');
+  
   const [proveedores, setProveedores] = useState<any[]>([]);
   const [proyectos, setProyectos] = useState<any[]>([]);
-
   const [cajas, setCajas] = useState<any[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [projectStats, setProjectStats] = useState<any>(null);
+
+  // Extraer metodoPago guardado en justificación (si lo hay) para mostrarlo en UI
+  const initialJustificacion = (initialData as any)?.justificacion || "";
+  const matchMetodo = initialJustificacion.match(/^\[(.*?)\]\s*(.*)$/);
+  const defaultMetodo = matchMetodo ? matchMetodo[1] : "TRANSFERENCIA";
+  const defaultJustificacion = matchMetodo ? matchMetodo[2] : initialJustificacion;
 
   const form = useForm({
     defaultValues: {
       codigo: initialData?.codigo || "",
+      comprobanteUrl: initialData?.comprobanteUrl || "",
       proveedorId: initialData?.proveedorId || "",
       proyectoId: initialData?.proyectoId || "",
       cajaId: (initialData as any)?.cajaId || "",
+      area: initialData?.area || "", // Centro de Costo
+      metodoPago: defaultMetodo, // Pseudo-campo
       tipo: initialData?.tipo || "OPERATIVO",
       prioridad: initialData?.prioridad || "MEDIA",
       clasificacion: initialData?.clasificacion || "VENTA_SERVICIO",
       categoriaDistribucion: initialData?.categoriaDistribucion || "",
       concepto: initialData?.concepto || "",
       montoTotal: initialData?.montoTotal || 0,
-      fechaEmision: initialData?.fechaEmision ? new Date(initialData.fechaEmision).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
-      fechaVencimiento: initialData?.fechaVencimiento ? new Date(initialData.fechaVencimiento).toISOString().split('T')[0] : "",
-      fechaProgramadaPago: initialData?.fechaProgramadaPago ? new Date(initialData.fechaProgramadaPago).toISOString().split('T')[0] : "",
+      fechaEmision: getLocalDateString(initialData?.fechaEmision),
+      fechaVencimiento: initialData?.fechaVencimiento ? getLocalDateString(initialData.fechaVencimiento) : "",
+      fechaProgramadaPago: initialData?.fechaProgramadaPago ? getLocalDateString(initialData.fechaProgramadaPago) : "",
       estado: initialData?.estado || "PENDIENTE",
-      justificacion: (initialData as any)?.justificacion || "",
+      justificacion: defaultJustificacion,
     },
   });
 
@@ -68,7 +96,6 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
           api.get('/finanzas/cajas')
         ]);
         
-        // Manejo robusto de respuestas (pueden ser array directo o { data: [] })
         setProveedores(Array.isArray(provRes) ? provRes : (provRes.data || []));
         setProyectos(Array.isArray(projectsRes) ? projectsRes : (projectsRes.data || []));
         setCajas(Array.isArray(cajasRes) ? cajasRes : (cajasRes.data || []));
@@ -87,11 +114,11 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     proveedores.map(p => ({
       value: p.id,
       label: p.razonSocial,
-      subLabel: `RUC: ${p.ruc}`
+      subLabel: `RUC: ${p.ruc || 'S/N'}`
     })), [proveedores]);
 
   const projectOptions = useMemo(() => {
-    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Sin Proyecto (Gasto General)" }];
+    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General (Sin Proyecto)" }];
     proyectos.forEach(p => {
       options.push({
         value: p.id,
@@ -102,169 +129,118 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     return options;
   }, [proyectos]);
 
-  // Si cambia el proyecto, intentar detectar si es clasificación PROYECTO
   const selectedProjectId = form.watch("proyectoId");
+  const selectedProjectObj = proyectos.find(p => p.id === selectedProjectId);
+
   useEffect(() => {
     if (selectedProjectId && selectedProjectId !== "none") {
       form.setValue("clasificacion", "PROYECTO");
       form.setValue("tipo", "PROYECTO");
+
+      api.get(`/finanzas/bandeja-proyectos/${selectedProjectId}/detalle`)
+        .then(res => {
+           const adelantosTotales = res.adelantos?.reduce((acc: number, a: any) => acc + Number(a.monto), 0) || 0;
+           const facturadoPagado = res.facturas?.filter((f: any) => f.estado === 'PAGADA' || f.estado === 'PAGO_PARCIAL')
+                                               .reduce((acc: number, f: any) => acc + (Number(f.montoTotal) - Number(f.saldoPendiente)), 0) || 0;
+           const ingresosReales = adelantosTotales + facturadoPagado;
+           
+           setProjectStats({
+             ingresos: ingresosReales,
+             hasAdelanto: ingresosReales > 0
+           });
+        })
+        .catch(() => setProjectStats(null));
+    } else {
+      setProjectStats(null);
     }
   }, [selectedProjectId, form]);
 
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await api.post("/files/upload", formData);
+      form.setValue("comprobanteUrl", res.url);
+    } catch (e) {
+      console.error("Upload failed", e);
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const watchEstado = form.watch("estado");
+  const watchMonto = form.watch("montoTotal");
+  const watchSaldoPendiente = initialData?.saldoPendiente !== undefined ? Number(initialData.saldoPendiente) : watchMonto;
+  
+  // Lógica para resumen financiero
+  const montoAprobado = (watchEstado === "APROBADO" || watchEstado === "PAGADO") ? watchMonto : 0;
+  const montoEjecutado = watchEstado === "PAGADO" ? (watchMonto - watchSaldoPendiente) || watchMonto : 0;
+
   const handleLocalSubmit = (data: any) => {
+    const justificacionFinal = data.metodoPago ? `[${data.metodoPago}] ${data.justificacion}` : data.justificacion;
+
     const finalData = {
-      ...data,
+      codigo: data.codigo,
+      comprobanteUrl: data.comprobanteUrl || null,
+      tipo: data.tipo,
+      prioridad: data.prioridad,
+      clasificacion: data.clasificacion,
+      categoriaDistribucion: data.categoriaDistribucion || null,
+      concepto: data.concepto,
+      estado: data.estado,
+      fechaEmision: data.fechaEmision,
+      area: data.area || null,
+      cajaId: data.cajaId,
       montoTotal: parseFloat(data.montoTotal) || 0,
       proyectoId: data.proyectoId === "none" ? null : data.proyectoId,
       proveedorId: data.proveedorId || null,
       fechaVencimiento: data.fechaVencimiento || null,
       fechaProgramadaPago: data.fechaProgramadaPago || null,
-      categoriaDistribucion: data.categoriaDistribucion || null
+      justificacion: justificacionFinal,
     };
     onSubmit(finalData);
   };
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleLocalSubmit)} className="flex flex-col h-[70vh] w-full">     
-        <ScrollArea className="flex-grow min-h-0 pr-4">
-          <div className="space-y-6 p-1 pb-6">
+      <form onSubmit={form.handleSubmit(handleLocalSubmit)} className="flex flex-col h-full bg-slate-50 w-full">     
+        <ScrollArea className="flex-1 p-6">
+          <div className="max-w-4xl mx-auto space-y-6 pb-6">
             
-            {/* SECCIÓN 1: DOCUMENTO Y CONCEPTOS */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-4 w-1 bg-error rounded-full" />
-                <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Documento y Concepto</h4>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <FormField
-                  control={form.control}
-                  name="codigo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Número de Comprobante</FormLabel>
-                      <FormControl>
-                        <Input placeholder="E001-000001" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="fechaEmision"
-                  rules={{ required: "Requerido" }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Fecha Emisión</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="fechaVencimiento"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Fecha Vencimiento</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} className="bg-white border-slate-200 h-10 font-bold text-slate-400 text-xs" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="fechaProgramadaPago"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-blue-600 tracking-wider">Programación Pago</FormLabel>
-                      <FormControl>
-                        <Input type="date" {...field} className="bg-white border-blue-100 h-10 font-bold text-blue-600 text-xs shadow-sm" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+            {/* SECCIÓN 1: ASOCIACIÓN Y CENTRO DE COSTO */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                <Building2 className="w-4 h-4 text-primary" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-primary">1. Asociación y Centro de Costo</h4>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
-                  name="concepto"
-                  rules={{ required: "Requerido" }}
+                  name="proyectoId"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Concepto / Glosa del Gasto</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: Pago de servicios de transporte, materiales, etc." {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
-                      </FormControl>
+                    <FormItem className="flex flex-col">
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Proyecto Asociado</FormLabel>
+                      <Combobox
+                        options={projectOptions}
+                        value={field.value || ""}
+                        onChange={field.onChange}
+                        placeholder="Asociar a un proyecto..."
+                      />
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="justificacion"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Justificación Detallada</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          placeholder="Explique el motivo del gasto o solicitud de fondos..." 
-                          {...field} 
-                          className="bg-white border-slate-200 min-h-[60px] font-medium text-xs resize-none" 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="prioridad"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Prioridad</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
-                            <SelectValue placeholder="Prioridad" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="BAJA" className="font-bold text-xs">BAJA</SelectItem>
-                          <SelectItem value="MEDIA" className="font-bold text-xs">MEDIA</SelectItem>
-                          <SelectItem value="ALTA" className="font-bold text-xs text-orange-600">ALTA</SelectItem>
-                          <SelectItem value="CRITICA" className="font-bold text-xs text-red-600">CRÍTICA</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
 
-            {/* SECCIÓN 2: ASOCIACIÓN Y CLASIFICACIÓN */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-4 w-1 bg-primary rounded-full" />
-                <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Asociación y Clasificación</h4>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <FormField
                   control={form.control}
                   name="proveedorId"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Proveedor</FormLabel>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Proveedor / RUC</FormLabel>
                       <Combobox
                         options={providerOptions}
                         value={field.value}
@@ -278,94 +254,152 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
 
                 <FormField
                   control={form.control}
-                  name="proyectoId"
+                  name="area"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Proyecto Asociado</FormLabel>
-                      <Combobox
-                        options={projectOptions}
-                        value={field.value || ""}
-                        onChange={field.onChange}
-                        placeholder="Asociar a un proyecto..."
-                      />
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Centro de Costo / Área</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
+                            <SelectValue placeholder="Seleccione Centro de Costo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LogisticaYRecursos" className="font-bold text-xs">Logística y Recursos</SelectItem>
+                          <SelectItem value="IngenieriaYSupervision" className="font-bold text-xs">Ingeniería y Supervisión</SelectItem>
+                          <SelectItem value="OperacionesDeCampo" className="font-bold text-xs">Operaciones de Campo</SelectItem>
+                          <SelectItem value="GestionDocumentaria" className="font-bold text-xs">Gestión Documentaria</SelectItem>
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+              {/* RESUMEN PRESUPUESTAL Y ALERTAS FINANCIERAS */}
+              {selectedProjectObj && (
+                <div className="mt-4 space-y-3">
+                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-blue-800 tracking-widest">Presupuesto del Proyecto</p>
+                      <p className="text-xs font-medium text-blue-600">{selectedProjectObj.nombre}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold uppercase text-slate-400">Total Presupuestado</p>
+                      <p className="text-sm font-black text-blue-700">S/ {Number(selectedProjectObj.presupuesto || 0).toLocaleString()}</p>
+                    </div>
+                  </div>
+                  
+                  {projectStats && !projectStats.hasAdelanto && (
+                    <Alert variant="destructive" className="bg-red-50 border-red-200">
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle className="text-xs font-black uppercase tracking-widest text-red-800">Bloqueo Financiero</AlertTitle>
+                      <AlertDescription className="text-[10px] font-bold text-red-600">
+                        El cliente aún no ha realizado ningún pago o adelanto para este proyecto. No se puede aprobar la compra de materiales ni ejecutar el pago.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {projectStats && watchMonto > Number(selectedProjectObj.presupuesto || 0) && (
+                    <Alert className="bg-orange-50 border-orange-200">
+                      <AlertTriangle className="h-4 w-4 text-orange-600" />
+                      <AlertTitle className="text-xs font-black uppercase tracking-widest text-orange-800">Advertencia de Presupuesto</AlertTitle>
+                      <AlertDescription className="text-[10px] font-bold text-orange-700">
+                        El monto de este gasto supera el presupuesto base de este proyecto. Se requerirá autorización especial.
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* SECCIÓN 2: DOCUMENTO, CLASIFICACIÓN Y COMPROBANTE */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                <FileText className="w-4 h-4 text-emerald-600" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-emerald-700">2. Detalles y Documentación</h4>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <FormField
+                  control={form.control}
+                  name="codigo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Doc / Comprobante</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: F001-1234" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="comprobanteUrl"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Documento / PDF Adjunto (Opcional)</FormLabel>
+                      <FormControl>
+                        <div className="flex items-center gap-3">
+                          <Input 
+                            type="file" 
+                            onChange={handleFileChange} 
+                            className="h-10 cursor-pointer text-xs bg-white border-slate-200 flex-1"
+                            accept=".pdf,.xml,.jpg,.png"
+                          />
+                          {isUploading && <Loader2 className="w-5 h-5 animate-spin text-emerald-600" />}
+                          {field.value && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="h-10 border-blue-200 text-blue-700 bg-blue-50 font-bold text-xs shrink-0"
+                              onClick={() => window.open(getSecureUrl(field.value), '_blank')}
+                            >
+                              Ver Archivo
+                            </Button>
+                          )}
+                        </div>
+                      </FormControl>
+                      <p className="text-[9px] text-slate-400">Puedes subir un PDF o imagen.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="concepto"
+                  rules={{ required: "Requerido" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Concepto del Gasto *</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ej: Pago de transporte..." {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <FormField
                   control={form.control}
                   name="clasificacion"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-error tracking-wider">Clasificación *</FormLabel>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Clasificación de Negocio</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="bg-white border-error/20 border-2 h-10 font-bold text-xs">
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
                             <SelectValue placeholder="Clasificación" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="VENTA_SERVICIO" className="font-bold text-xs">Venta de Servicios</SelectItem>
-                          <SelectItem value="PROYECTO" className="font-bold text-xs">Proyecto</SelectItem>
+                          <SelectItem value="VENTA_SERVICIO" className="font-bold text-xs">Ventas y Servicios Generales</SelectItem>
+                          <SelectItem value="PROYECTO" className="font-bold text-xs">Proyectos Operativos</SelectItem>
                           <SelectItem value="ALQUILER_EQUIPOS" className="font-bold text-xs">Alquiler de Equipos</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="tipo"
-                  rules={{ required: "Requerido" }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Tipo de Gasto</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
-                            <SelectValue placeholder="Tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="OPERATIVO" className="font-bold text-xs">OPERATIVO</SelectItem>
-                          <SelectItem value="ADMINISTRATIVO" className="font-bold text-xs">ADMINISTRATIVO</SelectItem>
-                          <SelectItem value="FINANCIERO" className="font-bold text-xs">FINANCIERO</SelectItem>
-                          <SelectItem value="PROYECTO" className="font-bold text-xs">PROYECTO</SelectItem>
-                          <SelectItem value="PERSONAL" className="font-bold text-xs">PERSONAL</SelectItem>
-                          <SelectItem value="PLANILLA" className="font-bold text-xs">PLANILLA</SelectItem>
-                          <SelectItem value="IMPUESTOS" className="font-bold text-xs">IMPUESTOS</SelectItem>
-                          <SelectItem value="VIATICOS" className="font-bold text-xs">VIATICOS</SelectItem>
-                          <SelectItem value="COMBUSTIBLE" className="font-bold text-xs">COMBUSTIBLE</SelectItem>
-                          <SelectItem value="MANTENIMIENTO" className="font-bold text-xs">MANTENIMIENTO</SelectItem>
-                          <SelectItem value="SERVICIOS" className="font-bold text-xs">SERVICIOS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="categoriaDistribucion"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Bolsa de Gasto</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
-                            <SelectValue placeholder="Bolsa" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="MATERIALES" className="font-bold text-xs">Materiales</SelectItem>
-                          <SelectItem value="MANO_OBRA" className="font-bold text-xs">Mano de Obra</SelectItem>
-                          <SelectItem value="LOGISTICA_MOVILIDAD" className="font-bold text-xs">Movilidad</SelectItem>
-                          <SelectItem value="OPERATIVO_VARIO" className="font-bold text-xs">Operativo Varios</SelectItem>
-                          <SelectItem value="UTILIDAD_RESERVA" className="font-bold text-xs">Utilidad</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -375,41 +409,76 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
               </div>
             </div>
 
-            {/* SECCIÓN 3: GESTIÓN DE FONDOS (NUEVO) */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-4 w-1 bg-blue-600 rounded-full" />
-                <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Gestión de Fondos</h4>
+            {/* SECCIÓN 3: FECHAS, PRIORIDAD Y GESTIÓN DE FONDOS */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-2 mb-4 pb-2 border-b border-slate-100">
+                <Wallet className="w-4 h-4 text-amber-600" />
+                <h4 className="text-xs font-black uppercase tracking-widest text-amber-700">3. Calendario y Tesorería</h4>
               </div>
 
-              <div className="bg-blue-50/50 p-5 rounded-2xl border-2 border-blue-100 space-y-4 shadow-sm">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <FormField
+                  control={form.control}
+                  name="fechaEmision"
+                  rules={{ required: "Requerido" }}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Emisión</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fechaVencimiento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Vencimiento</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="fechaProgramadaPago"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-amber-600 tracking-wider">Programación</FormLabel>
+                      <FormControl>
+                        <Input type="date" {...field} className="bg-amber-50 border-amber-200 h-10 font-bold text-amber-700 text-xs" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="cajaId"
-                  rules={{ required: "Debe seleccionar una caja" }}
+                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-black text-[10px] uppercase text-blue-700 tracking-widest flex items-center gap-2">
-                        <Wallet className="w-3.5 h-3.5" /> 💳 Gestión de Salida: ¿De qué caja o cuenta bancaria se debitarán estos fondos?
-                      </FormLabel>
+                    <FormItem className="md:col-span-2">
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Caja / Cuenta de Origen</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="bg-white border-blue-200 h-11 font-black text-xs shadow-sm">
-                            <SelectValue>
-                              {cajas.find(c => c.id === field.value)?.nombre || "Seleccione la cuenta de origen..."}
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
+                            <SelectValue placeholder="Seleccione cuenta...">
+                              {cajas.find(c => c.id === field.value)?.nombre || "Seleccione cuenta..."}
                             </SelectValue>
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {cajas.map((c) => (
-                            <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-2">
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                    <span>{c.nombre}</span>
-                                    {c.esProtegida && <Lock className="w-3 h-3 text-primary" />}
-                                </div>
-                                <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest">DISPONIBLE: S/ {Number(c.saldoDisponible).toLocaleString()}</span>
-                              </div>
+                            <SelectItem key={c.id} value={c.id} className="font-bold text-xs">
+                              {c.nombre} <span className="text-[9px] text-slate-400 ml-2">(S/ {Number(c.saldoDisponible).toLocaleString()})</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -418,24 +487,49 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     </FormItem>
                   )}
                 />
+                <FormField
+                  control={form.control}
+                  name="prioridad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Prioridad</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
+                            <SelectValue placeholder="Prioridad" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="BAJA" className="font-bold text-xs text-slate-500">BAJA</SelectItem>
+                          <SelectItem value="MEDIA" className="font-bold text-xs text-blue-600">MEDIA</SelectItem>
+                          <SelectItem value="ALTA" className="font-bold text-xs text-orange-600">ALTA</SelectItem>
+                          <SelectItem value="CRITICA" className="font-bold text-xs text-red-600">CRÍTICA</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
             </div>
 
-            {/* SECCIÓN 4: DETALLES FINANCIEROS */}
-            <div className="space-y-4 pb-2">
-              <div className="flex items-center gap-2 mb-2">
-                <div className="h-4 w-1 bg-green-500 rounded-full" />
-                <h4 className="text-[9px] font-black uppercase tracking-widest text-slate-400">Importe y Estado</h4>
+            {/* SECCIÓN 4: ESTADO Y RESUMEN FINANCIERO */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-blue-600" />
+                  <h4 className="text-xs font-black uppercase tracking-widest text-blue-700">4. Estado y Resumen Financiero</h4>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-50 p-5 rounded-2xl border-2 border-dashed border-slate-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end mb-4">
                 <FormField
                   control={form.control}
                   name="montoTotal"
                   rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Monto Total (S/.)</FormLabel>
+                      <FormLabel className="font-black text-[11px] uppercase text-slate-600 tracking-wider">Monto Solicitado (S/.) *</FormLabel>
                       <FormControl>
                         <Input 
                           type="text" 
@@ -447,38 +541,51 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                             const val = parseFloat(rawValue) || 0;
                             field.onChange(val);
                           }}
-                          className="bg-white border-slate-200 h-11 font-black text-lg text-error"
+                          className="bg-slate-50 border-slate-200 h-12 font-black text-xl text-primary shadow-inner"
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+
                 <FormField
                   control={form.control}
                   name="estado"
-                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-[9px] uppercase text-slate-500 tracking-wider">Estado de Pago</FormLabel>
+                      <FormLabel className="font-black text-[11px] uppercase text-slate-600 tracking-wider">Flujo de Aprobación *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className={cn(
-                            "h-11 font-black text-xs rounded-xl border-2 shadow-sm transition-all",
-                            field.value === 'PAGADO' ? "bg-green-50 border-green-200 text-green-700 shadow-green-100" :
-                            field.value === 'SOLICITADO' ? "bg-amber-50 border-amber-200 text-amber-700 shadow-amber-100" :
-                            field.value === 'APROBADO' ? "bg-blue-50 border-blue-200 text-blue-700 shadow-blue-100" :
-                            "bg-red-50 border-red-200 text-red-700 shadow-red-100"
+                            "h-12 font-black text-xs rounded-xl border-2 transition-all",
+                            field.value === 'PENDIENTE' ? "bg-slate-50 border-slate-200 text-slate-600" :
+                            field.value === 'SOLICITADO' ? "bg-amber-50 border-amber-200 text-amber-700" :
+                            field.value === 'APROBADO' ? "bg-blue-50 border-blue-200 text-blue-700" :
+                            field.value === 'PAGADO' ? "bg-green-50 border-green-200 text-green-700" :
+                            "bg-red-50 border-red-200 text-red-700"
                           )}>
                             <SelectValue placeholder="Seleccione estado" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="SOLICITADO" className="text-amber-600 font-bold text-xs">SOLICITADO (FONDOS)</SelectItem>
-                          <SelectItem value="APROBADO" className="text-blue-600 font-bold text-xs">APROBADO (POR PAGAR)</SelectItem>
-                          <SelectItem value="PENDIENTE" className="text-red-600 font-bold text-xs">PENDIENTE (CON FACTURA)</SelectItem>
-                          <SelectItem value="PAGADO" className="text-green-600 font-bold text-xs">PAGADO</SelectItem>
-                          <SelectItem value="ANULADO" className="text-slate-400 font-bold text-xs">ANULADO</SelectItem>
+                          <SelectItem value="PENDIENTE" className="font-bold text-xs text-slate-600">1. BORRADOR / REGISTRO INICIAL</SelectItem>
+                          <SelectItem value="SOLICITADO" className="font-bold text-xs text-amber-600">2. PENDIENTE DE APROBACIÓN</SelectItem>
+                          <SelectItem 
+                            value="APROBADO" 
+                            disabled={!isFinanzasOrAdmin || (projectStats && !projectStats.hasAdelanto)} 
+                            className="font-bold text-xs text-blue-600"
+                          >
+                            3. APROBADO (LISTO PARA PAGO) {!isFinanzasOrAdmin ? '(Solo Finanzas)' : ''}
+                          </SelectItem>
+                          <SelectItem 
+                            value="PAGADO" 
+                            disabled={!isFinanzasOrAdmin || (projectStats && !projectStats.hasAdelanto)} 
+                            className="font-bold text-xs text-green-600"
+                          >
+                            4. EJECUTADO / PAGADO {!isFinanzasOrAdmin ? '(Solo Finanzas)' : ''}
+                          </SelectItem>
+                          <SelectItem value="ANULADO" className="font-bold text-xs text-red-600">ANULADO / RECHAZADO</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -486,15 +593,32 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                   )}
                 />
               </div>
+
+              {/* DASHBOARD FINANCIERO AUTOMÁTICO */}
+              <div className="grid grid-cols-3 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100 mt-4">
+                <div className="text-center p-2 border-r border-slate-200">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Solicitado</p>
+                  <p className="text-sm font-black text-slate-700">S/ {Number(watchMonto).toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="text-center p-2 border-r border-slate-200">
+                  <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Aprobado</p>
+                  <p className="text-sm font-black text-blue-700">S/ {Number(montoAprobado).toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="text-center p-2">
+                  <p className="text-[9px] font-black text-emerald-500 uppercase tracking-widest mb-1">Ejecutado</p>
+                  <p className="text-sm font-black text-emerald-600">S/ {Number(montoEjecutado).toLocaleString("es-PE", { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
             </div>
+
           </div>
         </ScrollArea>
 
-        <div className="flex-shrink-0 flex justify-end gap-3 pt-5 border-t mt-2">
-          <Button type="button" variant="ghost" onClick={onCancel} className="font-black uppercase text-[9px] tracking-widest text-slate-500 hover:bg-slate-100 px-6 h-10 rounded-xl">
+        <div className="flex-shrink-0 flex justify-end gap-3 p-5 border-t border-slate-200 bg-white">
+          <Button type="button" variant="ghost" onClick={onCancel} className="font-black uppercase text-xs text-slate-500 hover:bg-slate-100 px-6 h-11 rounded-xl">
             Cancelar
           </Button>
-          <Button type="submit" className="font-black uppercase text-[9px] tracking-widest bg-error hover:bg-error/90 text-white px-8 h-10 rounded-xl shadow-lg shadow-error/20">
+          <Button type="submit" className="font-black uppercase text-xs bg-primary hover:bg-primary/90 text-white px-8 h-11 rounded-xl shadow-lg">
             {initialData ? "Guardar Cambios" : "Registrar Gasto"}
           </Button>
         </div>
@@ -502,4 +626,3 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     </Form>
   );
 }
-

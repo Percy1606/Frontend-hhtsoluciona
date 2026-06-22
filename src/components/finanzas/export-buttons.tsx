@@ -15,12 +15,42 @@ export function ExportButtons({ type, filters }: ExportButtonsProps) {
   
   const handleExportExcel = async () => {
     try {
-      // Para gastos usamos un límite alto para exportar todo lo posible
       const endpoint = type === "facturas" ? "/finanzas/facturas" : "/finanzas/gastos?limit=1000";
       const res = await api.get(endpoint);
       const data = Array.isArray(res) ? res : (res.data || []);
       
-      const worksheet = XLSX.utils.json_to_sheet(data);
+      const formattedData = data.map((item: any) => {
+        if (type === "facturas") {
+          return {
+            "Código Documento": item.codigo || "",
+            "Tipo": item.clasificacion === 'VENTA_SERVICIO' ? 'Servicios' : (item.clasificacion === 'PROYECTO' ? 'Proyecto' : 'Alquiler'),
+            "Cliente": item.cliente?.empresa || "Sin Cliente",
+            "Referencia / Proyecto": item.proyecto?.nombre || "Venta Directa",
+            "Emisión": item.fechaEmision ? new Date(item.fechaEmision).toLocaleDateString() : "",
+            "Vencimiento": item.fechaVencimiento ? new Date(item.fechaVencimiento).toLocaleDateString() : "",
+            "Subtotal (S/)": Number(item.montoSubtotal) || 0,
+            "IGV (S/)": Number(item.montoIgv) || 0,
+            "Total Facturado (S/)": Number(item.montoTotal) || 0,
+            "Monto Pagado (S/)": (Number(item.montoTotal) || 0) - (Number(item.saldoPendiente) || 0),
+            "Saldo Deuda (S/)": Number(item.saldoPendiente) || 0,
+            "Estado": item.estado || "",
+            "Observaciones": item.observaciones || ""
+          };
+        } else {
+          return {
+            "Código": item.codigo || item.id,
+            "Concepto": item.concepto || item.descripcion || "",
+            "Tipo": item.tipo || "",
+            "Proveedor": item.proveedor?.razonSocial || item.proveedor?.empresa || "Sin Proveedor",
+            "Proyecto": item.proyecto?.nombre || "Gasto General",
+            "Monto Total (S/)": Number(item.montoTotal) || 0,
+            "Caja / Banco": item.caja?.nombre || "N/A",
+            "Fecha": item.fechaEmision ? new Date(item.fechaEmision).toLocaleDateString() : (item.createdAt ? new Date(item.createdAt).toLocaleDateString() : "")
+          };
+        }
+      });
+      
+      const worksheet = XLSX.utils.json_to_sheet(formattedData);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, type.toUpperCase());
       

@@ -89,43 +89,43 @@ export default function SeguimientoPage() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-red-50" : "bg-emerald-50")}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600")}>
-                <AlertCircle className="w-5 h-5" />
+        <div className="flex flex-wrap items-center gap-3">
+          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-red-50" : "bg-emerald-50")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600")}>
+                <AlertCircle className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-red-400" : "text-emerald-500")}>
+                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-red-400" : "text-emerald-500")}>
                   {activeTab === "ventas" ? "Seguimientos Vencidos" : "Fidelización Pendiente"}
                 </p>
-                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-red-700" : "text-emerald-700")}>{totalVencidos}</p>
+                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-red-700" : "text-emerald-700")}>{totalVencidos}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-orange-50" : "bg-blue-50")}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600")}>
-                <Bell className="w-5 h-5" />
+          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-orange-50" : "bg-blue-50")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600")}>
+                <Bell className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-orange-400" : "text-blue-500")}>
+                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-orange-400" : "text-blue-500")}>
                   {activeTab === "ventas" ? "Sin Fecha Programada" : "Sin Recordatorio"}
                 </p>
-                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-orange-700" : "text-blue-700")}>{totalPendientes}</p>
+                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-orange-700" : "text-blue-700")}>{totalPendientes}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cn("border-none shadow-sm", activeTab === "ventas" ? "bg-blue-50" : "bg-primary/5")}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className={cn("p-2.5 rounded-xl", activeTab === "ventas" ? "bg-blue-100 text-blue-600" : "bg-primary/10 text-primary")}>
-                <Calendar className="w-5 h-5" />
+          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-blue-50" : "bg-primary/5")}>
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-blue-100 text-blue-600" : "bg-primary/10 text-primary")}>
+                <Calendar className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[10px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-blue-400" : "text-primary/60")}>Gestiones para Hoy</p>
-                <p className={cn("text-2xl font-black leading-none mt-1", activeTab === "ventas" ? "text-blue-700" : "text-primary")}>{totalHoy}</p>
+                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-blue-400" : "text-primary/60")}>Gestiones para Hoy</p>
+                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-blue-700" : "text-primary")}>{totalHoy}</p>
               </div>
             </CardContent>
           </Card>

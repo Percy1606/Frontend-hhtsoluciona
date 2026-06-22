@@ -56,3 +56,15 @@ export const formatCurrency = (amount: number, currency: 'PEN' | 'USD' = 'PEN', 
     return new Intl.NumberFormat('en-US', options).format(amount || 0);
   }
 };
+
+export const formatLargeCurrency = (amount: number, currency: 'PEN' | 'USD' = 'PEN') => {
+  const symbol = currency === 'PEN' ? 'S/' : '$';
+  const num = Number(amount) || 0;
+  
+  if (Math.abs(num) >= 1_000_000) {
+    const formatted = (num / 1_000_000).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return `${symbol} ${formatted} M`;
+  }
+  
+  return `${symbol} ${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};

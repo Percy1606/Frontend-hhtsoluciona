@@ -40,6 +40,32 @@ interface HistoryModalProps {
   caja: any;
 }
 
+const cleanConcepto = (concepto: string) => {
+  if (!concepto) return "";
+  return concepto
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '') // Remover UUIDs
+    .replace(/\[.*?\]/g, '') // Remover [CUALQUIER_COSA:OTRA_COSA]
+    .replace(/\(\s*\)/g, '') // Remover paréntesis vacíos
+    .replace(/\s-\s*$/, '') // Remover guiones colgados al final
+    .trim();
+};
+
+const getTipoVisual = (tipo: string, concepto: string = "") => {
+  if (tipo === 'BLOQUEO') return { label: '🔒 FONDOS RESERVADOS', color: 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/20' };
+  if (tipo === 'LIBERACION') return { label: '↩ FONDOS LIBERADOS', color: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-indigo-500/20' };
+  if (tipo === 'ANULACION' || concepto.toUpperCase().includes('ANULADO')) return { label: '❌ MOV. ANULADO', color: 'bg-red-50 text-red-600 border-red-200 ring-red-500/20' };
+  if (tipo === 'EGRESO') return { label: '💸 PAGO EJECUTADO', color: 'bg-rose-50 text-rose-600 border-rose-200 ring-rose-500/20' };
+  if (tipo === 'INGRESO') return { label: '📥 INGRESO', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 ring-emerald-500/20' };
+  return { label: tipo, color: 'bg-slate-50 text-slate-600 border-slate-200 ring-slate-500/20' };
+};
+
+const formatFechaBonita = (d: string) => {
+  return new Intl.DateTimeFormat('es-PE', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true
+  }).format(new Date(d)).toUpperCase();
+};
+
 export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalProps) {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
@@ -131,54 +157,74 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {transactions.map((t) => (
-                                <TableRow key={t.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
-                                    <TableCell className="pl-4">
-                                        <p className="text-[10px] font-bold text-slate-700">{formatDate(t.fecha)}</p>
-                                        <p className="text-[8px] font-medium text-slate-400 uppercase">{new Date(t.fecha).toLocaleTimeString()}</p>
+                            {transactions.map((t, i) => {
+                                const isSameAsPrev = i > 0 && t.referenciaId && t.referenciaId === transactions[i-1].referenciaId;
+                                const tipoVisual = getTipoVisual(t.tipo, t.concepto);
+                                
+                                // Calculation logic based on type to find previous balance
+                                const montoNum = Number(t.monto);
+                                const saldoFinal = Number(t.saldoRealNuevo);
+                                let saldoAnterior = saldoFinal;
+                                if (t.tipo === 'INGRESO') saldoAnterior = saldoFinal - montoNum;
+                                if (t.tipo === 'EGRESO' || t.tipo === 'ANULACION') saldoAnterior = saldoFinal + montoNum;
+                                
+                                return (
+                                <TableRow key={t.id} className={cn("hover:bg-slate-50/50 transition-colors border-slate-100", isSameAsPrev && "border-t-0 bg-slate-50/30")}>
+                                    <TableCell className="pl-4 align-top pt-4">
+                                        <div className="flex flex-col">
+                                            <span className="text-[10px] font-black text-slate-700">{formatFechaBonita(t.fecha).split(',')[0]}</span>
+                                            <span className="text-[9px] font-bold text-slate-400">{formatFechaBonita(t.fecha).split(',')[1]}</span>
+                                        </div>
                                     </TableCell>
-                                    <TableCell>
-                                        <Badge className={cn(
-                                            "text-[8px] font-black uppercase h-5",
-                                            t.tipo === 'INGRESO' ? "bg-emerald-100 text-emerald-700" : 
-                                            t.tipo === 'EGRESO' ? "bg-red-100 text-red-700" :
-                                            t.tipo === 'BLOQUEO' ? "bg-orange-100 text-orange-700" :
-                                            "bg-blue-100 text-blue-700"
-                                        )}>
-                                            {t.tipo}
+                                    <TableCell className="align-top pt-4">
+                                        <Badge variant="outline" className={cn("text-[9px] font-black uppercase ring-1 ring-inset shadow-sm py-0.5", tipoVisual.color)}>
+                                            {tipoVisual.label}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="max-w-[250px]">
-                                        <p className="text-[10px] font-bold text-slate-800 line-clamp-2 uppercase leading-tight">{t.concepto}</p>
-                                        {t.referenciaTipo && (
-                                            <p className="text-[8px] font-black text-primary uppercase mt-0.5">{t.referenciaTipo}: {t.referenciaId?.slice(0,8)}</p>
+                                    <TableCell className="max-w-[280px] align-top pt-4">
+                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug break-words">{cleanConcepto(t.concepto)}</p>
+                                        {!isSameAsPrev && t.referenciaTipo && (
+                                            <div className="mt-1.5 flex flex-wrap gap-1">
+                                                <Badge variant="secondary" className="text-[8px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200">
+                                                    {t.referenciaTipo === 'ORDEN_COMPRA' ? 'ORDEN DE COMPRA' : t.referenciaTipo.replace('_', ' ')}
+                                                </Badge>
+                                            </div>
                                         )}
                                     </TableCell>
-                                    <TableCell className="text-right">
-                                        <p className={cn(
-                                            "text-xs font-black",
-                                            t.tipo === 'INGRESO' ? "text-emerald-600" : 
-                                            t.tipo === 'EGRESO' ? "text-red-600" : "text-slate-800"
-                                        )}>
-                                            {t.tipo === 'EGRESO' ? "-" : "+"}{formatCurrency(Number(t.monto), caja.moneda)}
-                                        </p>
-                                        <p className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter">SALDO: {formatCurrency(Number(t.saldoRealNuevo), caja.moneda)}</p>
+                                    <TableCell className="text-right align-top pt-4">
+                                        <div className="flex flex-col items-end gap-0.5 font-mono">
+                                            <div className="flex justify-between w-[130px] text-[9px] text-slate-400 font-bold uppercase">
+                                                <span>Antes:</span>
+                                                <span>{formatCurrency(saldoAnterior, caja.moneda)}</span>
+                                            </div>
+                                            <div className={cn("flex justify-between w-[130px] text-[11px] font-black border-y border-dashed py-0.5 my-0.5", 
+                                                t.tipo === 'INGRESO' || t.tipo === 'LIBERACION' ? "text-emerald-600 border-emerald-100" : 
+                                                t.tipo === 'EGRESO' || t.tipo === 'ANULACION' ? "text-red-600 border-red-100" : "text-amber-600 border-amber-100"
+                                            )}>
+                                                <span>{t.tipo === 'INGRESO' || t.tipo === 'LIBERACION' ? '+' : '-'}</span>
+                                                <span>{formatCurrency(montoNum, caja.moneda)}</span>
+                                            </div>
+                                            <div className="flex justify-between w-[130px] text-[10px] text-slate-700 font-black uppercase">
+                                                <span>Final:</span>
+                                                <span>{formatCurrency(saldoFinal, caja.moneda)}</span>
+                                            </div>
+                                        </div>
                                     </TableCell>
-                                    <TableCell className="pr-4">
+                                    <TableCell className="pr-4 align-top pt-3">
                                         <Button 
                                             variant="ghost" 
                                             size="icon" 
-                                            className="h-7 w-7 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                                            className="h-8 w-8 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
                                             onClick={() => {
                                                 setTransactionToDelete(t);
                                                 setDeleteModalOpen(true);
                                             }}
                                         >
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <Trash2 className="w-4 h-4" />
                                         </Button>
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            )})}
                         </TableBody>
                     </Table>
                 </ScrollArea>

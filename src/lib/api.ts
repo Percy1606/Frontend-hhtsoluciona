@@ -115,4 +115,11 @@ export const api = {
     });
     return handleResponse(response, endpoint);
   },
+  getFileUrl: (url: string) => {
+    if (!url) return '';
+    const token = useAuthStore.getState().token;
+    const base = url.startsWith('http') ? url : `${API_BASE_URL}${url.startsWith('/') ? '' : '/'}${url}`;
+    if (!token) return base;
+    return `${base}${base.includes('?') ? '&' : '?'}token=${token}`;
+  },
 };

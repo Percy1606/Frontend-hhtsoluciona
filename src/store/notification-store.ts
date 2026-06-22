@@ -29,6 +29,7 @@ export type NotificationState = {
   markAsRead: (id: string) => Promise<void>;
   markAsUnread: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
+  deleteNotification: (id: string) => Promise<void>;
   setupSSE: (token: string) => () => void;
 }
 
@@ -219,6 +220,24 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
       }));
     } catch (error) {
       console.error("Error marking all notifications as read:", error);
+    }
+  },
+
+  deleteNotification: async (id) => {
+    try {
+      await api.delete(`/notificaciones/${id}`);
+      set((state) => {
+        const notif = state.notifications.find(n => n.id === id);
+        const shouldDecrement = notif && !notif.leida;
+        return {
+          notifications: state.notifications.filter(n => n.id !== id),
+          unreadCount: shouldDecrement ? Math.max(0, state.unreadCount - 1) : state.unreadCount
+        };
+      });
+      toast.success("Notificación eliminada");
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      toast.error("Error al eliminar la notificación");
     }
   }
 }));

@@ -41,6 +41,19 @@ interface PagoFormProps {
   onCancel: () => void;
 }
 
+const getLocalDateString = (date?: string | Date) => {
+  if (!date) {
+    const d = new Date();
+    const tzOffset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - tzOffset).toISOString().split('T')[0];
+  }
+  const d = new Date(date);
+  if (typeof date === 'string' && date.includes('T')) {
+    return date.split('T')[0];
+  }
+  return d.toISOString().split('T')[0];
+};
+
 export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -51,7 +64,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
       facturaId: factura.id,
       monto: factura.saldoPendiente,
       cajaId: "",
-      fechaPago: new Date().toISOString().split('T')[0],
+      fechaPago: getLocalDateString(),
       metodo: "TRANSFERENCIA",
       referencia: "",
       comprobanteUrl: "",
@@ -117,8 +130,8 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(handleLocalSubmit)} className="space-y-6">
-        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 mb-6 space-y-3">
+      <form onSubmit={form.handleSubmit(handleLocalSubmit)} className="space-y-4 px-6 pb-6 pt-2">
+        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 mb-2 space-y-2">
           <div className="flex justify-between items-center">
             <span className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Factura Actual ({factura.codigo})</span>
             <span className="font-black text-xs text-primary">{formatCurrency(factura.saldoPendiente)}</span>
@@ -153,7 +166,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             control={form.control}
             name="monto"
@@ -174,7 +187,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
                         const val = parseFloat(e.target.value);
                         field.onChange(isNaN(val) ? 0 : val);
                       }}
-                      className="pl-9 bg-white border-slate-200 h-10 font-black text-secondary" 
+                      className="pl-9 bg-white border-slate-200 h-9 font-black text-secondary text-sm" 
                     />
                   </div>
                 </FormControl>
@@ -193,7 +206,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
                 <FormControl>
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input type="date" {...field} className="pl-9 bg-white border-slate-200 h-10 font-bold" />
+                    <Input type="date" {...field} className="pl-9 bg-white border-slate-200 h-9 font-bold text-xs" />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -202,33 +215,33 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
           />
         </div>
 
-        <div className="bg-emerald-50/50 p-5 rounded-2xl border-2 border-emerald-100 space-y-4 shadow-sm">
+        <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100 shadow-sm">
             <FormField
                 control={form.control}
                 name="cajaId"
                 rules={{ required: "Debe seleccionar una cuenta de destino" }}
                 render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="font-black text-[10px] uppercase text-emerald-700 tracking-widest flex items-center gap-2">
-                    <Wallet className="w-3.5 h-3.5" /> 💰 Destino de Fondos: ¿En qué cuenta se ha confirmado el depósito del cliente?
+                    <FormLabel className="font-black text-[10px] uppercase text-emerald-700 tracking-widest flex items-center gap-1.5 mb-1">
+                    <Wallet className="w-3 h-3" /> ¿Destino de Fondos?
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                        <SelectTrigger className="bg-white border-emerald-200 h-11 font-black text-xs shadow-sm">
-                        <SelectValue>
-                          {cajas.find(c => c.id === field.value)?.nombre || "Seleccione la cuenta de destino..."}
-                        </SelectValue>
+                        <SelectTrigger className="bg-white border-emerald-200 h-9 font-black text-xs shadow-sm">
+                          <SelectValue>
+                            {cajas.find(c => c.id === field.value)?.nombre || "Seleccione la cuenta..."}
+                          </SelectValue>
                         </SelectTrigger>
                     </FormControl>
                     <SelectContent>
                         {cajas.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-2">
-                            <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
+                        <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-1.5">
+                            <div className="flex flex-col gap-0.5">
+                            <div className="flex items-center gap-1.5">
                                 <span>{c.nombre}</span>
-                                {c.esProtegida && <Lock className="w-3 h-3 text-primary" />}
+                                {c.esProtegida && <Lock className="w-2.5 h-2.5 text-primary" />}
                             </div>
-                            <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest">Capital Actual: {formatCurrency(Number(c.saldoReal))}</span>
+                            <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest">Capital: {formatCurrency(Number(c.saldoReal))}</span>
                             </div>
                         </SelectItem>
                         ))}
@@ -240,7 +253,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
             />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <FormField
             control={form.control}
             name="metodo"
@@ -249,8 +262,8 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
                 <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Método de Pago</FormLabel>
                 <Select onValueChange={field.onChange} value={field.value}>
                   <FormControl>
-                    <SelectTrigger className="h-10 font-bold text-xs bg-white border-slate-200">
-                      <SelectValue placeholder="Seleccione" />
+                    <SelectTrigger className="h-9 font-bold text-xs bg-white border-slate-200">
+                      <SelectValue placeholder="Seleccione método" />
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
@@ -275,7 +288,7 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
                 <FormControl>
                   <div className="relative">
                     <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <Input {...field} placeholder="Ej: 098234" className="pl-9 bg-white border-slate-200 h-10 font-bold" />
+                    <Input {...field} placeholder="Ej: 098234" className="pl-9 bg-white border-slate-200 h-9 font-bold text-xs" />
                   </div>
                 </FormControl>
                 <FormMessage />
@@ -284,28 +297,28 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
           />
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1">
           <Label className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Voucher / Comprobante (Opcional)</Label>
           <div className="flex items-center gap-3">
             <Input 
               type="file" 
               onChange={handleFileChange} 
-              className="h-10 border-slate-200 cursor-pointer text-xs"
+              className="h-9 border-slate-200 cursor-pointer text-xs"
               accept=".pdf,.jpg,.jpeg,.png"
             />
-            {isUploading && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
+            {isUploading && <Loader2 className="w-4 h-4 animate-spin text-primary" />}
           </div>
           {form.watch("comprobanteUrl") && (
-            <p className="text-[9px] font-black text-green-600 uppercase">Voucher cargado correctamente ✓</p>
+            <p className="text-[9px] font-black text-green-600 uppercase">Voucher cargado correctamente</p>
           )}
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <Button type="button" variant="ghost" onClick={onCancel} className="font-black uppercase text-[10px] tracking-widest text-slate-500 hover:bg-slate-100 px-6">
+        <div className="flex justify-end gap-3 pt-3 border-t">
+          <Button type="button" variant="ghost" onClick={onCancel} className="h-9 font-black uppercase text-[10px] tracking-widest text-slate-500 hover:bg-slate-100 px-4">
             Cancelar
           </Button>
-          <Button type="submit" disabled={loading} className="font-black uppercase text-[10px] tracking-widest bg-secondary hover:bg-secondary/90 text-white px-10 shadow-lg shadow-secondary/20">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <DollarSign className="w-4 h-4 mr-2" />}
+          <Button type="submit" disabled={loading} className="h-9 font-black uppercase text-[10px] tracking-widest bg-secondary hover:bg-secondary/90 text-white px-8 shadow-md shadow-secondary/20">
+            {loading ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <DollarSign className="w-3 h-3 mr-1" />}
             Registrar Pago
           </Button>
         </div>
