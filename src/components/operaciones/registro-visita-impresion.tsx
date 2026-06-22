@@ -60,6 +60,14 @@ export function RegistroVisitaImpresion({
       </div>
 
       <div className="space-y-6">
+        {/* OBSERVACIONES DE COORDINACIÓN */}
+        {ficha.observaciones && (
+          <section className="bg-amber-50 border border-amber-200 rounded-lg p-4 print:bg-white print:border-slate-300 print:text-black shadow-inner">
+            <h3 className="text-amber-800 print:text-[#001529] text-[10px] font-black uppercase mb-1.5 tracking-widest">INDICACIONES DE COORDINACIÓN / TRABAJOS A REALIZAR</h3>
+            <p className="text-xs font-bold text-slate-700 print:text-black leading-relaxed whitespace-pre-wrap">{ficha.observaciones}</p>
+          </section>
+        )}
+
         {/* 1. DATOS GENERALES */}
         <section>
           <h3 className="bg-[#001529] text-white text-[10px] font-black uppercase px-3 py-1 mb-3 tracking-widest">1. DATOS GENERALES</h3>

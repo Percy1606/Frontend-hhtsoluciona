@@ -21,7 +21,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { ClipboardList, Calendar, User, Clock, CheckCircle2, FileText, Printer, FilterX, Search, Info, ChevronLeft, ChevronRight, RotateCw, Trash2 } from "lucide-react";
+import { ClipboardList, Calendar, User, Clock, CheckCircle2, FileText, Printer, FilterX, Search, Info, ChevronLeft, ChevronRight, RotateCw, Trash2, Camera, Upload, Download, X } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -63,6 +63,89 @@ export default function BandejaTecnicaPage() {
   const [startDate, setStartDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
   const [endDate, setEndDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
   const [searchTerm, setSearchQuery] = useState<string>("");
+
+  const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
+  const [selectedFichaForAttachments, setSelectedFichaForAttachments] = useState<any>(null);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedFichaForAttachments) return;
+
+    setUploadingAttachment(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post('/operaciones/fichas-tecnicas/upload', formData);
+      const newAdjunto = {
+        nombre: file.name,
+        url: res.url,
+        tipo: file.type.includes('image') ? 'Imagen' : 'Documento'
+      };
+
+      const currentAdjuntos = (selectedFichaForAttachments.adjuntos || []).map((a: any) => ({
+        nombre: a.nombre,
+        url: a.url,
+        tipo: a.tipo
+      }));
+      const updatedAdjuntos = [...currentAdjuntos, newAdjunto];
+
+      const payload = {
+        ...selectedFichaForAttachments,
+        adjuntos: updatedAdjuntos
+      };
+
+      delete payload.cliente;
+      delete payload.tecnico;
+
+      const response = await api.put(`/operaciones/fichas-tecnicas/${selectedFichaForAttachments.id}`, payload);
+      
+      toast.success("Archivo subido con éxito", { description: `El archivo ${file.name} fue adjuntado.` });
+      
+      setSelectedFichaForAttachments(response);
+      handleRefresh();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error al subir archivo", { description: error.message || "Fallo en la comunicación." });
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const handleDeleteAttachment = async (adjToDelete: any) => {
+    if (!selectedFichaForAttachments) return;
+    
+    try {
+      setUploadingAttachment(true);
+      const updatedAdjuntos = (selectedFichaForAttachments.adjuntos || [])
+        .filter((a: any) => a.url !== adjToDelete.url)
+        .map((a: any) => ({
+          nombre: a.nombre,
+          url: a.url,
+          tipo: a.tipo
+        }));
+
+      const payload = {
+        ...selectedFichaForAttachments,
+        adjuntos: updatedAdjuntos
+      };
+
+      delete payload.cliente;
+      delete payload.tecnico;
+
+      const response = await api.put(`/operaciones/fichas-tecnicas/${selectedFichaForAttachments.id}`, payload);
+      
+      toast.success("Archivo eliminado", { description: "El archivo ha sido removido correctamente." });
+      setSelectedFichaForAttachments(response);
+      handleRefresh();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error al eliminar", { description: error.message || "No se pudo actualizar." });
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
 
   useEffect(() => {
     // Ya no filtramos por técnico automáticamente, mostramos todo
@@ -112,7 +195,7 @@ export default function BandejaTecnicaPage() {
       const dataToSubmit = {
         hallazgos: borrador.comentariosCliente || "Ver Hoja de Ruta física/PDF para detalles.",
         recomendaciones: borrador.comentariosExtras || "Ver Hoja de Ruta física/PDF para detalles.",
-        observaciones: "Inspección finalizada directamente desde la Bandeja Técnica usando los datos de la Hoja de Ruta.",
+        observaciones: ficha.observaciones || "Inspección finalizada directamente desde la Bandeja Técnica usando los datos de la Hoja de Ruta.",
         firmaTecnico: "",
         adjuntos: ficha.adjuntos || [],
         datosTecnicos: {
@@ -289,11 +372,50 @@ export default function BandejaTecnicaPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col py-1">
+                      <div className="flex flex-col py-1 max-w-md">
                         <span className="font-black text-sm text-primary uppercase leading-tight tracking-tight">{ficha.cliente?.empresa}</span>
                         <div className="flex items-center gap-2 mt-1 opacity-60">
                           <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RUC: {ficha.cliente?.ruc}</span>
                         </div>
+                        {ficha.observaciones && (
+                          <div className="mt-2 bg-amber-50/70 border border-amber-200/50 rounded-xl p-2.5 text-xs shadow-sm">
+                            <span className="font-black text-[9px] text-amber-800 uppercase tracking-wider block mb-0.5">Observaciones de Coordinación:</span>
+                            <span className="text-slate-600 font-bold block whitespace-pre-wrap leading-tight">{ficha.observaciones}</span>
+                          </div>
+                        )}
+                        {ficha.adjuntos && ficha.adjuntos.length > 0 && (
+                          <div className="mt-2 flex flex-col gap-1">
+                            <span className="font-black text-[8px] text-slate-400 uppercase tracking-wider">Archivos / Evidencias:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {ficha.adjuntos.map((adj: any) => {
+                                const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
+                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                                const fullUrl = adj.url.startsWith('http') ? adj.url : `${baseUrl}${adj.url}`;
+                                return (
+                                  <a
+                                    key={adj.id || adj.url}
+                                    href={fullUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-1 text-[9px] font-bold text-slate-600 uppercase transition-colors shrink-0"
+                                    title={adj.nombre}
+                                  >
+                                    {isImage ? (
+                                      <img
+                                        src={fullUrl}
+                                        alt={adj.nombre}
+                                        className="w-5 h-5 rounded object-cover border border-slate-200 shrink-0"
+                                      />
+                                    ) : (
+                                      <FileText className="w-3.5 h-3.5 text-[#001529] shrink-0" />
+                                    )}
+                                    <span className="truncate max-w-[80px]">{adj.nombre}</span>
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -317,14 +439,23 @@ export default function BandejaTecnicaPage() {
                     <TableCell className="text-right pr-6">
                       <div className="flex justify-end gap-2">
                         <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 shadow-inner">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-all" onClick={() => handleOpenRouteSheet(ficha)}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-all" onClick={() => handleOpenRouteSheet(ficha)} title="Ver Hoja de Ruta">
                             <FileText className="w-4 h-4" />
                           </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-white rounded-lg transition-all" onClick={() => handleOpenConstancia(ficha)}>
+                          <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-white rounded-lg transition-all" onClick={() => handleOpenConstancia(ficha)} title="Ver Constancia">
                             <ClipboardList className="w-4 h-4" />
                           </Button>
+                          <Button 
+                            size="icon" 
+                            variant="ghost" 
+                            className="h-8 w-8 text-blue-600 hover:bg-white rounded-lg transition-all" 
+                            onClick={() => { setSelectedFichaForAttachments(ficha); setIsAttachmentsOpen(true); }}
+                            title="Gestionar fotos/archivos"
+                          >
+                            <Camera className="w-4 h-4" />
+                          </Button>
                           {user?.rol === 'ADMIN' && (
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all" onClick={() => { setFichaToDelete(ficha); setIsDeleteModalOpen(true); }}>
+                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all" onClick={() => { setFichaToDelete(ficha); setIsDeleteModalOpen(true); }} title="Eliminar Visita">
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           )}
@@ -428,6 +559,133 @@ export default function BandejaTecnicaPage() {
               </div>
             </ScrollArea>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isAttachmentsOpen} onOpenChange={setIsAttachmentsOpen}>
+        <DialogContent className="max-w-md w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
+          <DialogHeader className="p-6 bg-blue-900 text-white shrink-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
+              <Camera className="w-5 h-5 text-blue-200" />
+              Gestión de Adjuntos
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="p-6 space-y-6">
+            {/* Info de la Ficha */}
+            <div>
+              <h4 className="text-sm font-black text-slate-800 uppercase truncate">
+                {selectedFichaForAttachments?.cliente?.empresa}
+              </h4>
+              <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                Visita técnica del {selectedFichaForAttachments?.fechaVisita ? format(new Date(selectedFichaForAttachments.fechaVisita), "dd/MM/yyyy") : "---"}
+              </p>
+            </div>
+
+            {/* Subidor de archivo */}
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1">
+                <Upload className="w-3.5 h-3.5" /> Subir Nueva Foto / Evidencia
+              </Label>
+              <div className="flex items-center gap-3">
+                <Label
+                  htmlFor="dialog-image-upload"
+                  className={cn(
+                    "flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-slate-50/50 rounded-xl p-4 cursor-pointer transition-all w-full h-24 gap-1.5",
+                    uploadingAttachment && "opacity-50 pointer-events-none"
+                  )}
+                >
+                  <Upload className="w-5 h-5 text-slate-400" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                    {uploadingAttachment ? "Subiendo archivo..." : "Seleccionar Archivo"}
+                  </span>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase">PNG, JPG, PDF (MÁX. 10MB)</span>
+                </Label>
+                <input
+                  id="dialog-image-upload"
+                  type="file"
+                  className="hidden"
+                  onChange={handleUploadAttachment}
+                  disabled={uploadingAttachment}
+                  accept="image/*,application/pdf"
+                />
+              </div>
+            </div>
+
+            {/* Listado de archivos actuales */}
+            <div className="space-y-3">
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">
+                Archivos adjuntos ({selectedFichaForAttachments?.adjuntos?.length || 0})
+              </span>
+              
+              {(!selectedFichaForAttachments?.adjuntos || selectedFichaForAttachments.adjuntos.length === 0) ? (
+                <div className="text-center py-6 border border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold italic">No hay archivos adjuntos en esta visita</span>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {selectedFichaForAttachments.adjuntos.map((adj: any) => {
+                    const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
+                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                    const fullUrl = adj.url.startsWith('http') ? adj.url : `${baseUrl}${adj.url}`;
+                    return (
+                      <div
+                        key={adj.id || adj.url}
+                        className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 uppercase hover:bg-slate-100/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 truncate pr-4">
+                          {isImage ? (
+                            <img
+                              src={fullUrl}
+                              alt={adj.nombre}
+                              className="w-8 h-8 rounded object-cover border border-slate-200 shrink-0"
+                            />
+                          ) : (
+                            <FileText className="w-6 h-6 text-[#001529] shrink-0" />
+                          )}
+                          <span className="truncate text-[10px]" title={adj.nombre}>{adj.nombre}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-primary hover:bg-slate-200 rounded-lg"
+                            onClick={() => window.open(fullUrl, '_blank')}
+                            title="Descargar / Ver"
+                          >
+                            <Download className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            onClick={() => handleDeleteAttachment(adj)}
+                            disabled={uploadingAttachment}
+                            title="Eliminar"
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <Button
+              type="button"
+              className="bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] h-9 px-4 rounded-xl"
+              onClick={() => setIsAttachmentsOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

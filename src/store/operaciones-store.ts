@@ -619,6 +619,16 @@ export const useOperacionesStore = create<OperacionesState>()(
                 });
               }
 
+              // Registrar en la Bitácora de CRM
+              await api.post('/crm/interacciones', {
+                clientId: ficha.clienteId,
+                fecha: new Date().toISOString(),
+                tipo: 'Visita',
+                accion: 'Visita Técnica Finalizada',
+                observaciones: `Hallazgos: ${data.hallazgos || 'Sin hallazgos'}\nRecomendaciones: ${data.recomendaciones || 'Sin recomendaciones'}`,
+                usuario: user?.nombre || 'Técnico'
+              });
+
               // Refrescar notificaciones globales para ver la alerta de inspección finalizada
               const notifStore = useNotificationStore.getState();
               await Promise.all([

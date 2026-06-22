@@ -20,9 +20,11 @@ import {
 } from "@/components/ui/select";
 import { useCRMStore } from "@/store/crm-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
-import { Calendar, User, ClipboardList, Info } from "lucide-react";
+import { Calendar, User, ClipboardList, Info, FileUp, X, FileText, Camera } from "lucide-react";
 import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 import { format } from "date-fns";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 interface VisitModalProps {
   clientId: string;
@@ -41,6 +43,38 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
   const [loading, setLoading] = useState(false);
   const [activeVisit, setActiveVisit] = useState<any | null>(null);
   const [checkingVisit, setCheckingVisit] = useState(false);
+
+  const [adjuntos, setAdjuntos] = useState<any[]>([]);
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post('/operaciones/fichas-tecnicas/upload', formData);
+      const newAdjunto = {
+        nombre: file.name,
+        url: res.url,
+        tipo: file.type.includes('image') ? 'Imagen' : 'Documento'
+      };
+      setAdjuntos((prev) => [...prev, newAdjunto]);
+      toast.success("Archivo adjuntado correctamente.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al subir el archivo.");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
+  const handleRemoveAdjunto = (index: number) => {
+    setAdjuntos((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Modern Dialog State
   const [modernDialog, setModernDialog] = useState<{
@@ -64,6 +98,7 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
       setFecha("");
       setObservaciones("");
       setActiveVisit(null);
+      setAdjuntos([]);
       
       fetchResponsables();
       checkExistingVisit();
@@ -86,7 +121,7 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
     setLoading(true);
     try {
       const tecnico = responsables.find(r => r.id === tecnicoId);
-      await scheduleTechnicalVisit(clientId, tecnicoId, fecha, `${observaciones} (Asignado a: ${tecnico?.nombre || 'Técnico'})`);
+      await scheduleTechnicalVisit(clientId, tecnicoId, fecha, `${observaciones} (Asignado a: ${tecnico?.nombre || 'Técnico'})`, adjuntos);
       
       setModernDialog({
         isOpen: true,
@@ -257,6 +292,61 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
                   value={observaciones}
                   onChange={(e) => setObservaciones(e.target.value)}
                 />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1 flex items-center gap-1">
+                  <FileUp className="w-3.5 h-3.5 text-primary" /> Adjuntar Imagen / Documento (Opcional)
+                </Label>
+                <div className="flex items-center gap-3">
+                  <Label
+                    htmlFor="visit-image-upload"
+                    className="flex flex-col items-center justify-center border-2 border-dashed border-slate-200 hover:border-primary/50 hover:bg-slate-50/50 rounded-xl p-4 cursor-pointer transition-all w-full h-24 gap-1.5 group"
+                  >
+                    <FileUp className="w-5 h-5 text-slate-400 group-hover:text-primary transition-colors" />
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider">
+                      {uploadingFile ? "Subiendo..." : "Seleccionar Archivo"}
+                    </span>
+                    <span className="text-[8px] text-slate-400 font-bold uppercase">PNG, JPG, PDF (MÁX. 10MB)</span>
+                  </Label>
+                  <input
+                    id="visit-image-upload"
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={uploadingFile}
+                    accept="image/*,application/pdf"
+                  />
+                </div>
+                
+                {adjuntos.length > 0 && (
+                  <div className="mt-3 space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                    {adjuntos.map((adj, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2 text-xs font-bold text-slate-700 uppercase"
+                      >
+                        <div className="flex items-center gap-2 truncate pr-2">
+                          {adj.tipo === "Imagen" ? (
+                            <Camera className="w-4 h-4 text-slate-400 shrink-0" />
+                          ) : (
+                            <FileText className="w-4 h-4 text-slate-400 shrink-0" />
+                          )}
+                          <span className="truncate">{adj.nombre}</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg shrink-0"
+                          onClick={() => handleRemoveAdjunto(index)}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex gap-3">

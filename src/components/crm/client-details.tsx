@@ -41,7 +41,8 @@ import {
   DollarSign,
   ClipboardList,
   Clock,
-  Loader2
+  Loader2,
+  Camera
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
@@ -53,6 +54,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { VisitModal } from "./visit-modal";
+import { api } from "@/lib/api";
 
 // IMPORTACIÓN DE PANELES OPERATIVOS PARA FUSIÓN 360
 import { ActividadesPanel } from "../operaciones/actividades-panel";
@@ -95,6 +97,9 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const [financeData, setFinanceData] = useState<any>(null);
   const [loadingFinance, setLoadingFinance] = useState(false);
 
+  const [fichaAdjuntos, setFichaAdjuntos] = useState<any[]>([]);
+  const [loadingFichas, setLoadingFichas] = useState(false);
+
   useEffect(() => {
     if (vinculadoProyecto && (activeTab === 'logistica' || activeTab === 'profitability')) {
       const loadFinance = async () => {
@@ -111,6 +116,33 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
       loadFinance();
     }
   }, [vinculadoProyecto, activeTab, fetchProjectProfitability]);
+
+  useEffect(() => {
+    if (client?.id && isOpen) {
+      const loadFichaAdjuntos = async () => {
+        setLoadingFichas(true);
+        try {
+          const response = await api.get(`/operaciones/fichas-tecnicas?clienteId=${client.id}`);
+          const fichas = response.data || response || [];
+          if (Array.isArray(fichas)) {
+            const allAdjuntos = fichas.flatMap((f: any) => 
+              (f.adjuntos || []).map((adj: any) => ({
+                ...adj,
+                fichaFecha: f.fechaVisita,
+                tecnicoNombre: f.tecnico?.nombre || 'Técnico'
+              }))
+            );
+            setFichaAdjuntos(allAdjuntos);
+          }
+        } catch (error) {
+          console.error("Error loading ficha adjuntos:", error);
+        } finally {
+          setLoadingFichas(false);
+        }
+      };
+      loadFichaAdjuntos();
+    }
+  }, [client?.id, isOpen]);
 
   if (!client) return null;
 
@@ -588,6 +620,59 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* ADJUNTOS DE VISITAS TÉCNICAS */}
+              <div className="space-y-4 pt-6 border-t border-slate-100">
+                <div className="flex justify-between items-center border-b border-amber-100 pb-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-amber-600 flex items-center gap-2">
+                    <Camera className="w-4 h-4" /> Fotos y Evidencias de Visitas Técnicas
+                  </h4>
+                </div>
+                {loadingFichas ? (
+                  <div className="text-center py-6">
+                    <div className="animate-spin w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full mx-auto" />
+                  </div>
+                ) : fichaAdjuntos.length > 0 ? (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                    {fichaAdjuntos.map((file) => {
+                      const isImage = file.tipo?.toLowerCase().includes('image') || file.nombre?.toLowerCase().endsWith('.png') || file.nombre?.toLowerCase().endsWith('.jpg') || file.nombre?.toLowerCase().endsWith('.jpeg');
+                      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+                      const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
+                      return (
+                        <div key={file.id} className="flex items-center justify-between p-2 bg-amber-50/20 border border-amber-100/50 rounded-lg shadow-sm hover:border-amber-300 transition-colors">
+                          <div className="flex items-center gap-2 overflow-hidden font-bold">
+                            {isImage ? (
+                              <img src={fullUrl} alt={file.nombre} className="w-6 h-6 rounded object-cover shrink-0 border border-amber-200" />
+                            ) : (
+                              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
+                            )}
+                            <div className="overflow-hidden">
+                              <p className="text-[10px] font-bold text-slate-800 truncate leading-tight">{file.nombre}</p>
+                              <p className="text-[8px] text-slate-400 font-bold uppercase">
+                                Visita: {formatDate(file.fichaFecha)} por {file.tecnicoNombre}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex shrink-0">
+                            <Button 
+                              size="icon" 
+                              variant="ghost" 
+                              className="h-6 w-6 text-amber-700 hover:text-amber-800 hover:bg-amber-100/50 rounded-lg" 
+                              onClick={() => window.open(fullUrl, '_blank')}
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="col-span-full text-center py-8 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase italic">Sin fotos ni evidencias de visitas técnicas</p>
+                  </div>
+                )}
               </div>
             </TabsContent>
 

@@ -137,7 +137,7 @@ interface CRMState {
 
   changeStage: (id: string, newStage: Client['etapaComercial']) => Promise<void>;
   scheduleFollowUp: (clientId: string, fecha: string, accion: string, tipo: Interaction['tipo']) => Promise<void>;
-  scheduleTechnicalVisit: (clientId: string, tecnicoId: string, fecha: string, observaciones: string) => Promise<void>;
+  scheduleTechnicalVisit: (clientId: string, tecnicoId: string, fecha: string, observaciones: string, adjuntos?: any[]) => Promise<void>;
 }
 
 const safeJsonParse = (str: any, fallback: any = []) => {
@@ -669,12 +669,24 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
-      scheduleTechnicalVisit: async (clientId, tecnicoId, fecha, observaciones) => {
+      scheduleTechnicalVisit: async (clientId, tecnicoId, fecha, observaciones, adjuntos) => {
         try {
           const user = useAuthStore.getState().user;
           const client = get().clients.find(c => c.id === clientId);
           await api.post('/crm/actividades', { clienteId: clientId, usuarioId: user?.id || 'Sistema', tipoActividad: 'VISITA_TECNICA', descripcion: observaciones, fechaActividad: fecha, estado: 'PENDIENTE', tecnicoId, clienteNombre: client?.empresa || 'Empresa' });
-          await api.post('/operaciones/fichas-tecnicas', { clienteId: clientId, tecnicoId: tecnicoId, fechaVisita: fecha, observaciones: observaciones, estado: 'PENDIENTE' });
+          await api.post('/operaciones/fichas-tecnicas', { clienteId: clientId, tecnicoId: tecnicoId, fechaVisita: fecha, observaciones: observaciones, estado: 'PENDIENTE', adjuntos: adjuntos || [] });
+          
+          // Registrar en la Bitácora de CRM
+          const fechaFormat = format(new Date(fecha), 'dd/MM/yyyy HH:mm');
+          await api.post('/crm/interacciones', {
+            clientId,
+            fecha: new Date().toISOString(),
+            tipo: 'Visita',
+            accion: `Visita Técnica Programada (${fechaFormat})`,
+            observaciones: observaciones,
+            usuario: user?.nombre || 'Sistema'
+          });
+
           await get().changeStage(clientId, 'Visita Agendada');
           await get().fetchClients(1);
         } catch (error) {
