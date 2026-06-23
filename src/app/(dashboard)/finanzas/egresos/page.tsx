@@ -486,14 +486,16 @@ export default function EgresosPage() {
         maxWidth="sm:max-w-4xl"
         className="max-h-[90vh] flex flex-col"
       >
-        <GastoForm 
-          initialData={editingGasto}
-          onSubmit={handleCreateOrUpdateGasto}
-          onCancel={() => {
-            setIsModalOpen(false);
-            setEditingGasto(null);
-          }}
-        />
+        <div className="flex-1 overflow-y-auto pr-1">
+          <GastoForm 
+            initialData={editingGasto}
+            onSubmit={handleCreateOrUpdateGasto}
+            onCancel={() => {
+              setIsModalOpen(false);
+              setEditingGasto(null);
+            }}
+          />
+        </div>
       </ModernDialog>
 
       <GenericSecureDeleteModal
