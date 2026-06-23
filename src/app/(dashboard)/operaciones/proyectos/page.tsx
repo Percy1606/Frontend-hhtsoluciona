@@ -508,7 +508,7 @@ export default function ProyectosPage() {
                             {crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                         </span>
                         <p className="font-black text-[12px] text-primary group-hover:text-secondary transition-colors uppercase truncate max-w-[280px]">
-                          {proyecto.nombre}
+                          {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
                         </p>
                       </div>
                     </TableCell>

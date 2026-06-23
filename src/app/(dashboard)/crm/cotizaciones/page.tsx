@@ -151,7 +151,10 @@ export default function CotizacionesInboxPage() {
       const matchesSearch = (q.empresa?.toLowerCase() || "").includes(search.toLowerCase()) ||
                             (q.codigo && q.codigo.toLowerCase().includes(search.toLowerCase())) ||
                             (q.referencia && q.referencia.toLowerCase().includes(search.toLowerCase()));
-      const matchesStatus = statusFilter === "all" || q.estado === statusFilter;
+      const matchesStatus = statusFilter === "all" || 
+                            (statusFilter === "Ganada" 
+                              ? ((q.estado as string) === "Ganada" || (q.estado as string) === "Ganado" || (q.estado as string) === "Aprobado" || (q.estado as string) === "Aprobada") 
+                              : q.estado === statusFilter);
       
       const quoteDate = new Date(q.fecha);
       const start = startDate ? new Date(startDate) : null;
@@ -436,6 +439,9 @@ export default function CotizacionesInboxPage() {
               <SelectItem value="Revisado" className="font-black text-[10px] uppercase text-blue-500">Revisado</SelectItem>
               <SelectItem value="Aprobado" className="font-black text-[10px] uppercase text-success">Aprobado</SelectItem>
               <SelectItem value="Obsoleto" className="font-black text-[10px] uppercase text-error">Obsoleto</SelectItem>
+              {canManageFinances && (
+                <SelectItem value="Ganada" className="font-black text-[10px] uppercase text-emerald-600">Ganadas</SelectItem>
+              )}
             </SelectContent>
           </Select>
 
