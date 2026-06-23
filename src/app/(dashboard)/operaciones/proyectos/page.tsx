@@ -52,6 +52,7 @@ import { KPIPanel } from "@/components/operaciones/kpi-panel";
 import { toast } from "sonner";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useCRMStore } from "@/store/crm-store";
+import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 import type { Proyecto, Actividad, EstadoProyecto, Area, Prioridad } from "@/lib/types";
@@ -118,15 +119,29 @@ export default function ProyectosPage() {
     fetchResponsables,
   } = useOperacionesStore();
 
-  const { clients: crmClients, quotes, fetchClients: fetchCRMClients, fetchQuotes } = useCRMStore();
+  const { quotes, fetchQuotes } = useCRMStore();
+  const [allClients, setAllClients] = useState<any[]>([]);
 
   const clientOptions = useMemo(() => 
-    crmClients.map(c => ({
+    allClients.map(c => ({
       value: c.id,
       label: c.empresa,
       subLabel: `${c.codigo} - RUC: ${c.ruc}`
-    })), [crmClients]
+    })), [allClients]
   );
+
+  const fetchAllClientsDirectly = useCallback(async () => {
+    try {
+      const res: any = await api.get('/crm/clientes?limit=3000');
+      if (res && res.data && Array.isArray(res.data)) {
+        setAllClients(res.data);
+      } else if (Array.isArray(res)) {
+        setAllClients(res);
+      }
+    } catch (e) {
+      console.error("Error fetching clients directly:", e);
+    }
+  }, []);
 
   const [loading, setLoading] = useState(true);
   const [selectedProyecto, setSelectedProyecto] = useState<Proyecto | null>(null);
@@ -230,13 +245,13 @@ export default function ProyectosPage() {
       await Promise.all([
         fetchProyectos(proyectoPage, 20), 
         fetchResponsables(),
-        fetchCRMClients(1, 3000),
+        fetchAllClientsDirectly(),
         fetchQuotes(1, 3000)
       ]);
       setLoading(false);
     };
     init();
-  }, [fetchProyectos, fetchResponsables, fetchCRMClients, fetchQuotes, proyectoPage]);
+  }, [fetchProyectos, fetchResponsables, fetchAllClientsDirectly, fetchQuotes, proyectoPage]);
 
   const handlePageChange = (newPage: number) => {
     fetchProyectos(newPage, 20);
@@ -248,7 +263,7 @@ export default function ProyectosPage() {
       await Promise.all([
         fetchProyectos(proyectoPage, 20), 
         fetchResponsables(),
-        fetchCRMClients(1, 3000),
+        fetchAllClientsDirectly(),
         fetchQuotes(1, 3000)
       ]);
     } catch (e) {
@@ -505,7 +520,7 @@ export default function ProyectosPage() {
                     <TableCell>
                       <div className="flex flex-col">
                         <span className="text-[9px] font-black uppercase text-slate-400 mb-0.5">
-                            {crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                            {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                         </span>
                         <p className="font-black text-[12px] text-primary group-hover:text-secondary transition-colors uppercase truncate max-w-[280px]">
                           {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
