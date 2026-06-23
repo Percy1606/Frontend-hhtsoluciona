@@ -38,10 +38,11 @@ interface QuoteFormProps {
 }
 
 export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel }: QuoteFormProps) {
-  const { clients, uploadQuoteFile, quotes } = useCRMStore();
+  const { clients, uploadQuoteFile, quotes, fetchClientById } = useCRMStore();
   const { responsables, fetchResponsables } = useOperacionesStore();
   const [selectedLiderId, setSelectedLiderId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [additionalClient, setAdditionalClient] = useState<any>(null);
 
   const isQuoteWon = useMemo(() => 
     quote ? ['Ganada', 'Aprobado', 'Aprobada'].includes(quote.estado) : false,
@@ -57,6 +58,21 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       setSelectedLiderId((quote as any).proyectoGenerado.responsablePrincipalId || "");
     }
   }, [quote]);
+
+  useEffect(() => {
+    if (quote?.clientId) {
+      const exists = clients.some(c => c.id === quote.clientId);
+      if (!exists && fetchClientById) {
+        fetchClientById(quote.clientId)
+          .then(client => {
+            if (client) {
+              setAdditionalClient(client);
+            }
+          });
+      }
+    }
+  }, [quote, clients, fetchClientById]);
+
   const [isUploading, setIsUploading] = useState(false);
   const [cajas, setCajas] = useState<any[]>([]);
   
@@ -133,23 +149,29 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
     fetchCajas();
   }, []);
 
-  const clientOptions = useMemo(() => 
-    clients.map(c => ({
+  const clientOptions = useMemo(() => {
+    const list = [...clients];
+    if (additionalClient && !list.some(c => c.id === additionalClient.id)) {
+      list.push(additionalClient);
+    }
+    return list.map(c => ({
       value: c.id,
       label: c.empresa,
       subLabel: `${c.codigo} - RUC: ${c.ruc}`
-    })), [clients]
-  );
+    }));
+  }, [clients, additionalClient]);
 
   const currentEstado = form.watch("estado");
   const isApproved = currentEstado === "Ganada";
 
   const currentMoneda = form.watch("moneda");
 
-  const selectedClient = useMemo(() => 
-    clients.find(c => c.id === selectedClientId),
-    [clients, selectedClientId]
-  );
+  const selectedClient = useMemo(() => {
+    const found = clients.find(c => c.id === selectedClientId);
+    if (found) return found;
+    if (additionalClient && additionalClient.id === selectedClientId) return additionalClient;
+    return null;
+  }, [clients, selectedClientId, additionalClient]);
 
   useEffect(() => {
     if (selectedClient && !quote) {

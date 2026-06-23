@@ -126,7 +126,7 @@ export default function CotizacionesInboxPage() {
 
   useEffect(() => {
     fetchQuotes(quotePage, quoteLimit);
-    fetchClients();
+    fetchClients(1, 1000);
   }, [fetchQuotes, fetchClients, quotePage, quoteLimit]);
 
   const handlePageChange = (newPage: number) => {
