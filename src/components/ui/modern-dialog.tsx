@@ -92,7 +92,7 @@ export function ModernDialog({
           </DialogTitle>
         </DialogHeader>
         
-        <div className={cn("p-8", children && "p-6")}>
+        <div className={cn("p-8", children && "p-6 overflow-y-auto max-h-[70vh]")}>
           {description && (
             <DialogDescription className="text-center text-slate-600 font-bold text-base leading-relaxed mb-4">
               {description}

@@ -287,7 +287,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-bold uppercase text-slate-400">Total Presupuestado</p>
-                      <p className="text-sm font-black text-blue-700">S/ {Number(selectedProjectObj.presupuesto || 0).toLocaleString()}</p>
+                      <p className="text-sm font-black text-blue-700">S/ {Number(selectedProjectObj.costoPresupuestado || selectedProjectObj.presupuesto || 0).toLocaleString()}</p>
                     </div>
                   </div>
                   
@@ -301,7 +301,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     </Alert>
                   )}
                   
-                  {projectStats && watchMonto > Number(selectedProjectObj.presupuesto || 0) && (
+                  {projectStats && watchMonto > Number(selectedProjectObj.costoPresupuestado || selectedProjectObj.presupuesto || 0) && (
                     <Alert className="bg-orange-50 border-orange-200">
                       <AlertTriangle className="h-4 w-4 text-orange-600" />
                       <AlertTitle className="text-xs font-black uppercase tracking-widest text-orange-800">Advertencia de Presupuesto</AlertTitle>
