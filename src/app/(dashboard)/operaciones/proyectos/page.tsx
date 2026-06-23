@@ -230,8 +230,8 @@ export default function ProyectosPage() {
       await Promise.all([
         fetchProyectos(proyectoPage, 20), 
         fetchResponsables(),
-        fetchCRMClients(),
-        fetchQuotes()
+        fetchCRMClients(1, 3000),
+        fetchQuotes(1, 3000)
       ]);
       setLoading(false);
     };
@@ -248,8 +248,8 @@ export default function ProyectosPage() {
       await Promise.all([
         fetchProyectos(proyectoPage, 20), 
         fetchResponsables(),
-        fetchCRMClients(),
-        fetchQuotes()
+        fetchCRMClients(1, 3000),
+        fetchQuotes(1, 3000)
       ]);
     } catch (e) {
       toast.error("Error", { description: "No se pudieron recargar los proyectos." });

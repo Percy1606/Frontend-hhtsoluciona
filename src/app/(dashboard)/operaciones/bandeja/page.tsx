@@ -355,7 +355,7 @@ export default function BandejaTecnicaPage() {
                       <div className="flex items-center gap-1.5 text-slate-500">
                         <Calendar className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-black uppercase tracking-wider">
-                          {ficha.fechaVisita ? format(new Date(ficha.fechaVisita), "dd MMM yyyy", { locale: es }) : "---"}
+                          {ficha.fechaVisita ? format(new Date(ficha.fechaVisita), "dd MMM yyyy - hh:mm a", { locale: es }) : "---"}
                         </span>
                       </div>
                       <Badge className={cn(
