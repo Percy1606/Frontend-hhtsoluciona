@@ -43,9 +43,20 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
   const [selectedLiderId, setSelectedLiderId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  const isQuoteWon = useMemo(() => 
+    quote ? ['Ganada', 'Aprobado', 'Aprobada'].includes(quote.estado) : false,
+    [quote]
+  );
+
   useEffect(() => {
     fetchResponsables();
   }, [fetchResponsables]);
+
+  useEffect(() => {
+    if (quote && (quote as any).proyectoGenerado) {
+      setSelectedLiderId((quote as any).proyectoGenerado.responsablePrincipalId || "");
+    }
+  }, [quote]);
   const [isUploading, setIsUploading] = useState(false);
   const [cajas, setCajas] = useState<any[]>([]);
   
@@ -175,7 +186,8 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       
       await onSubmit({ 
         ...dtoData, 
-        ...fileData
+        ...fileData,
+        liderId: selectedLiderId
       });
       setConfirmDialog(prev => ({ ...prev, open: false }));
     } catch (error: any) {
@@ -234,11 +246,16 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
       }
     }
     
-    if (data.estado === "Ganada" && quote?.estado !== "Ganada") {
+    if (data.estado === "Ganada" && !isQuoteWon) {
+      const tieneDocumentos = quote?.documentos && quote.documentos.length > 0;
+      const descripcion = tieneDocumentos
+        ? "Se generará automáticamente el Proyecto, la Orden de Servicio, y se notificará a Finanzas y Logística. ¿Desea continuar?"
+        : "⚠️ No se han adjuntado documentos (cotización + orden de servicio). El proyecto se generará igualmente, pero deberás adjuntarlos después desde el detalle de la cotización. ¿Estás seguro de continuar?";
+
       setConfirmDialog({
         open: true,
         title: "¡Cotización Ganada!",
-        description: "Se generará automáticamente el Proyecto, la Orden de Servicio, y se notificará a Finanzas y Logística. ¿Desea continuar?",
+        description: descripcion,
         data,
         confirmText: "Ganar Cotización"
       });
@@ -456,7 +473,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={quote?.estado === "Ganada"}
+                        disabled={isQuoteWon}
                       >
                         <FormControl>
                           <SelectTrigger className={cn(
@@ -480,6 +497,25 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                     </FormItem>
                   )}
                 />
+
+                {(isQuoteWon || currentEstado === "Ganada") && (
+                  <div className="space-y-1.5 mt-4">
+                    <FormLabel className="text-[10px] font-black text-slate-500 uppercase ml-1">Líder del Proyecto Operativo</FormLabel>
+                    <Select value={selectedLiderId} onValueChange={(val) => setSelectedLiderId(val || "")}>
+                      <SelectTrigger className="h-12 border-slate-200 bg-slate-50 font-bold text-xs uppercase rounded-xl">
+                        <SelectValue placeholder="SELECCIONAR LÍDER" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {responsables.map(r => (
+                          <SelectItem key={r.id} value={r.id} className="text-xs font-bold uppercase">{r.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-[9px] text-slate-400 font-bold italic mt-1">
+                      * Cambiar el líder aquí actualizará al responsable principal en el proyecto operativo asignado.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           </div>

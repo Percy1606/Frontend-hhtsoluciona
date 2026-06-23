@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
@@ -56,7 +56,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
     },
   });
 
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     try {
         setLoadingHistory(true);
         console.log(`[RendicionForm] Cargando historial para gasto: ${gasto.id}`);
@@ -72,11 +72,11 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
     } finally {
         setLoadingHistory(false);
     }
-  };
+  }, [gasto.id]);
 
   useEffect(() => {
     fetchHistory();
-  }, [gasto.id]);
+  }, [gasto.id, fetchHistory]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -307,6 +307,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
                                             <img 
                                                 src={getSecureUrl(fileUrl)} 
                                                 className="w-full h-full object-cover"
+                                                alt="Miniatura del comprobante"
                                             />
                                         ) : (
                                             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
@@ -510,7 +511,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
                     {previewUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
                         <img 
                             src={previewUrl} 
-                            alt="Vista previa" 
+                            alt="Vista previa del comprobante de rendición" 
                             className="max-w-full max-h-[80vh] w-auto h-auto rounded-xl select-none shadow-2xl object-contain"
                             style={{ height: 'auto' }}
                         />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { format, parseISO } from "date-fns";
 import { es } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -27,12 +27,14 @@ import {
   DollarSign,
   LineChart,
   TrendingDown,
-  HandCoins
+  HandCoins,
+  RotateCw
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useCRMStore } from "@/store/crm-store";
 import { api } from "@/lib/api";
+import { toast } from "sonner";
 import {
   Select,
   SelectContent,
@@ -81,21 +83,34 @@ const prioridadColors: Record<string, string> = {
 interface ProyectoDetailProps {
   proyecto: Proyecto;
   onClose: () => void;
+  onRefresh?: () => Promise<void>;
 }
 
-export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
+export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailProps) {
   const { user } = useAuthStore();
   const isFinanceOrAdmin = user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas');
   const { responsables, fetchProjectProfitability, addDocumento, deleteDocumento } = useOperacionesStore();
-  const { clients: crmClients } = useCRMStore();
+  const { clients: crmClients, quotes, fetchQuotes } = useCRMStore();
   const [activeTab, setActiveTab] = useState("actividades");
   const [financeData, setFinanceData] = useState<any>(null);
   const [loadingFinance, setLoadingFinance] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Intentar encontrar la cotización completa desde el CRM store usando cualquier campo de ID, Código o ID del Proyecto Generado
+  const p = proyecto as any;
+  const cotizacionOrigenId = p.cotizacionId || p.cotizacionOrigenId || p.cotizacion?.id || p.cotizacionOrigen?.id;
+  const cotizacionCompleta = quotes.find(q => 
+    (q.proyectoGeneradoId && q.proyectoGeneradoId === proyecto.id) ||
+    (q.id && cotizacionOrigenId && q.id === cotizacionOrigenId) || 
+    (q.codigo && p.cotizacion?.codigo && q.codigo === p.cotizacion?.codigo) ||
+    (q.codigo && p.cotizacionOrigen?.codigo && q.codigo === p.cotizacionOrigen?.codigo) ||
+    (q.codigo && p.codigo && q.codigo.replace(/[^a-zA-Z0-9]/g, '') === p.codigo.replace(/[^a-zA-Z0-9]/g, ''))
+  );
 
   const clientName = crmClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo";
   const responsableName = responsables.find(r => r.id === proyecto.responsablePrincipalId)?.nombre || "Sin asignar";
 
-  const loadFinance = async () => {
+  const loadFinance = useCallback(async () => {
     setLoadingFinance(true);
     try {
       const data = await fetchProjectProfitability(proyecto.id);
@@ -105,11 +120,32 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
     } finally {
       setLoadingFinance(false);
     }
+  }, [proyecto.id, fetchProjectProfitability]);
+
+  const handleLocalRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      }
+      await Promise.all([
+        loadFinance(),
+        fetchQuotes(1, 500)
+      ]);
+    } catch (error) {
+      console.error("Error refreshing project details:", error);
+      toast.error("Error", {
+        description: "No se pudieron refrescar los datos del proyecto.",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   useEffect(() => {
     loadFinance();
-  }, [proyecto.id, fetchProjectProfitability]);
+    fetchQuotes(1, 500); // Cargar hasta 500 cotizaciones para asegurar encontrar la cotización asociada
+  }, [proyecto.id, loadFinance, fetchQuotes]);
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
@@ -151,7 +187,7 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4 mt-4">
+            <div className="flex flex-wrap items-center gap-4 mt-4 w-full">
               <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 backdrop-blur-sm">
                   <div className="w-6 h-6 rounded-full bg-accent flex items-center justify-center text-primary font-black text-[10px]">
                     {responsableName.charAt(0)}
@@ -177,6 +213,16 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                   {formatDate(proyecto.fechaInicio)} — {formatDate(proyecto.fechaFinEstimada)}
                 </span>
               </div>
+
+              <Button
+                variant="outline"
+                onClick={handleLocalRefresh}
+                disabled={isRefreshing}
+                className="h-8 gap-2 font-black uppercase text-[10px] bg-white/10 hover:bg-white/20 text-white border-white/20 hover:border-white/30 backdrop-blur-sm transition-all rounded-xl shadow-md sm:ml-auto"
+              >
+                <RotateCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin")} />
+                REFRESCAR
+              </Button>
             </div>
           </div>
         </DialogHeader>
@@ -196,7 +242,7 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
                     <HandCoins className="w-4 h-4" /> Solicitudes de Fondos
                 </TabsTrigger>
                 <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
-                    <FileText className="w-4 h-4" /> Documentos ({proyecto.documentos?.length || 0})
+                    <FileText className="w-4 h-4" /> Documentos ({(proyecto.documentos?.length || 0) + (cotizacionCompleta?.documentos?.length || 0)})
                 </TabsTrigger>
                 <TabsTrigger value="historial" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <History className="w-4 h-4" /> Historial
@@ -229,7 +275,7 @@ export function ProyectoDetail({ proyecto, onClose }: ProyectoDetailProps) {
               </TabsContent>
 
               <TabsContent value="documentos" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
-                <DocumentosPanel proyecto={proyecto} />
+                <DocumentosPanel proyecto={proyecto} cotizacionCompleta={cotizacionCompleta} />
               </TabsContent>
             </div>
           </div>
@@ -481,11 +527,13 @@ const estadoDocumentoColors: Record<string, string> = {
 
 interface DocumentosPanelProps {
   proyecto: Proyecto;
+  cotizacionCompleta?: any;
 }
 
-function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
+function DocumentosPanel({ proyecto, cotizacionCompleta }: DocumentosPanelProps) {
   const { user } = useAuthStore();
   const { addDocumento, deleteDocumento, loading } = useOperacionesStore();
+  const { quotes } = useCRMStore();
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [newDoc, setNewDoc] = useState<{
@@ -586,65 +634,109 @@ function DocumentosPanel({ proyecto }: DocumentosPanelProps) {
         </Button>
       </div>
 
-      {proyecto.documentos && proyecto.documentos.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {proyecto.documentos.map((doc) => (
-            <div
-              key={doc.id}
-              className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-primary/20 transition-all group"
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-red-500" />
-                  </div>
-                  <div className="overflow-hidden">
-                    <h4 className="font-bold text-slate-800 text-[11px] truncate uppercase" title={doc.nombre}>{doc.nombre}</h4>
-                    <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">{doc.tipo}</p>
+      {/* Combinar los documentos del proyecto con los de su cotización */}
+      {(() => {
+        const projAny = proyecto as any;
+        console.log("DEBUG DOCUMENTOS PROYECTO COMPLETO:", {
+          proyectoId: projAny.id,
+          codigo: projAny.codigo,
+          cotizacionIdField: projAny.cotizacionId,
+          cotizacionOrigenIdField: projAny.cotizacionOrigenId,
+          cotizacionFieldStr: JSON.stringify(projAny.cotizacion),
+          cotizacionOrigenFieldStr: JSON.stringify(projAny.cotizacionOrigen),
+          quotesCountAvailable: quotes.length,
+          availableQuotesList: quotes.map(q => ({ id: q.id, codigo: q.codigo })),
+          cotizacionCompletaMatch: cotizacionCompleta
+        });
+        const docsProyecto = (proyecto.documentos || []).map(d => ({ ...d, origen: 'proyecto' }));
+        const rawCotizacionDocs = cotizacionCompleta?.documentos || (proyecto.cotizacion as any)?.documentos || proyecto.cotizacionOrigen?.documentos || [];
+        console.log("DEBUG COTIZACION DOCS:", rawCotizacionDocs);
+        const docsCotizacion = rawCotizacionDocs.map((d: any) => ({
+          id: d.id,
+          nombre: d.nombre,
+          tipo: d.subtype === 'ORDEN_SERVICIO' ? 'OS / CONTRATO' : 'COTIZACIÓN / PROPUESTA',
+          url: d.url,
+          estado: 'Aprobado',
+          fechaSubida: d.fechaSubida || d.createdAt || new Date().toISOString(),
+          subidoPor: d.subidoPor || 'CRM',
+          origen: 'cotizacion'
+        }));
+        
+        const todosLosDocs = [...docsCotizacion, ...docsProyecto];
+
+        return todosLosDocs.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {todosLosDocs.map((doc) => (
+              <div
+                key={`${doc.origen}-${doc.id}`}
+                className={cn(
+                  "bg-white p-4 rounded-xl border shadow-sm hover:shadow-md transition-all group",
+                  doc.origen === 'cotizacion' ? "border-amber-200 hover:border-amber-300" : "border-slate-200 hover:border-primary/20"
+                )}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-2 overflow-hidden">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                      doc.origen === 'cotizacion' ? "bg-amber-50" : "bg-red-50"
+                    )}>
+                      <FileText className={cn("w-4 h-4", doc.origen === 'cotizacion' ? "text-amber-600" : "text-red-500")} />
+                    </div>
+                    <div className="overflow-hidden">
+                      <h4 className="font-bold text-slate-800 text-[11px] truncate uppercase" title={doc.nombre}>{doc.nombre}</h4>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-[8px] text-slate-400 font-black uppercase tracking-widest">{doc.tipo}</p>
+                        {doc.origen === 'cotizacion' && (
+                          <span className="text-[7px] font-black text-amber-700 bg-amber-100 px-1 rounded uppercase tracking-wider">CRM</span>
+                        )}
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="flex items-center justify-between mb-3 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
-                <Badge className={cn("text-[8px] font-black uppercase border-none h-4 shadow-none", estadoDocumentoColors[doc.estado] || "bg-slate-200")}>
-                  {doc.estado}
-                </Badge>
-                <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-1">
-                  <Clock className="w-2.5 h-2.5" />
-                  {formatDate(doc.fechaSubida)}
-                </span>
-              </div>
+                <div className="flex items-center justify-between mb-3 bg-slate-50 p-1.5 rounded-lg border border-slate-100">
+                  <Badge className={cn("text-[8px] font-black uppercase border-none h-4 shadow-none", estadoDocumentoColors[doc.estado] || "bg-slate-200")}>
+                    {doc.estado}
+                  </Badge>
+                  <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" />
+                    {formatDate(doc.fechaSubida)}
+                  </span>
+                </div>
 
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  className="flex-1 h-8 text-[9px] font-black uppercase text-primary hover:bg-primary/5"
-                  onClick={() => {
-                    const fullUrl = getSecureUrl(doc.url);
-                    window.open(fullUrl, '_blank');
-                  }}
-                >
-                  <Download className="w-3 h-3 mr-1" /> Ver
-                </Button>
-                <Button 
-                  size="icon" 
-                  variant="ghost" 
-                  className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
-                  onClick={() => handleRemoveDocument(doc.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
+                <div className="flex gap-2 pt-2 border-t border-slate-100">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="flex-1 h-8 text-[9px] font-black uppercase text-primary hover:bg-primary/5"
+                    onClick={() => {
+                      const fullUrl = getSecureUrl(doc.url);
+                      window.open(fullUrl, '_blank');
+                    }}
+                  >
+                    <Download className="w-3 h-3 mr-1" /> Ver
+                  </Button>
+                  {doc.origen !== 'cotizacion' && (
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-slate-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      onClick={() => handleRemoveDocument(doc.id)}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
-          <FilePlus className="w-10 h-10 text-slate-200 mx-auto mb-2" />
-          <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No hay documentos</p>
-        </div>
-      )}
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 bg-slate-50/50 rounded-2xl border-2 border-dashed border-slate-200">
+            <FilePlus className="w-10 h-10 text-slate-200 mx-auto mb-2" />
+            <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No hay documentos</p>
+          </div>
+        );
+      })()}
 
       {isUploadOpen && (
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>

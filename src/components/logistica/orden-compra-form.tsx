@@ -261,16 +261,17 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
     }
   };
 
-  const watchItems = form.watch("items") || [];
-  const incluyeIgv = form.watch("incluyeIgv");
-  
+  const watchItems = form.watch("items");
+  const igvEnabled = form.watch("incluyeIgv");
+
   const financial = useMemo(() => {
-      const subtotalBase = watchItems.reduce((acc: number, item: any) => acc + ((item?.cantidad || 0) * (item?.precioUnitario || 0)), 0);
+      const items = watchItems || [];
+      const subtotalBase = items.reduce((acc: number, item: any) => acc + ((item?.cantidad || 0) * (item?.precioUnitario || 0)), 0);
       let subtotal = 0;
       let igv = 0;
       let total = 0;
 
-      if (incluyeIgv) {
+      if (igvEnabled) {
           total = subtotalBase;
           subtotal = total / 1.18;
           igv = total - subtotal;
@@ -281,7 +282,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
       }
 
       return { subtotal, igv, total };
-  }, [watchItems, incluyeIgv]);
+  }, [watchItems, igvEnabled]);
 
   const loading = storeLoading || isUploading;
 
@@ -900,7 +901,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
           </DialogHeader>
           <div className="flex-1 bg-slate-100 overflow-hidden relative">
             {previewFile?.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/) ? (
-              <img src={api.getFileUrl(previewFile)} alt="Preview" className="w-full h-full object-contain p-4" />
+              <img src={api.getFileUrl(previewFile)} alt="Vista previa del documento adjunto" className="w-full h-full object-contain p-4" />
             ) : previewFile ? (
               <iframe src={api.getFileUrl(previewFile)} className="w-full h-full border-0" />
             ) : null}

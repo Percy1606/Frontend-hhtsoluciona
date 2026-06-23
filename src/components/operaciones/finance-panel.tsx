@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   DollarSign, 
   TrendingUp, 
@@ -65,7 +65,7 @@ export function FinancePanel({ proyectoId }: FinancePanelProps) {
     proyectos.find(p => p.id === proyectoId), 
   [proyectos, proyectoId]);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       const [profitData, adelantosRes, distRes] = await Promise.all([
@@ -83,11 +83,11 @@ export function FinancePanel({ proyectoId }: FinancePanelProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [proyectoId, fetchProjectProfitability]);
 
   useEffect(() => {
     loadData();
-  }, [proyectoId]);
+  }, [proyectoId, loadData]);
 
   const handleAddAdvance = async (formData: any) => {
     try {
@@ -501,6 +501,7 @@ function AdvanceModal({ isOpen, onClose, onSubmit }: any) {
             }
         });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   const totalDistribuido = formData.distribuciones.reduce((acc, d) => acc + (parseFloat(d.monto as any) || 0), 0);

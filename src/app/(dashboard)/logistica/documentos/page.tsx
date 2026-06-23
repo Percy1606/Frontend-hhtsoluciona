@@ -70,7 +70,7 @@ export default function DocumentacionLogisticaPage() {
       const response = await api.get("/operaciones/proyectos?limit=200");
       const lista = response.data || response;
       if (Array.isArray(lista)) {
-        setProyectos(lista.filter((p: any) => p.documentos?.length > 0));
+        setProyectos(lista);
       } else {
         setProyectos([]);
       }
@@ -154,8 +154,8 @@ export default function DocumentacionLogisticaPage() {
           <FolderOpen className="w-14 h-14 text-slate-200 mx-auto mb-4" />
           <p className="text-sm font-bold text-slate-400">
             {q
-              ? "No se encontraron documentos con ese filtro"
-              : "No hay documentos vinculados a proyectos"}
+              ? "No se encontraron proyectos con ese filtro"
+              : "No hay proyectos registrados"}
           </p>
           {q && (
             <Button
@@ -251,12 +251,14 @@ export default function DocumentacionLogisticaPage() {
                       >
                         {estadoNombre}
                       </span>
-                      <span className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
-                        <FileText className="w-3 h-3 text-slate-400" />
-                        <span className="text-[9px] font-bold text-slate-600">
-                          {proyecto.documentos.length}
+                      {proyecto.documentos?.length > 0 && (
+                        <span className="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-full px-2 py-0.5">
+                          <FileText className="w-3 h-3 text-slate-400" />
+                          <span className="text-[9px] font-bold text-slate-600">
+                            {proyecto.documentos.length}
+                          </span>
                         </span>
-                      </span>
+                      )}
                     </div>
 
                     {/* ── BOTTOM ROW: AREA + LAST UPDATE ── */}

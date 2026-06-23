@@ -551,9 +551,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                               variant="ghost" 
                               className="h-8 w-8 text-blue-600 hover:bg-blue-100" 
                               onClick={() => {
-                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                                const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
-                                window.open(fullUrl, '_blank');
+                                window.open(api.getFileUrl(file.url), '_blank');
                               }}
                             >
                               <Download className="w-4 h-4" />
@@ -601,9 +599,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                               variant="ghost" 
                               className="h-6 w-6 text-primary hover:text-primary/80" 
                               onClick={() => {
-                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                                const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
-                                window.open(fullUrl, '_blank');
+                                window.open(api.getFileUrl(file.url), '_blank');
                               }}
                             >
                               <Download className="w-3 h-3" />
@@ -637,8 +633,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
                     {fichaAdjuntos.map((file) => {
                       const isImage = file.tipo?.toLowerCase().includes('image') || file.nombre?.toLowerCase().endsWith('.png') || file.nombre?.toLowerCase().endsWith('.jpg') || file.nombre?.toLowerCase().endsWith('.jpeg');
-                      const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                      const fullUrl = file.url.startsWith('http') ? file.url : `${baseUrl}${file.url}`;
+                      const fullUrl = api.getFileUrl(file.url);
                       return (
                         <div key={file.id} className="flex items-center justify-between p-2 bg-amber-50/20 border border-amber-100/50 rounded-lg shadow-sm hover:border-amber-300 transition-colors">
                           <div className="flex items-center gap-2 overflow-hidden font-bold">

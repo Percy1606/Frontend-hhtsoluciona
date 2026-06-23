@@ -88,7 +88,10 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkAccessAndLoad = async () => {
-      if (!user) return;
+      if (!user) {
+        router.replace("/login");
+        return;
+      }
 
       const userModules = user.modulos || [];
       const hasDashboardAccess = user.rol === "ADMIN" || userModules.includes("dashboard");

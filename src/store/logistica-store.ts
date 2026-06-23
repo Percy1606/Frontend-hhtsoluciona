@@ -70,10 +70,39 @@ export interface MovimientoAlmacen {
 }
 
 // ============================================
+// PERSONAL DE OBRA
+// ============================================
+
+export interface PersonalProyecto {
+  id: string;
+  proyectoId: string;
+  proyectoCodigo?: string;
+  proyectoNombre?: string;
+  nombre: string;
+  documento?: string;
+  rol: string;
+  tipoContrato: string;
+  montoDiario: number;
+  fechaInicio: string;
+  fechaFin?: string;
+  activo: boolean;
+  observaciones?: string;
+  creadoPor?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// ============================================
 // INTERFAZ DEL STORE
 // ============================================
 
 interface LogisticaState {
+  personal: PersonalProyecto[];
+  personalProyecto: PersonalProyecto[];
+  totalPersonal: number;
+  personalPage: number;
+  personalTotalPages: number;
+
   insumos: Insumo[];
   currentInsumo: Insumo | null;
   proveedores: Proveedor[];
@@ -117,6 +146,13 @@ interface LogisticaState {
   fetchProveedores: () => Promise<void>;
   addProveedor: (data: Partial<Proveedor>) => Promise<void>;
 
+  // Acciones Personal de Obra
+  fetchPersonal: (page?: number, limit?: number, proyectoId?: string, activo?: string, search?: string, dateFrom?: string, dateTo?: string) => Promise<void>;
+  fetchPersonalByProyecto: (proyectoId: string) => Promise<void>;
+  addPersonal: (data: any) => Promise<void>;
+  updatePersonal: (id: string, data: any) => Promise<void>;
+  removePersonal: (id: string) => Promise<void>;
+
   // Acciones Órdenes de Compra
   fetchOrdenes: (page?: number, limit?: number, search?: string, estado?: string, dateFrom?: string, dateTo?: string) => Promise<void>;
   createOrden: (data: any) => Promise<void>;
@@ -128,6 +164,14 @@ interface LogisticaState {
   registrarDespacho: (data: { insumoId: string, cantidad: number, proyectoId: string, motivo?: string }) => Promise<void>;
   fetchMovimientosProyecto: (proyectoId: string) => Promise<void>;
   fetchMovimientos: (page?: number, limit?: number, search?: string, tipo?: string) => Promise<void>;
+
+  // Acciones Compromiso Financiero Mano de Obra
+  generarCompromisoPersonal: (id: string, diasTrabajo: number) => Promise<any>;
+  generarCompromisoPersonalPorProyecto: (proyectoId: string) => Promise<any>;
+  costosPersonal: any | null;
+  fetchCostosPersonal: (proyectoId: string) => Promise<void>;
+  projectProfitability: any | null;
+  fetchProjectProfitability: (proyectoId: string) => Promise<void>;
 
   // Utilidades
   getInsumosStockBajo: () => Insumo[];
@@ -159,6 +203,12 @@ export const useLogisticaStore = create<LogisticaState>()(
       totalOrdenes: 0,
       ordenPage: 1,
       ordenTotalPages: 0,
+
+      personal: [],
+      personalProyecto: [],
+      totalPersonal: 0,
+      personalPage: 1,
+      personalTotalPages: 0,
 
       movimientos: [],
       totalMovimientos: 0,
@@ -372,6 +422,90 @@ export const useLogisticaStore = create<LogisticaState>()(
         }
       },
 
+      fetchPersonal: async (page = 1, limit = 50, proyectoId?: string, activo?: string, search?: string, dateFrom?: string, dateTo?: string) => {
+        set({ loading: true, error: null });
+        try {
+          const queryParams = new URLSearchParams({
+            page: page.toString(),
+            limit: limit.toString(),
+          });
+          if (proyectoId) queryParams.append('proyectoId', proyectoId);
+          if (activo && activo !== 'all') queryParams.append('activo', activo);
+          if (search) queryParams.append('search', search);
+          if (dateFrom) queryParams.append('dateFrom', dateFrom);
+          if (dateTo) queryParams.append('dateTo', dateTo);
+
+          const response = await api.get(`/logistica/personal?${queryParams.toString()}`);
+          
+          let rawData = [];
+          let total = 0;
+          let totalP = 1;
+
+          if (response && response.data && Array.isArray(response.data)) {
+            rawData = response.data;
+            total = response.total || rawData.length;
+            totalP = response.totalPages || Math.ceil(total / limit) || 1;
+          } else if (Array.isArray(response)) {
+            rawData = response;
+            total = rawData.length;
+            totalP = Math.ceil(total / limit) || 1;
+          }
+
+          set({ 
+            personal: rawData, 
+            totalPersonal: total,
+            personalPage: page,
+            personalTotalPages: totalP,
+            loading: false 
+          });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      fetchPersonalByProyecto: async (proyectoId) => {
+        set({ loading: true, error: null });
+        try {
+          const data = await api.get(`/logistica/personal/proyecto/${proyectoId}`);
+          set({ personalProyecto: data, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      addPersonal: async (data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.post('/logistica/personal', data);
+          await get().fetchPersonal();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      updatePersonal: async (id, data) => {
+        set({ loading: true, error: null });
+        try {
+          await api.put(`/logistica/personal/${id}`, data);
+          await get().fetchPersonal();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      removePersonal: async (id) => {
+        set({ loading: true, error: null });
+        try {
+          await api.delete(`/logistica/personal/${id}`);
+          await get().fetchPersonal();
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
       registrarDespacho: async (data) => {
         set({ loading: true, error: null });
         try {
@@ -428,6 +562,55 @@ export const useLogisticaStore = create<LogisticaState>()(
           });
         } catch (err: any) {
           set({ error: err.message, loading: false });
+        }
+      },
+
+      // Compromiso Financiero Mano de Obra
+      costosPersonal: null,
+      projectProfitability: null,
+
+      generarCompromisoPersonal: async (id, diasTrabajo) => {
+        set({ loading: true, error: null });
+        try {
+          const result = await api.post(`/logistica/personal/${id}/comprometer`, { diasTrabajo });
+          await get().fetchPersonal();
+          set({ loading: false });
+          return result;
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      generarCompromisoPersonalPorProyecto: async (proyectoId) => {
+        set({ loading: true, error: null });
+        try {
+          const result = await api.post(`/logistica/personal/comprometer-proyecto/${proyectoId}`, {});
+          await get().fetchPersonal();
+          set({ loading: false });
+          return result;
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+          throw err;
+        }
+      },
+
+      fetchCostosPersonal: async (proyectoId) => {
+        set({ loading: true, error: null });
+        try {
+          const data = await api.get(`/logistica/personal/costos/${proyectoId}`);
+          set({ costosPersonal: data, loading: false });
+        } catch (err: any) {
+          set({ error: err.message, loading: false });
+        }
+      },
+
+      fetchProjectProfitability: async (proyectoId) => {
+        try {
+          const data = await api.get(`/finanzas/proyectos/${proyectoId}/profitability`);
+          set({ projectProfitability: data });
+        } catch (err: any) {
+          console.error('Error al obtener rentabilidad del proyecto:', err);
         }
       },
 

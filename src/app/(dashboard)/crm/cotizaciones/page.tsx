@@ -62,6 +62,7 @@ import { Label } from "@/components/ui/label";
 import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { toast } from "sonner";
+import { api } from "@/lib/api";
 
 // Componente local para estadísticas
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
@@ -110,6 +111,10 @@ export default function CotizacionesInboxPage() {
   const [isContractModalOpen, setIsContractModalOpen] = useState(false);
   const [contractFile, setContractFile] = useState<File | null>(null);
   const [isUploadingContract, setIsUploadingContract] = useState(false);
+
+  // Document list viewer states
+  const [isFileListOpen, setIsFileListOpen] = useState(false);
+  const [fileListQuote, setFileListQuote] = useState<Quote | null>(null);
 
   // Delete State
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -303,43 +308,60 @@ export default function CotizacionesInboxPage() {
     setIsModalOpen(true);
   };
 
+  const handleOpenDocument = (doc: any) => {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    
+    // Parsear la URL para extraer carpeta y nombre de archivo
+    const parts = doc.url.split('/').filter(Boolean);
+    
+    let folder = 'cotizaciones';
+    let filename = parts[parts.length - 1];
+
+    if (parts.length >= 3) {
+      folder = parts[1];
+      filename = parts[2];
+    } else if (parts.length === 2) {
+      folder = 'root';
+    }
+
+    const { token } = useAuthStore.getState();
+    
+    let previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
+    
+    if (folder === 'root') {
+      previewUrl = `${API_URL}/uploads/${filename}?token=${token}`;
+    }
+
+    const viewerUrl = `/file-viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(doc.nombre)}&token=${token}`;
+    window.open(viewerUrl, '_blank');
+  };
+
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm("¿Está seguro de que desea eliminar este documento?")) return;
+    try {
+      await api.delete(`/crm/documentos/${docId}`);
+      toast.success("Documento Eliminado", { description: "El archivo ha sido removido exitosamente." });
+      
+      // Actualizar la cotización seleccionada en la vista local del modal
+      if (fileListQuote) {
+        const updatedDocs = fileListQuote.documentos?.filter((d: any) => d.id !== docId) || [];
+        setFileListQuote({
+          ...fileListQuote,
+          documentos: updatedDocs
+        });
+        
+        // También actualizar la lista de cotizaciones general
+        fetchQuotes(quotePage, quoteLimit);
+      }
+    } catch (error) {
+      toast.error("Error al Eliminar", { description: "No se pudo eliminar el documento." });
+    }
+  };
+
   const handlePreviewFile = (quote: any) => {
     if (quote.documentos && quote.documentos.length > 0) {
-      const lastDoc = [...quote.documentos].sort((a: any, b: any) => {
-        const vA = parseInt(a.version || "0");
-        const vB = parseInt(b.version || "0");
-        return vB - vA;
-      })[0];
-      
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-      
-      // Parsear la URL para extraer carpeta y nombre de archivo
-      // Formato esperado: /uploads/carpeta/archivo.ext o /uploads/archivo.ext
-      const parts = lastDoc.url.split('/').filter(Boolean);
-      
-      let folder = 'cotizaciones';
-      let filename = parts[parts.length - 1];
-
-      if (parts.length >= 3) {
-        // Caso: uploads/carpeta/archivo.ext
-        folder = parts[1];
-        filename = parts[2];
-      } else if (parts.length === 2) {
-        // Caso: uploads/archivo.ext
-        folder = 'root'; // El backend maneja uploads/:filename directamente
-      }
-
-      const { token } = useAuthStore.getState();
-      
-      // Construir la URL de previsualización según las rutas del backend
-      let previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
-      
-      if (folder === 'root') {
-        previewUrl = `${API_URL}/uploads/${filename}?token=${token}`;
-      }
-
-      const viewerUrl = `/file-viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(lastDoc.nombre)}&token=${token}`;
-      window.open(viewerUrl, '_blank');
+      setFileListQuote(quote);
+      setIsFileListOpen(true);
       return;
     }
     showError("Sin Documentos", "Esta cotización no tiene ningún archivo adjunto.");
@@ -782,6 +804,90 @@ export default function CotizacionesInboxPage() {
               className="h-12 px-10 font-black uppercase text-xs text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/20"
             >
               {isUploadingContract ? "Procesando..." : "Cargar y Vincular"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Lista de Archivos */}
+      <Dialog open={isFileListOpen} onOpenChange={(open) => {
+        setIsFileListOpen(open);
+        if (!open) setFileListQuote(null);
+      }}>
+        <DialogContent className="sm:max-w-[600px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden bg-white">
+          <DialogHeader className="p-6 bg-primary text-white shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="bg-white/10 p-2 rounded-lg">
+                <FileText className="w-5 h-5 text-accent" />
+              </div>
+              <div>
+                <DialogTitle className="text-lg font-black tracking-tight uppercase">
+                  Documentos Asociados: {fileListQuote?.codigo}
+                </DialogTitle>
+                <p className="text-[10px] text-white/70 font-bold uppercase tracking-widest mt-0.5">Expediente de la Cotización</p>
+              </div>
+            </div>
+          </DialogHeader>
+          
+          <div className="p-6 max-h-[50vh] overflow-y-auto">
+            {fileListQuote?.documentos && fileListQuote.documentos.length > 0 ? (
+              <div className="space-y-3">
+                {fileListQuote.documentos.map((doc: any, index: number) => (
+                  <div key={doc.id || index} className="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 hover:border-primary/20 hover:bg-slate-100/50 transition-all group">
+                    <div className="flex items-center gap-3 overflow-hidden mr-4">
+                      <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center text-red-500 shrink-0">
+                        <FileText className="w-5 h-5" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <p className="text-xs font-black text-slate-700 uppercase truncate" title={doc.nombre}>
+                          {doc.nombre}
+                        </p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[9px] font-black text-slate-400 uppercase bg-slate-200/60 px-1.5 py-0.5 rounded">
+                            {doc.subtype === 'ORDEN_SERVICIO' ? 'Sustento Contractual' : 'Propuesta Técnica'}
+                          </span>
+                          <span className="text-[8px] font-bold text-slate-400">
+                            {formatDate(doc.fechaSubida || doc.createdAt)}
+                          </span>
+                          {doc.tamano && (
+                            <span className="text-[8px] font-bold text-slate-400">
+                              • {doc.tamano}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button 
+                        onClick={() => handleOpenDocument(doc)}
+                        className="gap-1.5 font-bold uppercase text-[9px] h-8 px-3.5 bg-primary hover:bg-primary/90 shadow-sm"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Ver
+                      </Button>
+                      <Button 
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDeleteDocument(doc.id)}
+                        className="h-8 w-8 text-slate-300 hover:text-error hover:bg-red-50 transition-colors"
+                        title="Eliminar Documento"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-10">
+                <AlertCircle className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No hay documentos en esta cotización</p>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="p-4 bg-slate-50 border-t flex justify-end">
+            <Button onClick={() => { setIsFileListOpen(false); setFileListQuote(null); }} className="font-bold text-xs uppercase h-10 px-6 rounded-xl">
+              Cerrar
             </Button>
           </DialogFooter>
         </DialogContent>

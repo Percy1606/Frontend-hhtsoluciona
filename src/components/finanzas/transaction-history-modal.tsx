@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   Dialog, 
   DialogContent, 
@@ -78,7 +78,7 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
   const [transactionToDelete, setTransactionToDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchHistory = async (targetPage = page) => {
+  const fetchHistory = useCallback(async (targetPage = 1) => {
     if (!caja) return;
     setLoading(true);
     try {
@@ -91,14 +91,14 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
     } finally {
       setLoading(false);
     }
-  };
+  }, [caja]);
 
   useEffect(() => {
     if (isOpen && caja) {
       setPage(1);
       fetchHistory(1);
     }
-  }, [isOpen, caja]);
+  }, [isOpen, caja, fetchHistory]);
 
   const handleSecureDelete = async (password: string) => {
     if (!transactionToDelete) return;

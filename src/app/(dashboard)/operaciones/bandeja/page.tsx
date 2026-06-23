@@ -333,157 +333,173 @@ export default function BandejaTecnicaPage() {
           </div>
         </div>
       </div>
-
-      {/* Tabla Normalizada */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:hidden flex-1">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader className="bg-slate-50/80 backdrop-blur-sm">
-              <TableRow className="border-slate-200 hover:bg-transparent">
-                <TableHead className="font-black text-primary text-[10px] uppercase py-4 pl-6 tracking-widest">Programación</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase tracking-widest">Cliente / Empresa</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase text-center tracking-widest">Técnico</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase text-center tracking-widest">Estado</TableHead>
-                <TableHead className="font-black text-primary text-[10px] uppercase text-right pr-6 tracking-widest">Operaciones</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredFichas.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-48 text-center">
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <FilterX className="w-8 h-8 text-slate-200" />
-                      <p className="text-slate-400 font-bold italic text-xs uppercase tracking-tighter">Sin registros activos</p>
+        <div className="divide-y divide-slate-100">
+          {filteredFichas.length === 0 ? (
+            <div className="h-48 text-center flex flex-col items-center justify-center gap-3">
+              <FilterX className="w-8 h-8 text-slate-200" />
+              <p className="text-slate-400 font-bold italic text-xs uppercase tracking-tighter">Sin registros activos</p>
+            </div>
+          ) : (
+            filteredFichas.map((ficha) => (
+              <div key={ficha.id} className="p-5 flex flex-col md:flex-row md:items-stretch gap-6 hover:bg-slate-50/30 transition-all duration-200 group">
+                {/* Lado Izquierdo: Información y Fila Central */}
+                <div className="flex-1 flex flex-col justify-between space-y-4">
+                  {/* Fila Superior: Cliente, RUC, Fecha, Estado */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-2.5">
+                      <span className="font-black text-sm text-primary uppercase tracking-tight">{ficha.cliente?.empresa}</span>
+                      <Badge variant="outline" className="text-[9px] font-bold text-slate-400 border-slate-200 bg-slate-50/50">RUC: {ficha.cliente?.ruc}</Badge>
                     </div>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                filteredFichas.map((ficha) => (
-                  <TableRow key={ficha.id} className="border-slate-100 hover:bg-slate-50/40 transition-all duration-200 group">
-                    <TableCell className="py-4 pl-6">
-                      <div className="flex items-center gap-3">
-                        <Calendar className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
-                        <div className="flex flex-col">
-                          <span className="font-black text-xs text-slate-800 uppercase tracking-tighter">
-                            {ficha.fechaVisita ? format(new Date(ficha.fechaVisita), "dd MMM yyyy", { locale: es }) : "---"}
-                          </span>
-                          <span className="text-[9px] font-bold text-slate-400 uppercase leading-none mt-0.5">Fecha Agendada</span>
-                        </div>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 text-slate-500">
+                        <Calendar className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-black uppercase tracking-wider">
+                          {ficha.fechaVisita ? format(new Date(ficha.fechaVisita), "dd MMM yyyy", { locale: es }) : "---"}
+                        </span>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col py-1 max-w-md">
-                        <span className="font-black text-sm text-primary uppercase leading-tight tracking-tight">{ficha.cliente?.empresa}</span>
-                        <div className="flex items-center gap-2 mt-1 opacity-60">
-                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">RUC: {ficha.cliente?.ruc}</span>
-                        </div>
-                        {ficha.observaciones && (
-                          <div className="mt-2 bg-amber-50/70 border border-amber-200/50 rounded-xl p-2.5 text-xs shadow-sm">
-                            <span className="font-black text-[9px] text-amber-800 uppercase tracking-wider block mb-0.5">Observaciones de Coordinación:</span>
-                            <span className="text-slate-600 font-bold block whitespace-pre-wrap leading-tight">{ficha.observaciones}</span>
-                          </div>
-                        )}
-                        {ficha.adjuntos && ficha.adjuntos.length > 0 && (
-                          <div className="mt-2 flex flex-col gap-1">
-                            <span className="font-black text-[8px] text-slate-400 uppercase tracking-wider">Archivos / Evidencias:</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {ficha.adjuntos.map((adj: any) => {
-                                const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
-                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                                const fullUrl = adj.url.startsWith('http') ? adj.url : `${baseUrl}${adj.url}`;
-                                return (
-                                  <a
-                                    key={adj.id || adj.url}
-                                    href={fullUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="flex items-center gap-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-1 text-[9px] font-bold text-slate-600 uppercase transition-colors shrink-0"
-                                    title={adj.nombre}
-                                  >
-                                    {isImage ? (
-                                      <img
-                                        src={fullUrl}
-                                        alt={adj.nombre}
-                                        className="w-5 h-5 rounded object-cover border border-slate-200 shrink-0"
-                                      />
-                                    ) : (
-                                      <FileText className="w-3.5 h-3.5 text-[#001529] shrink-0" />
-                                    )}
-                                    <span className="truncate max-w-[80px]">{adj.nombre}</span>
-                                  </a>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex justify-center">
-                        <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-100 group-hover:bg-white transition-all">
-                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-[9px] font-black text-primary border border-primary/20">
-                            {ficha.tecnico?.nombre ? ficha.tecnico.nombre[0] : "?"}
-                          </div>
-                          <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter truncate max-w-[100px]">{ficha.tecnico?.nombre || "SIN ASIGNAR"}</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">
                       <Badge className={cn(
-                        "font-black text-[9px] uppercase px-4 h-6 shadow-none border-none rounded-lg",
+                        "font-black text-[9px] uppercase px-3 h-5.5 shadow-none border-none rounded-lg flex items-center justify-center",
                         ficha.estado === 'PENDIENTE' ? "bg-amber-100 text-amber-700" : "bg-emerald-500 text-white"
                       )}>
                         {ficha.estado}
                       </Badge>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <div className="flex justify-end gap-2">
-                        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 gap-1 shadow-inner">
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-all" onClick={() => handleOpenRouteSheet(ficha)} title="Ver Hoja de Ruta">
-                            <FileText className="w-4 h-4" />
-                          </Button>
-                          <Button size="icon" variant="ghost" className="h-8 w-8 text-emerald-600 hover:bg-white rounded-lg transition-all" onClick={() => handleOpenConstancia(ficha)} title="Ver Constancia">
-                            <ClipboardList className="w-4 h-4" />
-                          </Button>
-                          <Button 
-                            size="icon" 
-                            variant="ghost" 
-                            className="h-8 w-8 text-blue-600 hover:bg-white rounded-lg transition-all" 
-                            onClick={() => { setSelectedFichaForAttachments(ficha); setIsAttachmentsOpen(true); }}
-                            title="Gestionar fotos/archivos"
-                          >
-                            <Camera className="w-4 h-4" />
-                          </Button>
-                          {user?.rol === 'ADMIN' && (
-                            <Button size="icon" variant="ghost" className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all" onClick={() => { setFichaToDelete(ficha); setIsDeleteModalOpen(true); }} title="Eliminar Visita">
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
+                    </div>
+                  </div>
 
-                        {ficha.estado === 'PENDIENTE' ? (
-                          <Button 
-                            size="sm" 
-                            className="bg-primary hover:bg-primary/90 text-white font-black text-[9px] uppercase h-10 px-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
-                            onClick={() => handleDirectSubmit(ficha)}
-                            disabled={loading}
-                          >
-                            <CheckCircle2 className="w-4 h-4 mr-2" /> Finalizar
-                          </Button>
-                        ) : (
-                          <div className="h-10 w-24 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center gap-2">
-                             <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-                             <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Cerrado</span>
-                          </div>
-                        )}
+                  {/* Fila Central: Observación de Coordinación y Archivos Adjuntos */}
+                  <div className="space-y-3 pr-2">
+                    {ficha.observaciones ? (
+                      <div className="space-y-1">
+                        <span className="font-black text-[9px] text-amber-700 bg-amber-50 border border-amber-100/50 rounded px-2 py-0.5 uppercase tracking-wider inline-block">
+                          Observación de Coordinación
+                        </span>
+                        <p className="text-slate-600 font-bold text-xs pl-1 leading-relaxed whitespace-pre-wrap">
+                          {ficha.observaciones}
+                        </p>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              )
-              )}
-            </TableBody>
-          </Table>
+                    ) : (
+                      <p className="text-[10px] font-medium text-slate-400 italic pl-1">Sin observaciones de coordinación registradas.</p>
+                    )}
+                    
+                    {ficha.adjuntos && ficha.adjuntos.length > 0 && (
+                      <div className="space-y-1.5">
+                        <span className="font-black text-[8px] text-slate-400 uppercase tracking-widest block pl-1">
+                          Archivos / Evidencias Adjuntas
+                        </span>
+                        <div className="flex flex-row flex-nowrap gap-2 pl-1 overflow-x-auto pb-1.5 no-scrollbar max-w-full">
+                          {ficha.adjuntos.map((adj: any) => {
+                            const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
+                            const fullUrl = api.getFileUrl(adj.url);
+                            return (
+                              <a
+                                key={adj.id || adj.url}
+                                href={fullUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="flex items-center gap-2 bg-slate-50 hover:bg-primary/5 hover:border-primary/20 border border-slate-200 rounded-xl p-1.5 text-[9px] font-black text-slate-600 uppercase transition-all duration-200 shrink-0 hover:scale-[1.02] shadow-sm"
+                                title={adj.nombre}
+                              >
+                                {isImage ? (
+                                  <img
+                                    src={fullUrl}
+                                    alt={adj.nombre}
+                                    className="w-6 h-6 rounded-lg object-cover border border-slate-100 shrink-0"
+                                  />
+                                ) : (
+                                  <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-100 shrink-0">
+                                    <FileText className="w-3.5 h-3.5 text-primary" />
+                                  </div>
+                                )}
+                                <span className="truncate max-w-[120px] pr-1">{adj.nombre}</span>
+                              </a>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Separador vertical visual */}
+                <div className="hidden md:block w-px bg-slate-100/80 my-1" />
+
+                {/* Lado Derecho: Técnico Asignado, Botón Finalizar, Acciones */}
+                <div className="w-full md:w-56 shrink-0 flex flex-col justify-between gap-4 md:pl-2">
+                  {/* Técnico Asignado */}
+                  <div className="flex items-center gap-3 bg-slate-50/80 px-3.5 py-2 rounded-2xl border border-slate-100 w-full">
+                    <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20 shrink-0">
+                      {ficha.tecnico?.nombre ? ficha.tecnico.nombre[0] : "?"}
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[8px] font-black text-slate-400 uppercase leading-none">Técnico Asignado</span>
+                      <span className="text-[10px] font-black text-slate-600 uppercase tracking-tighter truncate mt-1">{ficha.tecnico?.nombre || "SIN ASIGNAR"}</span>
+                    </div>
+                  </div>
+
+                  {/* Botón Finalizar o Estado Cerrado */}
+                  <div className="w-full">
+                    {ficha.estado === 'PENDIENTE' ? (
+                      <Button 
+                        className="w-full bg-primary hover:bg-primary/90 text-white font-black text-[10px] uppercase h-10 px-4 rounded-xl shadow-lg shadow-primary/20 active:scale-95 transition-all"
+                        onClick={() => handleDirectSubmit(ficha)}
+                        disabled={loading}
+                      >
+                        <CheckCircle2 className="w-4 h-4 mr-2" /> Finalizar Visita
+                      </Button>
+                    ) : (
+                      <div className="h-10 w-full bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-center gap-2">
+                         <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                         <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest">Servicio Cerrado</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Acciones del sistema (las hojitas son las importantes) */}
+                  <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200 gap-1.5 shadow-inner justify-center w-full">
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-white rounded-lg transition-all" 
+                      onClick={() => handleOpenRouteSheet(ficha)} 
+                      title="Ver Hoja de Ruta"
+                    >
+                      <FileText className="w-4.5 h-4.5" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-emerald-600 hover:bg-white rounded-lg transition-all" 
+                      onClick={() => handleOpenConstancia(ficha)} 
+                      title="Ver Constancia"
+                    >
+                      <ClipboardList className="w-4.5 h-4.5" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-blue-600 hover:bg-white rounded-lg transition-all" 
+                      onClick={() => { setSelectedFichaForAttachments(ficha); setIsAttachmentsOpen(true); }}
+                      title="Gestionar fotos/archivos"
+                    >
+                      <Camera className="w-4.5 h-4.5" />
+                    </Button>
+                    {user?.rol === 'ADMIN' && (
+                      <Button 
+                        size="icon" 
+                        variant="ghost" 
+                        className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-white rounded-lg transition-all" 
+                        onClick={() => { setFichaToDelete(ficha); setIsDeleteModalOpen(true); }} 
+                        title="Eliminar Visita"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
         </div>
 
         {/* Paginación Normalizada */}
@@ -626,8 +642,7 @@ export default function BandejaTecnicaPage() {
                 <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
                   {selectedFichaForAttachments.adjuntos.map((adj: any) => {
                     const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
-                    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-                    const fullUrl = adj.url.startsWith('http') ? adj.url : `${baseUrl}${adj.url}`;
+                    const fullUrl = api.getFileUrl(adj.url);
                     return (
                       <div
                         key={adj.id || adj.url}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { 
   Plus, 
   Search, 
@@ -67,7 +67,7 @@ export function SolicitudesFondosPanel({ proyectoId }: SolicitudesFondosPanelPro
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // Filtrar por área Operaciones o por proyecto si se provee
@@ -92,11 +92,11 @@ export function SolicitudesFondosPanel({ proyectoId }: SolicitudesFondosPanelPro
     } finally {
       setLoading(false);
     }
-  };
+  }, [proyectoId]);
 
   useEffect(() => {
     fetchData();
-  }, [proyectoId]);
+  }, [proyectoId, fetchData]);
 
   const handleCreateRequest = async (data: any) => {
     try {

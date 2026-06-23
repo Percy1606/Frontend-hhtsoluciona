@@ -35,7 +35,8 @@ import {
   Receipt,
   TrendingDown,
   Wallet,
-  FileText
+  FileText,
+  UserPlus
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
@@ -81,6 +82,7 @@ const menuItems = [
       { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: FileText, label: "Documentación Logística", href: "/logistica/documentos" },
       { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
+      { icon: UserPlus, label: "Personal de Obra", href: "/logistica/personal" },
     ]
   },
   {

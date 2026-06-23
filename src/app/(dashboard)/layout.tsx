@@ -38,21 +38,30 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { fetchProyectos, fetchResponsables } = useOperacionesStore();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push("/login");
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted) return; // Esperar a que el componente esté montado en el cliente
+    if (!isAuthenticated || !user) {
+      if (isAuthenticated || user) {
+        logout(); // Limpiar estado si está inconsistente
+      }
+      window.location.href = "/login";
     } else {
       setIsReady(true);
       fetchProyectos();
       fetchResponsables();
     }
-  }, [isAuthenticated, router, fetchProyectos, fetchResponsables]);
+  }, [isMounted, isAuthenticated, user, router, fetchProyectos, fetchResponsables, logout]);
 
-  if (!isAuthenticated || !isReady) {
+  if (!isMounted || !isReady) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F8F9FA]">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#001F3F] border-t-transparent"></div>

@@ -529,7 +529,7 @@ export function FichaForm({ ficha, onSubmit, onCancel }: FichaFormProps) {
                   <div className="grid grid-cols-3 gap-3">
                     {form.watch('adjuntos').filter((a: any) => !a.nombre.includes('CONSTANCIA')).map((adj: any, idx: number) => (
                       <div key={idx} className="aspect-square rounded-xl bg-slate-100 flex items-center justify-center overflow-hidden border">
-                          <img src={adj.url} alt="Evidencia" className="w-full h-full object-cover" />
+                          <img src={adj.url} alt="Evidencia de visita técnica" className="w-full h-full object-cover" />
                       </div>
                     ))}
                     <label className="aspect-square rounded-xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-400 hover:border-primary hover:text-primary transition-all cursor-pointer">

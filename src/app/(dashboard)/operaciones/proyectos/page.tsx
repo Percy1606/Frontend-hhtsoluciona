@@ -24,7 +24,8 @@ import {
   Trash2,
   FilterX,
   ShieldAlert,
-  Lock
+  Lock,
+  RotateCw
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -241,6 +242,22 @@ export default function ProyectosPage() {
     fetchProyectos(newPage, 20);
   };
 
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        fetchProyectos(proyectoPage, 20), 
+        fetchResponsables(),
+        fetchCRMClients(),
+        fetchQuotes()
+      ]);
+    } catch (e) {
+      toast.error("Error", { description: "No se pudieron recargar los proyectos." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleOpenDetail = (proyecto: Proyecto) => {
     setSelectedProyecto(proyecto);
     setIsDetailOpen(true);
@@ -355,12 +372,22 @@ export default function ProyectosPage() {
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Control operativo y seguimiento de proyectos.</p>
         </div>
-        <Button
-          className="h-9 gap-2 font-black uppercase text-[10px] bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
-          onClick={() => setIsNewProjectModalOpen(true)}
-        >
-          <Plus className="w-4 h-4" /> Nuevo Proyecto
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-9 gap-2 font-black uppercase text-[10px] border-slate-200 bg-white"
+            onClick={handleRefresh}
+            disabled={loading}
+          >
+            <RotateCw className={cn("w-4 h-4", loading && "animate-spin")} /> Refrescar
+          </Button>
+          <Button
+            className="h-9 gap-2 font-black uppercase text-[10px] bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20"
+            onClick={() => setIsNewProjectModalOpen(true)}
+          >
+            <Plus className="w-4 h-4" /> Nuevo Proyecto
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
@@ -571,7 +598,7 @@ export default function ProyectosPage() {
       </Tabs>
 
       {currentSelectedProyecto && isDetailOpen && (
-        <ProyectoDetail proyecto={currentSelectedProyecto} onClose={() => { setIsDetailOpen(false); setSelectedProyecto(null); }} />
+        <ProyectoDetail proyecto={currentSelectedProyecto} onClose={() => { setIsDetailOpen(false); setSelectedProyecto(null); }} onRefresh={handleRefresh} />
       )}
 
       <ModernDialog 

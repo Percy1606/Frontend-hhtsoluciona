@@ -113,7 +113,8 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
       console.log("[ActividadForm] Fetching projects...");
       fetchProyectosRef.current(1, 1000).catch(err => console.error("[ActividadForm] Error fetching projects:", err));
     }
-  }, [isOpen]); // Removed proyectos.length from dependencies to avoid re-fetching loop if fetch doesn't change length
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
   
   // Removed debugging useEffect as it was causing issues
 

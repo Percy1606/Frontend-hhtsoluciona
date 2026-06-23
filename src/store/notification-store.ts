@@ -2,6 +2,16 @@ import { create } from 'zustand';
 import { api } from '@/lib/api';
 import { toast } from 'sonner';
 
+// Prevents duplicate toasts in the same session and plays notification sound
+const shownToastIds = new Set<string>();
+
+const playNotificationSound = () => {
+  if (typeof window !== 'undefined') {
+    const audio = new Audio('/notification.mp3');
+    audio.play().catch(err => console.warn("[Notification Sound] Error playing sound:", err));
+  }
+};
+
 export type Notification = {
   id: string;
   usuarioId?: string;
@@ -80,12 +90,16 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             unreadCount: unreadCount + 1
           });
 
-          // Disparar Toast
-          const toastFn = (newNotif.tipo === 'TECNICO' || newNotif.tipo === 'VISITA') ? toast.warning : toast.info;
-          toastFn(newNotif.titulo, {
-            description: newNotif.mensaje,
-            duration: 8000,
-          });
+          // Disparar Toast si no se ha mostrado antes en la sesión
+          if (!shownToastIds.has(newNotif.id)) {
+            shownToastIds.add(newNotif.id);
+            const toastFn = (newNotif.tipo === 'TECNICO' || newNotif.tipo === 'VISITA') ? toast.warning : toast.info;
+            toastFn(newNotif.titulo, {
+              description: newNotif.mensaje,
+              duration: 8000,
+            });
+            playNotificationSound();
+          }
         }
       } catch (err) {
         console.error("[SSE] Error procesando mensaje entrante:", err);
@@ -142,11 +156,15 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         );
         
         newOnes.forEach(n => {
-          const toastFn = (n.tipo === 'TECNICO' || n.tipo === 'VISITA') ? toast.warning : toast.info;
-          toastFn(n.titulo, {
-            description: n.mensaje,
-            duration: 8000,
-          });
+          if (!shownToastIds.has(n.id)) {
+            shownToastIds.add(n.id);
+            const toastFn = (n.tipo === 'TECNICO' || n.tipo === 'VISITA') ? toast.warning : toast.info;
+            toastFn(n.titulo, {
+              description: n.mensaje,
+              duration: 8000,
+            });
+            playNotificationSound();
+          }
         });
       }
 
