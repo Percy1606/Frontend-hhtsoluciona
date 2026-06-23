@@ -368,12 +368,19 @@ function CajaCard({ caja, onEdit, onDelete, onHistory, onToggleProtect }: any) {
                         "text-[10px] font-black uppercase tracking-widest",
                         isOverdrawn ? "text-red-600" : "text-emerald-600"
                     )}>Saldo Disponible</p>
-                    <p className={cn(
-                        "text-2xl font-black tracking-tighter leading-none mt-1",
-                        isOverdrawn ? "text-red-600" : "text-emerald-600"
-                    )}>
-                        {new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(disponible)}
-                    </p>
+                    {(() => {
+                        const formattedDisponible = new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(disponible);
+                        const fontSizeClass = formattedDisponible.length > 13 ? "text-base" : formattedDisponible.length > 10 ? "text-lg" : "text-xl";
+                        return (
+                            <p className={cn(
+                                "font-black tracking-tighter leading-none mt-1",
+                                fontSizeClass,
+                                isOverdrawn ? "text-red-600" : "text-emerald-600"
+                            )}>
+                                {formattedDisponible}
+                            </p>
+                        );
+                    })()}
                 </div>
                 
                 {/* Acciones Rápidas Hover */}
@@ -421,7 +428,7 @@ function KPICard({ label, value, subLabel, icon, color, textColor, isCurrency = 
                 </div>
                 <div className="space-y-0.5">
                     <p className={cn("text-[9px] font-black uppercase tracking-widest opacity-80", textColor)}>{label}</p>
-                    <p className={cn("text-xl font-black tracking-tighter leading-none", textColor)}>
+                    <p className={cn("text-lg font-black tracking-tighter leading-none", textColor)}>
                         {isCurrency ? formatLargeCurrency(value) : value}
                     </p>
                     <p className={cn("text-[9px] font-bold uppercase tracking-tighter mt-1 opacity-70", textColor)}>{subLabel}</p>
