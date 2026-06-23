@@ -24,6 +24,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import DetalleCobrosDialog from "./detalle-cobros-dialog";
 import PresupuestoDialog from "./presupuesto-dialog";
 
@@ -117,117 +118,126 @@ export default function BandejaFinanzas() {
           }}
         />
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Proyecto</TableHead>
-            <TableHead>Cliente</TableHead>
-            <TableHead>Cotización / OS</TableHead>
-            <TableHead>Adelantos / Total</TableHead>
-            <TableHead>Ppto. Egresos</TableHead>
-            <TableHead>Autoriza Compras</TableHead>
-            <TableHead>Estado Financiero</TableHead>
-            <TableHead className="text-right">Acciones</TableHead>
+      <Table className="min-w-full border-separate border-spacing-0">
+        <TableHeader className="bg-slate-50">
+          <TableRow className="border-b border-border/80">
+            <TableHead className="w-[30px] font-black text-primary text-[9px] uppercase text-center p-2">N°</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Proyecto</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cliente</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cotización / OS</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Adelantos / Total</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Ppto. Egresos</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Autoriza Compras</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Estado Financiero</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase text-right p-2">Acciones</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {paginatedProyectos.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={8} className="text-center py-8 text-slate-500">
+              <TableCell colSpan={9} className="h-32 text-center text-slate-400 font-bold italic text-xs">
                 No hay proyectos que coincidan con la búsqueda.
               </TableCell>
             </TableRow>
           ) : (
-            paginatedProyectos.map((p) => {
+            paginatedProyectos.map((p, index) => {
               const totalAdelantos = p.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);
               
               return (
-                <TableRow key={p.id}>
-                  <TableCell>
-                    <div className="font-medium text-sm">{p.codigo}</div>
-                    <div className="text-xs text-gray-500">{p.nombre}</div>
-                    <div className="text-xs text-gray-400 mt-1">
+                <TableRow key={p.id} className="hover:bg-primary/5 transition-colors group">
+                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-50 p-2">
+                    {startIndex + index + 1}
+                  </TableCell>
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="font-black text-[11px] text-primary uppercase leading-tight">{p.codigo}</div>
+                    <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
+                      {p.nombre?.replace(/^proyecto:\s*/i, '')}
+                    </div>
+                    <div className="text-[8px] font-black text-slate-400 mt-1 uppercase">
                       Creado: {format(new Date(p.fechaCreacion), "dd MMM yyyy", { locale: es })}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm">{p.cliente.empresa}</div>
-                    <div className="text-xs text-gray-500">RUC: {p.cliente.ruc}</div>
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cliente.empresa}</div>
+                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">RUC: {p.cliente.ruc}</div>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm font-medium">{p.cotizacionOrigen?.codigo}</div>
-                    {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
-                      <Badge key={os.id} variant="outline" className="text-xs mt-1">
-                        {os.codigo}
-                      </Badge>
-                    ))}
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cotizacionOrigen?.codigo}</div>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
+                        <Badge key={os.id} variant="outline" className="text-[8px] font-black uppercase px-1 py-0 h-4 border-slate-200 bg-slate-50/50">
+                          {os.codigo}
+                        </Badge>
+                      ))}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm font-semibold text-green-600">
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="text-[11px] font-black text-emerald-600 font-mono">
                       S/ {totalAdelantos.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </div>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-[9px] font-bold text-slate-500 mt-0.5">
                       de S/ {Number(p.ventaContratada).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </div>
-                    <div className="text-xs text-gray-400 mt-1">
+                    <div className="text-[8px] font-black text-slate-400 uppercase mt-1">
                       {p.cotizacionOrigen?.formaPago}
                     </div>
                   </TableCell>
-                  <TableCell>
-                      <div className="flex items-center space-x-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-8 bg-slate-50 border-emerald-200 text-emerald-700 hover:bg-emerald-50 hover:text-emerald-800 font-bold"
-                          onClick={() => {
-                            setSelectedProyecto(p);
-                            setOpenPresupuesto(true);
-                          }}
-                        >
-                          S/ {(p.costoPresupuestado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                        </Button>
-                      </div>
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="flex items-center">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 px-2 border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800 font-black text-[9px] uppercase transition-all rounded-lg"
+                        onClick={() => {
+                          setSelectedProyecto(p);
+                          setOpenPresupuesto(true);
+                        }}
+                      >
+                        S/ {(p.costoPresupuestado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </Button>
+                    </div>
                   </TableCell>
-                  <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Switch
+                  <TableCell className="border-b border-slate-50 p-2">
+                    <div className="flex items-center space-x-2">
+                      <Switch
                         checked={p.autorizaCompras}
                         onCheckedChange={(val) => handleUpdate(p.id, { autorizaCompras: val })}
                       />
-                      <span className="text-xs font-medium">
+                      <span className="text-[9px] font-black uppercase text-slate-600">
                         {p.autorizaCompras ? 'Sí' : 'No'}
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="border-b border-slate-50 p-2">
                     <Select
                       value={p.estadoFinanciero || 'SinPago'}
                       onValueChange={(val) => handleUpdate(p.id, { estadoFinanciero: val })}
                     >
-                      <SelectTrigger className={`w-[140px] font-bold ${
-                        !p.estadoFinanciero || p.estadoFinanciero === 'SinPago' ? 'text-red-600' :
-                        p.estadoFinanciero === 'AdelantoRecibido' ? 'text-yellow-600' :
-                        p.estadoFinanciero === 'Observado' ? 'text-blue-600' :
-                        'text-green-600'
-                      }`}>
+                      <SelectTrigger className={cn(
+                        "h-8 text-[9px] font-black uppercase rounded-lg shadow-sm border-slate-200 w-[125px]",
+                        (!p.estadoFinanciero || p.estadoFinanciero === 'SinPago') ? 'text-red-600 bg-red-50 border-red-100' :
+                        p.estadoFinanciero === 'AdelantoRecibido' ? 'text-yellow-600 bg-yellow-50 border-yellow-100' :
+                        p.estadoFinanciero === 'Observado' ? 'text-blue-600 bg-blue-50 border-blue-100' :
+                        'text-green-600 bg-green-50 border-green-100'
+                      )}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SinPago" className="text-red-600 font-bold">Sin Pago</SelectItem>
-                        <SelectItem value="AdelantoRecibido" className="text-yellow-600 font-bold">Adelanto Rec.</SelectItem>
-                        <SelectItem value="Observado" className="text-blue-600 font-bold">Observado</SelectItem>
-                        <SelectItem value="Aprobado" className="text-green-600 font-bold">100% Pagado</SelectItem>
+                      <SelectContent className="bg-white border-slate-200">
+                        <SelectItem value="SinPago" className="text-red-600 font-black text-[9px] uppercase">Sin Pago</SelectItem>
+                        <SelectItem value="AdelantoRecibido" className="text-yellow-600 font-black text-[9px] uppercase">Adelanto Rec.</SelectItem>
+                        <SelectItem value="Observado" className="text-blue-600 font-black text-[9px] uppercase">Observado</SelectItem>
+                        <SelectItem value="Aprobado" className="text-green-600 font-black text-[9px] uppercase">100% Pagado</SelectItem>
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell className="text-right border-b border-slate-50 p-2">
                     <Button 
                       size="sm" 
                       onClick={() => {
                         setSelectedProyecto(p);
                         setOpenCobros(true);
                       }}
-                      className="bg-blue-600 hover:bg-blue-700 font-bold uppercase text-[10px]"
+                      className="bg-blue-600 hover:bg-blue-700 text-white font-black text-[9px] uppercase h-8 px-3 rounded-lg shadow-sm transition-all"
                     >
                       Gestionar Cobros
                     </Button>
