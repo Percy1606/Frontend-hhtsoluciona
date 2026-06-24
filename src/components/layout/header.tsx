@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Settings, UserCircle } from "lucide-react";
+import { User, LogOut, Settings, UserCircle, Zap } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -35,6 +35,16 @@ export function Header() {
       </div>
 
       <div className="flex items-center gap-6">
+        {/* Botón Global de Hoja de Ruta */}
+        <button
+          onClick={() => router.push("/operaciones/workflow")}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 border border-slate-200/85 hover:border-slate-300 hover:bg-slate-100/70 text-slate-700 font-bold text-[10px] uppercase rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+          title="Ver Hoja de Ruta Inter-Áreas"
+        >
+          <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+          <span>Hoja de Ruta</span>
+        </button>
+
         <div className="text-right hidden sm:block">
           <p className="text-sm font-semibold capitalize">
             {format(today, "eeee, d 'de' MMMM", { locale: es })}
