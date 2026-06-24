@@ -80,7 +80,6 @@ const menuItems = [
       { icon: CheckSquare, label: "Bandeja de Proyectos", href: "/logistica/bandeja" },
       { icon: Package, label: "Almacén Central", href: "/logistica/inventario" },
       { icon: ShoppingCart, label: "Órdenes de Materiales", href: "/logistica/ordenes" },
-      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: FileText, label: "Documentación Logística", href: "/logistica/documentos" },
       { icon: Users, label: "Proveedores", href: "/logistica/proveedores" },
       { icon: UserPlus, label: "Personal de Obra", href: "/logistica/personal" },
@@ -95,7 +94,7 @@ const menuItems = [
       { icon: Wallet, label: "Cajas y Cuentas", href: "/finanzas/cajas" },
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
       { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
-      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
+      { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones?from=finanzas" },
       { icon: BarChart, label: "Reportes", href: "/finanzas/reportes" },
     ]
   },

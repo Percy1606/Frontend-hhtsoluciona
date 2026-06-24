@@ -51,6 +51,8 @@ export default function WorkflowPage() {
   const [proyectos, setProyectos] = useState<ProjectWorkflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const loadData = async () => {
     setLoading(true);
@@ -69,6 +71,11 @@ export default function WorkflowPage() {
     loadData();
   }, []);
 
+  // Reiniciar página a 1 cuando cambie la búsqueda
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     if (!q) return proyectos;
@@ -79,6 +86,13 @@ export default function WorkflowPage() {
         p.cliente?.empresa.toLowerCase().includes(q)
     );
   }, [proyectos, search]);
+
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  
+  const paginatedProjects = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filtered.slice(start, start + itemsPerPage);
+  }, [filtered, currentPage]);
 
   // Contadores para el Dashboard del Semáforo
   const kpis = useMemo(() => {
@@ -129,26 +143,26 @@ export default function WorkflowPage() {
         </div>
 
         {/* SEMÁFORO DE CONTROL RÁPIDO */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="bg-red-50 border border-red-100 p-4 rounded-2xl flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-red-500 animate-ping shrink-0" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="bg-red-50 border border-red-100/60 p-2.5 rounded-xl flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse shrink-0" />
             <div>
-              <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">En Espera de Pago (Finanzas)</p>
-              <h3 className="text-xl font-black text-red-700">{kpis.detenidoFinanzas} proyectos</h3>
+              <p className="text-[8px] font-black text-red-600 uppercase tracking-wider">En Espera de Pago (Finanzas)</p>
+              <h3 className="text-xs font-black text-red-700">{kpis.detenidoFinanzas} proyectos</h3>
             </div>
           </div>
-          <div className="bg-amber-50 border border-amber-100 p-4 rounded-2xl flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-amber-500 shrink-0" />
+          <div className="bg-amber-50 border border-amber-100/60 p-2.5 rounded-xl flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-amber-500 shrink-0" />
             <div>
-              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">En Espera de Recursos (Logística)</p>
-              <h3 className="text-xl font-black text-amber-700">{kpis.detenidoLogistica} proyectos</h3>
+              <p className="text-[8px] font-black text-amber-600 uppercase tracking-wider">En Espera de Recursos (Logística)</p>
+              <h3 className="text-xs font-black text-amber-700">{kpis.detenidoLogistica} proyectos</h3>
             </div>
           </div>
-          <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl flex items-center gap-4">
-            <div className="w-3 h-3 rounded-full bg-emerald-500 shrink-0" />
+          <div className="bg-emerald-50 border border-emerald-100/60 p-2.5 rounded-xl flex items-center gap-2.5">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
             <div>
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest font-bold">En Operación Activa (Campo)</p>
-              <h3 className="text-xl font-black text-emerald-700">{kpis.enEjecucion} proyectos</h3>
+              <p className="text-[8px] font-black text-emerald-600 uppercase tracking-wider">En Operación Activa (Campo)</p>
+              <h3 className="text-xs font-black text-emerald-700">{kpis.enEjecucion} proyectos</h3>
             </div>
           </div>
         </div>
@@ -176,7 +190,7 @@ export default function WorkflowPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {filtered.map((p) => {
+            {paginatedProjects.map((p) => {
               const totalAdelantos = p.adelantos?.reduce((sum, a) => sum + Number(a.monto), 0) || 0;
               const porcentajeCobrado = p.ventaContratada > 0 ? (totalAdelantos / p.ventaContratada) * 100 : 0;
 
@@ -303,6 +317,35 @@ export default function WorkflowPage() {
                 </div>
               );
             })}
+
+            {/* CONTROLES DE PAGINACIÓN */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mt-6">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Página {currentPage} de {totalPages} ({filtered.length} proyectos en total)
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                    className="text-[10px] font-black uppercase h-8 px-3 border-slate-200"
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                    className="text-[10px] font-black uppercase h-8 px-3 border-slate-200"
+                  >
+                    Siguiente
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

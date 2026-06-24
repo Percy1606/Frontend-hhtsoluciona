@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCRMStore, Quote } from "@/store/crm-store";
 import { cn, formatDate } from "@/lib/utils";
 import { 
@@ -99,6 +99,8 @@ export default function CotizacionesInboxPage() {
   const { addProyecto } = useOperacionesStore();
   const { token, user: currentUser } = useAuthStore();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const fromFinanzas = searchParams.get("from") === "finanzas";
   
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -123,6 +125,12 @@ export default function CotizacionesInboxPage() {
 
   // Verificación de acceso a Finanzas
   const canManageFinances = currentUser?.rol === 'ADMIN' || currentUser?.modulos?.includes('finanzas');
+
+  useEffect(() => {
+    if (fromFinanzas) {
+      setStatusFilter("Ganada");
+    }
+  }, [fromFinanzas]);
 
   useEffect(() => {
     fetchQuotes(quotePage, quoteLimit);
@@ -531,9 +539,6 @@ export default function CotizacionesInboxPage() {
                         <>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => openModal(quote)} title="Editar">
                             <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-600" onClick={() => setHistoryQuote(quote)} title="Ver Historial">
-                            <History className="w-4 h-4" />
                           </Button>
                           
                           <DropdownMenu>
