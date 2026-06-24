@@ -662,7 +662,12 @@ function DocumentosPanel({ proyecto, cotizacionCompleta }: DocumentosPanelProps)
           origen: 'cotizacion'
         }));
         
-        const todosLosDocs = [...docsCotizacion, ...docsProyecto];
+        // Eliminar duplicados por ID para evitar mostrar el mismo documento dos veces
+        const uniqueDocsMap = new Map();
+        [...docsCotizacion, ...docsProyecto].forEach(doc => {
+          uniqueDocsMap.set(doc.id, doc);
+        });
+        const todosLosDocs = Array.from(uniqueDocsMap.values());
 
         return todosLosDocs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
