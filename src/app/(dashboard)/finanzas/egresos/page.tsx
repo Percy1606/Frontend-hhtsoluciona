@@ -40,6 +40,7 @@ import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-
 import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
 import { useAuthStore } from "@/store/auth-store";
+import { GastosFijosModal } from "@/components/finanzas/gastos-fijos-modal";
 
 const gastoStatus: Record<string, { label: string, color: string }> = {
   "PENDIENTE": { label: "BORRADOR", color: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -54,6 +55,7 @@ export default function EgresosPage() {
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isGastosFijosOpen, setIsGastosFijosOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -228,6 +230,13 @@ export default function EgresosPage() {
         </div>
         <div className="flex gap-3">
           <ExportButtons type="gastos" filters={{ search, dateFrom, dateTo }} />
+          <Button 
+            variant="outline"
+            onClick={() => setIsGastosFijosOpen(true)}
+            className="h-10 px-4 gap-2 text-xs font-black border-slate-200 hover:bg-slate-50 rounded-xl"
+          >
+            <CalendarClock className="w-4 h-4 text-slate-500" /> Gastos Fijos
+          </Button>
           <Button 
             onClick={() => setIsModalOpen(true)}
             className="h-10 px-6 gap-2 text-xs font-black bg-error hover:bg-error/90 shadow-lg shadow-error/20 rounded-xl text-white"
@@ -504,6 +513,11 @@ export default function EgresosPage() {
         onConfirm={handleSecureDelete}
         entityName={gastoToDelete?.name || ''}
         loading={deleting}
+      />
+
+      <GastosFijosModal
+        open={isGastosFijosOpen}
+        onOpenChange={setIsGastosFijosOpen}
       />
     </div>
   );

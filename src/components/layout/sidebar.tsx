@@ -64,6 +64,7 @@ const menuItems = [
     subItems: [
       { icon: ClipboardList, label: "Bandeja Técnica", href: "/operaciones/bandeja" },
       { icon: FolderKanban, label: "Proyectos", href: "/operaciones/proyectos" },
+      { icon: Zap, label: "Hoja de Ruta", href: "/operaciones/workflow" },
       { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: ClipboardList, label: "Actividades", href: "/operaciones/actividades" },
       { icon: Clock, label: "Timeline", href: "/operaciones/timeline" },

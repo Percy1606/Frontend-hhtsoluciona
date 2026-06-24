@@ -196,6 +196,21 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
 
   const projectOptions = useMemo(() => {
     let filtered = proyectos;
+    
+    // Filtrar: Solo mostrar proyectos cuya cotización de origen esté aprobada/ganada/orden de servicio
+    filtered = filtered.filter((p: any) => {
+      if (p.cotizacionOrigen) {
+        const estadoCot = p.cotizacionOrigen?.estado?.toLowerCase();
+        return (
+          estadoCot === 'aprobada' ||
+          estadoCot === 'ganada' ||
+          estadoCot === 'orden_servicio' ||
+          estadoCot === 'orden de servicio'
+        );
+      }
+      return true; // Permitir proyectos manuales/venta directa
+    });
+
     if (selectedClienteId) filtered = filtered.filter(p => p.clientId === selectedClienteId);
     
     return [
