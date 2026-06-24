@@ -205,7 +205,9 @@ export function GastosFijosModal({ open, onOpenChange }: GastosFijosModalProps) 
                 <Label className="text-[9px] font-black uppercase text-slate-400">Caja de Origen (Por defecto)</Label>
                 <Select value={cajaId} onValueChange={(val) => setCajaId(val || "")}>
                   <SelectTrigger className="h-9 mt-1 text-xs font-bold">
-                    <SelectValue />
+                    <SelectValue placeholder="Seleccione cuenta...">
+                      {cajas.find((c) => c.id === cajaId)?.nombre || "Seleccione cuenta..."}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white">
                     {cajas.map((c) => (
