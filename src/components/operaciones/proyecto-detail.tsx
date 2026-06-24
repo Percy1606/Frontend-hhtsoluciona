@@ -147,6 +147,30 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
     fetchQuotes(1, 500); // Cargar hasta 500 cotizaciones para asegurar encontrar la cotización asociada
   }, [proyecto.id, loadFinance, fetchQuotes]);
 
+  const todosLosDocs = useMemo(() => {
+    const docsProyecto = (proyecto.documentos || []).map(d => ({ ...d, origen: 'proyecto' }));
+    const rawCotizacionDocs = cotizacionCompleta?.documentos || (proyecto as any).cotizacion?.documentos || (proyecto as any).cotizacionOrigen?.documentos || [];
+    const docsCotizacion = rawCotizacionDocs.map((d: any) => ({
+      id: d.id,
+      nombre: d.nombre,
+      tipo: d.subtype === 'ORDEN_SERVICIO' ? 'OS / CONTRATO' : 'COTIZACIÓN / PROPUESTA',
+      url: d.url,
+      estado: 'Aprobado',
+      fechaSubida: d.fechaSubida || d.createdAt || new Date().toISOString(),
+      subidoPor: d.subidoPor || 'CRM',
+      origen: 'cotizacion'
+    }));
+    
+    // Eliminar duplicados por ID para evitar mostrar el mismo documento dos veces
+    const uniqueDocsMap = new Map();
+    [...docsCotizacion, ...docsProyecto].forEach(doc => {
+      if (doc.id) {
+        uniqueDocsMap.set(doc.id, doc);
+      }
+    });
+    return Array.from(uniqueDocsMap.values());
+  }, [proyecto.documentos, cotizacionCompleta, (proyecto as any).cotizacion, (proyecto as any).cotizacionOrigen]);
+
   return (
     <Dialog open={true} onOpenChange={onClose}>
       <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] p-0 border-none bg-slate-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden">
@@ -242,7 +266,7 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
                     <HandCoins className="w-4 h-4" /> Solicitudes de Fondos
                 </TabsTrigger>
                 <TabsTrigger value="documentos" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
-                    <FileText className="w-4 h-4" /> Documentos ({(proyecto.documentos?.length || 0) + (cotizacionCompleta?.documentos?.length || 0)})
+                    <FileText className="w-4 h-4" /> Documentos ({todosLosDocs.length})
                 </TabsTrigger>
                 <TabsTrigger value="historial" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <History className="w-4 h-4" /> Historial
@@ -275,7 +299,7 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
               </TabsContent>
 
               <TabsContent value="documentos" className="mt-0 animate-in fade-in slide-in-from-bottom-2 duration-400 outline-none">
-                <DocumentosPanel proyecto={proyecto} cotizacionCompleta={cotizacionCompleta} />
+                <DocumentosPanel proyecto={proyecto} todosLosDocs={todosLosDocs} />
               </TabsContent>
             </div>
           </div>
@@ -527,10 +551,10 @@ const estadoDocumentoColors: Record<string, string> = {
 
 interface DocumentosPanelProps {
   proyecto: Proyecto;
-  cotizacionCompleta?: any;
+  todosLosDocs: any[];
 }
 
-function DocumentosPanel({ proyecto, cotizacionCompleta }: DocumentosPanelProps) {
+function DocumentosPanel({ proyecto, todosLosDocs }: DocumentosPanelProps) {
   const { user } = useAuthStore();
   const { addDocumento, deleteDocumento, loading } = useOperacionesStore();
   const { quotes } = useCRMStore();
@@ -635,41 +659,7 @@ function DocumentosPanel({ proyecto, cotizacionCompleta }: DocumentosPanelProps)
       </div>
 
       {/* Combinar los documentos del proyecto con los de su cotización */}
-      {(() => {
-        const projAny = proyecto as any;
-        console.log("DEBUG DOCUMENTOS PROYECTO COMPLETO:", {
-          proyectoId: projAny.id,
-          codigo: projAny.codigo,
-          cotizacionIdField: projAny.cotizacionId,
-          cotizacionOrigenIdField: projAny.cotizacionOrigenId,
-          cotizacionFieldStr: JSON.stringify(projAny.cotizacion),
-          cotizacionOrigenFieldStr: JSON.stringify(projAny.cotizacionOrigen),
-          quotesCountAvailable: quotes.length,
-          availableQuotesList: quotes.map(q => ({ id: q.id, codigo: q.codigo })),
-          cotizacionCompletaMatch: cotizacionCompleta
-        });
-        const docsProyecto = (proyecto.documentos || []).map(d => ({ ...d, origen: 'proyecto' }));
-        const rawCotizacionDocs = cotizacionCompleta?.documentos || (proyecto.cotizacion as any)?.documentos || proyecto.cotizacionOrigen?.documentos || [];
-        console.log("DEBUG COTIZACION DOCS:", rawCotizacionDocs);
-        const docsCotizacion = rawCotizacionDocs.map((d: any) => ({
-          id: d.id,
-          nombre: d.nombre,
-          tipo: d.subtype === 'ORDEN_SERVICIO' ? 'OS / CONTRATO' : 'COTIZACIÓN / PROPUESTA',
-          url: d.url,
-          estado: 'Aprobado',
-          fechaSubida: d.fechaSubida || d.createdAt || new Date().toISOString(),
-          subidoPor: d.subidoPor || 'CRM',
-          origen: 'cotizacion'
-        }));
-        
-        // Eliminar duplicados por ID para evitar mostrar el mismo documento dos veces
-        const uniqueDocsMap = new Map();
-        [...docsCotizacion, ...docsProyecto].forEach(doc => {
-          uniqueDocsMap.set(doc.id, doc);
-        });
-        const todosLosDocs = Array.from(uniqueDocsMap.values());
-
-        return todosLosDocs.length > 0 ? (
+      {todosLosDocs.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {todosLosDocs.map((doc) => (
               <div
@@ -740,8 +730,7 @@ function DocumentosPanel({ proyecto, cotizacionCompleta }: DocumentosPanelProps)
             <FilePlus className="w-10 h-10 text-slate-200 mx-auto mb-2" />
             <p className="text-slate-400 font-black uppercase text-[10px] tracking-widest">No hay documentos</p>
           </div>
-        );
-      })()}
+        )}
 
       {isUploadOpen && (
         <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
