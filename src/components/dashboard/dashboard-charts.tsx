@@ -42,9 +42,12 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export function DashboardCharts() {
-  const { clients } = useCRMStore();
-  const { proyectos } = useOperacionesStore();
+export function DashboardCharts({ clients: customClients, proyectos: customProyectos }: { clients?: any[], proyectos?: any[] } = {}) {
+  const { clients: storeClients } = useCRMStore();
+  const { proyectos: storeProyectos } = useOperacionesStore();
+
+  const clients = customClients ?? storeClients;
+  const proyectos = customProyectos ?? storeProyectos;
 
   // 1. Pipeline Comercial Real
   const pipelineData = useMemo(() => {
@@ -56,7 +59,7 @@ export function DashboardCharts() {
     
     return Object.entries(counts)
       .map(([name, value]) => ({ name, value }))
-      .sort((a, b) => b.value - a.value); // Ordenar por tamaño
+      .sort((a: any, b: any) => b.value - a.value); // Ordenar por tamaño
   }, [clients]);
 
   // 2. Avance de Proyectos Críticos Real
@@ -188,7 +191,7 @@ export function DashboardCharts() {
           </CardTitle>
           <CardDescription className="text-xs">Top 5 proyectos en ejecución ordenados por avance</CardDescription>
         </CardHeader>
-        <CardContent className="h-[350px] p-6 bg-gradient-to-b from-transparent to-slate-50/50">
+        <CardContent className="h-[240px] p-6 bg-gradient-to-b from-transparent to-slate-50/50">
           {hasProjectData ? (
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 

@@ -540,12 +540,15 @@ export default function ProyectosPage() {
                     <TableCell>
                       <div className="w-full max-w-[90px] mx-auto space-y-1">
                         <div className="flex justify-between items-center text-[9px] font-black">
-                          <span>{proyecto.avanceCalculado}%</span>
+                          <span className="text-slate-800" title="Avance de Proyecto (Manual)">{proyecto.avance || 0}%</span>
                           <div className={cn("w-2 h-2 rounded-full", semaforoColors[proyecto.semaforo])} />
                         </div>
-                        <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-                          <div className={cn("h-full transition-all", proyecto.avanceCalculado === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${proyecto.avanceCalculado}%` }} />
+                        <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div className={cn("h-full transition-all", (proyecto.avance || 0) === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${proyecto.avance || 0}%` }} />
                         </div>
+                        <span className="text-[7.5px] text-slate-400 font-bold block text-center uppercase tracking-tighter" title="Avance Operativo Calculado">
+                          Calc: {proyecto.avanceCalculado || 0}%
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
@@ -793,6 +796,33 @@ export default function ProyectosPage() {
                     <SelectItem value="Finalizado">Finalizado</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+
+              <div className="space-y-2 col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <div className="flex justify-between items-center mb-1">
+                  <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">% Avance de Proyecto (Manual)</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-6 text-[9px] px-2 font-black uppercase bg-slate-100 hover:bg-slate-200 border-none rounded-lg"
+                    onClick={() => setEditingProyecto({ ...editingProyecto, avance: editingProyecto.avanceCalculado || 0 })}
+                  >
+                    Sincronizar Operativo ({editingProyecto.avanceCalculado || 0}%)
+                  </Button>
+                </div>
+                <div className="flex items-center gap-4">
+                  <Input 
+                    type="number"
+                    min={0}
+                    max={100}
+                    className="h-12 w-28 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                    value={editingProyecto.avance}
+                    onChange={(e) => setEditingProyecto({ ...editingProyecto, avance: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                  />
+                  <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-secondary transition-all" style={{ width: `${editingProyecto.avance || 0}%` }} />
+                  </div>
+                </div>
               </div>
             </div>
           )}

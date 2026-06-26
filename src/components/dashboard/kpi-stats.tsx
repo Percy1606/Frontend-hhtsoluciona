@@ -13,28 +13,56 @@ import { useOperacionesStore } from "@/store/operaciones-store";
 import { useFinanzasStore } from "@/store/finanzas-store";
 import { cn } from "@/lib/utils";
 
-export function KPIStats() {
-  const { clients, quotes } = useCRMStore();
-  const { proyectos } = useOperacionesStore();
+export function KPIStats({ 
+  clients: customClients, 
+  proyectos: customProyectos,
+  cotizacionesCount,
+  proyectosActivosCount,
+  totalFacturado: customTotalFacturado,
+  totalCobrado: customTotalCobrado,
+  porcentajeCobranza: customPorcentajeCobranza
+}: { 
+  clients?: any[]; 
+  proyectos?: any[];
+  cotizacionesCount?: number;
+  proyectosActivosCount?: number;
+  totalFacturado?: number;
+  totalCobrado?: number;
+  porcentajeCobranza?: number;
+} = {}) {
+  const { clients: storeClients, quotes } = useCRMStore();
+  const { proyectos: storeProyectos } = useOperacionesStore();
   const { globalKPIs } = useFinanzasStore();
 
-  const realClientStages = ['Ganado', 'Orden de Servicio', 'Servicio Realizado', 'Cotización Enviada', 'Cotizacion Enviada', 'Inspección Realizada', 'Inspeccion Realizada'];
-  const totalClientes = clients.filter(c => realClientStages.includes(c.etapaComercial) || realClientStages.includes(c.estado) || c.tipoCliente === 'CLIENTE').length;
-  const prospectos = clients.filter(c => !realClientStages.includes(c.etapaComercial) && c.etapaComercial !== 'Perdido').length;
-  const cotizacionesEnviadas = globalKPIs?.cotizacionesTotal ?? quotes.length;
-  const proyectosActivos = globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución').length;
+  const clients = customClients ?? storeClients;
+  const proyectos = customProyectos ?? storeProyectos;
+
+  // Clientes: anything beyond 'Prospecto' stage (excluding Lost/Perdido) or explicitly marked as CLIENTE.
+  const totalClientes = clients.filter(c => {
+    const stage = c.etapaComercial || c.estado || '';
+    return (stage !== 'Prospecto' && stage !== 'Perdido' && stage !== '') || c.tipoCliente === 'CLIENTE';
+  }).length;
+
+  // Prospectos: only those in 'Prospecto' stage or empty, and not marked as CLIENTE.
+  const prospectos = clients.filter(c => {
+    const stage = c.etapaComercial || c.estado || '';
+    return (stage === 'Prospecto' || stage === '') && c.tipoCliente !== 'CLIENTE';
+  }).length;
   
-  const montoEstimado = globalKPIs?.montoEstimado ?? 0;
-  const ventaProyectada = globalKPIs?.ventaProyectada ?? 0;
-  const porcentajeCobranza = globalKPIs?.porcentajeCobranza ?? 0; 
+  const cotizacionesEnviadas = cotizacionesCount ?? (globalKPIs?.cotizacionesTotal ?? quotes.length);
+  const proyectosActivos = proyectosActivosCount ?? (globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion').length);
+  
+  const totalFacturado = customTotalFacturado ?? ((globalKPIs as any)?.totalFacturado ?? 0);
+  const totalCobrado = customTotalCobrado ?? ((globalKPIs as any)?.totalCobrado ?? 0);
+  const porcentajeCobranza = customPorcentajeCobranza ?? ((globalKPIs as any)?.porcentajeCobranza ?? 0); 
 
   const kpiConfig = [
     { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
     { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600" },
     { label: "Cotizaciones", value: cotizacionesEnviadas, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
     { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600" },
-    { label: "Monto Estimado", value: montoEstimado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
-    { label: "Venta Proyectada", value: ventaProyectada, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
+    { label: "Total Facturado", value: totalFacturado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
+    { label: "Total Cobrado", value: totalCobrado, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
     { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true },
   ];
 

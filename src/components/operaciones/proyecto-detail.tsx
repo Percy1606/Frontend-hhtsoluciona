@@ -200,14 +200,17 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
                 </div>
               </DialogTitle>
 
-              <div className="flex flex-col items-end gap-1.5 bg-white/10 p-3 rounded-xl backdrop-blur-md border border-white/10">
-                <p className="text-[9px] font-black uppercase tracking-widest text-accent/80">Progreso Operativo</p>
+              <div className="flex flex-col items-end gap-1 bg-white/10 p-3 rounded-xl backdrop-blur-md border border-white/10">
+                <p className="text-[9px] font-black uppercase tracking-widest text-accent/80">Avance de Proyecto</p>
                 <div className="flex items-center gap-3">
-                  <span className="text-xl font-black">{proyecto.avanceCalculado}%</span>
+                  <span className="text-xl font-black" title="Avance de Proyecto (Manual)">{proyecto.avance || 0}%</span>
                   <div className="w-24 h-2 bg-white/20 rounded-full overflow-hidden border border-white/10">
-                    <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${proyecto.avanceCalculado}%` }} />
+                    <div className="h-full bg-accent transition-all duration-1000" style={{ width: `${proyecto.avance || 0}%` }} />
                   </div>
                 </div>
+                <p className="text-[7.5px] font-black uppercase tracking-tighter text-white/55">
+                  Avance Operativo (Calc): {proyecto.avanceCalculado || 0}%
+                </p>
               </div>
             </div>
 

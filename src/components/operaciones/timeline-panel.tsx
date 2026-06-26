@@ -14,15 +14,22 @@ import {
   MoreVertical,
   ClipboardList,
   Trash2,
-  Briefcase
+  Briefcase,
+  Archive
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 
 export function TimelinePanel() {
-  const { getTimelineEvents } = useOperacionesStore();
+  const { getTimelineEvents, proyectos } = useOperacionesStore();
   const events = getTimelineEvents();
+  
+  const proyectosFinalizados = proyectos.filter(p => p.estado === 'Finalizado').length;
+  const eventosFinalizados = events.filter(e => {
+    const proy = proyectos.find(p => p.nombre === e.proyectoNombre);
+    return proy?.estado === 'Finalizado';
+  }).length;
 
   if (events.length === 0) {
     return (
@@ -57,7 +64,23 @@ export function TimelinePanel() {
   };
 
   return (
-    <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:via-slate-200 before:to-transparent">
+    <div className="space-y-6">
+      {/* BANNER: Proyectos finalizados incluidos */}
+      {proyectosFinalizados > 0 && (
+        <div className="flex items-center gap-3 bg-emerald-50 border border-emerald-200 p-3 rounded-xl">
+          <Archive className="w-5 h-5 text-emerald-600 shrink-0" />
+          <div>
+            <p className="text-[10px] font-black text-emerald-800 uppercase tracking-wider">
+              Proyectos finalizados incluidos en el historial
+            </p>
+            <p className="text-[9px] font-medium text-emerald-600">
+              {proyectosFinalizados} proyecto(s) finalizado(s) — {eventosFinalizados} evento(s) registrado(s). Los datos persisten aunque el proyecto haya terminado.
+            </p>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-8 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-slate-200 before:via-slate-200 before:to-transparent">
       {events.map((event, idx) => {
         const config = getEventConfig(event.campo);
         
@@ -138,6 +161,7 @@ export function TimelinePanel() {
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

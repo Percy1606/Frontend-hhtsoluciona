@@ -10,6 +10,7 @@ import type {
   Semaforo,
   Proyecto,
   Actividad,
+  EstadoActividad,
   ValidacionRequerida,
   Responsable,
   Documento,
@@ -881,12 +882,44 @@ export const useOperacionesStore = create<OperacionesState>()(
             tipo: mapTipoActividadToBackend(actividadActualizada.tipo),
             prioridad: mapPrioridadToBackend(actividadActualizada.prioridad),
             estado: mapEstadoActividadToBackend(actividadActualizada.estado),
-            progreso: (actividadActualizada.estado === 'Completada' || actividadActualizada.estado === 'Validada') ? 100 : (actividadActualizada.estado === 'En Progreso' ? 50 : 0),
+            progreso: cleanData.progreso ?? ((actividadActualizada.estado === 'Completada' || actividadActualizada.estado === 'Validada') ? 100 : (actividadActualizada.estado === 'En Progreso' ? 50 : 0)),
             fechaInicio: toISO(actividadActualizada.fechaInicio),
             fechaFin: toISO(actividadActualizada.fechaFin),
             fechaVencimiento: toISO(actividadActualizada.fechaVencimiento),
           };
-          await api.put(`/operaciones/actividades/${actividadActualizada.id}`, payload);
+          const responseActividad = await api.put(`/operaciones/actividades/${actividadActualizada.id}`, payload);
+          
+          const mappedActividad = {
+            ...actividadActualizada,
+            ...responseActividad,
+            tipo: mapTipoActividadToFrontend(responseActividad.tipo),
+            prioridad: mapPrioridadToFrontend(responseActividad.prioridad),
+            estado: mapEstadoActividadToFrontend(responseActividad.estado),
+            proyectoCodigo: responseActividad.proyecto?.codigo || (actividadActualizada as any).proyectoCodigo || 'N/A',
+            proyectoNombre: responseActividad.proyecto?.nombre || (actividadActualizada as any).proyectoNombre || 'PROYECTO SIN NOMBRE',
+          };
+
+          // Actualizar localmente para feedback inmediato en la UI
+          set((state) => ({
+            actividades: (state.actividades || []).map(a => {
+              if (a.id !== mappedActividad.id) return a;
+              return mappedActividad;
+            }),
+            proyectos: state.proyectos.map(p => {
+              if (p.id !== proyectoId) return p;
+              const actividadesActualizadas = (p.actividades || []).map(a => {
+                if (a.id !== mappedActividad.id) return a;
+                return mappedActividad;
+              });
+              const nuevoAvance = calculateAvance(actividadesActualizadas);
+              return {
+                ...p,
+                actividades: actividadesActualizadas,
+                avanceCalculado: nuevoAvance,
+                avance: nuevoAvance,
+              };
+            })
+          }));
           await get().fetchProyectos();
           set({ loading: false });
         } catch (error: any) {
@@ -899,10 +932,25 @@ export const useOperacionesStore = create<OperacionesState>()(
         set({ loading: true, error: null });
         try {
           await api.delete(`/operaciones/actividades/${actividadId}`);
+          set((state) => ({
+            actividades: (state.actividades || []).filter(a => a.id !== actividadId),
+            proyectos: state.proyectos.map(p => {
+              if (p.id !== proyectoId) return p;
+              const actividadesActualizadas = (p.actividades || []).filter(a => a.id !== actividadId);
+              const nuevoAvance = calculateAvance(actividadesActualizadas);
+              return {
+                ...p,
+                actividades: actividadesActualizadas,
+                avanceCalculado: nuevoAvance,
+                avance: nuevoAvance,
+              };
+            })
+          }));
           await get().fetchProyectos();
           set({ loading: false });
         } catch (error: any) {
           set({ error: error.message, loading: false });
+          throw error;
         }
       },
 

@@ -31,9 +31,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import type { Actividad, Responsable } from "@/lib/types";
-import { format, parseISO } from "date-fns";
+import { format } from "date-fns";
 import { Loader2, ClipboardList, AlertCircle, Search, Check, ChevronsUpDown } from "lucide-react";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
@@ -59,6 +58,7 @@ const actividadSchema = z.object({
   responsablesApoyo: z.array(z.string()),
   ponderacion: z.number().optional(),
   orden: z.number(),
+  progreso: z.number().min(0).max(100).optional(),
   observaciones: z.string().optional(),
 }).refine((data) => {
   if (data.fechaInicio && data.fechaVencimiento) {
@@ -73,15 +73,29 @@ const actividadSchema = z.object({
 type ActividadFormValues = z.infer<typeof actividadSchema>;
 
 interface ActividadFormProps {
-  proyectoId?: string; // Ahora es opcional
+  proyectoId?: string;
   actividad?: Actividad | null;
   isOpen: boolean;
   onClose: () => void;
+  /** @deprecated Mantenido por retrocompatibilidad con otras pantallas; ya no se usa */
+  defaultGroup?: string;
 }
+
+/**
+ * Limpia un prefijo legacy del tipo "[DOCUMENTACIÓN] X" presente en la
+ * descripción de actividades creadas con la versión anterior del módulo.
+ *
+ * Si la descripción no tiene prefijo, se retorna tal cual.
+ */
+const stripLegacyPrefix = (text: string): string => {
+  if (!text) return "";
+  const match = text.match(/^\[(.*?)\]\s*(.*)$/i);
+  return match ? match[2].trim() : text;
+};
 
 export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: ActividadFormProps) {
   const { proyectos, responsables, addActividad, updateActividad, loading, error, fetchProyectos } = useOperacionesStore();
-  
+
   // States for searchable project selector
   const [projectSearch, setProjectSearch] = useState("");
   const [isProjectSelectOpen, setIsProjectSelectOpen] = useState(false);
@@ -90,33 +104,29 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   const [responsibleSearch, setResponsibleSearch] = useState("");
   const [isResponsibleSelectOpen, setIsResponsibleSelectOpen] = useState(false);
 
-  const filteredProyectos = proyectos.filter(p => 
-    p.nombre.toLowerCase().includes(projectSearch.toLowerCase()) || 
-    p.codigo.toLowerCase().includes(projectSearch.toLowerCase())
-  );
-
-  const filteredResponsables = responsables.filter(r => 
-    r.nombre.toLowerCase().includes(responsibleSearch.toLowerCase()) || 
-    r.area.toLowerCase().includes(responsibleSearch.toLowerCase())
-  );
-  
+  // Cache de funciones para evitar re-renders innecesarios
   const fetchProyectosRef = React.useRef(fetchProyectos);
-  React.useEffect(() => {
+  useEffect(() => {
     fetchProyectosRef.current = fetchProyectos;
   }, [fetchProyectos]);
-  
+
   // Fetch projects when the modal opens if not already loaded
   useEffect(() => {
     if (isOpen) {
-      console.log("[ActividadForm] Modal opened, projects count:", proyectos.length);
-      // Fetch a larger amount to ensure we get most/all projects
-      console.log("[ActividadForm] Fetching projects...");
       fetchProyectosRef.current(1, 1000).catch(err => console.error("[ActividadForm] Error fetching projects:", err));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
-  
-  // Removed debugging useEffect as it was causing issues
+
+  const filteredProyectos = proyectos.filter(p =>
+    p.nombre.toLowerCase().includes(projectSearch.toLowerCase()) ||
+    p.codigo.toLowerCase().includes(projectSearch.toLowerCase())
+  );
+
+  const filteredResponsables = responsables.filter(r =>
+    r.nombre.toLowerCase().includes(responsibleSearch.toLowerCase()) ||
+    r.area.toLowerCase().includes(responsibleSearch.toLowerCase())
+  );
 
   const form = useForm<ActividadFormValues>({
     resolver: zodResolver(actividadSchema),
@@ -133,21 +143,24 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
       responsablesApoyo: [],
       ponderacion: 1,
       orden: 0,
+      progreso: 0,
       observaciones: "",
     },
   });
 
   useEffect(() => {
     if (actividad) {
+      // Limpia el prefijo legacy "[GRUPO]" para mostrar la descripción pura al usuario.
+      const cleanedDescription = stripLegacyPrefix(actividad.descripcion);
+
       form.reset({
         proyectoId: actividad.proyectoId,
-        descripcion: actividad.descripcion,
+        descripcion: cleanedDescription,
         tipo: actividad.tipo,
         prioridad: actividad.prioridad,
         estado: actividad.estado,
-        // Al EDITAR: Priorizar fechaInicio original, si no existe usar la de CREACIÓN (no la de hoy)
-        fechaInicio: actividad.fechaInicio 
-          ? actividad.fechaInicio.split("T")[0] 
+        fechaInicio: actividad.fechaInicio
+          ? actividad.fechaInicio.split("T")[0]
           : (actividad.fechaCreacion ? actividad.fechaCreacion.split("T")[0] : ""),
         fechaFin: actividad.fechaFin ? actividad.fechaFin.split("T")[0] : "",
         fechaVencimiento: actividad.fechaVencimiento ? actividad.fechaVencimiento.split("T")[0] : "",
@@ -155,6 +168,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         responsablesApoyo: actividad.responsablesApoyo || [],
         ponderacion: actividad.ponderacion || 1,
         orden: actividad.orden || 0,
+        progreso: actividad.progreso ?? 0,
         observaciones: actividad.observaciones || "",
       });
     } else {
@@ -171,27 +185,27 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         responsablesApoyo: [],
         ponderacion: 1,
         orden: 0,
+        progreso: 0,
         observaciones: "",
       });
     }
   }, [actividad, proyectoId, form, isOpen]);
 
   const onSubmit = async (values: ActividadFormValues) => {
-    // Helper para convertir YYYY-MM-DD a ISO manteniendo el día local (mediodía)
     const toLocalISO = (dateStr?: string) => {
-        if (!dateStr) return undefined;
-        // Si ya tiene T es un ISO completo, si no, es YYYY-MM-DD
-        const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
-        return new Date(normalized).toISOString();
+      if (!dateStr) return undefined;
+      const normalized = dateStr.includes('T') ? dateStr : `${dateStr}T12:00:00`;
+      return new Date(normalized).toISOString();
     };
 
     try {
       if (actividad) {
-        await updateActividad(values.proyectoId, { 
-            ...actividad, 
-            ...values,
-            fechaInicio: toLocalISO(values.fechaInicio),
-            fechaVencimiento: toLocalISO(values.fechaVencimiento)
+        await updateActividad(values.proyectoId, {
+          ...actividad,
+          ...values,
+          progreso: values.progreso ?? actividad.progreso ?? 0,
+          fechaInicio: toLocalISO(values.fechaInicio),
+          fechaVencimiento: toLocalISO(values.fechaVencimiento)
         });
         toast.success("Actividad Actualizada", { description: "Los cambios se guardaron correctamente." });
       } else {
@@ -204,7 +218,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
           validacionesRequeridas: [],
           comentarios: [],
           evidencias: [],
-          progreso: 0,
+          progreso: values.progreso ?? 0,
         });
         toast.success("Actividad Creada", { description: "La nueva tarea ha sido registrada." });
       }
@@ -212,8 +226,8 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
     } catch (error: any) {
       console.error("Error saving actividad", error);
       const isNotFound = error.message?.includes("no encontrada") || error.message?.includes("404");
-      toast.error("Error al Guardar", { 
-        description: isNotFound 
+      toast.error("Error al Guardar", {
+        description: isNotFound
           ? "Esta actividad no existe en el servidor. Por favor, refresca la página para limpiar datos obsoletos."
           : (error.message || "No se pudo procesar la solicitud.")
       });
@@ -397,7 +411,6 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                         {["Pendiente", "En Progreso", "Completada"].map(e => (
                           <SelectItem key={e} value={e} className="font-medium">{e}</SelectItem>
                         ))}
-                        {/* Validada solo aparece si ya está en ese estado o viene del módulo de validaciones */}
                         {((field.value as any) === "Validada" || (field.value as any) === "Bloqueada" || (field.value as any) === "EnProgreso") && (
                           <SelectItem value={field.value} className="font-medium">
                             {field.value === "EnProgreso" ? "En Progreso" : field.value}
@@ -520,22 +533,48 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                 </FormItem>
               )}
             />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="progreso"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">% Progreso</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          placeholder="0"
+                          {...field}
+                          onChange={(e) => field.onChange(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                          className="h-10 border-slate-200 font-bold pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">%</span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="observaciones"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Observaciones (Opcional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Detalles adicionales, requisitos especiales o notas para el equipo..." {...field} className="min-h-[100px] border-slate-200 font-medium bg-slate-50/30" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="observaciones"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Observaciones (Opcional)</FormLabel>
+                    <FormControl>
+                      <Textarea placeholder="Detalles adicionales, requisitos especiales o notas para el equipo..." {...field} className="min-h-[100px] border-slate-200 font-medium bg-slate-50/30" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
-            <div className="pt-4 border-t border-slate-100 flex justify-end gap-3">
+            <DialogFooter className="pt-4 border-t border-slate-100 flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="h-12 px-8 font-black uppercase text-xs tracking-widest">
                 Cancelar
               </Button>
@@ -543,7 +582,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 {actividad ? "Actualizar Actividad" : "Crear Actividad"}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </Form>
       </DialogContent>

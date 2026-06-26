@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { format, parseISO } from "date-fns";
+import Link from "next/link";
+import { format, parseISO, differenceInCalendarDays } from "date-fns";
+import { es } from "date-fns/locale";
 import {
   Table,
   TableBody,
@@ -23,6 +25,14 @@ import {
   FilterX,
   Calendar,
   AlertTriangle,
+  FolderKanban,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  ExternalLink,
+  RefreshCw,
+  Layers,
+  ArrowRight,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -35,27 +45,28 @@ import {
 } from "@/components/ui/select";
 import { useSearchParams } from "next/navigation";
 import { useOperacionesStore } from "@/store/operaciones-store";
-import type { Actividad } from "@/lib/types";
+import type { Actividad, Proyecto } from "@/lib/types";
 import { ActividadForm } from "@/components/operaciones/actividad-form";
+import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-modal";
 import { toast } from "sonner";
 
-// Reutilizamos el componente local de estadísticas
+// Tarjeta de estadística global (compactada)
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-4 rounded-xl border border-slate-100 shadow-sm flex items-center gap-4 bg-white", bgColor)}>
-    <div className={cn("p-3 rounded-lg bg-white shadow-sm", color)}>
+  <div className={cn("p-3.5 rounded-lg border border-slate-100 flex items-center gap-3 bg-white shadow-none", bgColor)}>
+    <div className={cn("p-2 rounded-md bg-white shrink-0", color)}>
       {icon}
     </div>
     <div>
-      <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider leading-none mb-1">{label}</p>
-      <p className={cn("text-2xl font-black leading-none tracking-tight", color)}>{value}</p>
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
+      <p className={cn("text-xl font-semibold leading-none tracking-tight tabular-nums", color)}>{value}</p>
     </div>
   </div>
 );
 
 const estadoColors: Record<string, string> = {
-  "Pendiente": "bg-gray-100 text-gray-700",
+  "Pendiente": "bg-slate-100 text-slate-600",
   "En Progreso": "bg-blue-100 text-blue-700",
-  "Completada": "bg-green-100 text-green-700",
+  "Completada": "bg-emerald-100 text-emerald-700",
   "Validada": "bg-emerald-500 text-white",
   "Bloqueada": "bg-red-100 text-red-700",
 };
@@ -63,9 +74,29 @@ const estadoColors: Record<string, string> = {
 const tipoColors: Record<string, string> = {
   "Técnica": "bg-purple-100 text-purple-700",
   "Administrativa": "bg-blue-100 text-blue-700",
-  "Logística": "bg-yellow-100 text-yellow-700",
-  "Documental": "bg-green-100 text-green-700",
+  "Logística": "bg-amber-100 text-amber-700",
+  "Documental": "bg-emerald-100 text-emerald-700",
   "Validación": "bg-red-100 text-red-700",
+};
+
+const prioridadColors: Record<string, string> = {
+  "Baja": "bg-slate-100 text-slate-700",
+  "Media": "bg-amber-100 text-amber-700",
+  "Alta": "bg-orange-100 text-orange-700",
+  "Crítica": "bg-red-100 text-red-700",
+};
+
+const semaforoColors: Record<string, string> = {
+  "Verde": "bg-emerald-400",
+  "Amarillo": "bg-amber-400",
+  "Rojo": "bg-red-500",
+};
+
+const estadoProyectoBadge: Record<string, string> = {
+  "Planificación": "bg-blue-50 text-blue-700 border-blue-200",
+  "En Ejecución": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Detenido": "bg-red-50 text-red-700 border-red-200",
+  "Finalizado": "bg-slate-50 text-slate-600 border-slate-200",
 };
 
 const formatDate = (dateStr: string | null | undefined) => {
@@ -85,11 +116,10 @@ const getDueDateStatus = (dateStr: string | null | undefined) => {
     const dueDate = dateStr.includes('T') ? parseISO(dateStr) : parseISO(`${dateStr}T00:00:00`);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Due date + 1 day for imminent check
+
     const imminentDate = new Date(today);
     imminentDate.setDate(today.getDate() + 1);
- 
+
     const isOverdue = dueDate < today;
     const isImminent = dueDate >= today && dueDate <= imminentDate;
 
@@ -99,6 +129,86 @@ const getDueDateStatus = (dateStr: string | null | undefined) => {
   }
 };
 
+// ───────────────────────────────────────────────────────────────────
+// Cálculo de los indicadores por proyecto
+// ───────────────────────────────────────────────────────────────────
+interface ProjectKpis {
+  total: number;
+  completadas: number;
+  pendientes: number;
+  enProgreso: number;
+  vencidas: number;
+  bloqueadas: number;
+  proximaFechaTexto: string;
+  proximaFechaRaw: string | null;
+  proximaDias: number | null;
+  promedioAvance: number;
+  responsablesUnicos: number;
+}
+
+function calcKpis(actividadesGrupo: Actividad[]): ProjectKpis {
+  const total = actividadesGrupo.length;
+  const completadas = actividadesGrupo.filter(a => a.estado === "Completada" || a.estado === "Validada").length;
+  const pendientes = actividadesGrupo.filter(a => a.estado === "Pendiente").length;
+  const enProgreso = actividadesGrupo.filter(a => a.estado === "En Progreso").length;
+  const bloqueadas = actividadesGrupo.filter(a => a.estado === "Bloqueada").length;
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const vencidas = actividadesGrupo.filter(a => {
+    if (!a.fechaVencimiento) return false;
+    if (a.estado === "Completada" || a.estado === "Validada") return false;
+    return new Date(a.fechaVencimiento) < hoy;
+  }).length;
+
+  const fechasPendientes = actividadesGrupo
+    .filter(a => a.fechaVencimiento && a.estado !== "Completada" && a.estado !== "Validada")
+    .map(a => parseISO(a.fechaVencimiento!.split('T')[0] + 'T00:00:00'))
+    .sort((a, b) => a.getTime() - b.getTime());
+
+  let proximaFechaTexto = "—";
+  let proximaFechaRaw: string | null = null;
+  let proximaDias: number | null = null;
+
+  if (fechasPendientes.length > 0) {
+    const proxima = fechasPendientes[0];
+    proximaFechaRaw = format(proxima, "yyyy-MM-dd");
+    const diff = differenceInCalendarDays(proxima, hoy);
+    proximaDias = diff;
+    if (diff < 0) {
+      proximaFechaTexto = `Vencida hace ${Math.abs(diff)}d · ${format(proxima, "dd MMM", { locale: es })}`;
+    } else if (diff === 0) {
+      proximaFechaTexto = `Vence hoy · ${format(proxima, "dd MMM", { locale: es })}`;
+    } else if (diff <= 7) {
+      proximaFechaTexto = `En ${diff}d · ${format(proxima, "dd MMM", { locale: es })}`;
+    } else {
+      proximaFechaTexto = format(proxima, "dd MMM yyyy", { locale: es });
+    }
+  }
+
+  const promedioAvance = total > 0
+    ? Math.round(actividadesGrupo.reduce((acc, a) => acc + (a.progreso || 0), 0) / total)
+    : 0;
+
+  const responsablesUnicos = new Set(
+    actividadesGrupo.map(a => a.responsablePrincipalId).filter(Boolean)
+  ).size;
+
+  return {
+    total,
+    completadas,
+    pendientes,
+    enProgreso,
+    bloqueadas,
+    vencidas,
+    proximaFechaTexto,
+    proximaFechaRaw,
+    proximaDias,
+    promedioAvance,
+    responsablesUnicos,
+  };
+}
+
 export default function ActividadesClient() {
   const searchParams = useSearchParams();
   const {
@@ -107,48 +217,64 @@ export default function ActividadesClient() {
     actividadPage,
     actividadTotalPages,
     responsables,
+    proyectos: proyectosStore,
     fetchActividades,
     fetchResponsables,
+    fetchProyectos,
     deleteActividad,
-    loading
+    loading,
   } = useOperacionesStore();
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editingActividad, setEditingActividad] = useState<Actividad | null>(null);
+  const [defaultProyectoId, setDefaultProyectoId] = useState<string | null>(null);
+  const [defaultProyectoForBulk, setDefaultProyectoForBulk] = useState<Proyecto | null>(null);
 
-  // Filtros locales
   const [searchQuery, setSearchQuery] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("all");
   const [filtroResponsable, setFiltroResponsable] = useState("all");
 
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
   useEffect(() => {
-    fetchActividades(1, 20, { 
-        search: searchQuery, 
-        estado: filtroEstado, 
-        responsableId: filtroResponsable 
+    fetchActividades(1, 20, {
+      search: searchQuery,
+      estado: filtroEstado,
+      responsableId: filtroResponsable,
     });
     fetchResponsables();
-  }, [fetchActividades, fetchResponsables, searchQuery, filtroEstado, filtroResponsable]);
+    if (proyectosStore.length === 0) {
+      fetchProyectos(1, 200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, filtroEstado, filtroResponsable]);
 
-  // LÓGICA DE DEEP-LINKING (Resolver desde Alertas)
   useEffect(() => {
     const editId = searchParams.get('edit');
     if (editId && actividades.length > 0) {
-        const target = actividades.find(a => a.id === editId);
-        if (target) {
-            setEditingActividad(target);
-            setIsFormOpen(true);
-            window.history.replaceState({}, '', window.location.pathname);
+      const target = actividades.find(a => a.id === editId);
+      if (target) {
+        setEditingActividad(target);
+        setIsFormOpen(true);
+        if (target.proyectoId) {
+          setExpanded(prev => {
+            const n = new Set(prev);
+            n.add(target.proyectoId);
+            return n;
+          });
         }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
     }
   }, [searchParams, actividades]);
 
   const stats = useMemo(() => ({
     total: totalActividades,
-    pendientes: totalActividades > 0 ? actividades.filter(a => a.estado === 'Pendiente').length : 0,
-    enProgreso: totalActividades > 0 ? actividades.filter(a => a.estado === 'En Progreso').length : 0,
-    completadas: totalActividades > 0 ? actividades.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length : 0,
-    bloqueadas: totalActividades > 0 ? actividades.filter(a => a.estado === 'Bloqueada').length : 0,
+    pendientes: actividades.filter(a => a.estado === 'Pendiente').length,
+    enProgreso: actividades.filter(a => a.estado === 'En Progreso').length,
+    completadas: actividades.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length,
+    bloqueadas: actividades.filter(a => a.estado === 'Bloqueada').length,
   }), [actividades, totalActividades]);
 
   const getResponsableName = useCallback((id: string) => {
@@ -159,9 +285,66 @@ export default function ActividadesClient() {
     return id.toUpperCase();
   }, [responsables]);
 
+  const getProyectoFull = useCallback((id: string): Proyecto | undefined => {
+    return proyectosStore.find(p => p.id === id);
+  }, [proyectosStore]);
+
+  const toggleProject = useCallback((id: string) => {
+    setExpanded(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id);
+      else n.add(id);
+      return n;
+    });
+  }, []);
+
+  const groupedByProject = useMemo(() => {
+    const map = new Map<string, {
+      proyectoId: string;
+      codigo: string;
+      nombre: string;
+      actividades: Actividad[];
+    }>();
+    for (const act of actividades) {
+      const key = act.proyectoId || "SIN_PROYECTO";
+      const existing = map.get(key);
+      if (existing) {
+        existing.actividades.push(act);
+      } else {
+        map.set(key, {
+          proyectoId: act.proyectoId || "SIN_PROYECTO",
+          codigo: act.proyectoCodigo || "—",
+          nombre: act.proyectoNombre || "PROYECTO SIN NOMBRE",
+          actividades: [act],
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [actividades]);
+
+  const expandAllProjects = useCallback(() => {
+    setExpanded(new Set(groupedByProject.map(g => g.proyectoId)));
+  }, [groupedByProject]);
+
+  const collapseAllProjects = useCallback(() => {
+    setExpanded(new Set());
+  }, []);
+
   const handleEdit = (actividad: Actividad) => {
     setEditingActividad(actividad);
+    setDefaultProyectoId(actividad.proyectoId);
     setIsFormOpen(true);
+  };
+
+  const handleNewActivity = (proyectoId?: string) => {
+    setEditingActividad(null);
+    setDefaultProyectoId(proyectoId ?? null);
+    setIsFormOpen(true);
+  };
+
+  const handleOpenBulk = (proyecto?: Proyecto | null) => {
+    setDefaultProyectoForBulk(proyecto ?? null);
+    setIsBulkOpen(true);
   };
 
   const handleDelete = async (proyectoId: string, actividadId: string) => {
@@ -196,266 +379,578 @@ export default function ActividadesClient() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <div className="space-y-5">
+      {/* Header compacto */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-3">
-            <div className="bg-primary/10 p-2 rounded-lg">
-              <ClipboardList className="w-5 h-5 text-primary" />
+          <div className="flex items-center gap-2.5">
+            <div className="bg-primary/10 p-1.5 rounded-md">
+              <ClipboardList className="w-4 h-4 text-primary" />
             </div>
-            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Gestión de Actividades</h1>
+            <h1 className="text-base font-bold text-primary tracking-tight">Gestión de Actividades</h1>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-1 font-bold uppercase tracking-wide">Control operativo de tareas en todos los proyectos.</p>
+          <p className="text-[10px] text-muted-foreground mt-0.5 font-medium uppercase tracking-wide">
+            Vista jerárquica: proyecto → actividades
+          </p>
         </div>
-        <div className="flex items-center gap-3">
-            <Button 
-                variant="outline" 
-                onClick={handleForceRefresh}
-                className="h-10 px-5 font-black uppercase text-[10px] tracking-widest border-2 hover:bg-slate-50 gap-2 rounded-xl"
-                title="Limpiar caché local y forzar sincronización"
-            >
-                <Clock className="w-3.5 h-3.5" />
-                Sincronizar
-            </Button>
-            <Button
-                className="h-10 gap-2 font-black uppercase text-[10px] bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 rounded-xl px-6"
-                onClick={() => { setEditingActividad(null); setIsFormOpen(true); }}
-            >
-                <Plus className="w-4 h-4" /> Nueva Actividad
-            </Button>
+        <div className="flex items-center gap-1.5">
+          {groupedByProject.length > 0 && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={expandAllProjects}
+                className="h-8 px-2 font-semibold uppercase text-[9px] tracking-wide text-slate-500 hover:text-primary"
+                title="Expandir todo"
+              >
+                <Layers className="w-3 h-3 mr-1" /> Expandir
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={collapseAllProjects}
+                className="h-8 px-2 font-semibold uppercase text-[9px] tracking-wide text-slate-500 hover:text-primary"
+                title="Contraer todo"
+              >
+                <Layers className="w-3 h-3 mr-1" /> Contraer
+              </Button>
+            </>
+          )}
+          <Button
+            variant="outline"
+            onClick={handleForceRefresh}
+            className="h-8 px-3 font-semibold uppercase text-[9px] tracking-wide border-slate-200 hover:bg-slate-50 gap-1.5 rounded-md"
+            title="Limpiar caché local y forzar sincronización"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Sincronizar
+          </Button>
+          <Button
+            variant="outline"
+            className="h-8 gap-1.5 font-semibold uppercase text-[9px] tracking-wide border-slate-200 bg-white hover:bg-primary/5 hover:border-primary/30 rounded-md px-3"
+            onClick={() => handleOpenBulk(null)}
+          >
+            <Plus className="w-3 h-3" /> Carga Masiva
+          </Button>
+          <Button
+            className="h-8 gap-1.5 font-semibold uppercase text-[9px] tracking-wide bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 rounded-md px-4"
+            onClick={() => handleNewActivity()}
+          >
+            <Plus className="w-3 h-3" /> Nueva Actividad
+          </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-4 h-4"/>} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-4 h-4"/>} color="text-slate-600" bgColor="bg-slate-50" />
-        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-4 h-4"/>} color="text-blue-600" bgColor="bg-blue-50" />
-        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" />
+      {/* Stats globales (compactados) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-3.5 h-3.5" />} color="text-primary" bgColor="bg-primary/5" />
+        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-3.5 h-3.5" />} color="text-slate-600" bgColor="bg-slate-50" />
+        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50" />
+        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-emerald-600" bgColor="bg-emerald-50" />
       </div>
 
-      {/* Filtros */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col lg:flex-row items-center gap-4">
+      {/* Filtros (compactados) */}
+      <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-none flex flex-col lg:flex-row items-center gap-3">
         <div className="relative flex-1 w-full">
-          <span className="text-[9px] font-black uppercase text-primary tracking-widest ml-1 mb-1 block">Buscador Global</span>
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input 
-              placeholder="Buscar por actividad o proyecto..." 
-              className="pl-10 h-10 border-slate-200 bg-slate-50/30 focus:bg-white transition-all shadow-none font-bold text-sm rounded-xl" 
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
+            <Input
+              placeholder="Buscar actividad, proyecto o código..."
+              className="pl-9 h-8 border-slate-200 text-xs font-medium focus:bg-white shadow-none rounded-md"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
         </div>
-        
-        <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
-          <div className="flex flex-col gap-1 min-w-[180px]">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado Operativo</span>
-            <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val || "all")}>
-              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
-                <SelectValue placeholder="Estado">
-                  {filtroEstado !== "all" ? 
-                    <span className="text-[10px] font-bold uppercase">{filtroEstado}</span> : 
-                    <span className="text-[9px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</span>
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS ESTADOS</SelectItem>
-                <SelectItem value="Pendiente" className="uppercase text-[10px] font-bold">PENDIENTE</SelectItem>
-                <SelectItem value="En Progreso" className="uppercase text-[10px] font-bold">EN PROGRESO</SelectItem>
-                <SelectItem value="Completada" className="uppercase text-[10px] font-bold">COMPLETADA</SelectItem>
-                <SelectItem value="Validada" className="uppercase text-[10px] font-bold">VALIDADA</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
-          <div className="flex flex-col gap-1 min-w-[200px]">
-            <span className="text-[8px] font-black uppercase text-slate-400 tracking-widest ml-1">Responsable</span>
-            <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val || "all")}>
-              <SelectTrigger className="h-10 border-slate-200 bg-white text-xs font-bold shadow-none rounded-xl">
-                <SelectValue placeholder="Responsable">
-                  {filtroResponsable !== "all" ? 
-                    <span className="text-[10px] font-bold uppercase">{getResponsableName(filtroResponsable)}</span> : 
-                    <span className="text-[9px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</span>
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent className="bg-white border-slate-200">
-                <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS LOS RESPONSABLES</SelectItem>
-                {responsables.map(r => (
-                  <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-bold">{r.nombre}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+          <Select value={filtroEstado} onValueChange={(val) => setFiltroEstado(val || "all")}>
+            <SelectTrigger className="h-8 border-slate-200 bg-white text-[10px] font-semibold shadow-none rounded-md min-w-[140px]">
+              <SelectValue placeholder="Estado">
+                {filtroEstado !== "all" ?
+                  <span className="uppercase">{filtroEstado}</span> :
+                  <span className="text-slate-400 uppercase tracking-tight italic">Todos los estados</span>
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white border-slate-200">
+              <SelectItem value="all" className="text-[10px] text-slate-400 italic">Todos los estados</SelectItem>
+              <SelectItem value="Pendiente" className="uppercase text-[10px] font-semibold">Pendiente</SelectItem>
+              <SelectItem value="En Progreso" className="uppercase text-[10px] font-semibold">En Progreso</SelectItem>
+              <SelectItem value="Completada" className="uppercase text-[10px] font-semibold">Completada</SelectItem>
+              <SelectItem value="Validada" className="uppercase text-[10px] font-semibold">Validada</SelectItem>
+              <SelectItem value="Bloqueada" className="uppercase text-[10px] font-semibold">Bloqueada</SelectItem>
+            </SelectContent>
+          </Select>
 
-          <div className="flex items-end self-end h-10">
-            <Button 
-              variant="ghost" 
-              onClick={resetFiltros} 
-              className="h-10 w-10 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 transition-all rounded-xl shadow-none"
-              title="Limpiar filtros"
-            >
-              <FilterX className="w-5 h-5" />
-            </Button>
-          </div>
+          <Select value={filtroResponsable} onValueChange={(val) => setFiltroResponsable(val || "all")}>
+            <SelectTrigger className="h-8 border-slate-200 bg-white text-[10px] font-semibold shadow-none rounded-md min-w-[170px]">
+              <SelectValue placeholder="Responsable">
+                {filtroResponsable !== "all" ?
+                  <span className="uppercase truncate">{getResponsableName(filtroResponsable)}</span> :
+                  <span className="text-slate-400 uppercase tracking-tight italic">Todos los responsables</span>
+                }
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="bg-white border-slate-200">
+              <SelectItem value="all" className="text-[10px] text-slate-400 italic">Todos los responsables</SelectItem>
+              {responsables.map(r => (
+                <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-semibold">{r.nombre}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={resetFiltros}
+            className="h-8 w-8 text-slate-400 hover:text-red-600 hover:bg-red-50 border border-slate-100 hover:border-red-200 rounded-md"
+            title="Limpiar filtros"
+          >
+            <FilterX className="w-4 h-4" />
+          </Button>
         </div>
       </div>
 
-      {/* Tabla con Paginación */}
-      <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50/50">
-            <TableRow>
-              <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6 w-[50px]">N°</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Actividad</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Tipo</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Responsable</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Cronograma</TableHead>
-              <TableHead className="font-black text-primary uppercase text-[10px]">Estado</TableHead>
-              <TableHead className="text-right font-black text-primary uppercase text-[10px] pr-6">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-20">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                </TableCell>
-              </TableRow>
-            ) : actividades.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={8} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">
-                  No se encontraron actividades con los filtros aplicados.
-                </TableCell>
-              </TableRow>
-            ) : (
-              actividades.map((actividad, index) => {
-                const { isOverdue, isImminent } = getDueDateStatus(actividad.fechaVencimiento);
-                const needsAttention = (isOverdue || isImminent) && actividad.estado !== "Validada" && actividad.estado !== "Completada";
-
-                return (
-                  <TableRow key={actividad.id} className={cn(
-                      "hover:bg-slate-50/50 transition-colors group",
-                      needsAttention ? "bg-red-50/30" : ""
-                    )}>
-                    <TableCell className="pl-6 font-bold text-xs text-slate-400">
-                      {(actividadPage - 1) * 20 + index + 1}
-                    </TableCell>
-                    <TableCell>
-                      <p className={cn(
-                        "font-black text-slate-800 text-sm uppercase",
-                        (actividad.estado === "Completada" || actividad.estado === "Validada") && "text-slate-400 line-through"
-                      )}>
-                        {actividad.descripcion}
-                      </p>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col">
-                        <span className="font-black text-primary text-[10px] uppercase">{actividad.proyectoCodigo}</span>
-                        <span className="text-[10px] text-slate-500 font-bold truncate max-w-[150px] uppercase">{actividad.proyectoNombre}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className={cn("text-[9px] font-black uppercase", tipoColors[actividad.tipo])}>
-                        {actividad.tipo}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-black text-slate-500 uppercase border border-slate-200">
-                          {getResponsableName(actividad.responsablePrincipalId).charAt(0)}
-                        </div>
-                        <span className="text-[10px] font-black text-slate-700 uppercase">{getResponsableName(actividad.responsablePrincipalId)}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-col gap-0.5">
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1 uppercase">
-                          <Calendar className="w-3 h-3" /> {actividad.fechaInicio ? formatDate(actividad.fechaInicio) : 'N/A'}
-                        </span>
-                        <span className={cn(
-                          "text-[10px] font-black uppercase flex items-center gap-1",
-                          needsAttention ? "text-red-600" : "text-primary"
-                        )}>
-                          {needsAttention && <AlertTriangle className="w-3.5 h-3.5" />}
-                          VENCE: {actividad.fechaVencimiento ? formatDate(actividad.fechaVencimiento) : 'N/A'}
-                        </span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge className={cn("border-none font-black text-[9px] uppercase shadow-none px-3 h-5", estadoColors[actividad.estado])}>
-                        {actividad.estado}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right pr-6">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-primary hover:bg-primary/5 rounded-full"
-                          onClick={() => handleEdit(actividad)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 text-slate-400 hover:text-error hover:bg-red-50 rounded-full"
-                          onClick={() => handleDelete(actividad.proyectoId, actividad.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })
-            )}
-          </TableBody>
-        </Table>
-        
-        {/* Paginación Integrada (Estilo Cartera) */}
-        {actividadTotalPages > 1 && (
-            <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
-                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
-                    Página {actividadPage} de {actividadTotalPages} — Total: {totalActividades} gestiones
-                </p>
-                <div className="flex gap-2 mr-2">
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        disabled={actividadPage <= 1 || loading}
-                        onClick={() => fetchActividades(actividadPage - 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
-                        className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
-                    >
-                        Anterior
-                    </Button>
-                    <Button 
-                        variant="outline" 
-                        size="sm" 
-                        disabled={actividadPage >= actividadTotalPages || loading}
-                        onClick={() => fetchActividades(actividadPage + 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
-                        className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
-                    >
-                        Siguiente
-                    </Button>
-                </div>
+      {/* ─── Vista agrupada por proyecto (carpetas desplegables, COMPACTAS) ─── */}
+      <div className="space-y-2.5">
+        {loading ? (
+          <div className="bg-white rounded-lg border border-slate-200 p-16 text-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto" />
+            <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide mt-2">
+              Sincronizando actividades...
+            </p>
+          </div>
+        ) : groupedByProject.length === 0 ? (
+          <div className="bg-white rounded-lg border border-slate-200 p-10 text-center">
+            <div className="bg-primary/5 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+              <FolderOpen className="w-6 h-6 text-primary/60" />
             </div>
+            <p className="text-[10px] font-semibold uppercase text-slate-500 tracking-wide">
+              No se encontraron actividades con los filtros aplicados
+            </p>
+            <p className="text-[9px] text-slate-400 mt-1">
+              Crea una nueva actividad o ajusta los filtros para ver resultados.
+            </p>
+            <Button
+              className="mt-3 h-8 gap-1.5 font-semibold uppercase text-[9px] bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 rounded-md px-4"
+              onClick={() => handleNewActivity()}
+            >
+              <Plus className="w-3 h-3" /> Nueva Actividad
+            </Button>
+          </div>
+        ) : (
+          groupedByProject.map((grupo) => {
+            const kpis = calcKpis(grupo.actividades);
+            const isOpen = expanded.has(grupo.proyectoId);
+            const proyectoFull = getProyectoFull(grupo.proyectoId);
+            const estadoNombre = proyectoFull?.estado || "";
+            const semaforoCls = semaforoColors[proyectoFull?.semaforo || ""] || "bg-slate-300";
+            const estadoCls = estadoProyectoBadge[estadoNombre] || "bg-slate-50 text-slate-600 border-slate-200";
+            const responsableProyecto = proyectoFull?.responsablePrincipalId
+              ? getResponsableName(proyectoFull.responsablePrincipalId)
+              : null;
+
+            // Tono del chip "Vencidas" según cantidad
+            const vencidasTone =
+              kpis.vencidas > 5 ? "bg-red-500/30 border-red-300/40 text-red-50" :
+              kpis.vencidas > 0 ? "bg-amber-500/20 border-amber-300/40 text-amber-50" :
+              "bg-white/10 border-white/20 text-white/80";
+
+            const avanceTone =
+              kpis.promedioAvance >= 80 ? "bg-emerald-500/25 border-emerald-300/40 text-emerald-50" :
+              kpis.promedioAvance >= 50 ? "bg-sky-500/20 border-sky-300/40 text-sky-50" :
+              "bg-white/10 border-white/20 text-white/85";
+
+            return (
+              <div
+                key={grupo.proyectoId}
+                className={cn(
+                  "bg-white rounded-lg border border-slate-200 shadow-none overflow-hidden transition-all duration-150",
+                  "hover:shadow-sm hover:border-slate-300",
+                  isOpen && "border-primary/25 shadow-sm"
+                )}
+              >
+                {/* ══════════════════════════════════════════════════════════
+                    COMPACT HEADER: UNA SOLA FILA (~60px de altura)
+                    ══════════════════════════════════════════════════════════ */}
+                <div
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => toggleProject(grupo.proyectoId)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleProject(grupo.proyectoId);
+                    }
+                  }}
+                  aria-expanded={isOpen}
+                  className="w-full flex items-center gap-3 px-4 py-3 bg-gradient-to-r from-primary to-primary/85 text-white cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                >
+                  {/* Icono */}
+                  <div
+                    className={cn(
+                      "w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border transition-colors",
+                      isOpen ? "bg-white border-white" : "bg-white/10 border-white/20"
+                    )}
+                  >
+                    {isOpen ? <FolderOpen className="w-4 h-4 text-primary" /> : <FolderKanban className="w-4 h-4 text-accent" />}
+                  </div>
+
+                  {/* Código + Nombre (flex-1) */}
+                  <div className="flex items-center gap-2 min-w-0 flex-shrink min-w-[200px] max-w-[40%]">
+                    <span className="font-mono text-[10px] font-bold text-accent uppercase tracking-wider shrink-0">
+                      {grupo.codigo}
+                    </span>
+                    <span className="text-[10px] text-white/40 shrink-0">·</span>
+                    <h2 className="text-[13px] font-semibold tracking-tight truncate">
+                      {grupo.nombre}
+                    </h2>
+                  </div>
+
+                  {/* Semáforo + Estado */}
+                  <div className="hidden md:flex items-center gap-1.5 shrink-0">
+                    <span className={cn("w-2 h-2 rounded-full ring-2 ring-white/30", semaforoCls)} title={proyectoFull?.semaforo || "Sin semáforo"} />
+                    {estadoNombre && (
+                      <span className={cn("text-[9px] font-semibold px-1.5 py-0.5 rounded-full border tracking-wide", estadoCls)}>
+                        {estadoNombre}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* KPIs INLINE COMPACTOS (centro) */}
+                  <div className="hidden xl:flex items-center gap-1.5 shrink-0">
+                    <span className="flex items-center gap-1 text-[10px] font-medium bg-white/10 px-2 py-0.5 rounded border border-white/10 tabular-nums">
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Tot</span>
+                      <span className="font-bold">{kpis.total}</span>
+                    </span>
+                    <span className={cn(
+                      "flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums",
+                      kpis.completadas > 0 ? "bg-emerald-500/20 border-emerald-300/30 text-emerald-50" : "bg-white/10 border-white/10 text-white/80"
+                    )}>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">OK</span>
+                      <span className="font-bold">{kpis.completadas}</span>
+                    </span>
+                    <span className={cn(
+                      "flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums",
+                      kpis.pendientes > 0 ? "bg-amber-500/20 border-amber-300/30 text-amber-50" : "bg-white/10 border-white/10 text-white/80"
+                    )}>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Pend</span>
+                      <span className="font-bold">{kpis.pendientes}</span>
+                    </span>
+                    <span className={cn("flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums", vencidasTone)}>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Venc</span>
+                      <span className="font-bold">{kpis.vencidas}</span>
+                    </span>
+                    <div className="w-px h-3.5 bg-white/20 mx-0.5" />
+                    <span className={cn("flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums", avanceTone)}>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Avance</span>
+                      <span className="font-bold">{kpis.promedioAvance}%</span>
+                    </span>
+                  </div>
+
+                  {/* Acciones icon-only */}
+                  <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleNewActivity(grupo.proyectoId); }}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/15 transition-colors"
+                      title="Nueva actividad"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleOpenBulk(proyectoFull || null); }}
+                      className="w-7 h-7 rounded-md flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/15 transition-colors"
+                      title="Carga masiva"
+                    >
+                      <Layers className="w-3.5 h-3.5" />
+                    </button>
+                    {proyectoFull && (
+                      <Link
+                        href={`/operaciones/proyectos/${grupo.proyectoId}`}
+                        target="_blank"
+                        onClick={(e) => e.stopPropagation()}
+                        className="w-7 h-7 rounded-md flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/15 transition-colors"
+                        title="Ver proyecto"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                    <div className="w-px h-4 bg-white/20 mx-0.5" />
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); toggleProject(grupo.proyectoId); }}
+                      className={cn(
+                        "w-7 h-7 rounded-md flex items-center justify-center transition-colors",
+                        isOpen ? "bg-white/15" : "bg-white/5 hover:bg-white/15"
+                      )}
+                      title={isOpen ? "Contraer" : "Expandir"}
+                    >
+                      {isOpen ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* ══════════════════════════════════════════════════════════
+                    SUB-INFO STRIP (solo cuando expandido)
+                    ══════════════════════════════════════════════════════════ */}
+                <div
+                  className={cn(
+                    "transition-all duration-200 ease-in-out overflow-hidden",
+                    isOpen ? "max-h-24 opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="bg-slate-50/80 border-b border-slate-100 px-4 py-2 flex flex-wrap items-center justify-between gap-x-5 gap-y-1 text-[10px] text-slate-600">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-1 min-w-0">
+                      {responsableProyecto && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Resp:</span>
+                          <span className="font-medium text-slate-700">{responsableProyecto}</span>
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Próx. Vence:</span>
+                        <span className={cn(
+                          "font-medium",
+                          kpis.proximaDias == null ? "text-slate-400" :
+                          kpis.proximaDias < 0 ? "text-red-600 font-semibold" :
+                          kpis.proximaDias <= 7 ? "text-amber-700 font-semibold" :
+                          "text-slate-700"
+                        )}>
+                          {kpis.proximaFechaTexto}
+                        </span>
+                      </span>
+                      {kpis.bloqueadas > 0 && (
+                        <span className="inline-flex items-center gap-1 text-red-600 font-semibold">
+                          <AlertTriangle className="w-3 h-3" />
+                          {kpis.bloqueadas} bloqueada{kpis.bloqueadas === 1 ? "" : "s"}
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Completadas:</span>
+                        <span className="font-semibold text-emerald-700 tabular-nums">{kpis.completadas}/{kpis.total}</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="font-semibold text-slate-400 uppercase tracking-wider text-[9px]">Responsables:</span>
+                        <span className="font-medium text-slate-700 tabular-nums">{kpis.responsablesUnicos}</span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ══════════════════════════════════════════════════════════
+                    ACTIVITIES TABLE (compacta)
+                    ══════════════════════════════════════════════════════════ */}
+                <div
+                  className={cn(
+                    "transition-all duration-300 ease-in-out overflow-hidden",
+                    isOpen ? "max-h-[9999px] opacity-100" : "max-h-0 opacity-0"
+                  )}
+                >
+                  <div className="border-t border-slate-100">
+                    {grupo.actividades.length === 0 ? (
+                      <div className="text-center py-8">
+                        <ClipboardList className="w-6 h-6 text-slate-200 mx-auto mb-1.5" />
+                        <p className="text-[10px] font-semibold uppercase text-slate-400 tracking-wide">
+                          Sin actividades registradas
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleNewActivity(grupo.proyectoId)}
+                          className="mt-3 h-7 px-3 font-semibold uppercase text-[9px] tracking-wide gap-1.5 border-primary/30 text-primary hover:bg-primary/5 rounded-md"
+                        >
+                          <Plus className="w-3 h-3" /> Crear primera actividad
+                        </Button>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader className="bg-slate-50/60">
+                          <TableRow>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 pl-4 w-8">#</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2">Actividad</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-20">Tipo</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-20">Prioridad</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-32">Responsable</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-44">Cronograma</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-28">Avance</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-24">Estado</TableHead>
+                            <TableHead className="text-right font-bold text-primary uppercase text-[9px] tracking-wide py-2 pr-4 w-16">·</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {grupo.actividades.map((actividad, index) => {
+                            const { isOverdue, isImminent } = getDueDateStatus(actividad.fechaVencimiento);
+                            const needsAttention =
+                              (isOverdue || isImminent) &&
+                              actividad.estado !== "Validada" &&
+                              actividad.estado !== "Completada";
+
+                            return (
+                              <TableRow
+                                key={actividad.id}
+                                className={cn(
+                                  "hover:bg-slate-50/50 transition-colors border-b border-slate-100/60",
+                                  needsAttention ? "bg-red-50/20" : "",
+                                )}
+                              >
+                                <TableCell className="pl-4 py-2 font-semibold text-[9px] text-slate-400 tabular-nums">
+                                  {(actividadPage - 1) * 20 + index + 1}
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <p
+                                    className={cn(
+                                      "font-semibold text-[11px] leading-snug max-w-[420px] line-clamp-1",
+                                      (actividad.estado === "Completada" || actividad.estado === "Validada") ? "text-slate-400 line-through" : "text-slate-800",
+                                    )}
+                                  >
+                                    {actividad.descripcion}
+                                  </p>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Badge variant="outline" className={cn("text-[8px] font-semibold uppercase tracking-tight px-1.5 py-0", tipoColors[actividad.tipo] || "bg-slate-100 text-slate-700")}>
+                                    {actividad.tipo}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Badge variant="outline" className={cn("text-[8px] font-semibold uppercase tracking-tight px-1.5 py-0", prioridadColors[actividad.prioridad] || "bg-slate-100 text-slate-700")}>
+                                    {actividad.prioridad}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center text-[7px] font-bold text-slate-500 uppercase border border-slate-200 shrink-0">
+                                      {getResponsableName(actividad.responsablePrincipalId).charAt(0)}
+                                    </div>
+                                    <span className="text-[9px] font-semibold text-slate-700 uppercase truncate">
+                                      {getResponsableName(actividad.responsablePrincipalId)}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-medium text-slate-600 tabular-nums">
+                                    <span>{actividad.fechaInicio ? formatDate(actividad.fechaInicio) : '—'}</span>
+                                    <ArrowRight className="w-3 h-3 text-slate-300 shrink-0" />
+                                    <span className={cn(
+                                      "font-semibold inline-flex items-center gap-1",
+                                      needsAttention ? "text-red-600" : "text-primary"
+                                    )}>
+                                      {needsAttention && <AlertTriangle className="w-2.5 h-2.5" />}
+                                      {actividad.fechaVencimiento ? formatDate(actividad.fechaVencimiento) : '—'}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <div className="flex items-center gap-1.5">
+                                    <div className="flex-1 h-1 bg-slate-200 rounded-full overflow-hidden">
+                                      <div
+                                        className={cn(
+                                          "h-full rounded-full transition-all",
+                                          (actividad.estado === "Completada" || actividad.estado === "Validada") ? "bg-emerald-500" : "bg-primary"
+                                        )}
+                                        style={{ width: `${actividad.progreso || 0}%` }}
+                                      />
+                                    </div>
+                                    <span className="font-semibold text-[10px] text-primary w-7 text-right tabular-nums">
+                                      {actividad.progreso}%
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-2">
+                                  <Badge className={cn("border-none font-semibold text-[8px] uppercase tracking-tight shadow-none px-1.5 py-0 h-4", estadoColors[actividad.estado] || "bg-slate-100 text-slate-700")}>
+                                    {actividad.estado}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right pr-4 py-2">
+                                  <div className="flex items-center justify-end gap-0">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-primary hover:bg-primary/5 rounded"
+                                      onClick={() => handleEdit(actividad)}
+                                      title="Editar"
+                                    >
+                                      <Pencil className="w-3 h-3" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded"
+                                      onClick={() => handleDelete(actividad.proyectoId, actividad.id)}
+                                      title="Eliminar"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+
+        {/* Resumen y paginación global (compactados) */}
+        {!loading && groupedByProject.length > 0 && (
+          <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
+            <p className="text-[9px] font-semibold uppercase text-slate-500 tracking-wide ml-1.5 tabular-nums">
+              {totalActividades} actividad{totalActividades === 1 ? "" : "es"} · {groupedByProject.length} proyecto{groupedByProject.length === 1 ? "" : "s"}
+              {actividadTotalPages > 1 && ` · Pág. ${actividadPage}/${actividadTotalPages}`}
+            </p>
+            {actividadTotalPages > 1 && (
+              <div className="flex gap-1.5 mr-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actividadPage <= 1 || loading}
+                  onClick={() => fetchActividades(actividadPage - 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
+                  className="h-7 px-3 font-semibold text-[9px] uppercase border-slate-200 bg-white rounded-md"
+                >
+                  Anterior
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={actividadPage >= actividadTotalPages || loading}
+                  onClick={() => fetchActividades(actividadPage + 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
+                  className="h-7 px-3 font-semibold text-[9px] uppercase border-slate-200 bg-white rounded-md"
+                >
+                  Siguiente
+                </Button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
+      {isBulkOpen && (
+        <ActividadesBulkModal
+          isOpen={isBulkOpen}
+          proyecto={defaultProyectoForBulk || undefined}
+          onClose={() => {
+            setIsBulkOpen(false);
+            setDefaultProyectoForBulk(null);
+            fetchActividades(1, 20);
+          }}
+        />
+      )}
       {isFormOpen && (
         <ActividadForm
+          proyectoId={defaultProyectoId ?? undefined}
           actividad={editingActividad}
           isOpen={isFormOpen}
           onClose={() => {
             setIsFormOpen(false);
             setEditingActividad(null);
+            setDefaultProyectoId(null);
           }}
         />
       )}

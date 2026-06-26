@@ -89,6 +89,12 @@ export default function OperacionesPage() {
 
   const [selectedProject, setSelectedProject] = useState<Proyecto | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+  // Derivar el proyecto seleccionado desde el store para que refleje cambios inmediatamente
+  const currentSelectedProject = useMemo(() => 
+    selectedProject ? proyectos.find(p => p.id === selectedProject.id) || null : null,
+    [selectedProject, proyectos]
+  );
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
   const [isNewActivityModalOpen, setIsNewActivityModalOpen] = useState(false);
 
@@ -445,9 +451,9 @@ export default function OperacionesPage() {
       </Tabs>
 
       {/* MODALS */}
-      {isDetailsModalOpen && selectedProject && (
+      {isDetailsModalOpen && currentSelectedProject && (
         <ProyectoDetail
-          proyecto={selectedProject}
+          proyecto={currentSelectedProject}
           onClose={() => {
             setIsDetailsModalOpen(false);
             setSelectedProject(null);
