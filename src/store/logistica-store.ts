@@ -122,6 +122,7 @@ interface LogisticaState {
 
   // Ordenes Paginación
   totalOrdenes: number;
+  montoTotalOrdenes: number;
   ordenPage: number;
   ordenTotalPages: number;
 
@@ -201,6 +202,7 @@ export const useLogisticaStore = create<LogisticaState>()(
       },
 
       totalOrdenes: 0,
+      montoTotalOrdenes: 0,
       ordenPage: 1,
       ordenTotalPages: 0,
 
@@ -352,11 +354,13 @@ export const useLogisticaStore = create<LogisticaState>()(
           let rawData = [];
           let total = 0;
           let totalP = 1;
+          let totalMonto = 0;
 
           if (response && response.data && Array.isArray(response.data)) {
             rawData = response.data;
             total = response.total || rawData.length;
             totalP = response.totalPages || Math.ceil(total / limit) || 1;
+            totalMonto = response.totalMonto || 0;
           } else if (Array.isArray(response)) {
             rawData = response;
             total = rawData.length;
@@ -366,6 +370,7 @@ export const useLogisticaStore = create<LogisticaState>()(
           set({ 
             ordenes: rawData, 
             totalOrdenes: total,
+            montoTotalOrdenes: totalMonto,
             ordenPage: page,
             ordenTotalPages: totalP,
             loading: false 

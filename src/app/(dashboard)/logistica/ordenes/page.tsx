@@ -70,6 +70,7 @@ export default function OrdenesCompraPage() {
   // Selectores estables del Store
   const ordenes = useLogisticaStore(state => state.ordenes);
   const totalOrdenes = useLogisticaStore(state => state.totalOrdenes);
+  const montoTotalOrdenes = useLogisticaStore(state => state.montoTotalOrdenes);
   const ordenTotalPages = useLogisticaStore(state => state.ordenTotalPages);
   const loading = useLogisticaStore(state => state.loading);
   const fetchOrdenes = useLogisticaStore(state => state.fetchOrdenes);
@@ -168,7 +169,7 @@ export default function OrdenesCompraPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatsCard label="Órdenes Pendientes" value={ordenes.filter(o => o.estado === 'PENDIENTE').length} icon={<Clock className="w-4 h-4"/>} color="text-warning" bgColor="bg-yellow-50" />
         <StatsCard label="Items en Página" value={ordenes.length} icon={<ShoppingCart className="w-4 h-4"/>} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Monto Página (OM)" value={ordenes.reduce((acc, o) => acc + o.montoTotal, 0)} icon={<ShoppingCart className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" isCurrency />
+        <StatsCard label="Monto Total (OM)" value={montoTotalOrdenes} icon={<ShoppingCart className="w-4 h-4"/>} color="text-emerald-600" bgColor="bg-emerald-50" isCurrency />
         <StatsCard label="Total Histórico" value={totalOrdenes} icon={<CheckCircle2 className="w-4 h-4"/>} color="text-success" bgColor="bg-green-50" />
       </div>
 
