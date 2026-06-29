@@ -34,15 +34,15 @@ export default function SeguimientoPage() {
   const todayStr = new Date().toISOString().split('T')[0];
 
   // Filtrado por contexto
-  const salesClients = clients.filter(c => c.etapaComercial !== "Ganado" && c.etapaComercial !== "Perdido");
-  const wonClients = clients.filter(c => c.etapaComercial === "Ganado");
+  const salesClients = clients.filter(c => !["Ganado", "Orden de Servicio", "Perdido"].includes(c.etapaComercial));
+  const wonClients = clients.filter(c => ["Ganado", "Orden de Servicio"].includes(c.etapaComercial));
 
-  // Métricas según el tab activo
-  const currentClients = activeTab === "ventas" ? salesClients : wonClients;
+  // Métricas Globales (Ventas + Ganados)
+  const globalClients = [...salesClients, ...wonClients];
 
-  const totalPendientes = currentClients.filter(c => !c.proximoSeguimiento).length;
-  const totalVencidos = currentClients.filter(c => isFollowUpOverdue(c)).length;
-  const totalHoy = currentClients.filter(c => {
+  const totalPendientes = globalClients.filter(c => !c.proximoSeguimiento).length;
+  const totalVencidos = globalClients.filter(c => isFollowUpOverdue(c)).length;
+  const totalHoy = globalClients.filter(c => {
     if (!c.proximoSeguimiento) return false;
     const followUpDate = c.proximoSeguimiento.split('T')[0];
     return followUpDate === todayStr;
@@ -90,42 +90,42 @@ export default function SeguimientoPage() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-red-50" : "bg-emerald-50")}>
+          <Card className="border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px] bg-red-50">
             <CardContent className="p-3 flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-red-100 text-red-600" : "bg-emerald-100 text-emerald-600")}>
+              <div className="p-2 rounded-xl shrink-0 bg-red-100 text-red-600">
                 <AlertCircle className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-red-400" : "text-emerald-500")}>
-                  {activeTab === "ventas" ? "Seguimientos Vencidos" : "Fidelización Pendiente"}
+                <p className="text-[9px] font-black uppercase tracking-wider text-red-400">
+                  Seguimientos Vencidos
                 </p>
-                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-red-700" : "text-emerald-700")}>{totalVencidos}</p>
+                <p className="text-xl font-black leading-none mt-1 text-red-700">{totalVencidos}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-orange-50" : "bg-blue-50")}>
+          <Card className="border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px] bg-orange-50">
             <CardContent className="p-3 flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-orange-100 text-orange-600" : "bg-blue-100 text-blue-600")}>
+              <div className="p-2 rounded-xl shrink-0 bg-orange-100 text-orange-600">
                 <Bell className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-orange-400" : "text-blue-500")}>
-                  {activeTab === "ventas" ? "Sin Fecha Programada" : "Sin Recordatorio"}
+                <p className="text-[9px] font-black uppercase tracking-wider text-orange-400">
+                  Sin Fecha Programada
                 </p>
-                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-orange-700" : "text-blue-700")}>{totalPendientes}</p>
+                <p className="text-xl font-black leading-none mt-1 text-orange-700">{totalPendientes}</p>
               </div>
             </CardContent>
           </Card>
 
-          <Card className={cn("border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px]", activeTab === "ventas" ? "bg-blue-50" : "bg-primary/5")}>
+          <Card className="border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px] bg-blue-50">
             <CardContent className="p-3 flex items-center gap-3">
-              <div className={cn("p-2 rounded-xl shrink-0", activeTab === "ventas" ? "bg-blue-100 text-blue-600" : "bg-primary/10 text-primary")}>
+              <div className="p-2 rounded-xl shrink-0 bg-blue-100 text-blue-600">
                 <Calendar className="w-4 h-4" />
               </div>
               <div>
-                <p className={cn("text-[9px] font-black uppercase tracking-wider", activeTab === "ventas" ? "text-blue-400" : "text-primary/60")}>Gestiones para Hoy</p>
-                <p className={cn("text-xl font-black leading-none mt-1", activeTab === "ventas" ? "text-blue-700" : "text-primary")}>{totalHoy}</p>
+                <p className="text-[9px] font-black uppercase tracking-wider text-blue-400">Gestiones para Hoy</p>
+                <p className="text-xl font-black leading-none mt-1 text-blue-700">{totalHoy}</p>
               </div>
             </CardContent>
           </Card>
