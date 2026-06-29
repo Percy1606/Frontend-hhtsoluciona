@@ -178,31 +178,50 @@ export function CRMStats() {
   })).filter(item => item.value > 0);
 
   // Benchmarking Team
-  const sellers = ["Angie", "Valentina", "Ariana"];
+  const sellers = [
+    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
+    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
+    { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
+  ];
+
   const sellerComparisonData = sellers.map(seller => {
-    const sellerClients = clients.filter(c => c.asignadoA === seller);
+    const sellerClients = clients.filter(c => c.asignadoA === seller.name);
     const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
     const prospectosCount = sellerClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
-    return { name: seller, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
+    return { name: seller.name, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
   });
 
   const chartData = sellers.map(seller => {
-    const sellerClientsAll = clients.filter(c => c.asignadoA === seller);
+    const sellerClientsFiltered = filteredClients.filter(c => c.asignadoA === seller.name);
     
-    const prospectosCount = sellerClientsAll.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
-    const contactosCount = sellerClientsAll.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
-    const visitasCount = sellerClientsAll.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);
-    const ganadosCount = sellerClientsAll.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
+    const prospectosCount = sellerClientsFiltered.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
+    const contactosCount = clients.filter(c => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto)).length;
     
+    const visitasCount = clients.filter((c: any) => c.asignadoA === seller.name && c.tipoContacto === 'Visita' && c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+    const ganadosCount = sellerClientsFiltered.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
+    
+    const isValentina = seller.name.toLowerCase() === 'valentina';
+    const isAriana = seller.name.toLowerCase() === 'ariana';
+    
+    const meta = 15;
+    let progreso = 0;
+    if (isValentina) {
+      progreso = contactosCount;
+    } else {
+      progreso = prospectosCount;
+    }
+    const efectividad = Math.min(100, Math.round((progreso / meta) * 100));
+
     return {
-      name: seller,
-      color: seller === "Angie" ? "bg-blue-500" : seller === "Valentina" ? "bg-violet-500" : "bg-orange-500",
+      name: seller.name,
+      color: seller.color,
+      role: seller.role,
       prospectos: prospectosCount,
       visitas: visitasCount,
       contactos: contactosCount,
       ganados: ganadosCount,
-      efectividad: Math.min(100, Math.round(((seller === 'Valentina' ? contactosCount : prospectosCount) / 15) * 100))
+      efectividad
     };
   });
 
@@ -507,21 +526,36 @@ export function CRMStats() {
                   {chartData.map((data) => {
                     const isValentina = data.name.toLowerCase() === 'valentina';
                     const isAriana = data.name.toLowerCase() === 'ariana';
+                    
+                    const clientesGanados = clients.filter((c: any) => c.asignadoA === data.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt));
+                    const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
 
                     return (
                       <tr key={data.name} className="hover:bg-slate-50/50 transition-colors">
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center text-[10px] font-black shadow-sm", data.color)}>
+                            <div className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center text-[10px] font-black shadow-sm shrink-0", data.color)}>
                               {data.name.substring(0, 2).toUpperCase()}
                             </div>
-                            <span className="font-bold text-slate-800 block">{data.name}</span>
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-800 leading-tight">{data.name}</span>
+                              <span className="text-[9px] text-slate-400 font-bold uppercase">{data.role}</span>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-center font-black text-slate-700">{isValentina ? '-' : data.prospectos}</td>
                         <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
                         <td className="px-6 py-4 text-center font-black text-emerald-600">{isAriana ? '-' : data.contactos}</td>
-                        <td className="px-6 py-4 text-center font-black text-blue-600">{isAriana ? '-' : data.ganados}</td>
+                        <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
+                          {isAriana ? '-' : (
+                            <div className="flex flex-col items-center">
+                              <span>{data.ganados}</span>
+                              {data.ganados > 0 && (
+                                <span className="text-[8px] text-slate-400 font-bold uppercase truncate max-w-[100px] mt-0.5">{cierresNames}</span>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <span className="font-black text-slate-800 w-8">{`${data.efectividad}%`}</span>
