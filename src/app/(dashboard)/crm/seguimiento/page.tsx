@@ -33,9 +33,18 @@ export default function SeguimientoPage() {
 
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // Filtrado por contexto
-  const salesClients = clients.filter(c => !["Ganado", "Orden de Servicio", "Perdido"].includes(c.etapaComercial));
-  const wonClients = clients.filter(c => ["Ganado", "Orden de Servicio"].includes(c.etapaComercial));
+  const isGanado = (etapa?: string) => {
+    if (!etapa) return false;
+    const e = etapa.toLowerCase().trim();
+    return e.includes('ganad') || e.includes('orden');
+  };
+  const isPerdido = (etapa?: string) => {
+    if (!etapa) return false;
+    return etapa.toLowerCase().trim().includes('perdid');
+  };
+
+  const salesClients = clients.filter(c => !isGanado(c.etapaComercial) && !isPerdido(c.etapaComercial));
+  const wonClients = clients.filter(c => isGanado(c.etapaComercial));
 
   // Métricas Globales (Ventas + Ganados)
   const globalClients = [...salesClients, ...wonClients];
