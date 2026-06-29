@@ -51,13 +51,13 @@ import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-
 import { toast } from "sonner";
 
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:scale-[1.02] shadow-sm", bgColor, "border-slate-100")}>
-    <div className={cn("p-3 rounded-xl bg-white shadow-sm shrink-0", color)}>
+  <div className={cn("p-3.5 rounded-lg border border-slate-100 flex items-center gap-3 bg-white shadow-none", bgColor)}>
+    <div className={cn("p-2 rounded-md bg-white shrink-0", color)}>
       {icon}
     </div>
     <div>
-      <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5">{label}</p>
-      <p className={cn("text-3xl font-black leading-none tracking-tight tabular-nums", color)}>{value}</p>
+      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
+      <p className={cn("text-xl font-semibold leading-none tracking-tight tabular-nums", color)}>{value}</p>
     </div>
   </div>
 );
@@ -454,12 +454,12 @@ export default function ActividadesClient() {
         </div>
       </div>
 
-      {/* Stats globales */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-6 h-6" />} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-6 h-6" />} color="text-slate-600" bgColor="bg-slate-50" />
-        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-6 h-6" />} color="text-blue-600" bgColor="bg-blue-50" />
-        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-6 h-6" />} color="text-emerald-600" bgColor="bg-emerald-50" />
+      {/* Stats globales (compactados) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-3.5 h-3.5" />} color="text-primary" bgColor="bg-primary/5" />
+        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-3.5 h-3.5" />} color="text-slate-600" bgColor="bg-slate-50" />
+        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50" />
+        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-emerald-600" bgColor="bg-emerald-50" />
       </div>
 
       {/* Filtros (compactados) */}
@@ -634,25 +634,25 @@ export default function ActividadesClient() {
                   {/* KPIs INLINE COMPACTOS (centro) */}
                   <div className="hidden xl:flex items-center gap-1.5 shrink-0">
                     <span className="flex items-center gap-1 text-[10px] font-medium bg-white/10 px-2 py-0.5 rounded border border-white/10 tabular-nums">
-                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Tot</span>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Total</span>
                       <span className="font-bold">{kpis.total}</span>
                     </span>
                     <span className={cn(
                       "flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums",
                       kpis.completadas > 0 ? "bg-emerald-500/20 border-emerald-300/30 text-emerald-50" : "bg-white/10 border-white/10 text-white/80"
                     )}>
-                      <span className="opacity-70 uppercase text-[9px] tracking-wider">OK</span>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Completadas</span>
                       <span className="font-bold">{kpis.completadas}</span>
                     </span>
                     <span className={cn(
                       "flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums",
                       kpis.pendientes > 0 ? "bg-amber-500/20 border-amber-300/30 text-amber-50" : "bg-white/10 border-white/10 text-white/80"
                     )}>
-                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Pend</span>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Pendientes</span>
                       <span className="font-bold">{kpis.pendientes}</span>
                     </span>
                     <span className={cn("flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded border tabular-nums", vencidasTone)}>
-                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Venc</span>
+                      <span className="opacity-70 uppercase text-[9px] tracking-wider">Vencidas</span>
                       <span className="font-bold">{kpis.vencidas}</span>
                     </span>
                     <div className="w-px h-3.5 bg-white/20 mx-0.5" />
@@ -680,17 +680,7 @@ export default function ActividadesClient() {
                     >
                       <Layers className="w-3.5 h-3.5" />
                     </button>
-                    {proyectoFull && (
-                      <Link
-                        href={`/operaciones/proyectos/${grupo.proyectoId}`}
-                        target="_blank"
-                        onClick={(e) => e.stopPropagation()}
-                        className="w-7 h-7 rounded-md flex items-center justify-center bg-white/10 hover:bg-white/20 border border-white/15 transition-colors"
-                        title="Ver proyecto"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </Link>
-                    )}
+
                     <div className="w-px h-4 bg-white/20 mx-0.5" />
                     <button
                       type="button"
