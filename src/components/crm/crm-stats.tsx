@@ -396,7 +396,7 @@ export function CRMStats() {
                           />
                         </div>
                         <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
-                          <span>{data.total} Clientes Asignados</span>
+                          <span>{data.total} Cuentas en Cartera</span>
                           <span className="text-primary">{Math.round(percentage)}% Participación</span>
                         </div>
                       </div>
@@ -546,7 +546,7 @@ export function CRMStats() {
                           if (active && payload && payload.length) {
                             return (
                               <div className="bg-white p-2 border border-border rounded-lg shadow-lg text-[10px] font-black uppercase">
-                                {payload[0].payload.name}: {payload[0].value} Clientes
+                                {payload[0].payload.name}: {payload[0].value} Cuentas
                               </div>
                             );
                           }

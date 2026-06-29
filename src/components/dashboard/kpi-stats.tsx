@@ -37,17 +37,11 @@ export function KPIStats({
   const clients = customClients ?? storeClients;
   const proyectos = customProyectos ?? storeProyectos;
 
-  // Clientes: anything beyond 'Prospecto' stage (excluding Lost/Perdido) or explicitly marked as CLIENTE.
-  const totalClientes = clients.filter(c => {
-    const stage = c.etapaComercial || c.estado || '';
-    return (stage !== 'Prospecto' && stage !== 'Perdido' && stage !== '') || c.tipoCliente === 'CLIENTE';
-  }).length;
+  // Clientes: SOLO los que tienen 'Ganado' o 'Orden de Servicio'
+  const totalClientes = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
 
-  // Prospectos: only those in 'Prospecto' stage or empty, and not marked as CLIENTE.
-  const prospectos = clients.filter(c => {
-    const stage = c.etapaComercial || c.estado || '';
-    return (stage === 'Prospecto' || stage === '') && c.tipoCliente !== 'CLIENTE';
-  }).length;
+  // Prospectos: Aquellos que no son clientes ni perdidos
+  const prospectos = clients.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
   
   const ordenesServicio = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
   const proyectosActivos = proyectosActivosCount ?? (globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion').length);

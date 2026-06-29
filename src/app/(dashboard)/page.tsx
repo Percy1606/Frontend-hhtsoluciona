@@ -133,6 +133,8 @@ export default function DashboardPage() {
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [cierresModalOpen, setCierresModalOpen] = useState(false);
   const [cierresList, setCierresList] = useState<any[]>([]);
+  const [contactosModalOpen, setContactosModalOpen] = useState(false);
+  const [contactosList, setContactosList] = useState<any[]>([]);
 
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -487,15 +489,9 @@ export default function DashboardPage() {
       const sellerClientsAll = clients.filter(c => c.asignadoA === s.name);
       const sellerClientsFiltered = filteredClients.filter(c => c.asignadoA === s.name);
 
-      const totalClientes = sellerClientsFiltered.filter(c => {
-        const stage = (c.etapaComercial || c.estado || '') as any;
-        return (stage !== 'Prospecto' && stage !== 'Perdido' && stage !== '') || c.tipoCliente === 'CLIENTE';
-      }).length;
+      const totalClientes = sellerClientsFiltered.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
 
-      const totalProspectos = sellerClientsFiltered.filter(c => {
-        const stage = (c.etapaComercial || c.estado || '') as any;
-        return (stage === 'Prospecto' || stage === '') && c.tipoCliente !== 'CLIENTE';
-      }).length;
+      const totalProspectos = sellerClientsFiltered.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
 
       const prospectadosEstaSemana = sellerClientsAll.filter(c => {
         const d = parseSafeDate(c.fechaCreacion);
@@ -1485,6 +1481,8 @@ export default function DashboardPage() {
                               const ganadosEnPeriodo = clientesGanados.length;
                               const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
                               
+                              const contactosPeriodoList = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto));
+                              
                               const totalLeads = data.prospectos > 0 ? data.prospectos : 1; 
                               const efectividad = Math.round((ganadosEnPeriodo / totalLeads) * 100);
                               const efectividadReal = Math.min(data.prospectos === 0 && ganadosEnPeriodo === 0 ? 0 : efectividad, 100);
@@ -1509,7 +1507,25 @@ export default function DashboardPage() {
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-slate-700">{isValentina ? '-' : data.prospectos}</td>
                                   <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
-                                  <td className="px-6 py-4 text-center font-black text-emerald-600">{isAriana ? '-' : data.contactos}</td>
+                                  <td className="px-6 py-4 text-center font-black text-emerald-600">
+                                    {isAriana ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {data.contactos}
+                                        {data.contactos > 0 && (
+                                          <Badge 
+                                            className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setContactosList(contactosPeriodoList);
+                                              setContactosModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
 
                                   <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
                                     {isAriana ? '-' : (
@@ -1892,6 +1908,52 @@ export default function DashboardPage() {
               ))
             ) : (
               <p className="text-sm text-slate-500 text-center py-4">No hay órdenes de servicio para mostrar.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONTACTOS / SEGUIMIENTOS */}
+      <Dialog open={contactosModalOpen} onOpenChange={setContactosModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-blue-500" />
+              Auditoría de Seguimientos
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {contactosList.length > 0 ? (
+              contactosList.map((c: any, i: number) => {
+                const tipo = c.tipoContacto || 'Seguimiento';
+                const esLlamada = tipo.toLowerCase().includes('llamad');
+                const esWhatsApp = tipo.toLowerCase().includes('whatsapp') || tipo.toLowerCase().includes('wsp');
+                const esCorreo = tipo.toLowerCase().includes('correo') || tipo.toLowerCase().includes('email');
+                const esVisita = tipo.toLowerCase().includes('visit');
+                
+                let colorClass = "bg-slate-100 text-slate-700";
+                if (esLlamada) colorClass = "bg-blue-100 text-blue-700";
+                if (esWhatsApp) colorClass = "bg-emerald-100 text-emerald-700";
+                if (esCorreo) colorClass = "bg-orange-100 text-orange-700";
+                if (esVisita) colorClass = "bg-purple-100 text-purple-700";
+
+                return (
+                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre}</p>
+                      <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        {c.ultimoContacto ? new Date(c.ultimoContacto).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Sin Fecha'}
+                      </p>
+                    </div>
+                    <Badge className={cn("border-none text-[9px] uppercase", colorClass)}>
+                      {tipo}
+                    </Badge>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">No hay seguimientos registrados.</p>
             )}
           </div>
         </DialogContent>
