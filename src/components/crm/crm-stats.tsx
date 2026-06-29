@@ -529,6 +529,41 @@ export function CRMStats() {
             </Card>
           </div>
 
+          {/* METAS DIARIAS (15 PROSPECTOS / ASESOR) */}
+          <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm mb-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Target className="w-5 h-5 text-indigo-600" />
+              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Cumplimiento de Meta Diaria</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {chartData.map((data, idx) => {
+                const isValentina = data.name.toLowerCase() === 'valentina';
+                const meta = 15;
+                const avance = isValentina ? data.contactosHoy : data.prospectosHoy;
+                const porcentaje = Math.min((avance / meta) * 100, 100);
+                const isSuccess = avance >= meta;
+                const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";
+                return (
+                  <div key={idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 relative overflow-hidden">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-xs font-bold uppercase text-slate-700">{data.name}</span>
+                      <Badge className={cn("text-[9px] font-bold border-none uppercase", isSuccess ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                        {avance} / {meta}
+                      </Badge>
+                    </div>
+                    <div className="w-full bg-slate-200 rounded-full h-2 mb-1">
+                      <div className={cn("h-2 rounded-full transition-all duration-1000", isSuccess ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${porcentaje}%` }}></div>
+                    </div>
+                    <div className="flex justify-between items-center mt-1">
+                      <span className="text-[9px] text-slate-500 font-medium">{labelTipo}</span>
+                      <span className="text-[9px] text-slate-500 font-medium">Progreso: {Math.round(porcentaje)}%</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           {/* Tabla de Rendimiento por Asesora */}
           <Card className="rounded-2xl border border-border shadow-sm bg-white overflow-hidden mt-6">
             <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-4">
