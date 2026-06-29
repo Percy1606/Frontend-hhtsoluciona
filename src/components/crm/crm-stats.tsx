@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
