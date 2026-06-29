@@ -21,7 +21,8 @@ import {
   Mail,
   MessageSquare,
   ShieldAlert,
-  Lock
+  Lock,
+  FilterX
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -55,6 +56,10 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [clientToDeleteId, setClientToDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Local Pagination State for when 'data' is passed manually
+  const [localPage, setLocalPage] = useState(1);
+  const itemsPerPage = 20;
 
   // Modern Dialog State
   const [modernDialog, setModernDialog] = useState<{
@@ -127,7 +132,26 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isFollowUpOpen, setIsFollowUpOpen] = useState(false);
 
-  const filteredData = data || clients;
+  const sourceData = data || clients;
+  const isLocalData = !!data;
+  
+  const displayData = isLocalData 
+    ? sourceData.slice((localPage - 1) * itemsPerPage, localPage * itemsPerPage) 
+    : sourceData;
+
+  const currentTotalPages = isLocalData ? Math.ceil(sourceData.length / itemsPerPage) : totalPages;
+  const currentPage = isLocalData ? localPage : page;
+  const currentTotalClients = isLocalData ? sourceData.length : totalClients;
+
+  const handlePrevPage = () => {
+    if (isLocalData) setLocalPage(p => Math.max(1, p - 1));
+    else fetchClients(page - 1);
+  };
+
+  const handleNextPage = () => {
+    if (isLocalData) setLocalPage(p => Math.min(currentTotalPages, p + 1));
+    else fetchClients(page + 1);
+  };
 
   const handleOpenDetails = async (client: Client) => {
     setSelectedClient(client);
@@ -208,14 +232,17 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredData.length === 0 ? (
+              {displayData.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={11} className="h-32 text-center text-slate-400 font-bold italic text-xs">
-                    {loading ? "Cargando datos..." : "No hay clientes registrados."}
+                  <TableCell colSpan={11} className="h-48 text-center text-slate-500 font-bold bg-slate-50/50">
+                    <div className="flex flex-col items-center justify-center gap-2">
+                      <FilterX className="w-8 h-8 text-slate-300" />
+                      No hay clientes registrados.
+                    </div>
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((client, index) => {
+                displayData.map((client, index) => {
                   const daysSinceLastContact = getDaysSinceContact(client.ultimoContacto);
                   const isOverdue = isFollowUpOverdue(client);
                   const daysOverdue = isOverdue ? getDaysSinceContact(client.proximoSeguimiento) : 0;
@@ -364,17 +391,17 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
         </div>
 
         {/* Controles de Paginación */}
-        {totalPages > 1 && (
+        {currentTotalPages > 1 && (
             <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
-                    Página {page} de {totalPages} — Total: {totalClients} registros
+                    Página {currentPage} de {currentTotalPages} — Total: {currentTotalClients} registros
                 </p>
                 <div className="flex gap-2 mr-2">
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        disabled={page <= 1 || loading}
-                        onClick={() => fetchClients(page - 1)}
+                        disabled={currentPage <= 1 || loading}
+                        onClick={handlePrevPage}
                         className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
                     >
                         Anterior
@@ -382,8 +409,8 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                     <Button 
                         variant="outline" 
                         size="sm" 
-                        disabled={page >= totalPages || loading}
-                        onClick={() => fetchClients(page + 1)}
+                        disabled={currentPage >= currentTotalPages || loading}
+                        onClick={handleNextPage}
                         className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white"
                     >
                         Siguiente
