@@ -20,7 +20,7 @@ export default function PipelinePage() {
   const { filters, setAsignadoA, setSearchQuery, fetchClients } = useCRMStore();
 
   useEffect(() => {
-    fetchClients();
+    fetchClients(1, 1000);
   }, [fetchClients]);
 
   return (

@@ -23,7 +23,7 @@ export default function SeguimientoPage() {
   const [activeTab, setActiveTab] = useState("ventas");
 
   useEffect(() => {
-    fetchClients();
+    fetchClients(1, 1000); // Cargar todos para métricas globales
   }, [fetchClients]);
 
   const today = new Date();
