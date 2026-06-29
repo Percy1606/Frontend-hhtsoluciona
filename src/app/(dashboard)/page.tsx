@@ -1932,7 +1932,12 @@ export default function DashboardPage() {
           <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
             {contactosList.length > 0 ? (
               contactosList.map((c: any, i: number) => {
-                const tipo = c.tipoContacto || 'Seguimiento';
+                const interacciones = c.historialInteracciones || c.interacciones || [];
+                let ultimaInteraccion = null;
+                if (interacciones.length > 0) {
+                  ultimaInteraccion = [...interacciones].sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime())[0];
+                }
+                const tipo = ultimaInteraccion?.tipo || c.tipoContacto || 'Seguimiento';
                 const esLlamada = tipo.toLowerCase().includes('llamad');
                 const esWhatsApp = tipo.toLowerCase().includes('whatsapp') || tipo.toLowerCase().includes('wsp');
                 const esCorreo = tipo.toLowerCase().includes('correo') || tipo.toLowerCase().includes('email');

@@ -43,10 +43,66 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function CRMStats() {
-  const { clients } = useCRMStore();
+  const { clients, quotes, getStats, getFunnelData, getFollowUpData } = useCRMStore();
   const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
-  const [startDate, setStartDate] = useState<string>("");
-  const [endDate, setEndDate] = useState<string>("");
+  const [dateRangeType, setDateRangeType] = useState<string>("all");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  const { startDate, endDate } = useMemo(() => {
+    const now = new Date();
+    if (dateRangeType === "today") {
+      const start = new Date();
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+    if (dateRangeType === "yesterday") {
+      const start = new Date();
+      start.setDate(now.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date();
+      end.setDate(now.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+    if (dateRangeType === "week") {
+      const start = new Date();
+      const day = now.getDay();
+      const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+      start.setDate(diff);
+      start.setHours(0, 0, 0, 0);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      end.setHours(23, 59, 59, 999);
+      return { startDate: start, endDate: end };
+    }
+    if (dateRangeType === "month") {
+      const start = new Date(now.getFullYear(), now.getMonth(), 1);
+      const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+      return { startDate: start, endDate: end };
+    }
+    if (dateRangeType === "30days") {
+      const start = new Date();
+      start.setDate(now.getDate() - 30);
+      start.setHours(0,0,0,0);
+      return { startDate: start, endDate: now };
+    }
+    if (dateRangeType === "year") {
+      const start = new Date(now.getFullYear(), 0, 1);
+      const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59);
+      return { startDate: start, endDate: end };
+    }
+    if (dateRangeType === "custom" && customStartDate && customEndDate) {
+      const start = new Date(customStartDate);
+      start.setHours(0,0,0,0);
+      const end = new Date(customEndDate);
+      end.setHours(23,59,59,999);
+      return { startDate: start, endDate: end };
+    }
+    return { startDate: null, endDate: null };
+  }, [dateRangeType, customStartDate, customEndDate]);
 
   // Filter clients based on selected vendor and dates
   const filteredClients = clients.filter(c => {
@@ -57,15 +113,11 @@ export function CRMStats() {
       const createdDate = new Date(c.fechaCreacion);
       
       if (startDate) {
-        const start = new Date(startDate);
-        start.setHours(0, 0, 0, 0);
-        if (createdDate < start) return false;
+        if (createdDate < startDate) return false;
       }
       
       if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        if (createdDate > end) return false;
+        if (createdDate > endDate) return false;
       }
     }
 
@@ -79,15 +131,11 @@ export function CRMStats() {
     if (isNaN(d.getTime())) return false;
     
     if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      if (d < start) return false;
+      if (d < startDate) return false;
     }
     
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      if (d > end) return false;
+      if (d > endDate) return false;
     }
     return true;
   };
@@ -200,27 +248,58 @@ export function CRMStats() {
 
           <div className="flex flex-col md:flex-row items-end gap-4">
             <div className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Desde (Prospección)</Label>
-              <Input 
-                type="date" 
-                value={startDate} 
-                onChange={(e) => setStartDate(e.target.value)}
-                className="h-12 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl font-medium text-slate-700 text-sm transition-colors" 
-              />
+              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1 flex items-center gap-2">
+                <Calendar className="w-3 h-3 text-slate-400" />
+                Período de Análisis
+              </Label>
+              <Select value={dateRangeType} onValueChange={(val) => setDateRangeType(val || "all")}>
+                <SelectTrigger className="w-[180px] h-12 text-sm font-medium border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors text-slate-700">
+                  <SelectValue placeholder="Seleccionar Período">
+                    {dateRangeType === "all" && "Todo el Historial"}
+                    {dateRangeType === "today" && "Hoy"}
+                    {dateRangeType === "yesterday" && "Ayer"}
+                    {dateRangeType === "week" && "Esta Semana"}
+                    {dateRangeType === "month" && "Este Mes"}
+                    {dateRangeType === "30days" && "Últimos 30 Días"}
+                    {dateRangeType === "year" && "Este Año"}
+                    {dateRangeType === "custom" && "Rango Personalizado"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
+                  <SelectItem value="all">Todo el Historial</SelectItem>
+                  <SelectItem value="today">Hoy</SelectItem>
+                  <SelectItem value="yesterday">Ayer</SelectItem>
+                  <SelectItem value="week">Esta Semana</SelectItem>
+                  <SelectItem value="month">Este Mes</SelectItem>
+                  <SelectItem value="30days">Últimos 30 Días</SelectItem>
+                  <SelectItem value="year">Este Año</SelectItem>
+                  <SelectItem value="custom">Rango Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Hasta</Label>
-              <Input 
-                type="date" 
-                value={endDate} 
-                onChange={(e) => setEndDate(e.target.value)}
-                className="h-12 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl font-medium text-slate-700 text-sm transition-colors" 
-              />
-            </div>
-            {(startDate || endDate || selectedSeller !== "EQUIPO COMPLETO") && (
+            
+            {dateRangeType === "custom" && (
+              <div className="flex items-center gap-2 animate-in fade-in duration-300">
+                <input
+                  type="date"
+                  className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+                  value={customStartDate}
+                  onChange={(e) => setCustomStartDate(e.target.value)}
+                />
+                <span className="text-slate-400 font-bold">-</span>
+                <input
+                  type="date"
+                  className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+                  value={customEndDate}
+                  onChange={(e) => setCustomEndDate(e.target.value)}
+                />
+              </div>
+            )}
+
+            {(dateRangeType !== "all" || selectedSeller !== "EQUIPO COMPLETO") && (
               <Button 
                 variant="ghost" 
-                onClick={() => { setStartDate(""); setEndDate(""); setSelectedSeller("EQUIPO COMPLETO"); }}
+                onClick={() => { setDateRangeType("all"); setSelectedSeller("EQUIPO COMPLETO"); }}
                 className="h-12 text-slate-500 font-semibold uppercase text-[11px] hover:bg-slate-100 hover:text-slate-700 gap-2 px-4 rounded-xl transition-colors"
               >
                 <FilterX className="w-4 h-4" /> Limpiar Filtros
