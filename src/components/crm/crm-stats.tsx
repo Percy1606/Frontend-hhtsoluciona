@@ -42,6 +42,28 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
+const parseSafeDate = (dateVal: any): Date | null => {
+  if (!dateVal) return null;
+  if (dateVal instanceof Date) return dateVal;
+  
+  let str = String(dateVal).trim();
+  if (!str) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+    str = `${str}T00:00:00`;
+  } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(str)) {
+    const parts = str.split('/');
+    str = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+  } else if (/^\d{2}-\d{2}-\d{4}$/.test(str)) {
+    const parts = str.split('-');
+    str = `${parts[2]}-${parts[1]}-${parts[0]}T00:00:00`;
+  }
+
+  const d = new Date(str);
+  if (isNaN(d.getTime())) return null;
+  return d;
+};
+
 export function CRMStats() {
   const { clients } = useCRMStore();
   const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
@@ -110,7 +132,8 @@ export function CRMStats() {
     if (!matchesSeller) return false;
 
     if (startDate || endDate) {
-      const createdDate = new Date(c.fechaCreacion);
+      const createdDate = parseSafeDate(c.fechaCreacion);
+      if (!createdDate) return false;
       
       if (startDate) {
         if (createdDate < startDate) return false;
@@ -127,8 +150,8 @@ export function CRMStats() {
   const isInRange = (dateStr: any) => {
     if (!startDate && !endDate) return true;
     if (!dateStr) return false;
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return false;
+    const d = parseSafeDate(dateStr);
+    if (!d) return false;
     
     if (startDate) {
       if (d < startDate) return false;
