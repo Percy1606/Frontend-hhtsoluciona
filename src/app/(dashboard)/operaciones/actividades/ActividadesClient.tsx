@@ -50,15 +50,14 @@ import { ActividadForm } from "@/components/operaciones/actividad-form";
 import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-modal";
 import { toast } from "sonner";
 
-// Tarjeta de estadística global (compactada)
 const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-3.5 rounded-lg border border-slate-100 flex items-center gap-3 bg-white shadow-none", bgColor)}>
-    <div className={cn("p-2 rounded-md bg-white shrink-0", color)}>
+  <div className={cn("p-5 rounded-2xl border flex items-center gap-4 transition-all hover:scale-[1.02] shadow-sm", bgColor, "border-slate-100")}>
+    <div className={cn("p-3 rounded-xl bg-white shadow-sm shrink-0", color)}>
       {icon}
     </div>
     <div>
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
-      <p className={cn("text-xl font-semibold leading-none tracking-tight tabular-nums", color)}>{value}</p>
+      <p className="text-xs font-black text-slate-500 uppercase tracking-widest leading-none mb-1.5">{label}</p>
+      <p className={cn("text-3xl font-black leading-none tracking-tight tabular-nums", color)}>{value}</p>
     </div>
   </div>
 );
@@ -238,17 +237,30 @@ export default function ActividadesClient() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchActividades(1, 20, {
-      search: searchQuery,
-      estado: filtroEstado,
-      responsableId: filtroResponsable,
-    });
+    // Solo traemos todo sin filtros, los filtros se aplicarán de forma local
+    fetchActividades(1, 1000);
     fetchResponsables();
     if (proyectosStore.length === 0) {
       fetchProyectos(1, 200);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, filtroEstado, filtroResponsable]);
+  }, []); // Removemos dependencias para que solo llame al API una vez al inicio
+
+  // =====================
+  // FILTRADO LOCAL
+  // =====================
+  const filteredActividades = useMemo(() => {
+    return actividades.filter(a => {
+      const matchEstado = filtroEstado === "all" || a.estado === filtroEstado;
+      const matchResp = filtroResponsable === "all" || a.responsablePrincipalId === filtroResponsable;
+      const q = searchQuery.toLowerCase();
+      const matchSearch = q === "" || 
+                          (a.descripcion && a.descripcion.toLowerCase().includes(q)) || 
+                          (a.proyectoNombre && a.proyectoNombre.toLowerCase().includes(q)) ||
+                          (a.proyectoCodigo && a.proyectoCodigo.toLowerCase().includes(q));
+      return matchEstado && matchResp && matchSearch;
+    });
+  }, [actividades, filtroEstado, filtroResponsable, searchQuery]);
 
   useEffect(() => {
     const editId = searchParams.get('edit');
@@ -270,12 +282,12 @@ export default function ActividadesClient() {
   }, [searchParams, actividades]);
 
   const stats = useMemo(() => ({
-    total: totalActividades,
-    pendientes: actividades.filter(a => a.estado === 'Pendiente').length,
-    enProgreso: actividades.filter(a => a.estado === 'En Progreso').length,
-    completadas: actividades.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length,
-    bloqueadas: actividades.filter(a => a.estado === 'Bloqueada').length,
-  }), [actividades, totalActividades]);
+    total: filteredActividades.length,
+    pendientes: filteredActividades.filter(a => a.estado === 'Pendiente').length,
+    enProgreso: filteredActividades.filter(a => a.estado === 'En Progreso').length,
+    completadas: filteredActividades.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length,
+    bloqueadas: filteredActividades.filter(a => a.estado === 'Bloqueada').length,
+  }), [filteredActividades]);
 
   const getResponsableName = useCallback((id: string) => {
     if (!id) return "SIN ASIGNAR";
@@ -305,7 +317,8 @@ export default function ActividadesClient() {
       nombre: string;
       actividades: Actividad[];
     }>();
-    for (const act of actividades) {
+    // Usamos filteredActividades en lugar de actividades
+    for (const act of filteredActividades) {
       const key = act.proyectoId || "SIN_PROYECTO";
       const existing = map.get(key);
       if (existing) {
@@ -320,7 +333,7 @@ export default function ActividadesClient() {
       }
     }
     return Array.from(map.values());
-  }, [actividades]);
+  }, [filteredActividades]);
 
   const expandAllProjects = useCallback(() => {
     setExpanded(new Set(groupedByProject.map(g => g.proyectoId)));
@@ -441,12 +454,12 @@ export default function ActividadesClient() {
         </div>
       </div>
 
-      {/* Stats globales (compactados) */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-3.5 h-3.5" />} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-3.5 h-3.5" />} color="text-slate-600" bgColor="bg-slate-50" />
-        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50" />
-        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-emerald-600" bgColor="bg-emerald-50" />
+      {/* Stats globales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-6 h-6" />} color="text-primary" bgColor="bg-primary/5" />
+        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-6 h-6" />} color="text-slate-600" bgColor="bg-slate-50" />
+        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-6 h-6" />} color="text-blue-600" bgColor="bg-blue-50" />
+        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-6 h-6" />} color="text-emerald-600" bgColor="bg-emerald-50" />
       </div>
 
       {/* Filtros (compactados) */}
@@ -902,31 +915,8 @@ export default function ActividadesClient() {
         {!loading && groupedByProject.length > 0 && (
           <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex flex-wrap items-center justify-between gap-2">
             <p className="text-[9px] font-semibold uppercase text-slate-500 tracking-wide ml-1.5 tabular-nums">
-              {totalActividades} actividad{totalActividades === 1 ? "" : "es"} · {groupedByProject.length} proyecto{groupedByProject.length === 1 ? "" : "s"}
-              {actividadTotalPages > 1 && ` · Pág. ${actividadPage}/${actividadTotalPages}`}
+              {filteredActividades.length} actividad{filteredActividades.length === 1 ? "" : "es"} encontradas · {groupedByProject.length} proyecto{groupedByProject.length === 1 ? "" : "s"}
             </p>
-            {actividadTotalPages > 1 && (
-              <div className="flex gap-1.5 mr-1.5">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={actividadPage <= 1 || loading}
-                  onClick={() => fetchActividades(actividadPage - 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
-                  className="h-7 px-3 font-semibold text-[9px] uppercase border-slate-200 bg-white rounded-md"
-                >
-                  Anterior
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={actividadPage >= actividadTotalPages || loading}
-                  onClick={() => fetchActividades(actividadPage + 1, 20, { search: searchQuery, estado: filtroEstado, responsableId: filtroResponsable })}
-                  className="h-7 px-3 font-semibold text-[9px] uppercase border-slate-200 bg-white rounded-md"
-                >
-                  Siguiente
-                </Button>
-              </div>
-            )}
           </div>
         )}
       </div>
