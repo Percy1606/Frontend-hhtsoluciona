@@ -154,7 +154,7 @@ export function CRMStats() {
       visitas: visitasCount,
       contactos: contactosCount,
       ganados: ganadosCount,
-      efectividad: prospectosCount > 0 ? Math.min(100, Math.round((ganadosCount / prospectosCount) * 100)) : (ganadosCount > 0 ? 100 : 0)
+      efectividad: Math.min(100, Math.round(((seller === 'Valentina' ? contactosCount : prospectosCount) / 15) * 100))
     };
   });
 
@@ -362,12 +362,9 @@ export function CRMStats() {
                   {sellerComparisonData.map((data: any) => {
                     const isValentina = data.name.toLowerCase() === 'valentina';
                     
-                    const totalSeguimientosEquipo = clients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
-                    const totalProspectosEquipo = clients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt) && c.asignadoA !== 'Valentina').length;
-  
                     const metricValue = isValentina ? data.contactos : data.prospectos;
-                    const totalReference = isValentina ? totalSeguimientosEquipo : totalProspectosEquipo;
-                    const percentage = totalReference > 0 ? (metricValue / totalReference) * 100 : 0;
+                    const meta = 15;
+                    const percentage = Math.min((metricValue / meta) * 100, 100);
                     const label = isValentina ? "Seguimientos Realizados" : "Nuevos Prospectos";
                     
                     return (
@@ -397,7 +394,7 @@ export function CRMStats() {
                         </div>
                         <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
                           <span>{data.total} Cuentas en Cartera</span>
-                          <span className="text-primary">{Math.round(percentage)}% Participación</span>
+                          <span className="text-primary">{Math.round(percentage)}% Efectividad</span>
                         </div>
                       </div>
                     );
@@ -448,15 +445,13 @@ export function CRMStats() {
                         <td className="px-6 py-4 text-center font-black text-blue-600">{isAriana ? '-' : data.ganados}</td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <span className="font-black text-slate-800 w-8">{(isValentina || isAriana) ? '-' : `${data.efectividad}%`}</span>
-                            {(!isValentina && !isAriana) && (
-                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
-                                <div 
-                                  className={cn("h-full rounded-full", data.efectividad >= 30 ? "bg-emerald-500" : data.efectividad >= 10 ? "bg-amber-500" : "bg-blue-500")} 
-                                  style={{ width: `${Math.min(data.efectividad, 100)}%` }} 
-                                />
-                              </div>
-                            )}
+                            <span className="font-black text-slate-800 w-8">{`${data.efectividad}%`}</span>
+                            <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                              <div 
+                                className={cn("h-full rounded-full", data.efectividad >= 100 ? "bg-emerald-500" : data.efectividad >= 50 ? "bg-amber-500" : "bg-blue-500")} 
+                                style={{ width: `${Math.min(data.efectividad, 100)}%` }} 
+                              />
+                            </div>
                           </div>
                         </td>
                       </tr>

@@ -1483,12 +1483,21 @@ export default function DashboardPage() {
                               
                               const contactosPeriodoList = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto));
                               
-                              const totalLeads = data.prospectos > 0 ? data.prospectos : 1; 
-                              const efectividad = Math.round((ganadosEnPeriodo / totalLeads) * 100);
-                              const efectividadReal = Math.min(data.prospectos === 0 && ganadosEnPeriodo === 0 ? 0 : efectividad, 100);
-
                               const isValentina = seller.name.toLowerCase() === 'valentina';
                               const isAriana = seller.name.toLowerCase() === 'ariana';
+                              
+                              const meta = 15;
+                              let progreso = 0;
+                              if (isValentina) {
+                                progreso = data.contactos;
+                              } else {
+                                progreso = data.prospectos;
+                              }
+                              
+                              const efectividad = Math.round((progreso / meta) * 100);
+                              const efectividadReal = Math.min(efectividad, 100);
+
+
 
                               return (
                                 <tr key={seller.name} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => router.push('/crm/cartera')}>
@@ -1548,15 +1557,13 @@ export default function DashboardPage() {
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                      <span className="font-black text-slate-800 w-8">{(isValentina || isAriana) ? '-' : `${efectividadReal}%`}</span>
-                                      {(!isValentina && !isAriana) && (
-                                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
-                                          <div 
-                                            className={cn("h-full rounded-full", efectividadReal >= 30 ? "bg-emerald-500" : efectividadReal >= 10 ? "bg-amber-500" : "bg-blue-500")} 
-                                            style={{ width: `${efectividadReal}%` }} 
-                                          />
-                                        </div>
-                                      )}
+                                      <span className="font-black text-slate-800 w-8">{`${efectividadReal}%`}</span>
+                                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                                        <div 
+                                          className={cn("h-full rounded-full", efectividadReal >= 100 ? "bg-emerald-500" : efectividadReal >= 50 ? "bg-amber-500" : "bg-blue-500")} 
+                                          style={{ width: `${efectividadReal}%` }} 
+                                        />
+                                      </div>
                                     </div>
                                   </td>
                                 </tr>
