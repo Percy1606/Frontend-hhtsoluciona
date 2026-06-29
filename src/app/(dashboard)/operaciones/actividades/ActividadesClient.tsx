@@ -50,14 +50,16 @@ import { ActividadForm } from "@/components/operaciones/actividad-form";
 import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-modal";
 import { toast } from "sonner";
 
-const StatsCard = ({ label, value, icon, color, bgColor }: any) => (
-  <div className={cn("p-3.5 rounded-lg border border-slate-100 flex items-center gap-3 bg-white shadow-none", bgColor)}>
-    <div className={cn("p-2 rounded-md bg-white shrink-0", color)}>
-      {icon}
-    </div>
-    <div>
-      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider leading-none mb-0.5">{label}</p>
-      <p className={cn("text-xl font-semibold leading-none tracking-tight tabular-nums", color)}>{value}</p>
+const StatsCard = ({ label, value, icon, containerBg, iconBg, iconColor, titleColor, textColor }: any) => (
+  <div className={cn("border-none shadow-sm rounded-2xl w-full", containerBg)}>
+    <div className="p-3 flex items-center gap-3">
+      <div className={cn("p-2 rounded-xl shrink-0", iconBg, iconColor)}>
+        {icon}
+      </div>
+      <div>
+        <p className={cn("text-[9px] font-black uppercase tracking-wider", titleColor)}>{label}</p>
+        <p className={cn("text-xl font-black leading-none mt-1", textColor)}>{value}</p>
+      </div>
     </div>
   </div>
 );
@@ -456,10 +458,22 @@ export default function ActividadesClient() {
 
       {/* Stats globales (compactados) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <StatsCard label="Total" value={stats.total} icon={<ClipboardList className="w-3.5 h-3.5" />} color="text-primary" bgColor="bg-primary/5" />
-        <StatsCard label="Pendientes" value={stats.pendientes} icon={<Clock className="w-3.5 h-3.5" />} color="text-slate-600" bgColor="bg-slate-50" />
-        <StatsCard label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-3.5 h-3.5" />} color="text-blue-600" bgColor="bg-blue-50" />
-        <StatsCard label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-3.5 h-3.5" />} color="text-emerald-600" bgColor="bg-emerald-50" />
+        <StatsCard 
+          label="Total" value={stats.total} icon={<ClipboardList className="w-4 h-4" />} 
+          containerBg="bg-primary/5" iconBg="bg-primary/10" iconColor="text-primary" titleColor="text-primary/70" textColor="text-primary" 
+        />
+        <StatsCard 
+          label="Pendientes" value={stats.pendientes} icon={<Clock className="w-4 h-4" />} 
+          containerBg="bg-slate-50" iconBg="bg-slate-100" iconColor="text-slate-600" titleColor="text-slate-400" textColor="text-slate-700" 
+        />
+        <StatsCard 
+          label="En Marcha" value={stats.enProgreso} icon={<Clock className="w-4 h-4" />} 
+          containerBg="bg-blue-50" iconBg="bg-blue-100" iconColor="text-blue-600" titleColor="text-blue-400" textColor="text-blue-700" 
+        />
+        <StatsCard 
+          label="Culminadas" value={stats.completadas} icon={<CheckCircle2 className="w-4 h-4" />} 
+          containerBg="bg-emerald-50" iconBg="bg-emerald-100" iconColor="text-emerald-600" titleColor="text-emerald-400" textColor="text-emerald-700" 
+        />
       </div>
 
       {/* Filtros (compactados) */}

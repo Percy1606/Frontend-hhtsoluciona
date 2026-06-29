@@ -138,6 +138,18 @@ export default function SeguimientoPage() {
               </div>
             </CardContent>
           </Card>
+
+          <Card className="border-none shadow-sm rounded-2xl w-full sm:w-auto min-w-[220px] bg-emerald-50">
+            <CardContent className="p-3 flex items-center gap-3">
+              <div className="p-2 rounded-xl shrink-0 bg-emerald-100 text-emerald-600">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="text-[9px] font-black uppercase tracking-wider text-emerald-400">Cartera Ganada</p>
+                <p className="text-xl font-black leading-none mt-1 text-emerald-700">{wonClients.length}</p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         <TabsContent value="ventas" className="mt-0 space-y-6">
