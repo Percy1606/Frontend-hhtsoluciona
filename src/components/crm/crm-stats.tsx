@@ -43,7 +43,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function CRMStats() {
-  const { clients, quotes, getStats, getFunnelData, getFollowUpData } = useCRMStore();
+  const { clients } = useCRMStore();
   const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
   const [dateRangeType, setDateRangeType] = useState<string>("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
