@@ -55,6 +55,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const parseSafeDate = (dateVal: any): Date | null => {
   if (!dateVal) return null;
@@ -125,6 +131,8 @@ export default function DashboardPage() {
   const [dateRangeType, setDateRangeType] = useState<string>("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [cierresModalOpen, setCierresModalOpen] = useState(false);
+  const [cierresList, setCierresList] = useState<any[]>([]);
 
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -222,7 +230,6 @@ export default function DashboardPage() {
     { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
     { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
-    { name: 'Nicoll', color: 'bg-teal-600', role: 'Asesora' },
   ];
 
   const today = new Date();
@@ -357,14 +364,22 @@ export default function DashboardPage() {
   }, [filteredProyectos]);
 
   const comercialStats = useMemo(() => {
+    const isInRange = (dateStr: string) => {
+      const d = parseSafeDate(dateStr);
+      if (!d) return false;
+      if (startDate && d < startDate) return false;
+      if (endDate && d > endDate) return false;
+      return true;
+    };
+
     return {
       totalLeads: filteredClients.length,
-      ganados: filteredClients.filter((c: any) => c.etapaComercial === 'Ganado').length,
-      perdidos: filteredClients.filter((c: any) => c.etapaComercial === 'Perdido').length,
+      ganados: clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt)).length,
+      perdidos: clients.filter((c: any) => c.etapaComercial === 'Perdido' && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt)).length,
       enNegociacion: filteredClients.filter((c: any) => ['Negociación', 'Cotización Enviada', 'Seguimiento'].includes(c.etapaComercial)).length,
       contactados: filteredClients.filter((c: any) => ['Prospecto', 'Contactado', 'Llamada Realizada', 'Visita Agendada', 'Inspección Realizada'].includes(c.etapaComercial)).length,
     };
-  }, [filteredClients]);
+  }, [filteredClients, clients, startDate, endDate]);
 
   const filteredDocumentos = useMemo(() => {
     if (!startDate && !endDate) return documentos;
@@ -395,10 +410,10 @@ export default function DashboardPage() {
           if (!c.proximoSeguimiento) return false;
           const fs = c.proximoSeguimiento.split('T')[0];
           const hoy = new Date().toISOString().split('T')[0];
-          return fs === hoy && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido';
+          return fs === hoy && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial);
         }).length,
         vencidos: filteredClients.filter((c: any) => {
-          if (!c.proximoSeguimiento || c.etapaComercial === 'Ganado' || c.etapaComercial === 'Perdido') return false;
+          if (!c.proximoSeguimiento || ['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)) return false;
           const fs = new Date(c.proximoSeguimiento.split('T')[0]);
           const hoy = new Date();
           hoy.setHours(0,0,0,0);
@@ -436,7 +451,7 @@ export default function DashboardPage() {
   }, [getTimelineEvents, startDate, endDate]);
 
   const proximosSeguimientos = useMemo(() => {
-    let list = clients.filter(c => c.proximoSeguimiento && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido');
+    let list = clients.filter(c => c.proximoSeguimiento && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial));
     if (startDate || endDate) {
       list = list.filter(c => {
         const d = parseSafeDate(c.proximoSeguimiento);
@@ -752,13 +767,13 @@ export default function DashboardPage() {
         />
 
         <Tabs defaultValue="general" className="w-full space-y-8 outline-none">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800/80 pb-0">
-            <TabsList className="bg-transparent p-0 flex h-auto gap-6 w-full md:w-auto overflow-x-auto no-scrollbar justify-start rounded-none border-b border-transparent">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pb-2">
+            <TabsList className="bg-slate-100/80 p-1.5 flex h-auto gap-2 w-full md:w-auto overflow-x-auto no-scrollbar justify-start rounded-2xl border border-slate-200/60 shadow-inner">
               <TabsTrigger
                 value="general"
-                className="relative rounded-none border-b-2 border-transparent px-2 pb-3.5 pt-1 text-sm font-semibold text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-active:border-indigo-600 dark:data-[state=active]:border-indigo-400 dark:data-active:border-indigo-400 data-[state=active]:text-indigo-600 data-active:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:data-active:text-indigo-400 data-[state=active]:bg-transparent data-active:bg-transparent data-[state=active]:shadow-none data-active:shadow-none dark:data-[state=active]:bg-transparent dark:data-active:bg-transparent transition-all gap-2 flex items-center bg-transparent cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:rounded"
+                className="relative rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 data-[state=active]:bg-white data-active:bg-white data-[state=active]:text-indigo-700 data-active:text-indigo-700 data-[state=active]:shadow-sm data-active:shadow-sm transition-all gap-2 flex items-center cursor-pointer group border-transparent outline-none ring-0"
               >
-                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-850 group-data-[state=active]:bg-indigo-50 group-data-active:bg-indigo-50 dark:group-data-[state=active]:bg-indigo-950/40 dark:group-data-active:bg-indigo-950/40 text-slate-500 group-hover:text-slate-800 group-data-[state=active]:text-indigo-600 group-data-active:text-indigo-600 dark:text-slate-400 dark:group-hover:text-slate-200 dark:group-data-[state=active]:text-indigo-400 dark:group-data-active:text-indigo-400 transition-all">
+                <div className="p-1.5 rounded-lg bg-white/50 group-hover:bg-white group-data-[state=active]:bg-indigo-50 text-slate-500 group-hover:text-slate-700 group-data-[state=active]:text-indigo-600 transition-all">
                   <Activity className="w-3.5 h-3.5" />
                 </div>
                 <span className="font-semibold tracking-tight">Visión Global</span>
@@ -770,9 +785,9 @@ export default function DashboardPage() {
 
               <TabsTrigger
                 value="comercial"
-                className="relative rounded-none border-b-2 border-transparent px-2 pb-3.5 pt-1 text-sm font-semibold text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-active:border-indigo-600 dark:data-[state=active]:border-indigo-400 dark:data-active:border-indigo-400 data-[state=active]:text-indigo-600 data-active:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:data-active:text-indigo-400 data-[state=active]:bg-transparent data-active:bg-transparent data-[state=active]:shadow-none data-active:shadow-none dark:data-[state=active]:bg-transparent dark:data-active:bg-transparent transition-all gap-2.5 flex items-center bg-transparent cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:rounded"
+                className="relative rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 data-[state=active]:bg-white data-active:bg-white data-[state=active]:text-indigo-700 data-active:text-indigo-700 data-[state=active]:shadow-sm data-active:shadow-sm transition-all gap-2 flex items-center cursor-pointer group border-transparent outline-none ring-0"
               >
-                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-850 group-data-[state=active]:bg-indigo-50 group-data-active:bg-indigo-50 dark:group-data-[state=active]:bg-indigo-950/40 dark:group-data-active:bg-indigo-950/40 text-slate-500 group-hover:text-slate-800 group-data-[state=active]:text-indigo-600 group-data-active:text-indigo-600 dark:text-slate-400 dark:group-hover:text-slate-200 dark:group-data-[state=active]:text-indigo-400 dark:group-data-active:text-indigo-400 transition-all">
+                <div className="p-1.5 rounded-lg bg-white/50 group-hover:bg-white group-data-[state=active]:bg-indigo-50 text-slate-500 group-hover:text-slate-700 group-data-[state=active]:text-indigo-600 transition-all">
                   <Users className="w-3.5 h-3.5" />
                 </div>
                 <span className="font-semibold tracking-tight">Comercial</span>
@@ -780,9 +795,9 @@ export default function DashboardPage() {
 
               <TabsTrigger
                 value="operaciones"
-                className="relative rounded-none border-b-2 border-transparent px-2 pb-3.5 pt-1 text-sm font-semibold text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-active:border-indigo-600 dark:data-[state=active]:border-indigo-400 dark:data-active:border-indigo-400 data-[state=active]:text-indigo-600 data-active:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:data-active:text-indigo-400 data-[state=active]:bg-transparent data-active:bg-transparent data-[state=active]:shadow-none data-active:shadow-none dark:data-[state=active]:bg-transparent dark:data-active:bg-transparent transition-all gap-2.5 flex items-center bg-transparent cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:rounded"
+                className="relative rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 data-[state=active]:bg-white data-active:bg-white data-[state=active]:text-indigo-700 data-active:text-indigo-700 data-[state=active]:shadow-sm data-active:shadow-sm transition-all gap-2 flex items-center cursor-pointer group border-transparent outline-none ring-0"
               >
-                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-850 group-data-[state=active]:bg-indigo-50 group-data-active:bg-indigo-50 dark:group-data-[state=active]:bg-indigo-950/40 dark:group-data-active:bg-indigo-950/40 text-slate-500 group-hover:text-slate-800 group-data-[state=active]:text-indigo-600 group-data-active:text-indigo-600 dark:text-slate-400 dark:group-hover:text-slate-200 dark:group-data-[state=active]:text-indigo-400 dark:group-data-active:text-indigo-400 transition-all">
+                <div className="p-1.5 rounded-lg bg-white/50 group-hover:bg-white group-data-[state=active]:bg-indigo-50 text-slate-500 group-hover:text-slate-700 group-data-[state=active]:text-indigo-600 transition-all">
                   <Briefcase className="w-3.5 h-3.5" />
                 </div>
                 <span className="font-semibold tracking-tight">Operaciones</span>
@@ -790,9 +805,9 @@ export default function DashboardPage() {
 
               <TabsTrigger
                 value="logistica"
-                className="relative rounded-none border-b-2 border-transparent px-2 pb-3.5 pt-1 text-sm font-semibold text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-active:border-indigo-600 dark:data-[state=active]:border-indigo-400 dark:data-active:border-indigo-400 data-[state=active]:text-indigo-600 data-active:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:data-active:text-indigo-400 data-[state=active]:bg-transparent data-active:bg-transparent data-[state=active]:shadow-none data-active:shadow-none dark:data-[state=active]:bg-transparent dark:data-active:bg-transparent transition-all gap-2.5 flex items-center bg-transparent cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:rounded"
+                className="relative rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 data-[state=active]:bg-white data-active:bg-white data-[state=active]:text-indigo-700 data-active:text-indigo-700 data-[state=active]:shadow-sm data-active:shadow-sm transition-all gap-2 flex items-center cursor-pointer group border-transparent outline-none ring-0"
               >
-                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-850 group-data-[state=active]:bg-indigo-50 group-data-active:bg-indigo-50 dark:group-data-[state=active]:bg-indigo-950/40 dark:group-data-active:bg-indigo-950/40 text-slate-500 group-hover:text-slate-800 group-data-[state=active]:text-indigo-600 group-data-active:text-indigo-600 dark:text-slate-400 dark:group-hover:text-slate-200 dark:group-data-[state=active]:text-indigo-400 dark:group-data-active:text-indigo-400 transition-all">
+                <div className="p-1.5 rounded-lg bg-white/50 group-hover:bg-white group-data-[state=active]:bg-indigo-50 text-slate-500 group-hover:text-slate-700 group-data-[state=active]:text-indigo-600 transition-all">
                   <Truck className="w-3.5 h-3.5" />
                 </div>
                 <span className="font-semibold tracking-tight">Logística</span>
@@ -800,9 +815,9 @@ export default function DashboardPage() {
 
               <TabsTrigger
                 value="finanzas"
-                className="relative rounded-none border-b-2 border-transparent px-2 pb-3.5 pt-1 text-sm font-semibold text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200 data-[state=active]:border-indigo-600 data-active:border-indigo-600 dark:data-[state=active]:border-indigo-400 dark:data-active:border-indigo-400 data-[state=active]:text-indigo-600 data-active:text-indigo-600 dark:data-[state=active]:text-indigo-400 dark:data-active:text-indigo-400 data-[state=active]:bg-transparent data-active:bg-transparent data-[state=active]:shadow-none data-active:shadow-none dark:data-[state=active]:bg-transparent dark:data-active:bg-transparent transition-all gap-2.5 flex items-center bg-transparent cursor-pointer group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:rounded"
+                className="relative rounded-xl px-4 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 data-[state=active]:bg-white data-active:bg-white data-[state=active]:text-indigo-700 data-active:text-indigo-700 data-[state=active]:shadow-sm data-active:shadow-sm transition-all gap-2 flex items-center cursor-pointer group border-transparent outline-none ring-0"
               >
-                <div className="p-1.5 rounded-lg bg-slate-50 dark:bg-slate-900 group-hover:bg-slate-100 dark:group-hover:bg-slate-850 group-data-[state=active]:bg-indigo-50 group-data-active:bg-indigo-50 dark:group-data-[state=active]:bg-indigo-950/40 dark:group-data-active:bg-indigo-950/40 text-slate-500 group-hover:text-slate-800 group-data-[state=active]:text-indigo-600 group-data-active:text-indigo-600 dark:text-slate-400 dark:group-hover:text-slate-200 dark:group-data-[state=active]:text-indigo-400 dark:group-data-active:text-indigo-400 transition-all">
+                <div className="p-1.5 rounded-lg bg-white/50 group-hover:bg-white group-data-[state=active]:bg-indigo-50 text-slate-500 group-hover:text-slate-700 group-data-[state=active]:text-indigo-600 transition-all">
                   <DollarSign className="w-3.5 h-3.5" />
                 </div>
                 <span className="font-semibold tracking-tight">Finanzas</span>
@@ -889,7 +904,7 @@ export default function DashboardPage() {
                     <Link href="/crm/cartera" className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
                       Cartera de Clientes <ArrowUpRight className="w-3.5 h-3.5" />
                     </Link>
-                    <span className="text-[9px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-full">{comercialStats.ganados} Ganados</span>
+                    <span className="text-[9px] font-bold text-emerald-600 uppercase bg-emerald-50 px-2 py-0.5 rounded-full">{comercialStats.ganados} Órdenes de Servicio</span>
                   </div>
                 </div>
 
@@ -1196,14 +1211,18 @@ export default function DashboardPage() {
               // Datos para el gráfico
               const chartData = sellers.map(seller => {
                 const contactosCount = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+                const hoyStr = new Date().toISOString().split('T')[0];
+                const contactosHoy = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto?.startsWith(hoyStr)).length;
                 return {
                   name: seller.name.split(' ')[0], 
                   prospectos: filteredClients.filter((c: any) => c.asignadoA === seller.name).length,
+                  prospectosHoy: clients.filter((c: any) => c.asignadoA === seller.name && c.fechaCreacion?.startsWith(hoyStr)).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
                     return clienteCot?.asignadoA === seller.name;
                   }).length,
                   contactos: contactosCount,
+                  contactosHoy: contactosHoy,
                   visitas: clients.filter((c: any) => c.asignadoA === seller.name && c.tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0),
                 };
               });
@@ -1246,7 +1265,7 @@ export default function DashboardPage() {
                     const prospectosHoy = clients.filter((c: any) => c.fechaCreacion?.startsWith(hoyStr)).length;
                     const seguimientosHoy = clients.filter((c: any) => c.ultimoContacto?.startsWith(hoyStr)).length;
                     const visitasHoy = clients.filter((c: any) => c.tipoContacto === 'Visita' && c.ultimoContacto?.startsWith(hoyStr)).length;
-                    const cierresHoy = clients.filter((c: any) => c.etapaComercial === 'Ganado' && (c.fechaActualizacion?.startsWith(hoyStr) || c.fechaCreacion?.startsWith(hoyStr))).length;
+                    const cierresHoy = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (c.fechaActualizacion?.startsWith(hoyStr) || c.fechaCreacion?.startsWith(hoyStr))).length;
                     const cotizacionesHoy = quotes.filter((q: any) => q.fechaCreacion?.startsWith(hoyStr)).length;
 
                     return (
@@ -1286,27 +1305,54 @@ export default function DashboardPage() {
                             </div>
                           </div>
 
-                          {/* Cotizaciones */}
-                          <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
-                            <FileText className="w-4 h-4 text-amber-400" />
-                            <div className="flex items-baseline gap-1.5">
-                              <span className="text-white text-base font-black leading-none">{cotizacionesHoy}</span>
-                              <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Cotiz.</span>
-                            </div>
-                          </div>
 
                           {/* Cierres */}
                           <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
                             <Trophy className="w-4 h-4 text-rose-400" />
                             <div className="flex items-baseline gap-1.5">
                               <span className={cierresHoy > 0 ? "text-emerald-400 text-base font-black leading-none" : "text-white text-base font-black leading-none"}>{cierresHoy}</span>
-                              <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Cierres</span>
+                              <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Órdenes Serv.</span>
                             </div>
                           </div>
                         </div>
                       </div>
                     );
                   })()}
+
+                  {/* METAS DIARIAS (15 PROSPECTOS / ASESOR) */}
+                  <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm mb-6">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Target className="w-5 h-5 text-indigo-600" />
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Cumplimiento de Meta Diaria</h3>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {chartData.map((data, idx) => {
+                        const isValentina = data.name.toLowerCase() === 'valentina';
+                        const meta = 15; // 15 prospectos para cazadoras, 15 seguimientos para cerradoras
+                        const avance = isValentina ? data.contactosHoy : data.prospectosHoy;
+                        const porcentaje = Math.min((avance / meta) * 100, 100);
+                        const isSuccess = avance >= meta;
+                        const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";
+                        return (
+                          <div key={idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 relative overflow-hidden">
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-xs font-bold uppercase text-slate-700">{data.name}</span>
+                              <Badge className={cn("text-[9px] font-bold border-none uppercase", isSuccess ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700")}>
+                                {avance} / {meta}
+                              </Badge>
+                            </div>
+                            <div className="w-full bg-slate-200 rounded-full h-2 mb-1">
+                              <div className={cn("h-2 rounded-full transition-all duration-1000", isSuccess ? "bg-emerald-500" : "bg-amber-500")} style={{ width: `${porcentaje}%` }}></div>
+                            </div>
+                            <div className="flex justify-between items-center mt-1">
+                              <span className="text-[9px] text-slate-500 font-medium">{labelTipo}</span>
+                              <span className="text-[9px] text-slate-500 font-medium">Progreso: {Math.round(porcentaje)}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
 
                   {/* NIVEL 2: GRÁFICO COMPARATIVO Y ALERTAS */}
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1327,7 +1373,7 @@ export default function DashboardPage() {
                             <Bar dataKey="prospectos" name="Nuevos Prospectos" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={16} />
                             <Bar dataKey="visitas" name="Visitas" fill="#8b5cf6" radius={[4, 4, 0, 0]} barSize={16} />
                             <Bar dataKey="contactos" name="Seguimientos (Otros)" fill="#10b981" radius={[4, 4, 0, 0]} barSize={16} />
-                            <Bar dataKey="cotizaciones" name="Cotizaciones" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={16} />
+
                           </BarChart>
                         </ResponsiveContainer>
                       </Card>
@@ -1342,11 +1388,11 @@ export default function DashboardPage() {
                       {(() => {
                         const hoy = new Date();
                         hoy.setHours(0,0,0,0);
-                        const seguimientosVencidos = clients.filter((c: any) => c.proximoSeguimiento && new Date(c.proximoSeguimiento) < hoy && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido');
+                        const seguimientosVencidos = clients.filter((c: any) => c.proximoSeguimiento && new Date(c.proximoSeguimiento) < hoy && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial));
                         const congelados = clients.filter((c: any) => {
                           if (!c.ultimoContacto) return true; 
                           const days = Math.floor((new Date().getTime() - new Date(c.ultimoContacto).getTime()) / (1000 * 3600 * 24));
-                          return days > 15 && c.etapaComercial !== 'Ganado' && c.etapaComercial !== 'Perdido';
+                          return days > 15 && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial);
                         });
 
                         return (
@@ -1405,7 +1451,7 @@ export default function DashboardPage() {
                           <Bar dataKey="prospectos" name="Nuevos Prospectos" stackId="a" fill="#3b82f6" barSize={24} />
                           <Bar dataKey="visitas" name="Visitas" stackId="a" fill="#8b5cf6" />
                           <Bar dataKey="contactos" name="Seguimientos (Otros)" stackId="a" fill="#10b981" />
-                          <Bar dataKey="cotizaciones" name="Cotizaciones" stackId="a" fill="#f59e0b" radius={[0, 4, 4, 0]} />
+
                         </BarChart>
                       </ResponsiveContainer>
                     </Card>
@@ -1426,19 +1472,25 @@ export default function DashboardPage() {
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Nuevos Prospectos</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Visitas</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Contactos/Seg.</th>
-                              <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Cotizaciones</th>
-                              <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Cierres</th>
+
+                              <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Órdenes de Servicio</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Efectividad %</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
                             {sellers.map((seller) => {
                               const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0 };
-                              const ganadosEnPeriodo = clients.filter((c: any) => c.asignadoA === seller.name && c.etapaComercial === 'Ganado' && isInRange(c.fechaActualizacion || c.fechaCreacion)).length;
+                              
+                              const clientesGanados = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt));
+                              const ganadosEnPeriodo = clientesGanados.length;
+                              const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
                               
                               const totalLeads = data.prospectos > 0 ? data.prospectos : 1; 
                               const efectividad = Math.round((ganadosEnPeriodo / totalLeads) * 100);
-                              const efectividadReal = data.prospectos === 0 && ganadosEnPeriodo === 0 ? 0 : efectividad;
+                              const efectividadReal = Math.min(data.prospectos === 0 && ganadosEnPeriodo === 0 ? 0 : efectividad, 100);
+
+                              const isValentina = seller.name.toLowerCase() === 'valentina';
+                              const isAriana = seller.name.toLowerCase() === 'ariana';
 
                               return (
                                 <tr key={seller.name} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => router.push('/crm/cartera')}>
@@ -1455,20 +1507,40 @@ export default function DashboardPage() {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 text-center font-black text-slate-700">{data.prospectos}</td>
-                                  <td className="px-6 py-4 text-center font-black text-purple-600">{data.visitas}</td>
-                                  <td className="px-6 py-4 text-center font-black text-emerald-600">{data.contactos}</td>
-                                  <td className="px-6 py-4 text-center font-black text-amber-600">{data.cotizaciones}</td>
-                                  <td className="px-6 py-4 text-center font-black text-blue-600">{ganadosEnPeriodo}</td>
+                                  <td className="px-6 py-4 text-center font-black text-slate-700">{isValentina ? '-' : data.prospectos}</td>
+                                  <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
+                                  <td className="px-6 py-4 text-center font-black text-emerald-600">{isAriana ? '-' : data.contactos}</td>
+
+                                  <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
+                                    {isAriana ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {ganadosEnPeriodo}
+                                        {ganadosEnPeriodo > 0 && (
+                                          <Badge 
+                                            className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setCierresList(clientesGanados);
+                                              setCierresModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="px-6 py-4">
                                     <div className="flex items-center gap-3">
-                                      <span className="font-black text-slate-800 w-8">{efectividadReal}%</span>
-                                      <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
-                                        <div 
-                                          className={cn("h-full rounded-full", efectividadReal >= 30 ? "bg-emerald-500" : efectividadReal >= 10 ? "bg-amber-500" : "bg-blue-500")} 
-                                          style={{ width: `${Math.min(efectividadReal, 100)}%` }} 
-                                        />
-                                      </div>
+                                      <span className="font-black text-slate-800 w-8">{(isValentina || isAriana) ? '-' : `${efectividadReal}%`}</span>
+                                      {(!isValentina && !isAriana) && (
+                                        <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                                          <div 
+                                            className={cn("h-full rounded-full", efectividadReal >= 30 ? "bg-emerald-500" : efectividadReal >= 10 ? "bg-amber-500" : "bg-blue-500")} 
+                                            style={{ width: `${efectividadReal}%` }} 
+                                          />
+                                        </div>
+                                      )}
                                     </div>
                                   </td>
                                 </tr>
@@ -1793,6 +1865,37 @@ export default function DashboardPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* MODAL DE CIERRES COMERCIALES */}
+      <Dialog open={cierresModalOpen} onOpenChange={setCierresModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-emerald-500" />
+              Órdenes de Servicio Logradas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {cierresList.length > 0 ? (
+              cierresList.map((c: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre}</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">
+                      {c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt
+                        ? new Date(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }) 
+                        : 'Sin Fecha'}
+                    </p>
+                  </div>
+                  <Badge className="bg-emerald-100 text-emerald-700 border-none text-[9px]">GANADO</Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">No hay órdenes de servicio para mostrar.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

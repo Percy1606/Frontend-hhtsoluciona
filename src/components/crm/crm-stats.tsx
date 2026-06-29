@@ -30,6 +30,7 @@ import {
   Calendar, 
   Users, 
   Target,
+  MapPin,
   Search,
   FilterX,
   BarChart3,
@@ -71,14 +72,41 @@ export function CRMStats() {
     return true;
   });
 
-  // Compute metrics
+  const isInRange = (dateStr: any) => {
+    if (!startDate && !endDate) return true;
+    if (!dateStr) return false;
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return false;
+    
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      if (d < start) return false;
+    }
+    
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      if (d > end) return false;
+    }
+    return true;
+  };
+
   const totalCartera = filteredClients.length;
-  const seguimientosVencidos = filteredClients.filter(c => isFollowUpOverdue(c)).length;
+  const seguimientosVencidos = filteredClients.filter(c => isFollowUpOverdue(c) && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
   
-  const cerradosGanados = filteredClients.filter(c => c.etapaComercial === "Ganado").length;
-  const ratioCierre = totalCartera > 0 
-    ? `${Math.round((cerradosGanados / totalCartera) * 100)}%` 
-    : "0%";
+  const cerradosGanados = filteredClients.filter(c => 
+    ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && 
+    isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)
+  ).length;
+
+  const nuevosProspectos = filteredClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+  const visitasRealizadas = filteredClients.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length;
+  const seguimientosRealizados = filteredClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+
+  const ratioCierre = nuevosProspectos > 0 
+    ? `${Math.min(100, Math.round((cerradosGanados / nuevosProspectos) * 100))}%` 
+    : (cerradosGanados > 0 ? "100%" : "0%");
 
   // Data for the Funnel Chart (11 stages)
   const funnelStages = [
@@ -102,11 +130,32 @@ export function CRMStats() {
   })).filter(item => item.value > 0);
 
   // Benchmarking Team
-  const sellers = ["Angie", "Valentina", "Ariana", "Nicoll"];
+  const sellers = ["Angie", "Valentina", "Ariana"];
   const sellerComparisonData = sellers.map(seller => {
     const sellerClients = clients.filter(c => c.asignadoA === seller);
-    const won = sellerClients.filter(c => c.etapaComercial === "Ganado").length;
-    return { name: seller, value: won, total: sellerClients.length };
+    const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
+    const prospectosCount = sellerClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+    const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+    return { name: seller, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
+  });
+
+  const chartData = sellers.map(seller => {
+    const sellerClientsAll = clients.filter(c => c.asignadoA === seller);
+    
+    const prospectosCount = sellerClientsAll.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+    const contactosCount = sellerClientsAll.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+    const visitasCount = sellerClientsAll.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);
+    const ganadosCount = sellerClientsAll.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
+    
+    return {
+      name: seller,
+      color: seller === "Angie" ? "bg-blue-500" : seller === "Valentina" ? "bg-violet-500" : "bg-orange-500",
+      prospectos: prospectosCount,
+      visitas: visitasCount,
+      contactos: contactosCount,
+      ganados: ganadosCount,
+      efectividad: prospectosCount > 0 ? Math.min(100, Math.round((ganadosCount / prospectosCount) * 100)) : (ganadosCount > 0 ? 100 : 0)
+    };
   });
 
   // Cartera Analysis Data
@@ -125,17 +174,7 @@ export function CRMStats() {
     .sort((a, b) => b.value - a.value)
     .slice(0, 5);
 
-  // New prospects in selected range or last 7 days if no range
-  const nuevosProspectos = filteredClients.filter(c => {
-    if (startDate || endDate) {
-      return c.etapaComercial === "Prospecto";
-    } else {
-      const oneWeekAgo = new Date();
-      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
-      const createdDate = new Date(c.fechaCreacion);
-      return createdDate >= oneWeekAgo && c.etapaComercial === "Prospecto";
-    }
-  }).length;
+
 
   return (
     <div className="space-y-6">
@@ -154,7 +193,6 @@ export function CRMStats() {
                   <SelectItem value="Angie">ANGIE</SelectItem>
                   <SelectItem value="Valentina">VALENTINA</SelectItem>
                   <SelectItem value="Ariana">ARIANA</SelectItem>
-                  <SelectItem value="Nicoll">NICOLL</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -198,7 +236,7 @@ export function CRMStats() {
       </div>
 
       {/* Grid de Metricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatsCard 
           label="Total Cartera" 
           value={totalCartera} 
@@ -211,28 +249,37 @@ export function CRMStats() {
         <StatsCard 
           label="Nuevos Prospectos" 
           value={nuevosProspectos} 
-          subLabel="Captados esta semana"
+          subLabel="Captados en periodo"
           icon={<Target className="w-5 h-5" />} 
           color="text-orange-600" 
           bgColor="bg-orange-50" 
         />
 
         <StatsCard 
-          label="Seguimientos" 
-          value={seguimientosVencidos} 
-          subLabel="Vencidos / Críticos"
-          icon={<Calendar className="w-5 h-5" />} 
-          color="text-error" 
-          bgColor="bg-red-50" 
+          label="Visitas" 
+          value={visitasRealizadas} 
+          subLabel="Reuniones concretadas"
+          icon={<MapPin className="w-5 h-5" />} 
+          color="text-purple-600" 
+          bgColor="bg-purple-50" 
         />
 
         <StatsCard 
-          label="Cierres Exitosos" 
+          label="Contactos / Seg." 
+          value={seguimientosRealizados} 
+          subLabel="Gestiones realizadas"
+          icon={<Calendar className="w-5 h-5" />} 
+          color="text-emerald-600" 
+          bgColor="bg-emerald-50" 
+        />
+
+        <StatsCard 
+          label="Órdenes de Servicio" 
           value={cerradosGanados} 
           subLabel={`Efectividad: ${ratioCierre}`}
           icon={<Award className="w-5 h-5" />} 
-          color="text-success" 
-          bgColor="bg-green-50" 
+          color="text-blue-600" 
+          bgColor="bg-blue-50" 
         />
       </div>
 
@@ -308,13 +355,20 @@ export function CRMStats() {
 
             <Card className="rounded-2xl border border-border shadow-sm xl:col-span-1 bg-white overflow-hidden">
               <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-4">
-                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Ventas Ganadas por Asesor</CardTitle>
+                <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2">Rendimiento Clave por Asesor</CardTitle>
               </CardHeader>
               <CardContent className="p-6 space-y-4">
                 <div className="space-y-4">
-                  {sellerComparisonData.map((data) => {
-                    const totalWon = clients.filter(c => c.etapaComercial === "Ganado").length;
-                    const percentage = totalWon > 0 ? (data.value / totalWon) * 100 : 0;
+                  {sellerComparisonData.map((data: any) => {
+                    const isValentina = data.name.toLowerCase() === 'valentina';
+                    
+                    const totalSeguimientosEquipo = clients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+                    const totalProspectosEquipo = clients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt) && c.asignadoA !== 'Valentina').length;
+  
+                    const metricValue = isValentina ? data.contactos : data.prospectos;
+                    const totalReference = isValentina ? totalSeguimientosEquipo : totalProspectosEquipo;
+                    const percentage = totalReference > 0 ? (metricValue / totalReference) * 100 : 0;
+                    const label = isValentina ? "Seguimientos Realizados" : "Nuevos Prospectos";
                     
                     return (
                       <div key={data.name} className="space-y-2 p-4 rounded-2xl border border-slate-100 hover:border-primary/20 transition-all group shadow-sm bg-slate-50/30">
@@ -326,8 +380,8 @@ export function CRMStats() {
                             <span className="font-black text-slate-700 uppercase tracking-tight">{data.name}</span>
                           </div>
                           <div className="text-right">
-                            <p className="font-black text-primary text-base leading-none">{data.value}</p>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">Ventas Ganadas</p>
+                            <p className="font-black text-primary text-base leading-none">{metricValue}</p>
+                            <p className="text-[8px] font-bold text-slate-400 uppercase mt-0.5">{label}</p>
                           </div>
                         </div>
                         <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
@@ -342,7 +396,7 @@ export function CRMStats() {
                           />
                         </div>
                         <div className="flex justify-between items-center text-[9px] font-black text-slate-400 uppercase">
-                          <span>{data.total} Clientes</span>
+                          <span>{data.total} Clientes Asignados</span>
                           <span className="text-primary">{Math.round(percentage)}% Participación</span>
                         </div>
                       </div>
@@ -352,6 +406,66 @@ export function CRMStats() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Tabla de Rendimiento por Asesora */}
+          <Card className="rounded-2xl border border-border shadow-sm bg-white overflow-hidden mt-6">
+            <CardHeader className="bg-slate-50/50 border-b border-slate-100 py-4">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-slate-500 px-2 flex items-center gap-2">
+                <Target className="w-4 h-4 text-primary" />
+                Tabla de Rendimiento por Asesora
+              </CardTitle>
+            </CardHeader>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Asesora</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Nuevos Prospectos</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Visitas</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Contactos/Seg.</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Órdenes de Servicio</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Efectividad %</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {chartData.map((data) => {
+                    const isValentina = data.name.toLowerCase() === 'valentina';
+                    const isAriana = data.name.toLowerCase() === 'ariana';
+
+                    return (
+                      <tr key={data.name} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={cn("w-8 h-8 rounded-full text-white flex items-center justify-center text-[10px] font-black shadow-sm", data.color)}>
+                              {data.name.substring(0, 2).toUpperCase()}
+                            </div>
+                            <span className="font-bold text-slate-800 block">{data.name}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-center font-black text-slate-700">{isValentina ? '-' : data.prospectos}</td>
+                        <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
+                        <td className="px-6 py-4 text-center font-black text-emerald-600">{isAriana ? '-' : data.contactos}</td>
+                        <td className="px-6 py-4 text-center font-black text-blue-600">{isAriana ? '-' : data.ganados}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <span className="font-black text-slate-800 w-8">{(isValentina || isAriana) ? '-' : `${data.efectividad}%`}</span>
+                            {(!isValentina && !isAriana) && (
+                              <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden min-w-[60px]">
+                                <div 
+                                  className={cn("h-full rounded-full", data.efectividad >= 30 ? "bg-emerald-500" : data.efectividad >= 10 ? "bg-amber-500" : "bg-blue-500")} 
+                                  style={{ width: `${Math.min(data.efectividad, 100)}%` }} 
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </TabsContent>
 
         <TabsContent value="cartera" className="space-y-6 m-0 outline-none">

@@ -6,11 +6,12 @@ import { useCRMStore } from "@/store/crm-store";
 import { useEffect } from "react";
 
 export default function EstadisticasPage() {
-  const { fetchClients } = useCRMStore();
+  const { fetchClients, fetchQuotes } = useCRMStore();
 
   useEffect(() => {
     fetchClients();
-  }, [fetchClients]);
+    fetchQuotes();
+  }, [fetchClients, fetchQuotes]);
 
   return (
     <div className="space-y-6">

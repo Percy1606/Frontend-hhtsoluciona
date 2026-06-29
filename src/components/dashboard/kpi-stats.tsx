@@ -49,7 +49,7 @@ export function KPIStats({
     return (stage === 'Prospecto' || stage === '') && c.tipoCliente !== 'CLIENTE';
   }).length;
   
-  const cotizacionesEnviadas = cotizacionesCount ?? (globalKPIs?.cotizacionesTotal ?? quotes.length);
+  const ordenesServicio = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
   const proyectosActivos = proyectosActivosCount ?? (globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion').length);
   
   const totalFacturado = customTotalFacturado ?? ((globalKPIs as any)?.totalFacturado ?? 0);
@@ -59,7 +59,7 @@ export function KPIStats({
   const kpiConfig = [
     { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
     { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600" },
-    { label: "Cotizaciones", value: cotizacionesEnviadas, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
+    { label: "Órdenes de Servicio", value: ordenesServicio, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
     { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600" },
     { label: "Total Facturado", value: totalFacturado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
     { label: "Total Cobrado", value: totalCobrado, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
