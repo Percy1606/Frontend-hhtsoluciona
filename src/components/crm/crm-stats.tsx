@@ -71,6 +71,8 @@ export function CRMStats() {
   const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
   const [prospectosModalOpen, setProspectosModalOpen] = useState(false);
   const [prospectosList, setProspectosList] = useState<any[]>([]);
+  const [contactosModalOpen, setContactosModalOpen] = useState(false);
+  const [contactosList, setContactosList] = useState<any[]>([]);
   const [dateRangeType, setDateRangeType] = useState<string>("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -298,6 +300,7 @@ export function CRMStats() {
       visitas: visitasCount,
       contactos: contactosCount,
       contactosHoy,
+      contactosPeriodoList,
       ganados: ganadosCount,
       efectividad
     };
@@ -683,7 +686,12 @@ export function CRMStats() {
                               {data.contactos}
                               {data.contactos > 0 && (
                                 <Badge 
-                                  className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-default"
+                                  className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setContactosList(data.contactosPeriodoList || []);
+                                    setContactosModalOpen(true);
+                                  }}
                                 >
                                   Ver
                                 </Badge>
@@ -854,6 +862,59 @@ export function CRMStats() {
               ))
             ) : (
               <p className="text-sm text-slate-500 text-center py-4">No hay prospectos para mostrar.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Detalles de Seguimientos/Contactos */}
+      <Dialog open={contactosModalOpen} onOpenChange={setContactosModalOpen}>
+        <DialogContent className="max-w-2xl bg-white border-border/50 shadow-2xl rounded-2xl">
+          <DialogHeader className="border-b border-border/50 pb-4 mb-4">
+            <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
+              <Calendar className="w-5 h-5 text-emerald-600" /> Auditoría de Seguimientos (Periodo)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+            {contactosList.map((interaccion: any, index: number) => {
+              const dateVal = parseSafeDate(interaccion.fecha || interaccion.createdAt);
+              const formattedDate = dateVal ? new Intl.DateTimeFormat('es-PE', {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+                timeZone: 'America/Lima'
+              }).format(dateVal) : 'Fecha Inválida';
+
+              return (
+                <div key={index} className="flex justify-between items-start p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-emerald-50/30 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+                      <Clock className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">
+                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                        {interaccion.comentario || interaccion.notas || 'Sin comentarios registrados.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="outline" className="text-[10px] bg-white text-emerald-700 border-emerald-200">
+                          {interaccion.tipo || 'Interacción'}
+                        </Badge>
+                        <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md">
+                          {formattedDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {contactosList.length === 0 && (
+              <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-xl">
+                <p className="text-sm text-slate-400 font-medium">No se encontraron interacciones detalladas.</p>
+              </div>
             )}
           </div>
         </DialogContent>
