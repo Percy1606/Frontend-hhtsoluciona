@@ -220,18 +220,65 @@ export function CRMStats() {
   });
 
   const chartData = sellers.map(seller => {
-    const contactosCount = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto)).length;
-    const hoyStr = new Date().toISOString().split('T')[0];
-    const contactosHoy = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto?.startsWith(hoyStr)).length;
-    
+    const contactosPeriodoList = clients.reduce((acc: any[], c: any) => {
+      if (c.asignadoA !== seller.name) return acc;
+      const interacciones = c.historialInteracciones || c.interacciones || [];
+      let found = false;
+      interacciones.forEach((int: any) => {
+        if (isInRange(int.fecha || int.createdAt)) {
+          acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+          found = true;
+        }
+      });
+      if (!found && interacciones.length === 0 && c.ultimoContacto && isInRange(c.ultimoContacto)) {
+        acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+      }
+      return acc;
+    }, []).sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime());
+
+    const contactosHoyList = clients.reduce((acc: any[], c: any) => {
+      if (c.asignadoA !== seller.name) return acc;
+      const interacciones = c.historialInteracciones || c.interacciones || [];
+      let found = false;
+      interacciones.forEach((int: any) => {
+        const d = parseSafeDate(int.fecha || int.createdAt);
+        if (d) {
+          const hoy = new Date();
+          if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
+            acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+            found = true;
+          }
+        }
+      });
+      if (!found && interacciones.length === 0 && c.ultimoContacto) {
+        const d = parseSafeDate(c.ultimoContacto);
+        if (d) {
+          const hoy = new Date();
+          if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
+             acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+          }
+        }
+      }
+      return acc;
+    }, []);
+
+    const contactosCount = contactosPeriodoList.length;
+    const contactosHoy = contactosHoyList.length;
+
     const prospectosCount = filteredClients.filter((c: any) => c.asignadoA === seller.name).length;
-    const prospectosHoy = clients.filter((c: any) => c.asignadoA === seller.name && c.fechaCreacion?.startsWith(hoyStr)).length;
-    const visitasCount = clients.filter((c: any) => c.asignadoA === seller.name && c.tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);
+    const prospectosHoy = clients.filter((c: any) => {
+      if (c.asignadoA !== seller.name) return false;
+      const d = parseSafeDate(c.fechaCreacion);
+      if (!d) return false;
+      const hoy = new Date();
+      return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+    }).length;
+
+    const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);
     
     const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
 
     const isValentina = seller.name.toLowerCase() === 'valentina';
-    const isAriana = seller.name.toLowerCase() === 'ariana';
     
     const meta = 15;
     let progreso = 0;

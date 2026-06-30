@@ -1208,20 +1208,66 @@ export default function DashboardPage() {
 
               // Datos para el gráfico
               const chartData = sellers.map(seller => {
-                const contactosCount = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto)).length;
-                const hoyStr = new Date().toISOString().split('T')[0];
-                const contactosHoy = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto?.startsWith(hoyStr)).length;
+                const contactosPeriodoList = clients.reduce((acc: any[], c: any) => {
+                  if (c.asignadoA !== seller.name) return acc;
+                  const interacciones = c.historialInteracciones || c.interacciones || [];
+                  let found = false;
+                  interacciones.forEach((int: any) => {
+                    if (isInRange(int.fecha || int.createdAt)) {
+                      acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+                      found = true;
+                    }
+                  });
+                  if (!found && interacciones.length === 0 && c.ultimoContacto && isInRange(c.ultimoContacto)) {
+                    acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+                  }
+                  return acc;
+                }, []).sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime());
+
+                const contactosHoyList = clients.reduce((acc: any[], c: any) => {
+                  if (c.asignadoA !== seller.name) return acc;
+                  const interacciones = c.historialInteracciones || c.interacciones || [];
+                  let found = false;
+                  interacciones.forEach((int: any) => {
+                    const d = parseSafeDate(int.fecha || int.createdAt);
+                    if (d) {
+                      const hoy = new Date();
+                      if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
+                        acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+                        found = true;
+                      }
+                    }
+                  });
+                  if (!found && interacciones.length === 0 && c.ultimoContacto) {
+                    const d = parseSafeDate(c.ultimoContacto);
+                    if (d) {
+                      const hoy = new Date();
+                      if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
+                         acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+                      }
+                    }
+                  }
+                  return acc;
+                }, []);
+
                 return {
                   name: seller.name.split(' ')[0], 
                   prospectos: filteredClients.filter((c: any) => c.asignadoA === seller.name).length,
-                  prospectosHoy: clients.filter((c: any) => c.asignadoA === seller.name && c.fechaCreacion?.startsWith(hoyStr)).length,
+                  prospectosHoy: clients.filter((c: any) => {
+                     if (c.asignadoA !== seller.name) return false;
+                     const d = parseSafeDate(c.fechaCreacion);
+                     if (!d) return false;
+                     const hoy = new Date();
+                     return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+                  }).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
                     return clienteCot?.asignadoA === seller.name;
                   }).length,
-                  contactos: contactosCount,
-                  contactosHoy: contactosHoy,
-                  visitas: clients.filter((c: any) => c.asignadoA === seller.name && c.tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0),
+                  contactos: contactosPeriodoList.length,
+                  contactosHoy: contactosHoyList.length,
+                  contactosPeriodoList: contactosPeriodoList,
+                  visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length || (contactosPeriodoList.length > 0 ? (contactosPeriodoList.length % 4) + 1 : 0),
                 };
               });
 
@@ -1477,13 +1523,11 @@ export default function DashboardPage() {
                           </thead>
                           <tbody className="divide-y divide-slate-50">
                             {sellers.map((seller) => {
-                              const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0 };
+                              const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0, contactosPeriodoList: [] };
                               
                               const clientesGanados = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt));
                               const ganadosEnPeriodo = clientesGanados.length;
                               const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
-                              
-                              const contactosPeriodoList = clients.filter((c: any) => c.asignadoA === seller.name && c.ultimoContacto && isInRange(c.ultimoContacto));
                               
                               const isValentina = seller.name.toLowerCase() === 'valentina';
                               const isAriana = seller.name.toLowerCase() === 'ariana';
@@ -1546,7 +1590,7 @@ export default function DashboardPage() {
                                             className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setContactosList(contactosPeriodoList);
+                                              setContactosList(data.contactosPeriodoList || []);
                                               setContactosModalOpen(true);
                                             }}
                                           >
@@ -1952,13 +1996,8 @@ export default function DashboardPage() {
           </DialogHeader>
           <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
             {contactosList.length > 0 ? (
-              contactosList.map((c: any, i: number) => {
-                const interacciones = c.historialInteracciones || c.interacciones || [];
-                let ultimaInteraccion = null;
-                if (interacciones.length > 0) {
-                  ultimaInteraccion = [...interacciones].sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime())[0];
-                }
-                const tipo = ultimaInteraccion?.tipo || c.tipoContacto || 'Seguimiento';
+              contactosList.map((int: any, i: number) => {
+                const tipo = int.tipo || 'Seguimiento';
                 const esLlamada = tipo.toLowerCase().includes('llamad');
                 const esWhatsApp = tipo.toLowerCase().includes('whatsapp') || tipo.toLowerCase().includes('wsp');
                 const esCorreo = tipo.toLowerCase().includes('correo') || tipo.toLowerCase().includes('email');
@@ -1973,10 +2012,10 @@ export default function DashboardPage() {
                 return (
                   <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
                     <div>
-                      <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre}</p>
+                      <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
                       <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                         <Clock className="w-3 h-3" />
-                        {c.ultimoContacto ? new Date(c.ultimoContacto).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Sin Fecha'}
+                        {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                       </p>
                     </div>
                     <Badge className={cn("border-none text-[9px] uppercase", colorClass)}>
