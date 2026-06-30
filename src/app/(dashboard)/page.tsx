@@ -135,6 +135,8 @@ export default function DashboardPage() {
   const [cierresList, setCierresList] = useState<any[]>([]);
   const [contactosModalOpen, setContactosModalOpen] = useState(false);
   const [contactosList, setContactosList] = useState<any[]>([]);
+  const [prospectosModalOpen, setProspectosModalOpen] = useState(false);
+  const [prospectosList, setProspectosList] = useState<any[]>([]);
 
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -1514,7 +1516,26 @@ export default function DashboardPage() {
                                       </div>
                                     </div>
                                   </td>
-                                  <td className="px-6 py-4 text-center font-black text-slate-700">{isValentina ? '-' : data.prospectos}</td>
+                                  <td className="px-6 py-4 text-center font-black text-slate-700">
+                                    {isValentina ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {data.prospectos}
+                                        {data.prospectos > 0 && (
+                                          <Badge 
+                                            className="bg-slate-100 text-slate-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-slate-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const prospectosPeriodoList = filteredClients.filter((c: any) => c.asignadoA === seller.name);
+                                              setProspectosList(prospectosPeriodoList);
+                                              setProspectosModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
                                   <td className="px-6 py-4 text-center font-black text-emerald-600">
                                     {isAriana ? '-' : (
@@ -1966,6 +1987,40 @@ export default function DashboardPage() {
               })
             ) : (
               <p className="text-sm text-slate-500 text-center py-4">No hay seguimientos registrados.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE NUEVOS PROSPECTOS */}
+      <Dialog open={prospectosModalOpen} onOpenChange={setProspectosModalOpen}>
+        <DialogContent className="max-w-md bg-white shadow-2xl border border-slate-200 opacity-100">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Users className="w-5 h-5 text-indigo-500" />
+              Nuevos Prospectos Registrados
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {prospectosList.length > 0 ? (
+              prospectosList.map((c: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {c.fechaCreacion || c.createdAt
+                        ? new Date(c.fechaCreacion || c.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
+                        : 'Sin Fecha'}
+                    </p>
+                  </div>
+                  <Badge className="bg-indigo-100 text-indigo-700 border-none text-[9px] uppercase">
+                    {c.etapaComercial || 'PROSPECTO'}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">No hay prospectos para mostrar.</p>
             )}
           </div>
         </DialogContent>
