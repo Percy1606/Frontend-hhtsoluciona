@@ -9,8 +9,8 @@ export default function EstadisticasPage() {
   const { fetchClients, fetchQuotes } = useCRMStore();
 
   useEffect(() => {
-    fetchClients();
-    fetchQuotes();
+    fetchClients(1, 1000);
+    fetchQuotes(1, 1000);
   }, [fetchClients, fetchQuotes]);
 
   return (
