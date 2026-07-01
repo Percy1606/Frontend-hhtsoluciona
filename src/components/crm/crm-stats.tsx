@@ -227,34 +227,54 @@ export function CRMStats() {
 
   const chartData = sellers.map(seller => {
     const contactosPeriodoList = clients.reduce((acc: any[], c: any) => {
-      if (c.asignadoA !== seller.name) return acc;
       const interacciones = c.historialInteracciones || c.interacciones || [];
       let found = false;
+      
       interacciones.forEach((int: any) => {
-        if (isInRange(int.fecha || int.createdAt)) {
-          acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-          found = true;
+        const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
+        const isCreator = int.usuario?.toLowerCase().includes(seller.name.toLowerCase().trim());
+        
+        // Si hay un creador registrado en la interacción, solo el creador obtiene el crédito.
+        // Si no hay creador (datos antiguos), el dueño de la cuenta obtiene el crédito.
+        const belongsToSeller = int.usuario ? isCreator : isOwner;
+        
+        if (belongsToSeller) {
+          if (isInRange(int.fecha || int.createdAt)) {
+            acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+            found = true;
+          }
         }
       });
-      if (!found && interacciones.length === 0 && c.ultimoContacto && isInRange(c.ultimoContacto)) {
+      
+      const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
+      if (isOwner && !found && interacciones.length === 0 && c.ultimoContacto && isInRange(c.ultimoContacto)) {
         acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
       }
       return acc;
     }, []).sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime());
 
     const contactosHoyList = clients.reduce((acc: any[], c: any) => {
-      if (c.asignadoA !== seller.name) return acc;
       const interacciones = c.historialInteracciones || c.interacciones || [];
       let found = false;
       const hoyStr = getPeruDateString();
+      
       interacciones.forEach((int: any) => {
-        const d = parseSafeDate(int.fecha || int.createdAt);
-        if (d && getPeruDateString(d) === hoyStr) {
-          acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-          found = true;
+        const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
+        const isCreator = int.usuario?.toLowerCase().includes(seller.name.toLowerCase().trim());
+        
+        const belongsToSeller = int.usuario ? isCreator : isOwner;
+        
+        if (belongsToSeller) {
+          const d = parseSafeDate(int.fecha || int.createdAt);
+          if (d && getPeruDateString(d) === hoyStr) {
+            acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+            found = true;
+          }
         }
       });
-      if (!found && interacciones.length === 0 && c.ultimoContacto) {
+      
+      const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
+      if (isOwner && !found && interacciones.length === 0 && c.ultimoContacto) {
         const u = parseSafeDate(c.ultimoContacto);
         if (u && getPeruDateString(u) === hoyStr) {
           acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
@@ -639,7 +659,7 @@ export function CRMStats() {
                     const isValentina = data.name.toLowerCase() === 'valentina';
                     const isAriana = data.name.toLowerCase() === 'ariana';
                     
-                    const clientesGanados = clients.filter((c: any) => c.asignadoA === data.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt));
+                    const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt));
                     const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
 
                     return (
@@ -664,7 +684,7 @@ export function CRMStats() {
                                   className="bg-slate-100 text-slate-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-slate-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const prospectosPeriodoList = filteredClients.filter((c: any) => c.asignadoA === data.name);
+                                    const prospectosPeriodoList = filteredClients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim());
                                     setProspectosList(prospectosPeriodoList);
                                     setProspectosModalOpen(true);
                                   }}
