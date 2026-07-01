@@ -218,7 +218,7 @@ export function CRMStats() {
   ];
 
   const sellerComparisonData = sellers.map(seller => {
-    const sellerClients = clients.filter(c => c.asignadoA === seller.name);
+    const sellerClients = clients.filter(c => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
     const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
     const prospectosCount = sellerClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;

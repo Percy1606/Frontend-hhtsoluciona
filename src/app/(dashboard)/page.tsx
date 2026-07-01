@@ -1259,14 +1259,14 @@ export default function DashboardPage() {
 
                 return {
                   name: seller.name.split(' ')[0], 
-                  prospectos: filteredClients.filter((c: any) => c.asignadoA === seller.name).length,
+                  prospectos: filteredClients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim()).length,
                   prospectosHoy: clients.filter((c: any) => {
-                     if (c.asignadoA !== seller.name) return false;
+                     if (c.asignadoA?.toLowerCase().trim() !== seller.name.toLowerCase().trim()) return false;
                      return c.fechaCreacion?.startsWith(getPeruDateString());
                   }).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
-                    return clienteCot?.asignadoA === seller.name;
+                    return clienteCot?.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
                   }).length,
                   contactos: contactosPeriodoList.length,
                   contactosHoy: contactosHoyList.length,
