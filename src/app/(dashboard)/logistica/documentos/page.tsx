@@ -98,6 +98,8 @@ export default function DocumentacionLogisticaPage() {
     return proyectos.filter((p) => {
       if (p.nombre?.toLowerCase().includes(q)) return true;
       if (p.codigo?.toLowerCase().includes(q)) return true;
+      if (p.cliente?.empresa?.toLowerCase().includes(q)) return true;
+      if (p.cliente?.nombre?.toLowerCase().includes(q)) return true;
       return p.documentos?.some((d: any) => d.nombre?.toLowerCase().includes(q));
     });
   }, [proyectos, q]);
@@ -218,6 +220,9 @@ export default function DocumentacionLogisticaPage() {
                           <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate max-w-[180px]">
                             {proyecto.nombre}
                           </h2>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate max-w-[180px]">
+                            {proyecto.cliente?.empresa || proyecto.cliente?.nombre || "Sin cliente"}
+                          </p>
                           <p className="text-[10px] font-semibold text-slate-400 mt-0.5 font-mono">
                             {proyecto.codigo}
                           </p>
