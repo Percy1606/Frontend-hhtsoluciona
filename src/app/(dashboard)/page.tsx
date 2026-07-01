@@ -2005,6 +2005,11 @@ export default function DashboardPage() {
                         <Clock className="w-3 h-3" />
                         {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                       </p>
+                      {(int.comentario || int.notas || int.observaciones) && (
+                        <p className="text-xs text-slate-600 mt-1.5 italic line-clamp-2">
+                          "{int.comentario || int.notas || int.observaciones}"
+                        </p>
+                      )}
                     </div>
                     <Badge className={cn("border-none text-[9px] uppercase", colorClass)}>
                       {tipo}

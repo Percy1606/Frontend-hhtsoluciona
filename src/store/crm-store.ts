@@ -698,6 +698,13 @@ export const useCRMStore = create<CRMState>()(
     {
       name: 'hht-crm-store-db-only', 
       storage: createJSONStorage(() => localStorage),
+      partialize: (state) => ({
+        ...state,
+        filters: {
+          ...state.filters,
+          searchQuery: ''
+        }
+      }),
     }
   )
 );

@@ -889,7 +889,7 @@ export function CRMStats() {
                         {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
                       <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                        {interaccion.comentario || interaccion.notas || 'Sin comentarios registrados.'}
+                        {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <Badge variant="outline" className="text-[10px] bg-white text-emerald-700 border-emerald-200">
