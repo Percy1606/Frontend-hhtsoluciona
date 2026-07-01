@@ -73,6 +73,10 @@ export function CRMStats() {
   const [prospectosList, setProspectosList] = useState<any[]>([]);
   const [contactosModalOpen, setContactosModalOpen] = useState(false);
   const [contactosList, setContactosList] = useState<any[]>([]);
+  const [ganadosModalOpen, setGanadosModalOpen] = useState(false);
+  const [ganadosList, setGanadosList] = useState<any[]>([]);
+  const [visitasModalOpen, setVisitasModalOpen] = useState(false);
+  const [visitasList, setVisitasList] = useState<any[]>([]);
   const [dateRangeType, setDateRangeType] = useState<string>("all");
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
@@ -244,13 +248,17 @@ export function CRMStats() {
       let found = false;
       const hoyStr = getPeruDateString();
       interacciones.forEach((int: any) => {
-        if ((int.fecha || int.createdAt)?.startsWith(hoyStr)) {
+        const d = parseSafeDate(int.fecha || int.createdAt);
+        if (d && getPeruDateString(d) === hoyStr) {
           acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
           found = true;
         }
       });
-      if (!found && interacciones.length === 0 && c.ultimoContacto?.startsWith(hoyStr)) {
-        acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+      if (!found && interacciones.length === 0 && c.ultimoContacto) {
+        const u = parseSafeDate(c.ultimoContacto);
+        if (u && getPeruDateString(u) === hoyStr) {
+          acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
+        }
       }
       return acc;
     }, []);
@@ -667,7 +675,26 @@ export function CRMStats() {
                             </div>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
+                        <td className="px-6 py-4 text-center font-black text-purple-600">
+                          {isAriana ? '-' : (
+                            <div className="flex items-center justify-center gap-1">
+                              {data.visitas}
+                              {data.visitas > 0 && (
+                                <Badge 
+                                  className="bg-purple-100 text-purple-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-purple-200 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit')) || [];
+                                    setVisitasList(visitasPeriodoList);
+                                    setVisitasModalOpen(true);
+                                  }}
+                                >
+                                  Ver
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-center font-black text-emerald-600">
                           {isAriana ? '-' : (
                             <div className="flex items-center justify-center gap-1">
@@ -694,7 +721,12 @@ export function CRMStats() {
                                 <span>{data.ganados}</span>
                                 {data.ganados > 0 && (
                                   <Badge 
-                                    className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-default"
+                                    className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setGanadosList(clientesGanados);
+                                      setGanadosModalOpen(true);
+                                    }}
                                   >
                                     Ver
                                   </Badge>
@@ -867,7 +899,7 @@ export function CRMStats() {
             {contactosList.map((interaccion: any, index: number) => {
               const dateVal = parseSafeDate(interaccion.fecha || interaccion.createdAt);
               const isDateOnly = dateVal && dateVal.toISOString().endsWith('T00:00:00.000Z');
-              if (isDateOnly) {
+              if (isDateOnly && dateVal) {
                 // Si es medianoche UTC, es un campo de solo fecha. 
                 // Lo centramos a mediodía para evitar cambios de día por zona horaria.
                 dateVal.setUTCHours(12);
@@ -908,6 +940,95 @@ export function CRMStats() {
             {contactosList.length === 0 && (
               <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-xl">
                 <p className="text-sm text-slate-400 font-medium">No se encontraron interacciones detalladas.</p>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Órdenes de Servicio / Ganados */}
+      <Dialog open={ganadosModalOpen} onOpenChange={setGanadosModalOpen}>
+        <DialogContent className="max-w-md bg-white shadow-2xl border border-slate-200 opacity-100">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Award className="w-5 h-5 text-blue-500" />
+              Órdenes de Servicio (Ganados)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {ganadosList.length > 0 ? (
+              ganadosList.map((c: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {c.fechaActualizacion || c.updatedAt
+                        ? new Date(c.fechaActualizacion || c.updatedAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })
+                        : 'Sin Fecha'}
+                    </p>
+                  </div>
+                  <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] uppercase">
+                    {c.etapaComercial || 'GANADO'}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">No hay clientes ganados para mostrar.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Visitas */}
+      <Dialog open={visitasModalOpen} onOpenChange={setVisitasModalOpen}>
+        <DialogContent className="max-w-2xl bg-white border-border/50 shadow-2xl rounded-2xl">
+          <DialogHeader className="border-b border-border/50 pb-4 mb-4">
+            <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-purple-600" /> Historial de Visitas (Periodo)
+            </DialogTitle>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
+            {visitasList.map((interaccion: any, index: number) => {
+              const dateVal = parseSafeDate(interaccion.fecha || interaccion.createdAt);
+              const isDateOnly = dateVal && dateVal.toISOString().endsWith('T00:00:00.000Z');
+              if (isDateOnly && dateVal) dateVal.setUTCHours(12);
+              const formattedDate = dateVal ? new Intl.DateTimeFormat('es-PE', {
+                dateStyle: 'medium',
+                ...(isDateOnly ? {} : { timeStyle: 'short' }),
+                timeZone: 'America/Lima'
+              }).format(dateVal) : 'Fecha Inválida';
+
+              return (
+                <div key={index} className="flex justify-between items-start p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-purple-50/30 transition-colors">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center shrink-0">
+                      <MapPin className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-bold text-slate-800 text-sm">
+                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
+                      </p>
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2" title={interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}>
+                        {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
+                      </p>
+                      <div className="flex flex-wrap gap-2 mt-2">
+                        <Badge variant="outline" className="text-[10px] bg-white text-purple-700 border-purple-200">
+                          {interaccion.tipo || 'Visita'}
+                        </Badge>
+                        <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md">
+                          {formattedDate}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+            
+            {visitasList.length === 0 && (
+              <div className="py-8 text-center border-2 border-dashed border-slate-100 rounded-xl">
+                <p className="text-sm text-slate-400 font-medium">No se encontraron visitas detalladas en el periodo.</p>
               </div>
             )}
           </div>

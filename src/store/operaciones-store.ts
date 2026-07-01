@@ -689,7 +689,16 @@ export const useOperacionesStore = create<OperacionesState>()(
             cotizacionId: proyectoData.cotizacionId || null,
           };
           const nuevoProyecto = await api.post('/operaciones/proyectos', payload);
-          set((state) => ({ proyectos: [mapProyectoToFrontend(nuevoProyecto), ...state.proyectos], loading: false }));
+          set((state) => {
+            const exists = state.proyectos.find(p => p.id === nuevoProyecto.id);
+            if (exists) {
+              return { 
+                proyectos: state.proyectos.map(p => p.id === nuevoProyecto.id ? mapProyectoToFrontend(nuevoProyecto) : p),
+                loading: false 
+              };
+            }
+            return { proyectos: [mapProyectoToFrontend(nuevoProyecto), ...state.proyectos], loading: false };
+          });
           return nuevoProyecto.id;
         } catch (error: any) {
           // Si el backend devuelve un error estructurado, lo guardamos tal cual
