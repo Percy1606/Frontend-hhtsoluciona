@@ -32,7 +32,7 @@ import type {
 // INTERFAZ DEL STORE
 // ============================================
 
-type AddProyectoData = Omit<Proyecto, 'id' | 'codigo' | 'avanceCalculado' | 'historialCambios' | 'semaforo'> & { cotizacionId: string };
+type AddProyectoData = Omit<Proyecto, 'id' | 'codigo' | 'avanceCalculado' | 'historialCambios' | 'semaforo'> & { cotizacionId?: string | null };
 
 interface OperacionesState {
   proyectos: Proyecto[];
@@ -686,7 +686,7 @@ export const useOperacionesStore = create<OperacionesState>()(
             responsablePrincipalId: proyectoData.responsablePrincipalId,
             responsablesAdicionales: proyectoData.responsablesAdicionales || [],
             area: mapAreaToBackend(proyectoData.area),
-            cotizacionId: proyectoData.cotizacionId,
+            cotizacionId: proyectoData.cotizacionId || null,
           };
           const nuevoProyecto = await api.post('/operaciones/proyectos', payload);
           set((state) => ({ proyectos: [mapProyectoToFrontend(nuevoProyecto), ...state.proyectos], loading: false }));

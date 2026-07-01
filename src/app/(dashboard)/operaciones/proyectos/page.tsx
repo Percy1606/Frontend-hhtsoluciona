@@ -149,6 +149,7 @@ export default function ProyectosPage() {
   const [activeTab, setActiveTab] = useState("proyectos");
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [isPreventa, setIsPreventa] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   
   const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
@@ -300,15 +301,23 @@ export default function ProyectosPage() {
         return;
     }
 
-    const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
-    const selectedQuote = clientQuotes[0];
-    if (!selectedQuote) {
-      showError("Cotización requerida", "El cliente no tiene cotizaciones registradas.");
-      return;
+    let cotizacionIdFinal = null;
+
+    if (!isPreventa) {
+      const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
+      const selectedQuote = clientQuotes[0];
+      if (!selectedQuote) {
+        showError("Cotización requerida", "El cliente no tiene cotizaciones registradas. Si es un trabajo previo, active el 'Modo Preventa'.");
+        return;
+      }
+      cotizacionIdFinal = selectedQuote.id;
     }
 
     try {
-      await addProyecto({ ...newProject, cotizacionId: selectedQuote.id } as any);
+      await addProyecto({ 
+        ...newProject, 
+        cotizacionId: cotizacionIdFinal 
+      } as any);
       setIsNewProjectModalOpen(false);
       setNewProject({
         clientId: "",
@@ -633,13 +642,29 @@ export default function ProyectosPage() {
       <Dialog open={isNewProjectModalOpen} onOpenChange={setIsNewProjectModalOpen}>
         <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
           <DialogHeader className="p-8 bg-primary text-white">
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
-              <Plus className="w-8 h-8 text-accent" />
-              Nuevo Proyecto Operativo
-            </DialogTitle>
-            <DialogDescription className="text-white/70 font-bold uppercase text-xs">
-              Registre un nuevo proyecto a partir de una cotización ganada.
-            </DialogDescription>
+            <div className="flex justify-between items-start gap-4">
+              <div>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
+                  <Plus className="w-8 h-8 text-accent" />
+                  Nuevo Proyecto Operativo
+                </DialogTitle>
+                <DialogDescription className="text-white/70 font-bold uppercase text-xs mt-2">
+                  {isPreventa ? "PROYECTO DE EVALUACIÓN PREVIA (SIN COTIZACIÓN)." : "REGISTRE UN NUEVO PROYECTO A PARTIR DE UNA COTIZACIÓN GANADA."}
+                </DialogDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setIsPreventa(!isPreventa)}
+                className={cn(
+                  "font-black text-[10px] uppercase tracking-widest border-2 h-8 px-4",
+                  isPreventa 
+                    ? "bg-accent text-primary border-accent hover:bg-accent/90" 
+                    : "bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
+                )}
+              >
+                {isPreventa ? "✔ MODO PREVENTA" : "MODO ESTÁNDAR"}
+              </Button>
+            </div>
           </DialogHeader>
 
           <div className="p-8 grid grid-cols-2 gap-6">
