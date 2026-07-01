@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { cn } from "@/lib/utils";
+import { cn, getPeruDateString } from "@/lib/utils";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -242,24 +242,15 @@ export function CRMStats() {
       if (c.asignadoA !== seller.name) return acc;
       const interacciones = c.historialInteracciones || c.interacciones || [];
       let found = false;
+      const hoyStr = getPeruDateString();
       interacciones.forEach((int: any) => {
-        const d = parseSafeDate(int.fecha || int.createdAt);
-        if (d) {
-          const hoy = new Date();
-          if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
-            acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-            found = true;
-          }
+        if ((int.fecha || int.createdAt)?.startsWith(hoyStr)) {
+          acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+          found = true;
         }
       });
-      if (!found && interacciones.length === 0 && c.ultimoContacto) {
-        const d = parseSafeDate(c.ultimoContacto);
-        if (d) {
-          const hoy = new Date();
-          if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
-             acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
-          }
-        }
+      if (!found && interacciones.length === 0 && c.ultimoContacto?.startsWith(hoyStr)) {
+        acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
       }
       return acc;
     }, []);
@@ -270,10 +261,7 @@ export function CRMStats() {
     const prospectosCount = filteredClients.filter((c: any) => c.asignadoA === seller.name).length;
     const prospectosHoy = clients.filter((c: any) => {
       if (c.asignadoA !== seller.name) return false;
-      const d = parseSafeDate(c.fechaCreacion);
-      if (!d) return false;
-      const hoy = new Date();
-      return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+      return c.fechaCreacion?.startsWith(getPeruDateString());
     }).length;
 
     const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);

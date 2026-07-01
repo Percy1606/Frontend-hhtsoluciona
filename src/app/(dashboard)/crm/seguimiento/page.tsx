@@ -4,7 +4,7 @@ import { ClientTable } from "@/components/crm/client-table";
 import { CRMHeader } from "@/components/crm/crm-header";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { Card, CardContent } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
+import { cn, getPeruDateString } from "@/lib/utils";
 import { 
   Calendar, 
   AlertCircle, 
@@ -31,7 +31,7 @@ export default function SeguimientoPage() {
   const isReviewDay = dayName.toLowerCase().includes('martes') || dayName.toLowerCase().includes('jueves');
   const currentReviewDay = dayName.charAt(0).toUpperCase() + dayName.slice(1).split(',')[0];
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getPeruDateString();
 
   const isGanado = (etapa?: string) => {
     if (!etapa) return false;

@@ -30,7 +30,7 @@ import {
   DollarSign
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { cn } from "@/lib/utils";
+import { cn, getPeruDateString } from "@/lib/utils";
 import Link from "next/link";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area, CartesianGrid } from 'recharts';
 import { api } from "@/lib/api";
@@ -413,7 +413,7 @@ export default function DashboardPage() {
         totalHoy: filteredClients.filter((c: any) => {
           if (!c.proximoSeguimiento) return false;
           const fs = c.proximoSeguimiento.split('T')[0];
-          const hoy = new Date().toISOString().split('T')[0];
+          const hoy = getPeruDateString();
           return fs === hoy && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial);
         }).length,
         vencidos: filteredClients.filter((c: any) => {
@@ -1228,24 +1228,15 @@ export default function DashboardPage() {
                   if (c.asignadoA !== seller.name) return acc;
                   const interacciones = c.historialInteracciones || c.interacciones || [];
                   let found = false;
+                  const hoyStr = getPeruDateString();
                   interacciones.forEach((int: any) => {
-                    const d = parseSafeDate(int.fecha || int.createdAt);
-                    if (d) {
-                      const hoy = new Date();
-                      if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
-                        acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-                        found = true;
-                      }
+                    if ((int.fecha || int.createdAt)?.startsWith(hoyStr)) {
+                      acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
+                      found = true;
                     }
                   });
-                  if (!found && interacciones.length === 0 && c.ultimoContacto) {
-                    const d = parseSafeDate(c.ultimoContacto);
-                    if (d) {
-                      const hoy = new Date();
-                      if (d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear()) {
-                         acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
-                      }
-                    }
+                  if (!found && interacciones.length === 0 && c.ultimoContacto?.startsWith(hoyStr)) {
+                    acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
                   }
                   return acc;
                 }, []);
@@ -1255,10 +1246,7 @@ export default function DashboardPage() {
                   prospectos: filteredClients.filter((c: any) => c.asignadoA === seller.name).length,
                   prospectosHoy: clients.filter((c: any) => {
                      if (c.asignadoA !== seller.name) return false;
-                     const d = parseSafeDate(c.fechaCreacion);
-                     if (!d) return false;
-                     const hoy = new Date();
-                     return d.getDate() === hoy.getDate() && d.getMonth() === hoy.getMonth() && d.getFullYear() === hoy.getFullYear();
+                     return c.fechaCreacion?.startsWith(getPeruDateString());
                   }).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
@@ -1283,7 +1271,7 @@ export default function DashboardPage() {
                   const dayOfWeek = d.getDay(); // 0 = Domingo, 6 = Sábado
                   
                   if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-                    const dateStr = d.toISOString().split('T')[0];
+                    const dateStr = getPeruDateString(d);
                     const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
                     const contactosDia = clients.filter((c: any) => c.ultimoContacto?.startsWith(dateStr)).length;
                     
@@ -1305,7 +1293,7 @@ export default function DashboardPage() {
                 <div className="space-y-6">
                   {/* LIVE PULSE DEL DÍA */}
                   {(() => {
-                    const hoyStr = new Date().toISOString().split('T')[0];
+                    const hoyStr = getPeruDateString();
                     const prospectosHoy = clients.filter((c: any) => c.fechaCreacion?.startsWith(hoyStr)).length;
                     const seguimientosHoy = clients.filter((c: any) => c.ultimoContacto?.startsWith(hoyStr)).length;
                     const visitasHoy = clients.filter((c: any) => c.tipoContacto === 'Visita' && c.ultimoContacto?.startsWith(hoyStr)).length;
