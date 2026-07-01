@@ -1373,7 +1373,7 @@ export default function DashboardPage() {
                       {chartData.map((data, idx) => {
                         const isValentina = data.name.toLowerCase() === 'valentina';
                         const meta = 15; // 15 prospectos para cazadoras, 15 seguimientos para cerradoras
-                        const avance = isValentina ? data.contactosHoy : data.prospectosHoy;
+                        const avance = isValentina ? data.contactos : data.prospectos;
                         const porcentaje = Math.min((avance / meta) * 100, 100);
                         const isSuccess = avance >= meta;
                         const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";

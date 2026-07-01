@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { useCRMStore } from "@/store/crm-store";
+import { getPeruDateString } from "@/lib/utils";
 import { 
   Upload, 
   FileSpreadsheet, 
@@ -134,10 +135,10 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     mapped.accion = getRowValue(["Accion", "Accion Realizada", "Accion Programada"]) || "Llamada de seguimiento";
     
     mapped.ultimoContacto = parseExcelDate(getRowValue(["Fecha Ultimo Contacto", "Ultimo Contacto", "Fecha Contacto", "U. Contacto"]));
-    if (!mapped.ultimoContacto) mapped.ultimoContacto = new Date().toISOString().split('T')[0];
+    if (!mapped.ultimoContacto) mapped.ultimoContacto = getPeruDateString();
 
     mapped.proximoSeguimiento = parseExcelDate(getRowValue(["Proximo Seguimiento", "Fecha Proximo Seguimiento", "Siguiente Contacto", "Prox Seguimiento"]));
-    if (!mapped.proximoSeguimiento) mapped.proximoSeguimiento = new Date(Date.now() + 7 * 86400 * 1000).toISOString().split('T')[0];
+    if (!mapped.proximoSeguimiento) mapped.proximoSeguimiento = getPeruDateString(new Date(Date.now() + 7 * 86400 * 1000));
 
     mapped.observaciones = getRowValue(["Observaciones", "Notas", "Comentarios", "Detalles"]) || "";
     mapped.zona = getRowValue(["Zona", "Distrito", "Region", "Ciudad"]) || "Piura";

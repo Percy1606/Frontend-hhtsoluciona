@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { getPeruDateString } from "@/lib/utils";
 
 
 export type Area = 'Steven' | 'Diego' | 'Guillermo' | 'Mario';
@@ -323,7 +324,7 @@ export const useDocumentalStore = create<DocumentalState>()(
 
       addDocumento: (documentoData) => set((state) => {
         const codigo = getNextDocumentCode(state.documentos);
-        const today = new Date().toISOString().split('T')[0];
+        const today = getPeruDateString();
         const nuevo: Documento = {
           ...documentoData,
           id: `doc_${Date.now()}`,
@@ -342,7 +343,7 @@ export const useDocumentalStore = create<DocumentalState>()(
       }),
 
       updateDocumento: (documentoActualizado) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getPeruDateString();
         const historialActualizado: HistorialDocumento = {
           id: `hist_${Date.now()}`,
           accion: 'Actualización',
@@ -365,7 +366,7 @@ export const useDocumentalStore = create<DocumentalState>()(
       })),
 
       aprobarDocumento: (id, aprobadoPor) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getPeruDateString();
 
         return {
           documentos: state.documentos.map((d) => {
@@ -391,7 +392,7 @@ export const useDocumentalStore = create<DocumentalState>()(
       }),
 
       rechazarDocumento: (id, observaciones) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getPeruDateString();
 
         return {
           documentos: state.documentos.map((d) => {
@@ -452,7 +453,7 @@ export const useDocumentalStore = create<DocumentalState>()(
       })),
 
       closeExpediente: (expedienteId) => set((state) => {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getPeruDateString();
 
         return {
           expedientes: state.expedientes.map((e) =>

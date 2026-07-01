@@ -22,6 +22,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Client } from "@/types/crm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { getPeruDateString } from "@/lib/utils";
+
 
 interface ClientFormProps {
   client?: Client | null;
@@ -68,7 +70,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       zona: "",
       observaciones: "",
       accion: "",
-      ultimoContacto: new Date().toISOString().split('T')[0],
+      ultimoContacto: getPeruDateString(),
       proximoSeguimiento: "",
       tipoCliente: "PROSPECTO",
       etapaComercial: "Prospecto",

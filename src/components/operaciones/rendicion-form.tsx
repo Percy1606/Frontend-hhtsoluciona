@@ -17,7 +17,7 @@ import { Badge } from "@/components/ui/badge";
 import { Gasto } from "@/types/finanzas";
 import { api } from "@/lib/api";
 import { Loader2, Upload, FileText, CheckCircle2, Trash2, Coins, Receipt, Calendar, X } from "lucide-react";
-import { cn, formatDate, getSecureUrl, formatCurrency } from "@/lib/utils";
+import { cn, formatDate, getSecureUrl, formatCurrency, getPeruDateString } from "@/lib/utils";
 import { toast } from "sonner";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 
@@ -50,7 +50,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
   const form = useForm({
     defaultValues: {
       monto: 0,
-      fecha: new Date().toISOString().split('T')[0],
+      fecha: getPeruDateString(),
       observaciones: "",
       comprobanteUrl: "",
     },
@@ -115,7 +115,7 @@ export function RendicionForm({ gasto, onSubmit, onCancel }: RendicionFormProps)
           fetchHistory();
           form.reset({
               monto: 0,
-              fecha: new Date().toISOString().split('T')[0],
+              fecha: getPeruDateString(),
               observaciones: "",
               comprobanteUrl: "",
           });

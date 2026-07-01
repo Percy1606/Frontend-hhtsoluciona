@@ -593,7 +593,7 @@ export function CRMStats() {
               {chartData.map((data, idx) => {
                 const isValentina = data.name.toLowerCase() === 'valentina';
                 const meta = 15;
-                const avance = isValentina ? data.contactosHoy : data.prospectosHoy;
+                const avance = isValentina ? data.contactos : data.prospectos;
                 const porcentaje = Math.min((avance / meta) * 100, 100);
                 const isSuccess = avance >= meta;
                 const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";
@@ -878,9 +878,15 @@ export function CRMStats() {
           <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
             {contactosList.map((interaccion: any, index: number) => {
               const dateVal = parseSafeDate(interaccion.fecha || interaccion.createdAt);
+              const isDateOnly = dateVal && dateVal.toISOString().endsWith('T00:00:00.000Z');
+              if (isDateOnly) {
+                // Si es medianoche UTC, es un campo de solo fecha. 
+                // Lo centramos a mediodía para evitar cambios de día por zona horaria.
+                dateVal.setUTCHours(12);
+              }
               const formattedDate = dateVal ? new Intl.DateTimeFormat('es-PE', {
                 dateStyle: 'medium',
-                timeStyle: 'short',
+                ...(isDateOnly ? {} : { timeStyle: 'short' }),
                 timeZone: 'America/Lima'
               }).format(dateVal) : 'Fecha Inválida';
 

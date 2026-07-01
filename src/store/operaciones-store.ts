@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { format } from 'date-fns';
 import { api } from '@/lib/api';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getPeruDateString } from '@/lib/utils';
 import { useAuthStore } from './auth-store';
 import { useNotificationStore } from './notification-store';
 import type {
@@ -198,7 +198,7 @@ const calculateIndicadoresAvance = (proyecto: Proyecto, responsables: Responsabl
       porcentaje: actividadesArea.length > 0 ? Math.round((completadas / actividadesArea.length) * 100) : 0,
       actividadesTotal: actividadesArea.length,
       actividadesCompletadas: completadas,
-      ultimaActualizacion: new Date().toISOString().split('T')[0],
+      ultimaActualizacion: getPeruDateString(),
     });
   });
   return indicadores;
@@ -214,7 +214,7 @@ const recalculateProjectMetrics = (proyecto: Proyecto, responsables: Responsable
     avance: avanceCalculado,
     semaforo,
     indicadoresAvance,
-    fechaActualizacion: new Date().toISOString().split('T')[0],
+    fechaActualizacion: getPeruDateString(),
   };
 };
 
