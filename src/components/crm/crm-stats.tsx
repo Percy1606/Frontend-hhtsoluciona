@@ -181,7 +181,11 @@ export function CRMStats() {
     isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)
   ).length;
 
-  const nuevosProspectos = filteredClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+  const nuevosProspectos = clients.filter(c => {
+    const creador = (c as any).creadoPor || c.asignadoA;
+    const matchesSeller = selectedSeller === "EQUIPO COMPLETO" || creador === selectedSeller;
+    return matchesSeller && isInRange(c.fechaCreacion || (c as any).createdAt);
+  }).length;
   const visitasRealizadas = filteredClients.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length;
   const seguimientosRealizados = filteredClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
 
@@ -220,7 +224,7 @@ export function CRMStats() {
   const sellerComparisonData = sellers.map(seller => {
     const sellerClients = clients.filter(c => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
     const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
-    const prospectosCount = sellerClients.filter(c => isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+    const prospectosCount = clients.filter(c => ((c as any).creadoPor || c.asignadoA)?.toLowerCase().trim() === seller.name.toLowerCase().trim() && isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
     return { name: seller.name, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
   });
@@ -286,9 +290,13 @@ export function CRMStats() {
     const contactosCount = contactosPeriodoList.length;
     const contactosHoy = contactosHoyList.length;
 
-    const prospectosCount = filteredClients.filter((c: any) => c.asignadoA === seller.name).length;
+    const prospectosCount = clients.filter((c: any) => {
+      const creador = (c as any).creadoPor || c.asignadoA;
+      return creador === seller.name && isInRange(c.fechaCreacion || (c as any).createdAt);
+    }).length;
     const prospectosHoy = clients.filter((c: any) => {
-      if (c.asignadoA !== seller.name) return false;
+      const creador = (c as any).creadoPor || c.asignadoA;
+      if (creador !== seller.name) return false;
       return c.fechaCreacion?.startsWith(getPeruDateString());
     }).length;
 
