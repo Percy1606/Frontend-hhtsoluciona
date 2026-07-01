@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
 import type { Actividad, Responsable } from "@/lib/types";
 import { format } from "date-fns";
 import { Loader2, ClipboardList, AlertCircle, Search, Check, ChevronsUpDown } from "lucide-react";
@@ -95,6 +96,7 @@ const stripLegacyPrefix = (text: string): string => {
 
 export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: ActividadFormProps) {
   const { proyectos, responsables, addActividad, updateActividad, loading, error, fetchProyectos } = useOperacionesStore();
+  const { clients: crmClients, fetchClients } = useCRMStore();
 
   // States for searchable project selector
   const [projectSearch, setProjectSearch] = useState("");
@@ -114,6 +116,9 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   useEffect(() => {
     if (isOpen) {
       fetchProyectosRef.current(1, 1000).catch(err => console.error("[ActividadForm] Error fetching projects:", err));
+      if (crmClients.length === 0) {
+        fetchClients(1, 1000).catch(err => console.error("[ActividadForm] Error fetching clients:", err));
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
@@ -274,7 +279,9 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                         {field.value
                           ? (() => {
                               const p = proyectos.find(p => p.id === field.value);
-                              return p ? `${p.codigo} - ${p.nombre}` : "Seleccionar proyecto";
+                              if (!p) return "Seleccionar proyecto";
+                              const clientName = p.clientId ? crmClients.find(c => c.id === p.clientId)?.empresa : null;
+                              return clientName ? `${p.codigo} - ${clientName} - ${p.nombre}` : `${p.codigo} - ${p.nombre}`;
                             })()
                           : "Seleccionar proyecto"}
                       </span>
@@ -315,8 +322,15 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                                   }}
                                 >
                                   <div className="flex flex-col">
-                                    <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
-                                    <span className="text-[10px] text-slate-500 group-focus:text-white/80 line-clamp-1">{p.nombre}</span>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-black text-sm text-primary group-focus:text-white uppercase">{p.codigo}</span>
+                                      {p.clientId && (
+                                        <span className="text-[9px] px-1.5 py-0.5 rounded-sm bg-amber-100 text-amber-800 font-bold tracking-widest uppercase group-focus:bg-white/20 group-focus:text-white">
+                                          {crmClients.find(c => c.id === p.clientId)?.empresa || "CLIENTE EXTERNO"}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-500 group-focus:text-white/80 line-clamp-1 mt-0.5">{p.nombre}</span>
                                   </div>
                                   {field.value === p.id && (
                                     <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
