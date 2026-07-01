@@ -45,6 +45,7 @@ import {
 } from "@/components/ui/select";
 import { useSearchParams } from "next/navigation";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
 import type { Actividad, Proyecto } from "@/lib/types";
 import { ActividadForm } from "@/components/operaciones/actividad-form";
 import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-modal";
@@ -226,6 +227,8 @@ export default function ActividadesClient() {
     loading,
   } = useOperacionesStore();
 
+  const { clients: crmClients, fetchClients } = useCRMStore();
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editingActividad, setEditingActividad] = useState<Actividad | null>(null);
@@ -244,6 +247,9 @@ export default function ActividadesClient() {
     fetchResponsables();
     if (proyectosStore.length === 0) {
       fetchProyectos(1, 200);
+    }
+    if (crmClients.length === 0) {
+      fetchClients(1, 1000);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Removemos dependencias para que solo llame al API una vez al inicio
@@ -624,15 +630,22 @@ export default function ActividadesClient() {
                     {isOpen ? <FolderOpen className="w-4 h-4 text-primary" /> : <FolderKanban className="w-4 h-4 text-accent" />}
                   </div>
 
-                  {/* Código + Nombre (flex-1) */}
-                  <div className="flex items-center gap-2 min-w-0 flex-shrink min-w-[200px] max-w-[40%]">
-                    <span className="font-mono text-[10px] font-bold text-accent uppercase tracking-wider shrink-0">
-                      {grupo.codigo}
-                    </span>
-                    <span className="text-[10px] text-white/40 shrink-0">·</span>
-                    <h2 className="text-[13px] font-semibold tracking-tight truncate">
-                      {grupo.nombre}
-                    </h2>
+                  {/* Código + Nombre + Cliente (flex-1) */}
+                  <div className="flex flex-col justify-center min-w-0 flex-shrink min-w-[200px] max-w-[40%] gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[10px] font-bold text-accent uppercase tracking-wider shrink-0">
+                        {grupo.codigo}
+                      </span>
+                      <span className="text-[10px] text-white/40 shrink-0">·</span>
+                      <h2 className="text-[13px] font-semibold tracking-tight truncate" title={grupo.nombre}>
+                        {grupo.nombre}
+                      </h2>
+                    </div>
+                    {proyectoFull?.clientId && (
+                      <div className="text-[9px] font-black tracking-widest uppercase text-amber-300 truncate" title={crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}>
+                        {crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}
+                      </div>
+                    )}
                   </div>
 
                   {/* Semáforo + Estado */}
