@@ -888,7 +888,7 @@ export function CRMStats() {
                       <p className="font-bold text-slate-800 text-sm">
                         {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                      <p className="text-xs text-slate-500 mt-1 line-clamp-2" title={interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}>
                         {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
@@ -927,7 +927,7 @@ function StatsCard({ label, value, subLabel, icon, color, bgColor }: any) {
         <div className="min-w-0">
           <p className="text-[9px] font-black text-muted-foreground uppercase tracking-widest leading-none mb-1">{label}</p>
           <p className={cn("text-xl font-black tracking-tighter leading-none", color)}>{value}</p>
-          <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic truncate">{subLabel}</p>
+          <p className="text-[8px] font-bold text-slate-400 uppercase mt-1 italic truncate" title={subLabel}>{subLabel}</p>
         </div>
       </div>
     </div>

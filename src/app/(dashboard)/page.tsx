@@ -1134,7 +1134,7 @@ export default function DashboardPage() {
                         <div key={client.id} className="p-3 bg-slate-50 rounded-xl hover:bg-slate-100/50 transition-colors flex items-center justify-between gap-3">
                           <div className="min-w-0">
                             <p className="text-xs font-bold text-slate-800 truncate">{client.empresa}</p>
-                            <p className="text-[9px] text-muted-foreground truncate italic">"{client.accion}"</p>
+                            <p className="text-[9px] text-muted-foreground truncate italic" title={client.accion}>"{client.accion}"</p>
                             <p className="text-[8px] text-slate-400 font-medium uppercase mt-0.5">Asesor: {client.asignadoA}</p>
                           </div>
                           <Badge className={cn("text-[8px] font-bold uppercase border-none", isOverdue ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700")}>
@@ -2006,7 +2006,10 @@ export default function DashboardPage() {
                         {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                       </p>
                       {(int.comentario || int.notas || int.observaciones) && (
-                        <p className="text-xs text-slate-600 mt-1.5 italic line-clamp-2">
+                        <p 
+                          className="text-xs text-slate-600 mt-1.5 italic line-clamp-2"
+                          title={int.comentario || int.notas || int.observaciones}
+                        >
                           "{int.comentario || int.notas || int.observaciones}"
                         </p>
                       )}
