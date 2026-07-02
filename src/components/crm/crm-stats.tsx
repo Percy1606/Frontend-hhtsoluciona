@@ -127,9 +127,9 @@ export function CRMStats() {
       return { startDate: start, endDate: end };
     }
     if (dateRangeType === "custom" && customStartDate && customEndDate) {
-      const start = new Date(customStartDate);
+      const start = new Date(`${customStartDate}T00:00:00`);
       start.setHours(0,0,0,0);
-      const end = new Date(customEndDate);
+      const end = new Date(`${customEndDate}T23:59:59`);
       end.setHours(23,59,59,999);
       return { startDate: start, endDate: end };
     }
@@ -324,13 +324,16 @@ export function CRMStats() {
     const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
 
     const isValentina = seller.name.toLowerCase() === 'valentina';
+    const isAriana = seller.name.toLowerCase() === 'ariana';
     
     const meta = 15;
     let progreso = 0;
-    if (isValentina) {
-      progreso = contactosCount;
-    } else {
+    if (isAriana) {
       progreso = prospectosCount;
+    } else if (isValentina) {
+      progreso = contactosCount + visitasCount;
+    } else {
+      progreso = prospectosCount + contactosCount + visitasCount;
     }
     const efectividad = Math.min(100, Math.round((progreso / meta) * 100));
 
@@ -626,20 +629,34 @@ export function CRMStats() {
             </Card>
           </div>
 
-          {/* METAS DIARIAS (15 PROSPECTOS / ASESOR) */}
+          {/* METAS DEL PERIODO */}
           <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm mb-6">
             <div className="flex items-center gap-2 mb-4">
               <Target className="w-5 h-5 text-indigo-600" />
-              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Cumplimiento de Meta Diaria</h3>
+              <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Rendimiento del Periodo</h3>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {chartData.map((data, idx) => {
                 const isValentina = data.name.toLowerCase() === 'valentina';
+                const isAriana = data.name.toLowerCase() === 'ariana';
                 const meta = 15;
-                const avance = isValentina ? data.contactos : data.prospectos;
+                
+                let avance = 0;
+                let labelTipo = "";
+                
+                if (isAriana) {
+                  avance = data.prospectos;
+                  labelTipo = "Nuevos Prospectos";
+                } else if (isValentina) {
+                  avance = data.contactos + data.visitas;
+                  labelTipo = "Seguimientos y Visitas";
+                } else {
+                  avance = data.prospectos + data.contactos + data.visitas;
+                  labelTipo = "Prospectos, Seguim. y Visitas";
+                }
+                
                 const porcentaje = Math.min((avance / meta) * 100, 100);
                 const isSuccess = avance >= meta;
-                const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";
                 return (
                   <div key={idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 relative overflow-hidden">
                     <div className="flex justify-between items-center mb-2">

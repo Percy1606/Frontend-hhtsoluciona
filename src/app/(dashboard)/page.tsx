@@ -1289,7 +1289,7 @@ export default function DashboardPage() {
                     const creador = getRealCreator(c);
                     return creador?.toLowerCase().includes(seller.name.toLowerCase().trim());
                   }).length,
-                  prospectosHoy: clients.filter((c: any) => {
+                  prospectosPeriodo: clients.filter((c: any) => {
                      const creador = getRealCreator(c);
                      if (!creador?.toLowerCase().includes(seller.name.toLowerCase().trim())) return false;
                      return c.fechaCreacion?.startsWith(getPeruDateString());
@@ -1338,14 +1338,12 @@ export default function DashboardPage() {
 
               return (
                 <div className="space-y-6">
-                  {/* LIVE PULSE DEL DÍA */}
+                  {/* LIVE PULSE DEL PERIODO */}
                   {(() => {
-                    const hoyStr = getPeruDateString();
-                    const prospectosHoy = clients.filter((c: any) => c.fechaCreacion?.startsWith(hoyStr)).length;
-                    const seguimientosHoy = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(hoyStr)).length, 0);
-                    const visitasHoy = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(hoyStr) && i.tipo?.toLowerCase().includes('visit')).length, 0);
-                    const cierresHoy = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (c.fechaActualizacion?.startsWith(hoyStr) || c.fechaCreacion?.startsWith(hoyStr) || c.ultimoContacto?.startsWith(hoyStr))).length;
-                    const cotizacionesHoy = quotes.filter((q: any) => q.fechaCreacion?.startsWith(hoyStr)).length;
+                    const prospectosPeriodo = filteredClients.length;
+                    const seguimientosPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt)).length, 0);
+                    const visitasPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt) && i.tipo?.toLowerCase().includes('visit')).length, 0);
+                    const cierresPeriodo = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (isInRange(c.fechaActualizacion || '') || isInRange(c.fechaCreacion || '') || isInRange(c.ultimoContacto || ''))).length;
 
                     return (
                       <div className="bg-slate-900 rounded-2xl px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between text-white shadow-xl hover:shadow-2xl hover:scale-[1.01] transition-all cursor-pointer gap-4 border border-slate-800" onClick={() => router.push('/crm/cartera')}>
@@ -1353,7 +1351,7 @@ export default function DashboardPage() {
                           <div className="bg-rose-500/20 p-2 rounded-xl">
                             <Flame className="w-5 h-5 text-rose-500 animate-pulse" />
                           </div>
-                          <span className="text-xs font-bold tracking-widest uppercase text-slate-300">Actividad de Hoy</span>
+                          <span className="text-xs font-bold tracking-widest uppercase text-slate-300">Actividad del Periodo</span>
                         </div>
                         
                         <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5">
@@ -1361,7 +1359,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
                             <Users className="w-4 h-4 text-blue-400" />
                             <div className="flex items-baseline gap-1.5">
-                              <span className="text-white text-base font-black leading-none">{prospectosHoy}</span>
+                              <span className="text-white text-base font-black leading-none">{prospectosPeriodo}</span>
                               <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Prospectos</span>
                             </div>
                           </div>
@@ -1370,7 +1368,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
                             <MapPin className="w-4 h-4 text-purple-400" />
                             <div className="flex items-baseline gap-1.5">
-                              <span className="text-white text-base font-black leading-none">{visitasHoy}</span>
+                              <span className="text-white text-base font-black leading-none">{visitasPeriodo}</span>
                               <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Visitas</span>
                             </div>
                           </div>
@@ -1379,7 +1377,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
                             <PhoneCall className="w-4 h-4 text-emerald-400" />
                             <div className="flex items-baseline gap-1.5">
-                              <span className="text-white text-base font-black leading-none">{seguimientosHoy}</span>
+                              <span className="text-white text-base font-black leading-none">{seguimientosPeriodo}</span>
                               <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Contactos</span>
                             </div>
                           </div>
@@ -1389,7 +1387,7 @@ export default function DashboardPage() {
                           <div className="flex items-center gap-2.5 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/50">
                             <Trophy className="w-4 h-4 text-rose-400" />
                             <div className="flex items-baseline gap-1.5">
-                              <span className={cierresHoy > 0 ? "text-emerald-400 text-base font-black leading-none" : "text-white text-base font-black leading-none"}>{cierresHoy}</span>
+                              <span className={cierresPeriodo > 0 ? "text-emerald-400 text-base font-black leading-none" : "text-white text-base font-black leading-none"}>{cierresPeriodo}</span>
                               <span className="text-slate-400 font-bold text-[9px] uppercase tracking-wider">Órdenes Serv.</span>
                             </div>
                           </div>
@@ -1398,20 +1396,34 @@ export default function DashboardPage() {
                     );
                   })()}
 
-                  {/* METAS DIARIAS (15 PROSPECTOS / ASESOR) */}
+                  {/* CUMPLIMIENTO DE METAS DEL PERIODO */}
                   <div className="bg-white border border-slate-200 rounded-[2rem] p-6 shadow-sm mb-6">
                     <div className="flex items-center gap-2 mb-4">
                       <Target className="w-5 h-5 text-indigo-600" />
-                      <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Cumplimiento de Meta Diaria</h3>
+                      <h3 className="text-sm font-bold uppercase tracking-widest text-slate-800">Rendimiento del Periodo</h3>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {chartData.map((data, idx) => {
                         const isValentina = data.name.toLowerCase() === 'valentina';
-                        const meta = 15; // 15 prospectos para cazadoras, 15 seguimientos para cerradoras
-                        const avance = isValentina ? data.contactos : data.prospectos;
+                        const isAriana = data.name.toLowerCase() === 'ariana';
+                        const meta = 15; 
+                        
+                        let avance = 0;
+                        let labelTipo = "";
+                        
+                        if (isAriana) {
+                          avance = data.prospectos;
+                          labelTipo = "Nuevos Prospectos";
+                        } else if (isValentina) {
+                          avance = data.contactos + data.visitas;
+                          labelTipo = "Seguimientos y Visitas";
+                        } else {
+                          avance = data.prospectos + data.contactos + data.visitas;
+                          labelTipo = "Prospectos, Seguim. y Visitas";
+                        }
+                        
                         const porcentaje = Math.min((avance / meta) * 100, 100);
                         const isSuccess = avance >= meta;
-                        const labelTipo = isValentina ? "Seguimientos/Contactos" : "Nuevos Prospectos";
                         return (
                           <div key={idx} className="bg-slate-50 border border-slate-100 rounded-2xl p-4 relative overflow-hidden">
                             <div className="flex justify-between items-center mb-2">
@@ -1569,16 +1581,16 @@ export default function DashboardPage() {
                               
                               const meta = 15;
                               let progreso = 0;
-                              if (isValentina) {
-                                progreso = data.contactos;
-                              } else {
+                              if (isAriana) {
                                 progreso = data.prospectos;
+                              } else if (isValentina) {
+                                progreso = data.contactos + data.visitas;
+                              } else {
+                                progreso = data.prospectos + data.contactos + data.visitas;
                               }
                               
                               const efectividad = Math.round((progreso / meta) * 100);
                               const efectividadReal = Math.min(efectividad, 100);
-
-
 
                               return (
                                 <tr key={seller.name} className="hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => router.push('/crm/cartera')}>
