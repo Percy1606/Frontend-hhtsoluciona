@@ -388,6 +388,12 @@ export const useCRMStore = create<CRMState>()(
             fechaActualizacion,
             deletedAt,
             _count,
+            creadoPor,
+            responsable,
+            actividadesComerciales,
+            fichasTecnicas,
+            cotizaciones,
+            facturas,
             ...data 
           } = client as any;
           
