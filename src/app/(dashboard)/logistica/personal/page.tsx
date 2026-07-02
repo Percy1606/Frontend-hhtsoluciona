@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Search,
@@ -57,6 +58,7 @@ const ROLES = ["Técnico", "Operario", "Supervisor", "Otro"] as const;
 const TIPOS_CONTRATO = ["Jornal", "Semanal", "Mensual"] as const;
 
 export default function PersonalPage() {
+  const router = useRouter();
   const {
     personal,
     totalPersonal,
@@ -403,6 +405,10 @@ export default function PersonalPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => router.push('/logistica/horas-extras')} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-blue-500 text-blue-600 hover:bg-blue-50">
+            <CheckCircle2 className="w-4 h-4" />
+            Solicitudes RRHH
+          </Button>
           <Button onClick={() => setShowExtrasForm(true)} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-amber-500 text-amber-600 hover:bg-amber-50">
             <Clock className="w-4 h-4" />
             Horas Extras

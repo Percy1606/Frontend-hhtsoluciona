@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import {
   Table,
   TableBody,
@@ -25,7 +26,8 @@ import {
   FilterX,
   ShieldAlert,
   Lock,
-  RotateCw
+  RotateCw,
+  Clock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -98,6 +100,7 @@ const areaColors: Record<string, string> = {
 };
 
 export default function ProyectosPage() {
+  const router = useRouter();
   const {
     proyectos,
     totalProyectos,
@@ -408,6 +411,13 @@ export default function ProyectosPage() {
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Control operativo y seguimiento de proyectos.</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="h-9 gap-2 font-black uppercase text-[10px] border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
+            onClick={() => router.push('/operaciones/horas-extras')}
+          >
+            <Clock className="w-4 h-4" /> Mis Horas Extras
+          </Button>
           <Button
             variant="outline"
             className="h-9 gap-2 font-black uppercase text-[10px] border-slate-200 bg-white"

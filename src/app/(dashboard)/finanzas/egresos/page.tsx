@@ -74,7 +74,9 @@ export default function EgresosPage() {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=1000');
       const data = Array.isArray(res) ? res : (res.data || []);
-      setGastos(data);
+      // Finanzas no debe ver gastos "SOLICITADO" ya que esos son para RRHH/Logistica
+      const filteredData = data.filter((g: any) => g.estado !== "SOLICITADO");
+      setGastos(filteredData);
     } catch (e) {
       console.error("Error fetching expenses", e);
       setGastos([]);
