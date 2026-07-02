@@ -18,10 +18,10 @@ export default function SolicitudesRRHH() {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=500');
       const data = Array.isArray(res) ? res : (res.data || []);
-      // Filtrar los que son de tipo PLANILLA y están en revisión
+      // Mostrar todo el flujo de Horas Extras de Operaciones
       const solicitudes = data.filter((g: any) => 
         g.tipo === "PLANILLA" && 
-        g.concepto.includes("[RRHH-REVISION]")
+        (g.concepto.includes("[RRHH-REVISION]") || g.concepto.includes("[RRHH-APROBADO]") || g.concepto.includes("[RRHH-RECHAZADO]"))
       );
       setGastos(solicitudes);
     } catch (e) {
@@ -94,13 +94,19 @@ export default function SolicitudesRRHH() {
                 </TableCell>
               </TableRow>
             ) : (
-              gastos.map((g) => (
+              gastos.map((g) => {
+                const isRevision = g.concepto.includes("[RRHH-REVISION]");
+                const isAprobado = g.concepto.includes("[RRHH-APROBADO]");
+                const isRechazado = g.concepto.includes("[RRHH-RECHAZADO]");
+                const cleanConcepto = g.concepto.replace("[RRHH-REVISION] ", "").replace("[RRHH-APROBADO] ", "").replace("[RRHH-RECHAZADO] ", "");
+                
+                return (
                 <TableRow key={g.id}>
                   <TableCell className="font-medium">
                     {new Date(g.fechaEmision).toLocaleDateString()}
                   </TableCell>
                   <TableCell className="font-semibold text-slate-700">
-                    {g.concepto.replace("[RRHH-REVISION] ", "")}
+                    {cleanConcepto}
                   </TableCell>
                   <TableCell className="text-sm text-slate-600">
                     {g.justificacion}
@@ -109,31 +115,42 @@ export default function SolicitudesRRHH() {
                     S/. {Number(g.montoTotal).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
-                        onClick={() => handleAction(g, true)}
-                        disabled={actionLoading === g.id}
-                      >
-                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
-                        Aprobar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
-                        onClick={() => handleAction(g, false)}
-                        disabled={actionLoading === g.id}
-                      >
-                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
-                        Rechazar
-                      </Button>
-                    </div>
+                    {isRevision ? (
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
+                          onClick={() => handleAction(g, true)}
+                          disabled={actionLoading === g.id}
+                        >
+                          {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+                          Aprobar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                          onClick={() => handleAction(g, false)}
+                          disabled={actionLoading === g.id}
+                        >
+                          {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
+                          Rechazar
+                        </Button>
+                      </div>
+                    ) : isAprobado ? (
+                      <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                        <CheckCircle2 className="w-3 h-3 mr-1" /> Aprobado
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
+                        <XCircle className="w-3 h-3 mr-1" /> Rechazado
+                      </Badge>
+                    )}
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

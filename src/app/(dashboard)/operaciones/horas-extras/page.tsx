@@ -78,10 +78,13 @@ export default function MisHorasExtras() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (g: any) => {
     try {
-      await api.post(`/finanzas/gastos/${id}/secure-delete`, { password: "admin" });
-      toast.success("Solicitud eliminada.");
+      await api.patch(`/finanzas/gastos/${g.id}`, { 
+        estado: "ANULADO", 
+        concepto: g.concepto.replace("[RRHH-REVISION]", "[CANCELADO]") 
+      });
+      toast.success("Solicitud cancelada correctamente.");
       fetchData();
     } catch (e: any) {
       toast.error(e.message || "Error al eliminar la solicitud.");
@@ -162,7 +165,7 @@ export default function MisHorasExtras() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(g.id)}
+                          onClick={() => handleDelete(g)}
                           className="text-red-500 hover:text-red-600 hover:bg-red-50"
                         >
                           <Trash2 className="w-4 h-4" />
