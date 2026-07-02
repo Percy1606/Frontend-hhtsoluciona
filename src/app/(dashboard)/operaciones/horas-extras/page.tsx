@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Clock, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
+import { Plus, Trash2, Clock, CheckCircle2, Loader2, Edit2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -17,12 +17,30 @@ export default function MisHorasExtras() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingGasto, setEditingGasto] = useState<any>(null);
 
   const [formData, setFormData] = useState({
-    montoTotal: "",
     fechaEmision: new Date().toISOString().split("T")[0],
     justificacion: "",
   });
+
+  const openNew = () => {
+    setEditingGasto(null);
+    setFormData({
+      fechaEmision: new Date().toISOString().split("T")[0],
+      justificacion: "",
+    });
+    setIsModalOpen(true);
+  };
+
+  const openEdit = (g: any) => {
+    setEditingGasto(g);
+    setFormData({
+      fechaEmision: g.fechaEmision.split("T")[0],
+      justificacion: g.justificacion,
+    });
+    setIsModalOpen(true);
+  };
 
   const fetchData = async () => {
     try {
@@ -48,28 +66,37 @@ export default function MisHorasExtras() {
     fetchData();
   }, [user?.nombre]);
 
-  const handleSubmit = async () => {
-    if (!formData.montoTotal || !formData.justificacion) {
-      toast.error("Complete el monto y la justificación.");
+    const handleSubmit = async () => {
+    if (!formData.justificacion) {
+      toast.error("Complete la justificación.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      await api.post("/finanzas/gastos", {
-        tipo: "PLANILLA",
-        clasificacion: "PROYECTO",
-        concepto: `[RRHH-REVISION] Horas Extras - ${user?.nombre || "Usuario"}`,
-        montoTotal: Number(formData.montoTotal),
-        estado: "PENDIENTE",
-        fechaEmision: formData.fechaEmision,
-        area: "LogisticaYRecursos",
-        justificacion: formData.justificacion,
-        proyectoId: null,
-      });
-      toast.success("Solicitud enviada a Logística.");
+      if (editingGasto) {
+        await api.patch(`/finanzas/gastos/${editingGasto.id}`, {
+          fechaEmision: formData.fechaEmision,
+          justificacion: formData.justificacion,
+        });
+        toast.success("Solicitud actualizada.");
+      } else {
+        await api.post("/finanzas/gastos", {
+          tipo: "PLANILLA",
+          clasificacion: "PROYECTO",
+          concepto: `[RRHH-REVISION] Horas Extras - ${user?.nombre || "Usuario"}`,
+          montoTotal: 0,
+          estado: "PENDIENTE",
+          fechaEmision: formData.fechaEmision,
+          area: "LogisticaYRecursos",
+          justificacion: formData.justificacion,
+          proyectoId: null,
+        });
+        toast.success("Solicitud enviada a Logística.");
+      }
       setIsModalOpen(false);
-      setFormData({ ...formData, montoTotal: "", justificacion: "" });
+      setFormData({ fechaEmision: new Date().toISOString().split("T")[0], justificacion: "" });
+      setEditingGasto(null);
       fetchData();
     } catch (e: any) {
       toast.error(e.message || "Error al solicitar horas extras");
@@ -79,6 +106,7 @@ export default function MisHorasExtras() {
   };
 
   const handleDelete = async (g: any) => {
+    if (!window.confirm("¿Está seguro que desea cancelar esta solicitud?")) return;
     try {
       await api.patch(`/finanzas/gastos/${g.id}`, { 
         estado: "ANULADO", 
@@ -98,7 +126,7 @@ export default function MisHorasExtras() {
           <h1 className="text-xl font-bold text-slate-800">Mis Horas Extras</h1>
           <p className="text-sm text-slate-500">Solicita a Logística el pago de tus horas adicionales o trabajos extra.</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="bg-amber-600 hover:bg-amber-700">
+        <Button onClick={openNew} className="bg-amber-600 hover:bg-amber-700">
           <Plus className="w-4 h-4 mr-2" />
           Nueva Solicitud
         </Button>
@@ -141,7 +169,11 @@ export default function MisHorasExtras() {
                       <p className="text-xs text-slate-500">{g.justificacion}</p>
                     </TableCell>
                     <TableCell className="font-bold text-slate-700">
-                      S/. {Number(g.montoTotal).toFixed(2)}
+                      {Number(g.montoTotal) === 0 ? (
+                        <span className="text-slate-400 italic font-normal text-xs">Por definir</span>
+                      ) : (
+                        `S/. ${Number(g.montoTotal).toFixed(2)}`
+                      )}
                     </TableCell>
                     <TableCell>
                       {enRevision ? (
@@ -162,14 +194,24 @@ export default function MisHorasExtras() {
                     </TableCell>
                     <TableCell className="text-right">
                       {enRevision && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => handleDelete(g)}
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => openEdit(g)}
+                            className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(g)}
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
                       )}
                     </TableCell>
                   </TableRow>
@@ -183,7 +225,7 @@ export default function MisHorasExtras() {
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="max-w-sm bg-white">
           <DialogHeader>
-            <DialogTitle>Solicitar Pago Extra</DialogTitle>
+            <DialogTitle>{editingGasto ? "Editar Solicitud" : "Solicitar Pago Extra"}</DialogTitle>
             <DialogDescription>
               Esta solicitud pasará primero a revisión por Logística.
             </DialogDescription>
@@ -194,10 +236,6 @@ export default function MisHorasExtras() {
               <Input type="date" value={formData.fechaEmision} onChange={(e) => setFormData({ ...formData, fechaEmision: e.target.value })} />
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-500 mb-1.5 block">Monto a solicitar (S/.)</label>
-              <Input type="number" step="0.01" min="0" placeholder="Ej: 50.00" value={formData.montoTotal} onChange={(e) => setFormData({ ...formData, montoTotal: e.target.value })} />
-            </div>
-            <div>
               <label className="text-xs font-medium text-slate-500 mb-1.5 block">Sustento / Justificación</label>
               <Input placeholder="Ej: Feriado trabajado en el proyecto X" value={formData.justificacion} onChange={(e) => setFormData({ ...formData, justificacion: e.target.value })} />
             </div>
@@ -206,7 +244,7 @@ export default function MisHorasExtras() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancelar</Button>
             <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-amber-600 hover:bg-amber-700">
               {isSubmitting && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Enviar Solicitud
+              {editingGasto ? "Guardar Cambios" : "Enviar Solicitud"}
             </Button>
           </DialogFooter>
         </DialogContent>

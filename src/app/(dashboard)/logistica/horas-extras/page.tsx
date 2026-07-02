@@ -112,7 +112,11 @@ export default function SolicitudesRRHH() {
                     {g.justificacion}
                   </TableCell>
                   <TableCell className="font-bold text-slate-800">
-                    S/. {Number(g.montoTotal).toFixed(2)}
+                    {Number(g.montoTotal) === 0 ? (
+                      <span className="text-slate-400 italic font-normal text-xs">Por definir</span>
+                    ) : (
+                      `S/. ${Number(g.montoTotal).toFixed(2)}`
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {isRevision ? (
