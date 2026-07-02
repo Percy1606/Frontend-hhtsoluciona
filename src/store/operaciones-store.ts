@@ -284,8 +284,8 @@ const mapAreaToFrontend = (area: string) => {
 
 const mapTipoDocumentoToBackend = (tipo: string) => {
   const map: Record<string, string> = {
-    'Técnico': 'Tecnico',
-    'Administrativo': 'Administrativo',
+    'Técnico': 'Tecnica',
+    'Administrativo': 'Administrativa',
     'Legal': 'Legal',
     'Financiero': 'Financiero',
     'Otro': 'Otro'
@@ -295,8 +295,8 @@ const mapTipoDocumentoToBackend = (tipo: string) => {
 
 const mapTipoDocumentoToFrontend = (tipo: string) => {
   const map: Record<string, string> = {
-    'Tecnico': 'Técnico',
-    'Administrativo': 'Administrativo',
+    'Tecnica': 'Técnico',
+    'Administrativa': 'Administrativo',
     'Legal': 'Legal',
     'Financiero': 'Financiero',
     'Otro': 'Otro'
