@@ -100,7 +100,6 @@ export default function PersonalPage() {
     montoDiario: 0,
     fechaInicio: new Date().toISOString().split("T")[0],
     fechaFin: "",
-    fechaFin: "",
     observaciones: "",
   });
 
