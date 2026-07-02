@@ -103,7 +103,7 @@ export default function SolicitudesRRHH() {
                 return (
                 <TableRow key={g.id}>
                   <TableCell className="font-medium">
-                    {new Date(g.fechaEmision).toLocaleDateString()}
+                    {new Date(g.fechaEmision).toLocaleDateString('es-PE', { timeZone: 'UTC' })}
                   </TableCell>
                   <TableCell className="font-semibold text-slate-700">
                     {cleanConcepto}

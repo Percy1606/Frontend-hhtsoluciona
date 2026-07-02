@@ -134,7 +134,7 @@ export default function MisHorasExtras() {
                 return (
                   <TableRow key={g.id}>
                     <TableCell className="font-medium">
-                      {new Date(g.fechaEmision).toLocaleDateString()}
+                      {new Date(g.fechaEmision).toLocaleDateString('es-PE', { timeZone: 'UTC' })}
                     </TableCell>
                     <TableCell>
                       <p className="font-medium text-slate-800">{g.concepto.replace("[RRHH-REVISION] ", "").replace("[RRHH-APROBADO] ", "")}</p>
