@@ -61,7 +61,6 @@ export default function MisHorasExtras() {
         clasificacion: "PROYECTO",
         concepto: `Solicitud Horas Extras - ${user?.nombre || "Usuario"}`,
         montoTotal: Number(formData.montoTotal),
-        saldoPendiente: Number(formData.montoTotal),
         estado: "SOLICITADO",
         fechaEmision: formData.fechaEmision,
         area: "LogisticaYRecursos",
@@ -158,7 +157,7 @@ export default function MisHorasExtras() {
       </div>
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-sm bg-white">
           <DialogHeader>
             <DialogTitle>Solicitar Pago Extra</DialogTitle>
             <DialogDescription>

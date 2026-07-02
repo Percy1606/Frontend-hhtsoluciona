@@ -264,7 +264,6 @@ export default function PersonalPage() {
         clasificacion: "PROYECTO",
         concepto: `Horas Extras / Faltas - ${trabajador.nombre}`,
         montoTotal: Number(extrasData.montoTotal),
-        saldoPendiente: Number(extrasData.montoTotal),
         estado: "PENDIENTE",
         fechaEmision: extrasData.fecha,
         area: "LogisticaYRecursos",
