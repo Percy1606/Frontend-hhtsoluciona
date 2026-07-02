@@ -182,12 +182,14 @@ export function CRMStats() {
   ).length;
 
   const getRealCreator = (c: any) => {
+    if (c.creadoPor) return c.creadoPor;
+    
     const interacciones = c.historialInteracciones || c.interacciones || [];
     if (interacciones.length > 0) {
       const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
       if (sorted[0]?.usuario) return sorted[0].usuario;
     }
-    return c.creadoPor || c.asignadoA;
+    return c.asignadoA;
   };
 
   const nuevosProspectos = clients.filter(c => {
@@ -317,7 +319,7 @@ export function CRMStats() {
       return c.fechaCreacion?.startsWith(getPeruDateString());
     }).length;
 
-    const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length || (contactosCount > 0 ? (contactosCount % 4) + 1 : 0);
+    const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length;
     
     const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
 
@@ -709,7 +711,7 @@ export function CRMStats() {
                                   className="bg-slate-100 text-slate-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-slate-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const prospectosPeriodoList = filteredClients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim());
+                                    const prospectosPeriodoList = filteredClients.filter((c: any) => getRealCreator(c)?.toLowerCase().includes(data.name.toLowerCase().trim()));
                                     setProspectosList(prospectosPeriodoList);
                                     setProspectosModalOpen(true);
                                   }}

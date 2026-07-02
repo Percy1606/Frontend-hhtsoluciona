@@ -488,12 +488,13 @@ export default function DashboardPage() {
     endOfWeek.setHours(23, 59, 59, 999);
 
     const getRealCreator = (c: any) => {
+      if (c.creadoPor) return c.creadoPor;
       const interacciones = c.historialInteracciones || c.interacciones || [];
       if (interacciones.length > 0) {
         const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
         if (sorted[0]?.usuario) return sorted[0].usuario;
       }
-      return c.creadoPor || c.asignadoA;
+      return c.asignadoA;
     };
 
     return sellers.reduce((acc, s) => {
@@ -1222,12 +1223,13 @@ export default function DashboardPage() {
               const seguimientosTotal = clients.filter((c: any) => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
 
               const getRealCreator = (c: any) => {
+                if (c.creadoPor) return c.creadoPor;
                 const interacciones = c.historialInteracciones || c.interacciones || [];
                 if (interacciones.length > 0) {
                   const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
                   if (sorted[0]?.usuario) return sorted[0].usuario;
                 }
-                return c.creadoPor || c.asignadoA;
+                return c.asignadoA;
               };
 
               // Datos para el gráfico
@@ -1299,7 +1301,7 @@ export default function DashboardPage() {
                   contactos: contactosPeriodoList.length,
                   contactosHoy: contactosHoyList.length,
                   contactosPeriodoList: contactosPeriodoList,
-                  visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length || (contactosPeriodoList.length > 0 ? (contactosPeriodoList.length % 4) + 1 : 0),
+                  visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length,
                 };
               });
 
@@ -1317,13 +1319,14 @@ export default function DashboardPage() {
                   if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                     const dateStr = getPeruDateString(d);
                     const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
-                    const contactosDia = clients.filter((c: any) => c.ultimoContacto?.startsWith(dateStr)).length;
+                    const contactosDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr)).length, 0);
+                    const visitasDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && i.tipo?.toLowerCase().includes('visit')).length, 0);
                     
                     data.unshift({ // unshift para mantener el orden cronológico
                       name: dayName,
                       prospectos: clients.filter((c: any) => c.fechaCreacion?.startsWith(dateStr)).length,
                       contactos: contactosDia,
-                      visitas: clients.filter((c: any) => c.tipoContacto === 'Visita' && c.ultimoContacto?.startsWith(dateStr)).length || (contactosDia > 0 ? (contactosDia % 3) : 0),
+                      visitas: visitasDia,
                       cotizaciones: quotes.filter((q: any) => q.fechaCreacion?.startsWith(dateStr)).length,
                     });
                     daysAdded++;
@@ -1339,9 +1342,9 @@ export default function DashboardPage() {
                   {(() => {
                     const hoyStr = getPeruDateString();
                     const prospectosHoy = clients.filter((c: any) => c.fechaCreacion?.startsWith(hoyStr)).length;
-                    const seguimientosHoy = clients.filter((c: any) => c.ultimoContacto?.startsWith(hoyStr)).length;
-                    const visitasHoy = clients.filter((c: any) => c.tipoContacto === 'Visita' && c.ultimoContacto?.startsWith(hoyStr)).length;
-                    const cierresHoy = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (c.fechaActualizacion?.startsWith(hoyStr) || c.fechaCreacion?.startsWith(hoyStr))).length;
+                    const seguimientosHoy = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(hoyStr)).length, 0);
+                    const visitasHoy = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(hoyStr) && i.tipo?.toLowerCase().includes('visit')).length, 0);
+                    const cierresHoy = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (c.fechaActualizacion?.startsWith(hoyStr) || c.fechaCreacion?.startsWith(hoyStr) || c.ultimoContacto?.startsWith(hoyStr))).length;
                     const cotizacionesHoy = quotes.filter((q: any) => q.fechaCreacion?.startsWith(hoyStr)).length;
 
                     return (
@@ -1601,7 +1604,7 @@ export default function DashboardPage() {
                                             className="bg-slate-100 text-slate-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-slate-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              const prospectosPeriodoList = filteredClients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
+                                              const prospectosPeriodoList = filteredClients.filter((c: any) => getRealCreator(c)?.toLowerCase().includes(seller.name.toLowerCase().trim()));
                                               setProspectosList(prospectosPeriodoList);
                                               setProspectosModalOpen(true);
                                             }}

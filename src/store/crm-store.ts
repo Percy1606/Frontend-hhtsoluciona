@@ -447,6 +447,12 @@ export const useCRMStore = create<CRMState>()(
             fechaActualizacion,
             deletedAt,
             _count,
+            creadoPor,
+            responsable,
+            actividadesComerciales,
+            fichasTecnicas,
+            cotizaciones,
+            facturas,
             ...data 
           } = client as any;
           
@@ -623,7 +629,25 @@ export const useCRMStore = create<CRMState>()(
             return;
           }
 
-          const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, _count, ...data } = client as any;
+          const { 
+            id: _, 
+            interacciones, 
+            documentos, 
+            proyectos, 
+            historialInteracciones, 
+            archivosAdjuntos,
+            fechaCreacion,
+            fechaActualizacion,
+            deletedAt,
+            _count,
+            creadoPor,
+            responsable,
+            actividadesComerciales,
+            fichasTecnicas,
+            cotizaciones,
+            facturas,
+            ...data 
+          } = client as any;
           
           const payload: any = { 
             ...data, 
