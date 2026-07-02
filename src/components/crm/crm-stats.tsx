@@ -181,9 +181,18 @@ export function CRMStats() {
     isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)
   ).length;
 
+  const getRealCreator = (c: any) => {
+    const interacciones = c.historialInteracciones || c.interacciones || [];
+    if (interacciones.length > 0) {
+      const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+      if (sorted[0]?.usuario) return sorted[0].usuario;
+    }
+    return c.creadoPor || c.asignadoA;
+  };
+
   const nuevosProspectos = clients.filter(c => {
-    const creador = (c as any).creadoPor || c.asignadoA;
-    const matchesSeller = selectedSeller === "EQUIPO COMPLETO" || creador === selectedSeller;
+    const creador = getRealCreator(c);
+    const matchesSeller = selectedSeller === "EQUIPO COMPLETO" || creador?.toLowerCase().includes(selectedSeller.toLowerCase().trim());
     return matchesSeller && isInRange(c.fechaCreacion || (c as any).createdAt);
   }).length;
   const visitasRealizadas = filteredClients.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length;
@@ -208,11 +217,19 @@ export function CRMStats() {
     { name: "Perdido", color: "#ef4444" }
   ];
 
-  const funnelData = funnelStages.map(stage => ({
-    name: stage.name,
-    value: filteredClients.filter(c => c.etapaComercial === stage.name).length,
-    color: stage.color
-  })).filter(item => item.value > 0);
+  const funnelData = funnelStages.map((stage, index) => {
+    return {
+      name: stage.name,
+      value: filteredClients.filter(c => {
+        if (stage.name === 'Perdido') return c.etapaComercial === 'Perdido';
+        const currentIdx = funnelStages.findIndex(s => s.name === c.etapaComercial);
+        if (currentIdx === -1) return false;
+        if (c.etapaComercial === 'Perdido') return index === 0; // Cuenta como prospecto (índice 0) al menos
+        return currentIdx >= index; // Acumulativo
+      }).length,
+      color: stage.color
+    };
+  }).filter(item => item.value > 0);
 
   // Benchmarking Team
   const sellers = [
@@ -224,7 +241,7 @@ export function CRMStats() {
   const sellerComparisonData = sellers.map(seller => {
     const sellerClients = clients.filter(c => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
     const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
-    const prospectosCount = clients.filter(c => ((c as any).creadoPor || c.asignadoA)?.toLowerCase().trim() === seller.name.toLowerCase().trim() && isInRange(c.fechaCreacion || (c as any).createdAt)).length;
+    const prospectosCount = clients.filter(c => getRealCreator(c)?.toLowerCase().includes(seller.name.toLowerCase().trim()) && isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
     return { name: seller.name, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
   });
@@ -291,12 +308,12 @@ export function CRMStats() {
     const contactosHoy = contactosHoyList.length;
 
     const prospectosCount = clients.filter((c: any) => {
-      const creador = (c as any).creadoPor || c.asignadoA;
-      return creador === seller.name && isInRange(c.fechaCreacion || (c as any).createdAt);
+      const creador = getRealCreator(c);
+      return creador?.toLowerCase().includes(seller.name.toLowerCase().trim()) && isInRange(c.fechaCreacion || (c as any).createdAt);
     }).length;
     const prospectosHoy = clients.filter((c: any) => {
-      const creador = (c as any).creadoPor || c.asignadoA;
-      if (creador !== seller.name) return false;
+      const creador = getRealCreator(c);
+      if (!creador?.toLowerCase().includes(seller.name.toLowerCase().trim())) return false;
       return c.fechaCreacion?.startsWith(getPeruDateString());
     }).length;
 

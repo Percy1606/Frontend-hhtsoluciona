@@ -487,15 +487,30 @@ export default function DashboardPage() {
     endOfWeek.setDate(startOfWeek.getDate() + 6);
     endOfWeek.setHours(23, 59, 59, 999);
 
+    const getRealCreator = (c: any) => {
+      const interacciones = c.historialInteracciones || c.interacciones || [];
+      if (interacciones.length > 0) {
+        const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+        if (sorted[0]?.usuario) return sorted[0].usuario;
+      }
+      return c.creadoPor || c.asignadoA;
+    };
+
     return sellers.reduce((acc, s) => {
+      // Para métricas de prospectos captados (prospectadosEstaSemana, totalProspectos), se debe respetar a quien lo originó.
+      // Para cartera activa (totalClientes, totalLeads), se respeta a quien lo tiene asignadoActualmente.
+      const sellerClientsFilteredByCreator = filteredClients.filter(c => getRealCreator(c)?.toLowerCase().includes(s.name.toLowerCase().trim()));
+      const sellerClientsAllByCreator = clients.filter(c => getRealCreator(c)?.toLowerCase().includes(s.name.toLowerCase().trim()));
+
       const sellerClientsAll = clients.filter(c => c.asignadoA === s.name);
       const sellerClientsFiltered = filteredClients.filter(c => c.asignadoA === s.name);
 
       const totalClientes = sellerClientsFiltered.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
 
-      const totalProspectos = sellerClientsFiltered.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
+      // Un prospecto "ganado" a un vendedor cuenta a quien lo prospectó
+      const totalProspectos = sellerClientsFilteredByCreator.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
 
-      const prospectadosEstaSemana = sellerClientsAll.filter(c => {
+      const prospectadosEstaSemana = sellerClientsAllByCreator.filter(c => {
         const d = parseSafeDate(c.fechaCreacion);
         if (!d) return false;
         return d >= startOfWeek && d <= endOfWeek;
@@ -1206,6 +1221,15 @@ export default function DashboardPage() {
               const cotizacionesTotal = filteredQuotes.length;
               const seguimientosTotal = clients.filter((c: any) => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
 
+              const getRealCreator = (c: any) => {
+                const interacciones = c.historialInteracciones || c.interacciones || [];
+                if (interacciones.length > 0) {
+                  const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+                  if (sorted[0]?.usuario) return sorted[0].usuario;
+                }
+                return c.creadoPor || c.asignadoA;
+              };
+
               // Datos para el gráfico
               const chartData = sellers.map(seller => {
                 const contactosPeriodoList = clients.reduce((acc: any[], c: any) => {
@@ -1259,9 +1283,13 @@ export default function DashboardPage() {
 
                 return {
                   name: seller.name.split(' ')[0], 
-                  prospectos: filteredClients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim()).length,
+                  prospectos: filteredClients.filter((c: any) => {
+                    const creador = getRealCreator(c);
+                    return creador?.toLowerCase().includes(seller.name.toLowerCase().trim());
+                  }).length,
                   prospectosHoy: clients.filter((c: any) => {
-                     if (c.asignadoA?.toLowerCase().trim() !== seller.name.toLowerCase().trim()) return false;
+                     const creador = getRealCreator(c);
+                     if (!creador?.toLowerCase().includes(seller.name.toLowerCase().trim())) return false;
                      return c.fechaCreacion?.startsWith(getPeruDateString());
                   }).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
