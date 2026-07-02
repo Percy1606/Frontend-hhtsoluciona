@@ -51,6 +51,7 @@ import { Separator } from "@/components/ui/separator";
 import { useLogisticaStore, PersonalProyecto } from "@/store/logistica-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { Combobox } from "@/components/ui/combobox";
+import { api } from "@/lib/api";
 
 const ROLES = ["Técnico", "Operario", "Supervisor", "Otro"] as const;
 const TIPOS_CONTRATO = ["Jornal", "Semanal", "Mensual"] as const;
@@ -99,6 +100,16 @@ export default function PersonalPage() {
     montoDiario: 0,
     fechaInicio: new Date().toISOString().split("T")[0],
     fechaFin: "",
+    fechaFin: "",
+    observaciones: "",
+  });
+
+  const [showExtrasForm, setShowExtrasForm] = useState(false);
+  const [isSubmittingExtras, setIsSubmittingExtras] = useState(false);
+  const [extrasData, setExtrasData] = useState({
+    personalId: "",
+    montoTotal: 0,
+    fecha: new Date().toISOString().split("T")[0],
     observaciones: "",
   });
 
@@ -235,6 +246,47 @@ export default function PersonalPage() {
     }
   };
 
+  const handleExtrasSubmit = async () => {
+    if (!extrasData.personalId || extrasData.montoTotal <= 0) {
+      alert("Seleccione un trabajador e ingrese un monto mayor a 0.");
+      return;
+    }
+
+    const trabajador = personal.find((p) => p.id === extrasData.personalId);
+    if (!trabajador) return;
+
+    setIsSubmittingExtras(true);
+    try {
+      await api.post("/finanzas/gastos", {
+        proyectoId: trabajador.proyectoId,
+        tipo: "PLANILLA",
+        clasificacion: "PROYECTO",
+        concepto: `Horas Extras / Faltas - ${trabajador.nombre}`,
+        montoTotal: Number(extrasData.montoTotal),
+        saldoPendiente: Number(extrasData.montoTotal),
+        estado: "PENDIENTE",
+        fechaEmision: extrasData.fecha,
+        area: "LogisticaYRecursos",
+        justificacion: `Registro de horas extras/ajustes. Observaciones: ${extrasData.observaciones}`
+      });
+
+      alert(`✅ Registrado correctamente. El monto se ha sumado a los gastos de Planilla del proyecto ${trabajador.proyectoCodigo || ""}`);
+      setShowExtrasForm(false);
+      setExtrasData({
+        personalId: "",
+        montoTotal: 0,
+        fecha: new Date().toISOString().split("T")[0],
+        observaciones: "",
+      });
+      // Opcional: refetch costos
+      fetchCostosPersonal(trabajador.proyectoId);
+    } catch (err: any) {
+      alert(err.message || "Error al registrar horas extras");
+    } finally {
+      setIsSubmittingExtras(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       await removePersonal(id);
@@ -352,6 +404,10 @@ export default function PersonalPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Button onClick={() => setShowExtrasForm(true)} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-amber-500 text-amber-600 hover:bg-amber-50">
+            <Clock className="w-4 h-4" />
+            Horas Extras
+          </Button>
           <Button onClick={() => { resetForm(); setShowForm(true); }} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
             <UserPlus className="w-4 h-4" />
             Registrar Personal
@@ -962,6 +1018,55 @@ export default function PersonalPage() {
             </Button>
             <Button variant="destructive" onClick={() => confirmDelete && handleDelete(confirmDelete)}>
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Form Horas Extras */}
+      <Dialog open={showExtrasForm} onOpenChange={setShowExtrasForm}>
+        <DialogContent className="max-w-sm bg-white">
+          <DialogHeader>
+            <DialogTitle>Registrar Horas Extras</DialogTitle>
+            <DialogDescription>
+              Se enviará directo a Finanzas como un Gasto Operativo asociado al proyecto del trabajador.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Trabajador Activo *</label>
+              <Combobox
+                options={personal.filter((p) => p.activo).map((p) => ({
+                  value: p.id,
+                  label: p.nombre,
+                  subLabel: p.proyectoCodigo || p.proyectoNombre || "Sin Proyecto",
+                }))}
+                value={extrasData.personalId}
+                onChange={(value) => setExtrasData({ ...extrasData, personalId: value })}
+                placeholder="Buscar trabajador..."
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Monto Extra a Pagar (S/.) *</label>
+              <Input type="number" min="0" step="0.01" value={extrasData.montoTotal} onChange={(e) => setExtrasData({ ...extrasData, montoTotal: Number(e.target.value) })} />
+              <p className="text-[10px] text-muted-foreground mt-1">Suma al costo del proyecto (Planilla)</p>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Fecha de Ejecución *</label>
+              <Input type="date" value={extrasData.fecha} onChange={(e) => setExtrasData({ ...extrasData, fecha: e.target.value })} />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Observaciones / Justificación</label>
+              <Input value={extrasData.observaciones} onChange={(e) => setExtrasData({ ...extrasData, observaciones: e.target.value })} placeholder="Ej: Trabajo día sábado" />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowExtrasForm(false)} disabled={isSubmittingExtras}>Cancelar</Button>
+            <Button onClick={handleExtrasSubmit} disabled={isSubmittingExtras} className="bg-amber-600 hover:bg-amber-700 font-black uppercase text-[10px] tracking-widest rounded-xl">
+              {isSubmittingExtras ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Clock className="w-4 h-4 mr-2" />}
+              Aprobar Monto
             </Button>
           </DialogFooter>
         </DialogContent>
