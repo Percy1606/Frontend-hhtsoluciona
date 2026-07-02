@@ -74,8 +74,8 @@ export default function EgresosPage() {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=1000');
       const data = Array.isArray(res) ? res : (res.data || []);
-      // Finanzas no debe ver gastos "SOLICITADO" ya que esos son para RRHH/Logistica
-      const filteredData = data.filter((g: any) => g.estado !== "SOLICITADO");
+      // Finanzas no debe ver gastos de Horas Extras que sigan en revisión por RRHH
+      const filteredData = data.filter((g: any) => !(g.tipo === "PLANILLA" && g.concepto.includes("[RRHH-REVISION]")));
       setGastos(filteredData);
     } catch (e) {
       console.error("Error fetching expenses", e);

@@ -408,10 +408,6 @@ export default function PersonalPage() {
             <CheckCircle2 className="w-4 h-4" />
             Solicitudes RRHH
           </Button>
-          <Button onClick={() => setShowExtrasForm(true)} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-amber-500 text-amber-600 hover:bg-amber-50">
-            <Clock className="w-4 h-4" />
-            Horas Extras
-          </Button>
           <Button onClick={() => { resetForm(); setShowForm(true); }} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
             <UserPlus className="w-4 h-4" />
             Registrar Personal

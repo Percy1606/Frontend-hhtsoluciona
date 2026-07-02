@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Loader2, Plus, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, Plus, Clock, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -29,10 +29,10 @@ export default function MisHorasExtras() {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=500');
       const data = Array.isArray(res) ? res : (res.data || []);
-      // Filtrar los que son de tipo PLANILLA y solicitados por este usuario (o con su nombre)
+      // Filtrar los que son de tipo PLANILLA y de este usuario
       const misExtras = data.filter((g: any) => 
         g.tipo === "PLANILLA" && 
-        g.concepto.includes("Solicitud Horas Extras") &&
+        g.concepto.includes("Horas Extras") &&
         g.concepto.includes(user?.nombre || "")
       );
       setGastos(misExtras);
@@ -59,13 +59,13 @@ export default function MisHorasExtras() {
       await api.post("/finanzas/gastos", {
         tipo: "PLANILLA",
         clasificacion: "PROYECTO",
-        concepto: `Solicitud Horas Extras - ${user?.nombre || "Usuario"}`,
+        concepto: `[RRHH-REVISION] Horas Extras - ${user?.nombre || "Usuario"}`,
         montoTotal: Number(formData.montoTotal),
-        estado: "SOLICITADO",
+        estado: "PENDIENTE",
         fechaEmision: formData.fechaEmision,
         area: "LogisticaYRecursos",
         justificacion: formData.justificacion,
-        proyectoId: null, // Si requieren proyecto se puede agregar un select
+        proyectoId: null,
       });
       toast.success("Solicitud enviada a Logística.");
       setIsModalOpen(false);
@@ -75,6 +75,16 @@ export default function MisHorasExtras() {
       toast.error(e.message || "Error al solicitar horas extras");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      await api.post(`/finanzas/gastos/${id}/secure-delete`, { password: "admin" });
+      toast.success("Solicitud eliminada.");
+      fetchData();
+    } catch (e: any) {
+      toast.error(e.message || "Error al eliminar la solicitud.");
     }
   };
 
@@ -99,58 +109,69 @@ export default function MisHorasExtras() {
               <TableHead>Concepto / Detalle</TableHead>
               <TableHead>Monto (S/.)</TableHead>
               <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-10">
+                <TableCell colSpan={5} className="text-center py-10">
                   <Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-400" />
                 </TableCell>
               </TableRow>
             ) : gastos.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center py-10 text-slate-500">
+                <TableCell colSpan={5} className="text-center py-10 text-slate-500">
                   No tienes solicitudes de horas extras registradas.
                 </TableCell>
               </TableRow>
             ) : (
-              gastos.map((g) => (
-                <TableRow key={g.id}>
-                  <TableCell className="font-medium">
-                    {new Date(g.fechaEmision).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <p className="font-medium text-slate-800">{g.concepto}</p>
-                    <p className="text-xs text-slate-500">{g.justificacion}</p>
-                  </TableCell>
-                  <TableCell className="font-bold text-slate-700">
-                    S/. {Number(g.montoTotal).toFixed(2)}
-                  </TableCell>
-                  <TableCell>
-                    {g.estado === "SOLICITADO" && (
-                      <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
-                        <Clock className="w-3 h-3 mr-1" /> En Revisión (Logística)
-                      </Badge>
-                    )}
-                    {g.estado === "PENDIENTE" && (
-                      <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Aprobado, Pendiente de Pago
-                      </Badge>
-                    )}
-                    {g.estado === "PAGADO" && (
-                      <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200">
-                        <CheckCircle2 className="w-3 h-3 mr-1" /> Pagado
-                      </Badge>
-                    )}
-                    {g.estado === "ANULADO" && (
-                      <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200">
-                        <AlertCircle className="w-3 h-3 mr-1" /> Rechazado
-                      </Badge>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))
+              gastos.map((g) => {
+                const enRevision = g.concepto.includes("[RRHH-REVISION]");
+                return (
+                  <TableRow key={g.id}>
+                    <TableCell className="font-medium">
+                      {new Date(g.fechaEmision).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <p className="font-medium text-slate-800">{g.concepto.replace("[RRHH-REVISION] ", "").replace("[RRHH-APROBADO] ", "")}</p>
+                      <p className="text-xs text-slate-500">{g.justificacion}</p>
+                    </TableCell>
+                    <TableCell className="font-bold text-slate-700">
+                      S/. {Number(g.montoTotal).toFixed(2)}
+                    </TableCell>
+                    <TableCell>
+                      {enRevision ? (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200">
+                          <Clock className="w-3 h-3 mr-1" /> En Revisión (Logística)
+                        </Badge>
+                      ) : g.estado === "PAGADO" ? (
+                        <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Pagado
+                        </Badge>
+                      ) : g.concepto.includes("[RRHH-APROBADO]") ? (
+                        <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200">
+                          <CheckCircle2 className="w-3 h-3 mr-1" /> Aprobado, Pendiente de Pago
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">{g.estado}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {enRevision && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(g.id)}
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>

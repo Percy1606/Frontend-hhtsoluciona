@@ -18,11 +18,10 @@ export default function SolicitudesRRHH() {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=500');
       const data = Array.isArray(res) ? res : (res.data || []);
-      // Filtrar los que son de tipo PLANILLA y están en estado SOLICITADO
+      // Filtrar los que son de tipo PLANILLA y están en revisión
       const solicitudes = data.filter((g: any) => 
         g.tipo === "PLANILLA" && 
-        g.concepto.includes("Solicitud Horas Extras") &&
-        g.estado === "SOLICITADO"
+        g.concepto.includes("[RRHH-REVISION]")
       );
       setGastos(solicitudes);
     } catch (e) {
@@ -37,14 +36,22 @@ export default function SolicitudesRRHH() {
     fetchData();
   }, []);
 
-  const handleAction = async (id: string, nuevoEstado: string) => {
-    setActionLoading(id);
+  const handleAction = async (gasto: any, isApprove: boolean) => {
+    setActionLoading(gasto.id);
     try {
-      await api.patch(`/finanzas/gastos/${id}`, {
-        estado: nuevoEstado,
-        // Al aprobar, Finanzas lo verá como PENDIENTE de pago
-      });
-      toast.success(`Solicitud ${nuevoEstado === 'PENDIENTE' ? 'aprobada' : 'rechazada'}`);
+      if (isApprove) {
+        await api.patch(`/finanzas/gastos/${gasto.id}`, {
+          concepto: gasto.concepto.replace("[RRHH-REVISION]", "[RRHH-APROBADO]"),
+          estado: "PENDIENTE"
+        });
+        toast.success("Solicitud aprobada y enviada a Finanzas.");
+      } else {
+        await api.patch(`/finanzas/gastos/${gasto.id}`, {
+          estado: "ANULADO",
+          concepto: gasto.concepto.replace("[RRHH-REVISION]", "[RRHH-RECHAZADO]"),
+        });
+        toast.success("Solicitud rechazada.");
+      }
       fetchData();
     } catch (e: any) {
       toast.error(e.message || "Error al actualizar estado");
@@ -83,7 +90,7 @@ export default function SolicitudesRRHH() {
             ) : gastos.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={5} className="text-center py-10 text-slate-500">
-                  No hay solicitudes pendientes por revisar.
+                  No hay solicitudes pendientes de revisión.
                 </TableCell>
               </TableRow>
             ) : (
@@ -92,35 +99,36 @@ export default function SolicitudesRRHH() {
                   <TableCell className="font-medium">
                     {new Date(g.fechaEmision).toLocaleDateString()}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="mb-1">{g.concepto}</Badge>
+                  <TableCell className="font-semibold text-slate-700">
+                    {g.concepto.replace("[RRHH-REVISION] ", "")}
                   </TableCell>
-                  <TableCell className="text-xs text-slate-600">
+                  <TableCell className="text-sm text-slate-600">
                     {g.justificacion}
                   </TableCell>
-                  <TableCell className="font-bold text-slate-700">
+                  <TableCell className="font-bold text-slate-800">
                     S/. {Number(g.montoTotal).toFixed(2)}
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
+                    <div className="flex justify-end gap-2">
                       <Button
                         size="sm"
                         variant="outline"
-                        className="border-red-200 text-red-600 hover:bg-red-50"
+                        className="bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100"
+                        onClick={() => handleAction(g, true)}
                         disabled={actionLoading === g.id}
-                        onClick={() => handleAction(g.id, "ANULADO")}
                       >
-                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
-                        Rechazar
+                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
+                        Aprobar
                       </Button>
                       <Button
                         size="sm"
-                        className="bg-emerald-600 hover:bg-emerald-700"
+                        variant="outline"
+                        className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                        onClick={() => handleAction(g, false)}
                         disabled={actionLoading === g.id}
-                        onClick={() => handleAction(g.id, "PENDIENTE")}
                       >
-                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1" />}
-                        Aprobar para Pago
+                        {actionLoading === g.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <XCircle className="w-4 h-4 mr-1" />}
+                        Rechazar
                       </Button>
                     </div>
                   </TableCell>
