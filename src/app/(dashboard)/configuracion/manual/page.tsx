@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { 
   FileText, 
   Download, 
@@ -9,6 +9,7 @@ import {
   CheckCircle2, 
   Info,
   ChevronRight,
+  ChevronDown,
   ShieldCheck,
   Zap,
   LayoutDashboard,
@@ -28,66 +29,71 @@ const sections = [
     icon: BookOpen,
     content: "Conceptos fundamentales para iniciar su jornada en el ecosistema SOFTWARE HH.",
     steps: [
-      "Autenticación: Inicie sesión con su Usuario y Contraseña asignados por el administrador.",
-      "Seguridad: Su sesión expirará automáticamente tras un periodo de inactividad por protección de datos.",
-      "Interfaz: El menú lateral izquierdo es su centro de navegación principal.",
-      "Dashboard: Visualice KPI's críticos, estados de proyectos y alertas recientes al ingresar."
+      "Autenticación y Login: Ingrese sus credenciales únicas (Usuario y Contraseña) en la pantalla de inicio provista por su administrador.",
+      "Seguridad de la Sesión: El sistema cuenta con cierre de sesión automático tras inactividad para garantizar la protección de la información de la empresa.",
+      "Navegación Principal: Utilice el menú lateral izquierdo para acceder rápidamente a los módulos asignados a su perfil de usuario.",
+      "Dashboard Ejecutivo: Pantalla de inicio con KPI's críticos en tiempo real, alertas de sistema, estados de proyectos y resumen de actividades recientes.",
+      "Perfil de Usuario: Puede actualizar sus datos personales, cambiar su contraseña y ajustar preferencias visuales desde la esquina superior derecha."
     ]
   },
   {
     title: "Módulo CRM Comercial (Ventas)",
     icon: Users,
-    content: "Potencie la gestión de sus clientes y el embudo de ventas.",
+    content: "Gestión integral de clientes, prospectos y control exhaustivo del embudo de ventas.",
     steps: [
-      "Cartera de Clientes: Registre prospectos con RUC, empresa, zona y tarifa específica (MT1-MT4).",
-      "Pipeline Comercial: Mueva sus oportunidades a través de etapas (Contactado, Propuesta, Negociación, Ganado).",
-      "Seguimiento: Registre cada interacción (llamada, reunión, correo) para mantener el historial vivo.",
-      "Cotizaciones: Genere documentos PDF profesionales vinculados directamente a la ficha del cliente.",
-      "Estadísticas: Analice la tasa de conversión y el volumen de ventas proyectadas."
+      "Mantenimiento de Cartera: Registre y actualice perfiles de clientes detallados (RUC, Razón Social, Zona, Tarifario MT1-MT4, Contactos clave).",
+      "Gestión del Pipeline Comercial: Visualice y mueva oportunidades a través de etapas personalizadas (Prospecto, Contactado, Propuesta, Negociación, Cierre Ganado/Perdido).",
+      "Bitácora de Interacciones: Registre cada punto de contacto (llamadas, reuniones, correos) para mantener un historial completo y evitar pérdida de información.",
+      "Módulo de Cotizaciones: Genere propuestas económicas profesionales en formato PDF, con cálculo automático de impuestos y descuentos, vinculadas al cliente.",
+      "Análisis de Conversión: Monitoree indicadores de rendimiento comercial, volumen de ventas proyectadas y efectividad del equipo de ventas."
     ]
   },
   {
     title: "Operaciones y Proyectos",
     icon: Briefcase,
-    content: "El motor de ejecución técnica de HH T-SOLUCIONA.",
+    content: "El motor de ejecución técnica, planificación y seguimiento de HH T-SOLUCIONA.",
     steps: [
-      "Gestión de Proyectos: Cree proyectos asignando un Responsable Principal y personal de apoyo.",
-      "Cronograma (Timeline): Visualice el avance temporal de cada fase del proyecto.",
-      "Actividades Técnicas: Desglose el proyecto en tareas específicas con estados Pendiente, En Progreso y Completada.",
-      "Validaciones de Campo: Asegure la calidad mediante la aprobación obligatoria de hitos técnicos.",
-      "Bandeja de Entrada: Los técnicos reciben notificaciones directas de sus asignaciones diarias."
+      "Creación de Proyectos: Estructure nuevos proyectos definiendo alcances, presupuesto inicial, Responsable Principal (Jefe de Proyecto) y equipo asignado.",
+      "Cronograma y Gantt (Timeline): Visualice de forma gráfica el avance temporal de las fases del proyecto, identificando cuellos de botella y dependencias.",
+      "Gestión de Tareas y Actividades: Desglose el trabajo en tareas específicas, asignando responsables y controlando estados (Pendiente, En Progreso, Observado, Completado).",
+      "Control de Calidad y Validaciones: Implemente flujos de aprobación obligatorios y checklist de hitos técnicos para garantizar los estándares de calidad en campo.",
+      "Centro de Notificaciones: Los técnicos e ingenieros reciben alertas directas sobre nuevas asignaciones, fechas de vencimiento y cambios en los requerimientos."
     ]
   },
   {
     title: "Logística y Almacén",
     icon: Truck,
-    content: "Control de inventario y cadena de suministro.",
+    content: "Administración eficiente de inventario, trazabilidad de activos y cadena de suministro.",
     steps: [
-      "Inventario: Monitoree el stock de insumos, herramientas y equipos en tiempo real.",
-      "Órdenes de Compra (OC): Genere solicitudes de compra vinculadas a proyectos específicos.",
-      "Kardex Digital: Rastree cada entrada y salida de material con fecha, responsable y motivo.",
-      "Proveedores: Mantenga un directorio actualizado de sus aliados logísticos."
+      "Control de Inventario en Tiempo Real: Monitoree el stock disponible de materiales, insumos, EPPs y ubicación de herramientas o equipos pesados.",
+      "Gestión de Órdenes de Compra (OC): Genere, apruebe y envíe solicitudes de compra a proveedores, vinculando los costos directamente a proyectos específicos.",
+      "Kardex Digital Avanzado: Registre cada movimiento (entrada, salida, transferencia, merma) con fecha exacta, responsable y sustento del movimiento.",
+      "Gestión de Proveedores: Mantenga un directorio actualizado, evaluando tiempos de respuesta, calidad y condiciones crediticias.",
+      "Alertas de Stock Mínimo: El sistema notificará automáticamente cuando un material crítico alcance su punto de reposición."
     ]
   },
   {
     title: "Finanzas e Ingresos",
     icon: BarChart3,
-    content: "Transparencia económica y control de flujos.",
+    content: "Transparencia económica, facturación y control de flujos de caja operativos.",
     steps: [
-      "Facturación: Registre facturas emitidas (Ingresos) vinculándolas a proyectos y cotizaciones.",
-      "Gestión de Gastos: Controle los costos operativos (Egresos) para calcular la rentabilidad real.",
-      "Reportes Financieros: Gráficos de ingresos vs egresos y saldos pendientes de cobro."
+      "Emisión y Control de Facturas: Registre comprobantes de pago emitidos, controlando fechas de vencimiento y vinculándolos al progreso de los proyectos.",
+      "Gestión de Cuentas por Cobrar: Realice seguimiento a saldos pendientes de clientes, enviando recordatorios y registrando pagos parciales o totales.",
+      "Control de Gastos (Egresos): Registre facturas de proveedores y comprobantes de caja chica para calcular la rentabilidad real y márgenes de cada proyecto.",
+      "Reportes y Dashboards Financieros: Analice gráficos dinámicos de ingresos vs egresos, flujo de caja proyectado y estados de resultados por centro de costo.",
+      "Conciliación Básica: Cruce la información de pagos registrados en sistema con los abonos reales en cuentas bancarias."
     ]
   },
   {
     title: "Configuración y Auditoría",
     icon: Settings,
-    content: "Administración de usuarios y seguridad del sistema.",
+    content: "Administración global del sistema, gestión de seguridad y personalización avanzada.",
     steps: [
-      "Usuarios: Gestione quién accede a qué módulos mediante perfiles de permisos.",
-      "Vinculación: Conecte cuentas de usuario con perfiles de trabajadores para reportes operativos.",
-      "Auditoría del Sistema: Historial inmutable de quién hizo qué, cuándo y desde qué IP.",
-      "Personalización: Ajuste de parámetros globales y mantenimiento de catálogos."
+      "Gestión de Usuarios y Roles: Cree cuentas de acceso y asigne roles con permisos granulares (lectura, escritura, eliminación) por cada módulo.",
+      "Parametrización del Sistema: Ajuste variables globales como tipo de cambio, correlativos de documentos, impuestos y datos de la empresa.",
+      "Mantenimiento de Catálogos: Gestione listas desplegables (categorías, zonas, marcas, unidades de medida) que alimentan todos los formularios.",
+      "Log de Auditoría Inmutable: Consulte el registro detallado de transacciones (quién, qué, cuándo, desde qué IP) para rastrear cambios críticos o eliminaciones.",
+      "Copias de Seguridad (Backups): Programe y monitoree los respaldos automáticos de la base de datos para garantizar la continuidad del negocio."
     ]
   }
 ];
@@ -125,15 +131,23 @@ interface Html2PdfOptions {
 
 export default function ManualPage() {
   const manualRef = useRef<HTMLDivElement>(null);
+  const [expandedSections, setExpandedSections] = useState<number[]>([]);
+
+  const toggleSection = (idx: number) => {
+    setExpandedSections(prev => 
+      prev.includes(idx) ? prev.filter(i => i !== idx) : [...prev, idx]
+    );
+  };
 
   const handleDownload = async () => {
     if (typeof window === 'undefined') return;
 
-    // We need to import it dynamically inside the function too to be safe
-    const html2pdf = (await import('html2pdf.js')).default;
+    try {
+      const html2pdfModule = await import('html2pdf.js');
+      const html2pdf = html2pdfModule.default || html2pdfModule;
 
-    const element = manualRef.current;
-    if (!element) return;
+      const element = manualRef.current;
+      if (!element) return;
 
     const opt: Html2PdfOptions = {
       margin: 10,
@@ -151,6 +165,9 @@ export default function ManualPage() {
 
     // Use a clone or specific styles to ensure it looks good in PDF
     html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
   };
 
   return (
@@ -191,32 +208,47 @@ export default function ManualPage() {
         </div>
 
         <div className="grid gap-6">
-            {sections.map((section, idx) => (
-            <Card key={idx} className="border-none shadow-xl bg-white rounded-3xl overflow-hidden hover:scale-[1.01] transition-all duration-300">
-                <CardHeader className="flex flex-row items-center gap-5 space-y-0 p-8 pb-4">
-                <div className="p-4 rounded-2xl bg-[#F8FAFC] text-[#001F3F] shadow-inner">
-                    <section.icon className="h-8 w-8" />
-                </div>
-                <div>
-                    <CardTitle className="text-2xl font-black text-[#001F3F] uppercase tracking-tight">{section.title}</CardTitle>
-                    <CardDescription className="text-[#64748B] font-medium text-base">{section.content}</CardDescription>
-                </div>
-                </CardHeader>
-                <CardContent className="p-8 pt-0">
-                <div className="h-px bg-[#F1F5F9] mb-6" />
-                <ul className="space-y-4">
-                    {section.steps.map((step, sIdx) => (
-                    <li key={sIdx} className="flex items-start gap-4 group">
-                        <div className="mt-1 flex items-center justify-center w-5 h-5 rounded-full bg-[#E306131A] text-[#E30613] group-hover:bg-[#E30613] group-hover:text-white transition-colors duration-300">
-                            <ChevronRight className="h-3 w-3 shrink-0" />
+            {sections.map((section, idx) => {
+              const isExpanded = expandedSections.includes(idx);
+              return (
+                <Card key={idx} className="border-none shadow-xl bg-white rounded-3xl overflow-hidden hover:scale-[1.01] transition-all duration-300">
+                    <div 
+                      className="cursor-pointer"
+                      onClick={() => toggleSection(idx)}
+                    >
+                      <CardHeader className="flex flex-row items-center justify-between gap-5 space-y-0 p-8 pb-4">
+                        <div className="flex flex-row items-center gap-5">
+                            <div className="p-4 rounded-2xl bg-[#F8FAFC] text-[#001F3F] shadow-inner">
+                                <section.icon className="h-8 w-8" />
+                            </div>
+                            <div>
+                                <CardTitle className="text-2xl font-black text-[#001F3F] uppercase tracking-tight">{section.title}</CardTitle>
+                                <CardDescription className="text-[#64748B] font-medium text-base">{section.content}</CardDescription>
+                            </div>
                         </div>
-                        <span className="text-[#475569] font-semibold leading-relaxed group-hover:text-[#001F3F] transition-colors">{step}</span>
-                    </li>
-                    ))}
-                </ul>
-                </CardContent>
-            </Card>
-            ))}
+                        <Button variant="ghost" size="icon" className="shrink-0 rounded-full hover:bg-slate-100">
+                            <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </Button>
+                      </CardHeader>
+                    </div>
+                    {isExpanded && (
+                      <CardContent className="p-8 pt-0 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="h-px bg-[#F1F5F9] mb-6" />
+                      <ul className="space-y-4">
+                          {section.steps.map((step, sIdx) => (
+                          <li key={sIdx} className="flex items-start gap-4 group">
+                              <div className="mt-1 flex items-center justify-center w-5 h-5 rounded-full bg-[#E306131A] text-[#E30613] group-hover:bg-[#E30613] group-hover:text-white transition-colors duration-300">
+                                  <ChevronRight className="h-3 w-3 shrink-0" />
+                              </div>
+                              <span className="text-[#475569] font-semibold leading-relaxed group-hover:text-[#001F3F] transition-colors">{step}</span>
+                          </li>
+                          ))}
+                      </ul>
+                      </CardContent>
+                    )}
+                </Card>
+              );
+            })}
         </div>
 
         <div className="text-center p-8 mt-12 border-t border-[#F1F5F9]">

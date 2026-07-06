@@ -6,9 +6,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useAuthStore } from "@/store/auth-store";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar();
@@ -40,6 +41,7 @@ export default function DashboardLayout({
   const { fetchProyectos, fetchResponsables } = useOperacionesStore();
   const { isAuthenticated, user, logout } = useAuthStore();
   const router = useRouter();
+  const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
   const [isReady, setIsReady] = useState(false);
 
@@ -49,17 +51,32 @@ export default function DashboardLayout({
 
   useEffect(() => {
     if (!isMounted) return; // Esperar a que el componente esté montado en el cliente
+    
     if (!isAuthenticated || !user) {
       if (isAuthenticated || user) {
         logout(); // Limpiar estado si está inconsistente
       }
       window.location.href = "/login";
-    } else {
-      setIsReady(true);
-      fetchProyectos();
-      fetchResponsables();
+      return;
+    } 
+
+    // ---> LÓGICA DE CADENERO FRONTEND <---
+    if (user.rol !== "ADMIN") {
+      const moduloActual = pathname.split("/")[1]; 
+      
+      if (moduloActual && !(user.modulos || []).includes(moduloActual) && moduloActual !== "") {
+        toast.error("No tienes permisos para ver esta pantalla");
+        router.push("/");
+        return;
+      }
     }
-  }, [isMounted, isAuthenticated, user, router, fetchProyectos, fetchResponsables, logout]);
+    // ---> FIN LÓGICA <---
+
+    setIsReady(true);
+    fetchProyectos();
+    fetchResponsables();
+    
+  }, [isMounted, isAuthenticated, user, router, pathname, fetchProyectos, fetchResponsables, logout]);
 
   if (!isMounted || !isReady) {
     return (
