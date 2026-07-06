@@ -127,8 +127,8 @@ export function NotificationBell() {
                     className={cn(
                       "flex flex-col items-start gap-1.5 p-4 border-b border-border/50 last:border-none cursor-pointer outline-none transition-all",
                       !n.leida 
-                        ? "bg-[#EFF6FF] focus:!bg-[#E0F2FE] data-[highlighted]:!bg-[#E0F2FE] border-l-4 border-primary" 
-                        : "bg-[#F3F4F6] focus:!bg-[#E5E7EB] data-[highlighted]:!bg-[#E5E7EB] border-l-4 border-transparent"
+                        ? "bg-[#EFF6FF] hover:bg-[#E0F2FE] border-l-4 border-primary" 
+                        : "bg-[#F3F4F6] hover:bg-[#E5E7EB] border-l-4 border-transparent"
                     )}
                     onClick={() => {
                       if (!n.leida) markAsRead(n.id);
