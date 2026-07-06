@@ -261,21 +261,21 @@ export function ClientKanban() {
                                 <MoreVertical className="h-3 w-3" />
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48 p-1 bg-white border border-border shadow-xl z-50 rounded-xl">
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={() => handleOpenDetails(client)}>
-                                  <Eye className="w-3.5 h-3.5 text-primary" /> Ver Ficha CRM
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => handleOpenDetails(client)}>
+                                  <Eye className="w-3.5 h-3.5 opacity-80" /> Ver Ficha CRM
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditOpen(true); }}>
-                                  <Edit className="w-3.5 h-3.5 text-primary" /> Editar Registro
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsEditOpen(true); }}>
+                                  <Edit className="w-3.5 h-3.5 opacity-80" /> Editar Registro
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsFollowUpOpen(true); }}>
-                                  <Calendar className="w-3.5 h-3.5 text-primary" /> Registrar Acción
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); setIsFollowUpOpen(true); }}>
+                                  <Calendar className="w-3.5 h-3.5 opacity-80" /> Registrar Acción
                                 </DropdownMenuItem>
                                 <div className="h-px bg-slate-100 my-1" />
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-success focus:text-success focus:bg-slate-100" onClick={(e) => { e.stopPropagation(); if (!client.telefono) return alert("Sin teléfono"); window.open(`https://wa.me/51${client.telefono.replace(/\D/g, '')}`, '_blank'); }}>
-                                  <MessageSquare className="w-4 h-4" /> WhatsApp
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-success focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={(e) => { e.stopPropagation(); if (!client.telefono) return alert("Sin teléfono"); window.open(`https://wa.me/51${client.telefono.replace(/\D/g, '')}`, '_blank'); }}>
+                                  <MessageSquare className="w-4 h-4 opacity-80" /> WhatsApp
                                 </DropdownMenuItem>
-                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer text-error focus:text-error focus:bg-slate-100 py-2.5" onClick={(e) => { e.stopPropagation(); setClientToDeleteId(client.id); setIsDeleteDialogOpen(true); }}>
-                                  <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                                <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={(e) => { e.stopPropagation(); setClientToDeleteId(client.id); setIsDeleteDialogOpen(true); }}>
+                                  <Trash2 className="w-3.5 h-3.5 opacity-80" /> Eliminar
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>

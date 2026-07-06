@@ -1,6 +1,6 @@
 "use client";
 
-import { User, LogOut, Settings, UserCircle, Zap } from "lucide-react";
+import { User, LogOut, Settings, UserCircle, Zap, BookOpen } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -87,7 +87,7 @@ export function Header() {
               </DropdownMenuGroup>
               <DropdownMenuSeparator className="my-2" />
               <DropdownMenuItem 
-                className="cursor-pointer py-2.5 px-2 rounded-xl focus:bg-slate-50 transition-colors"
+                className="cursor-pointer py-2.5 px-2 rounded-xl text-slate-700 focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                 onClick={() => {
                   if (user?.rol === "ADMIN") {
                     router.push("/configuracion/usuarios");
@@ -98,16 +98,21 @@ export function Header() {
                   }
                 }}
               >
-                <UserCircle className="mr-3 h-4 w-4 text-slate-500" />
-                <span className="font-medium text-slate-700">Mi Perfil</span>
+                <UserCircle className="mr-3 h-4 w-4 opacity-70" />
+                <span className="font-medium">Mi Perfil</span>
               </DropdownMenuItem>
               
               {user?.rol === "ADMIN" && (
-                <DropdownMenuItem className="cursor-pointer py-2.5 px-2 rounded-xl focus:bg-slate-50 transition-colors" onClick={() => router.push("/configuracion/usuarios")}>
-                  <Settings className="mr-3 h-4 w-4 text-slate-500" />
-                  <span className="font-medium text-slate-700">Configuración</span>
+                <DropdownMenuItem className="cursor-pointer py-2.5 px-2 rounded-xl text-slate-700 focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => router.push("/configuracion/usuarios")}>
+                  <Settings className="mr-3 h-4 w-4 opacity-70" />
+                  <span className="font-medium">Configuración</span>
                 </DropdownMenuItem>
               )}
+              
+              <DropdownMenuItem className="cursor-pointer py-2.5 px-2 rounded-xl text-slate-700 focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => router.push("/configuracion/manual")}>
+                <BookOpen className="mr-3 h-4 w-4 opacity-70" />
+                <span className="font-medium">Manual de Usuario</span>
+              </DropdownMenuItem>
               
               <DropdownMenuSeparator className="my-2" />
               <DropdownMenuItem 

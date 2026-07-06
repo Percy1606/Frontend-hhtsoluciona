@@ -349,35 +349,35 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-56 p-1 bg-white border border-border shadow-2xl z-50 rounded-xl">
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                             onClick={() => handleOpenDetails(client)}
                           >
-                            <Eye className="w-4 h-4 text-primary" /> Ver Ficha CRM
+                            <Eye className="w-4 h-4 opacity-80" /> Ver Ficha CRM
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                             onClick={() => handleOpenEdit(client)}
                           >
-                            <Edit className="w-4 h-4 text-primary" /> Editar Registro
+                            <Edit className="w-4 h-4 opacity-80" /> Editar Registro
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg focus:bg-slate-100"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                             onClick={() => handleOpenFollowUp(client)}
                           >
-                            <Calendar className="w-4 h-4 text-primary" /> Registrar Acción
+                            <Calendar className="w-4 h-4 opacity-80" /> Registrar Acción
                           </DropdownMenuItem>
                           <div className="h-px bg-slate-100 my-1" />
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-success focus:text-success focus:bg-slate-100"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-success focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                             onClick={() => handleWhatsAppContact(client)}
                           >
-                            <MessageSquare className="w-4 h-4" /> Contactar WhatsApp
+                            <MessageSquare className="w-4 h-4 opacity-80" /> Contactar WhatsApp
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 font-black text-[10px] uppercase cursor-pointer text-error focus:text-error focus:bg-slate-100 py-3 rounded-lg"
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-error focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                             onClick={() => handleDeleteClient(client.id)}
                           >
-                            <Trash2 className="w-4 h-4" /> Eliminar Cliente
+                            <Trash2 className="w-4 h-4 opacity-80" /> Eliminar Cliente
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>

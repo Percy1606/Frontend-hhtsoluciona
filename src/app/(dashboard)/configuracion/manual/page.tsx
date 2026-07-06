@@ -163,10 +163,20 @@ export default function ManualPage() {
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Use a clone or specific styles to ensure it looks good in PDF
-    html2pdf().set(opt).from(element).save();
+    try {
+      // Forzar a expandir todo antes de exportar
+      const allIds = sections.map((_, i) => i);
+      setExpandedSections(allIds);
+
+      // Pequeño delay para dejar que React renderice las secciones expandidas
+      await new Promise(r => setTimeout(r, 500));
+
+      await html2pdf().set(opt).from(element).save();
     } catch (error) {
       console.error("Error generating PDF:", error);
+    }
+    } catch (error) {
+      console.error("Error loading html2pdf module:", error);
     }
   };
 
@@ -211,28 +221,26 @@ export default function ManualPage() {
             {sections.map((section, idx) => {
               const isExpanded = expandedSections.includes(idx);
               return (
-                <Card key={idx} className="border-none shadow-xl bg-white rounded-3xl overflow-hidden hover:scale-[1.01] transition-all duration-300">
+                <div key={idx} className="border-none shadow-xl bg-white rounded-3xl overflow-hidden hover:scale-[1.01] transition-all duration-300">
                     <div 
-                      className="cursor-pointer"
+                      className="flex flex-row items-center justify-between gap-5 p-8 pb-4 cursor-pointer select-none"
                       onClick={() => toggleSection(idx)}
                     >
-                      <CardHeader className="flex flex-row items-center justify-between gap-5 space-y-0 p-8 pb-4">
                         <div className="flex flex-row items-center gap-5">
                             <div className="p-4 rounded-2xl bg-[#F8FAFC] text-[#001F3F] shadow-inner">
                                 <section.icon className="h-8 w-8" />
                             </div>
                             <div>
-                                <CardTitle className="text-2xl font-black text-[#001F3F] uppercase tracking-tight">{section.title}</CardTitle>
-                                <CardDescription className="text-[#64748B] font-medium text-base">{section.content}</CardDescription>
+                                <h3 className="text-xl font-black text-[#001F3F] uppercase tracking-tight">{section.title}</h3>
+                                <p className="text-[#64748B] font-medium text-sm mt-1">{section.content}</p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="icon" className="shrink-0 rounded-full hover:bg-slate-100">
-                            <ChevronDown className={`w-6 h-6 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
-                        </Button>
-                      </CardHeader>
+                        <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#F1F5F9] transition-colors">
+                            <ChevronDown className={`w-6 h-6 text-[#001F3F] transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                        </div>
                     </div>
                     {isExpanded && (
-                      <CardContent className="p-8 pt-0 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="p-8 pt-0 animate-in fade-in slide-in-from-top-4 duration-300">
                       <div className="h-px bg-[#F1F5F9] mb-6" />
                       <ul className="space-y-4">
                           {section.steps.map((step, sIdx) => (
@@ -240,13 +248,13 @@ export default function ManualPage() {
                               <div className="mt-1 flex items-center justify-center w-5 h-5 rounded-full bg-[#E306131A] text-[#E30613] group-hover:bg-[#E30613] group-hover:text-white transition-colors duration-300">
                                   <ChevronRight className="h-3 w-3 shrink-0" />
                               </div>
-                              <span className="text-[#475569] font-semibold leading-relaxed group-hover:text-[#001F3F] transition-colors">{step}</span>
+                              <span className="text-[#475569] text-sm font-semibold leading-relaxed group-hover:text-[#001F3F] transition-colors">{step}</span>
                           </li>
                           ))}
                       </ul>
-                      </CardContent>
+                      </div>
                     )}
-                </Card>
+                </div>
               );
             })}
         </div>
