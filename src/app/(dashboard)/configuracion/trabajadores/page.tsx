@@ -406,21 +406,21 @@ function AdminTrabajadoresView() {
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
-                              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors mt-1"
-                              onClick={() => toggleWorkerStatus(worker)}
-                            >
-                              <div className={worker.activo ? "p-2 bg-rose-50 text-rose-600 rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 rounded-lg"}>
-                                {worker.activo ? <Trash2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
-                              </div>
-                              <div className="flex flex-col text-left">
-                                <span className={`font-semibold text-sm ${worker.activo ? "text-rose-600" : "text-emerald-600"}`}>
-                                  {worker.activo ? "Dar de Baja" : "Reincorporar"}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground">
-                                  {worker.activo ? "Cesará sus funciones" : "Habilitará al trabajador"}
-                                </span>
-                              </div>
-                            </DropdownMenuItem>
+                                className="group flex items-center gap-3 p-3 rounded-lg cursor-pointer focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors mt-1"
+                                onClick={() => toggleWorkerStatus(worker)}
+                              >
+                                <div className={worker.activo ? "p-2 bg-rose-50 text-rose-600 group-data-[highlighted]:!bg-white/10 group-data-[highlighted]:!text-white rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 group-data-[highlighted]:!bg-white/10 group-data-[highlighted]:!text-white rounded-lg"}>
+                                  {worker.activo ? <Trash2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                                </div>
+                                <div className="flex flex-col text-left">
+                                  <span className={`font-semibold text-sm group-data-[highlighted]:!text-white ${worker.activo ? "text-rose-600" : "text-emerald-600"}`}>
+                                    {worker.activo ? "Dar de Baja" : "Reincorporar"}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground group-data-[highlighted]:!text-white/80">
+                                    {worker.activo ? "Cesará sus funciones" : "Habilitará al trabajador"}
+                                  </span>
+                                </div>
+                              </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>

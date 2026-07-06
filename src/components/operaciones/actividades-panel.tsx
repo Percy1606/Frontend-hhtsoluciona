@@ -648,8 +648,8 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                                     <MoreVertical className="w-3.5 h-3.5" />
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end" className="w-40">
-                                    <DropdownMenuItem className="text-destructive font-black text-[9px] uppercase p-2" onClick={() => handleDelete(actividad.id)}>
-                                      <Trash2 className="w-3.5 h-3.5 mr-2" /> Eliminar
+                                    <DropdownMenuItem className="text-destructive font-black text-[9px] uppercase p-2 focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => handleDelete(actividad.id)}>
+                                      <Trash2 className="w-3.5 h-3.5 mr-2 opacity-80" /> Eliminar
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
                                 </DropdownMenu>

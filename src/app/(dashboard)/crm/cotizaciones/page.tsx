@@ -547,17 +547,17 @@ export default function CotizacionesInboxPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
                               <DropdownMenuItem 
-                                className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:bg-slate-100"
+                                className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                                 onClick={() => {
                                   setSelectedQuote(quote);
                                   setIsContractModalOpen(true);
                                 }}
                               >
-                                <FileCheck className="w-4 h-4" /> Subir OS / Contrato
+                                <FileCheck className="w-4 h-4 opacity-80" /> Subir OS / Contrato
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:text-error focus:bg-slate-100" onClick={() => handleDeleteQuote(quote.id)}>
-                                <Trash2 className="w-4 h-4" /> Eliminar Permanente
+                              <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => handleDeleteQuote(quote.id)}>
+                                <Trash2 className="w-4 h-4 opacity-80" /> Eliminar Permanente
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>

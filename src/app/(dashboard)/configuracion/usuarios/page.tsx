@@ -335,29 +335,29 @@ export default function UsuariosPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-100">
                               <DropdownMenuItem 
-                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
+                                className="group flex items-center gap-3 p-3 rounded-lg cursor-pointer focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors"
                                 onClick={() => handleOpenModal(user)}
                               >
-                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                                <div className="p-2 bg-blue-50 text-blue-600 group-data-[highlighted]:!bg-white/10 group-data-[highlighted]:!text-white rounded-lg">
                                   <Edit2 className="h-4 w-4" />
                                 </div>
                                 <div className="flex flex-col">
-                                  <span className="font-semibold text-sm">Editar Datos</span>
-                                  <span className="text-[10px] text-muted-foreground">Modificar perfil y acceso</span>
+                                  <span className="font-semibold text-sm group-data-[highlighted]:!text-white">Editar Datos</span>
+                                  <span className="text-[10px] text-muted-foreground group-data-[highlighted]:!text-white/80">Modificar perfil y acceso</span>
                                 </div>
                               </DropdownMenuItem>
                               <DropdownMenuItem 
-                                className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors mt-1"
+                                className="group flex items-center gap-3 p-3 rounded-lg cursor-pointer focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors mt-1"
                                 onClick={() => toggleUserStatus(user)}
                               >
-                                <div className={user.activo ? "p-2 bg-rose-50 text-rose-600 rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 rounded-lg"}>
+                                <div className={user.activo ? "p-2 bg-rose-50 text-rose-600 group-data-[highlighted]:!bg-white/10 group-data-[highlighted]:!text-white rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 group-data-[highlighted]:!bg-white/10 group-data-[highlighted]:!text-white rounded-lg"}>
                                   {user.activo ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
                                 </div>
                                 <div className="flex flex-col text-left">
-                                  <span className={`font-semibold text-sm ${user.activo ? "text-rose-600" : "text-emerald-600"}`}>
+                                  <span className={`font-semibold text-sm group-data-[highlighted]:!text-white ${user.activo ? "text-rose-600" : "text-emerald-600"}`}>
                                     {user.activo ? "Desactivar Acceso" : "Activar Acceso"}
                                   </span>
-                                  <span className="text-[10px] text-muted-foreground">
+                                  <span className="text-[10px] text-muted-foreground group-data-[highlighted]:!text-white/80">
                                     {user.activo ? "Suspenderá el ingreso" : "Restaurará el ingreso"}
                                   </span>
                                 </div>
