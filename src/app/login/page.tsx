@@ -79,7 +79,19 @@ function LoginContent() {
   }
 
   return (
-    <div className="flex min-h-screen bg-white">
+    <div className="flex min-h-screen bg-slate-50 lg:bg-white relative">
+      {/* Fondo Móvil */}
+      <div className="absolute inset-0 lg:hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-[#001F3F] via-[#001F3F]/95 to-[#003087]/90 z-10" />
+        <Image
+          src="https://images.unsplash.com/photo-1581094794329-c8112a89af12?q=80&w=2070&auto=format&fit=crop"
+          alt="Background"
+          fill
+          className="object-cover opacity-30 grayscale"
+          priority
+        />
+      </div>
+
       {/* Lado Izquierdo: Branding e Imagen (Oculto en móvil) */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#001F3F] items-center justify-center overflow-hidden">
         {/* Fondo con Overlay y Gradiente */}
@@ -120,17 +132,17 @@ function LoginContent() {
       </div>
 
       {/* Lado Derecho: Formulario */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50/30">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-8 relative z-20 lg:bg-slate-50/30">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center lg:text-left">
             {/* Logo solo para móvil */}
             <div className="lg:hidden flex justify-center mb-6">
-                <div className="bg-white p-4 rounded-2xl shadow-md border border-slate-100">
+                <div className="bg-white p-6 rounded-3xl shadow-2xl">
                     <Image
                         src="/hh_t_soluciona_per_oficial_logo.jpg"
                         alt="HH T-SOLUCIONA Logo"
-                        width={150}
-                        height={60}
+                        width={180}
+                        height={70}
                         className="object-contain"
                     />
                 </div>
@@ -144,19 +156,19 @@ function LoginContent() {
                 <div>
                   <h3 className="text-[10px] font-black uppercase text-red-600 tracking-widest mb-0.5">Control de Seguridad</h3>
                   <p className="text-sm font-medium text-red-900 leading-tight">
-                    Tú sesión ha expirado por seguridad. Por favor, inicia sesión nuevamente.
+                    Tu sesión ha expirado por seguridad. Por favor, inicia sesión nuevamente.
                   </p>
                 </div>
               </div>
             ) : null}
 
-            <h1 className="text-3xl font-black text-[#001F3F] tracking-tight uppercase">Bienvenido de nuevo</h1>
-            <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2 flex items-center justify-center lg:justify-start gap-2">
+            <h1 className="text-3xl font-black text-white lg:text-[#001F3F] tracking-tight uppercase drop-shadow-md lg:drop-shadow-none">Bienvenido al Sistema</h1>
+            <p className="text-blue-100 lg:text-slate-400 font-bold text-xs uppercase tracking-widest mt-2 flex items-center justify-center lg:justify-start gap-2 drop-shadow-md lg:drop-shadow-none">
                 <Lock className="w-3 h-3" /> Ingrese sus credenciales para continuar
             </p>
           </div>
 
-          <div className="bg-white p-8 rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-100">
+          <div className="bg-white p-8 rounded-3xl shadow-2xl lg:shadow-xl lg:shadow-slate-200/60 border-none lg:border lg:border-slate-100">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
                 <FormField
@@ -245,7 +257,7 @@ function LoginContent() {
             </Form>
           </div>
 
-          <p className="text-[10px] text-center text-slate-400 font-bold uppercase tracking-[0.15em] pt-4">
+          <p className="text-[10px] text-center text-blue-200 lg:text-slate-400 font-bold uppercase tracking-[0.15em] pt-4 drop-shadow-md lg:drop-shadow-none">
             &copy; 2026 HH T-SOLUCIONA S.A.C. <br/>
             <span className="text-[9px] opacity-60">Infraestructura Crítica & Seguridad</span>
           </p>
