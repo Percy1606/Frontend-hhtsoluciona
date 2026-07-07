@@ -134,16 +134,16 @@ export default function CarteraPage() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
             <Button 
               variant="outline" 
-              className="h-12 gap-2 font-black uppercase text-[10px] border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl px-6"
+              className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl px-4"
               onClick={handleExportExcel}
             >
               <Download className="w-4 h-4" /> Exportar Base
             </Button>
             <Button 
-              className="h-12 gap-2 font-black uppercase text-[10px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl px-8"
+              className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl px-4"
               onClick={() => setIsAddModalOpen(true)}
             >
               <Plus className="w-4 h-4" /> Nuevo Cliente

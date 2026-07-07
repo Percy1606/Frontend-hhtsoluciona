@@ -723,6 +723,7 @@ export const useOperacionesStore = create<OperacionesState>()(
             responsablePrincipalId: proyectoActualizado.responsablePrincipalId,
             responsablesAdicionales: proyectoActualizado.responsablesAdicionales || [],
             area: mapAreaToBackend(proyectoActualizado.area),
+            avance: proyectoActualizado.avance,
           };
           const updated = await api.put(`/operaciones/proyectos/${proyectoActualizado.id}`, payload);
           set((state) => ({

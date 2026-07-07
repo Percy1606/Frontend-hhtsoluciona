@@ -157,7 +157,7 @@ export default function DocumentalPage() {
           </div>
           <p className="text-muted-foreground mt-1 font-medium">Control de documentos técnicos, legales y administrativos.</p>
         </div>
-        <Button className="gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
+        <Button className="w-full md:w-auto mt-2 md:mt-0 gap-2 font-bold bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20">
           <Plus className="w-4 h-4" /> Subir Documento
         </Button>
       </div>

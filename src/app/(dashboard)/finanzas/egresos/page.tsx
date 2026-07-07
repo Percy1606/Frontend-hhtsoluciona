@@ -230,7 +230,7 @@ export default function EgresosPage() {
             </div>
           </div>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-3 md:mt-0">
           <ExportButtons type="gastos" filters={{ search, dateFrom, dateTo }} />
           <Button 
             variant="outline"

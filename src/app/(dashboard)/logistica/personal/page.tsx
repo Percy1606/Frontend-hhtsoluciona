@@ -391,7 +391,7 @@ export default function PersonalPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3">
             <div className="bg-primary/10 p-2 rounded-lg">
@@ -403,7 +403,7 @@ export default function PersonalPage() {
             Gestiona el personal asignado y los costos laborales de cada proyecto.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
           <Button onClick={() => router.push('/logistica/horas-extras')} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-blue-500 text-blue-600 hover:bg-blue-50">
             <CheckCircle2 className="w-4 h-4" />
             Solicitudes RRHH
@@ -416,7 +416,7 @@ export default function PersonalPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="p-3 rounded-xl border border-slate-100 shadow-sm flex items-center gap-3 bg-white">
           <div className="p-2 rounded-lg bg-white shadow-sm text-amber-600">
             <Zap className="w-3.5 h-3.5" />
@@ -471,8 +471,8 @@ export default function PersonalPage() {
 
       {/* Filters */}
       <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
+        <div className="flex flex-col md:flex-row gap-4 md:items-end w-full">
+          <div className="flex-1 w-full">
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 block">Buscar</label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -485,7 +485,7 @@ export default function PersonalPage() {
               />
             </div>
           </div>
-          <div className="w-40">
+          <div className="w-full md:w-40">
             <label className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-1.5 block">Estado</label>
             <Select value={filterEstado} onValueChange={(v) => v && setFilterEstado(v)}>
               <SelectTrigger className="h-11 border-slate-200 bg-slate-50/50 rounded-xl font-bold text-xs shadow-none">

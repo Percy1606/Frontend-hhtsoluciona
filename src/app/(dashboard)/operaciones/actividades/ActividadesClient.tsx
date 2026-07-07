@@ -414,7 +414,7 @@ export default function ActividadesClient() {
             Vista jerárquica: proyecto → actividades
           </p>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto mt-2 md:mt-0">
           {groupedByProject.length > 0 && (
             <>
               <Button

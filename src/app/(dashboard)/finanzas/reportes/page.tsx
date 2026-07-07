@@ -101,7 +101,7 @@ export default function ReportesAvanzadosPage() {
 
       // Ranking de clientes
       if (isCurrentYear && f.cliente) {
-        const cName = f.cliente.nombreEmpresa || f.cliente.nombre || 'Cliente Desconocido';
+        const cName = f.cliente.empresa || f.cliente.nombreEmpresa || f.cliente.nombre || 'Cliente Desconocido';
         if (!clientesMap.has(cName)) clientesMap.set(cName, { nombre: cName, facturado: 0, cobrado: 0 });
         const cEntry = clientesMap.get(cName)!;
         cEntry.facturado += fMonto;
@@ -150,12 +150,12 @@ export default function ReportesAvanzadosPage() {
   }
 
   return (
-    <div className="p-6 space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
+    <div className="p-2 md:p-6 space-y-4 md:space-y-6 animate-in fade-in duration-500 max-w-7xl mx-auto">
       {/* CABECERA */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-4 md:p-6 rounded-3xl shadow-sm border border-slate-100">
         <div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase text-slate-900">Inteligencia Financiera</h1>
-          <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
+          <h1 className="text-xl md:text-2xl font-black tracking-tighter uppercase text-slate-900">Inteligencia Financiera</h1>
+          <p className="text-[9px] md:text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">
             Análisis de Facturación, Utilidad y Desempeño
           </p>
         </div>

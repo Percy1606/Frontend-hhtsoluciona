@@ -410,7 +410,7 @@ export default function ProyectosPage() {
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Control operativo y seguimiento de proyectos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
           <Button
             variant="outline"
             className="h-9 gap-2 font-black uppercase text-[10px] border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100"
@@ -533,24 +533,24 @@ export default function ProyectosPage() {
           <div className="block md:hidden space-y-4">
             {proyectosFiltrados.map((proyecto, index) => (
               <div key={proyecto.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
-                <div className="absolute top-4 right-2 flex items-center">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleOpenDetail(proyecto)}><Eye className="w-4 h-4" /></Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => handleEditProyecto(proyecto)}><Pencil className="w-4 h-4" /></Button>
+                <div className="absolute top-2 right-2 flex items-center bg-white/90 backdrop-blur-sm rounded-lg p-0.5 shadow-sm">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenDetail(proyecto)}><Eye className="w-3.5 h-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-secondary" onClick={() => handleEditProyecto(proyecto)}><Pencil className="w-3.5 h-3.5" /></Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-8 w-8 text-error" 
+                    className="h-7 w-7 text-error" 
                     onClick={() => {
                       setProjectToDeleteId(proyecto.id);
                       setProjectToDeleteName(proyecto.nombre);
                       setIsSecureDeleteOpen(true);
                     }}
-                  ><Trash2 className="w-4 h-4" /></Button>
+                  ><Trash2 className="w-3.5 h-3.5" /></Button>
                 </div>
                 
-                <div className="pr-[100px] flex flex-col">
+                <div className="pr-[80px] flex flex-col">
                   <span className="text-[10px] font-black uppercase text-slate-400 mb-0.5">
-                    {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                    {(proyecto as any).cliente?.empresa || (proyecto as any).cliente?.nombre || allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                   </span>
                   <button onClick={() => handleOpenDetail(proyecto)} className="text-left font-black text-sm text-primary uppercase leading-tight max-w-full hover:underline">
                     {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
@@ -923,12 +923,17 @@ export default function ProyectosPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <Input 
-                    type="number"
-                    min={0}
-                    max={100}
+                    type="text"
                     className="h-12 w-28 border-slate-200 font-bold bg-slate-50 rounded-xl"
-                    value={editingProyecto.avance}
-                    onChange={(e) => setEditingProyecto({ ...editingProyecto, avance: Math.min(100, Math.max(0, parseInt(e.target.value) || 0)) })}
+                    value={editingProyecto.avance === 0 ? '' : editingProyecto.avance}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      if (val === '') {
+                        setEditingProyecto({ ...editingProyecto, avance: 0 });
+                      } else {
+                        setEditingProyecto({ ...editingProyecto, avance: Math.min(100, parseInt(val, 10)) });
+                      }
+                    }}
                   />
                   <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
                     <div className="h-full bg-secondary transition-all" style={{ width: `${editingProyecto.avance || 0}%` }} />
