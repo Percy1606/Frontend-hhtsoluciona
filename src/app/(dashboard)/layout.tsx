@@ -20,10 +20,11 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
       <Sidebar />
       <div className={cn(
         "flex-1 flex flex-col transition-all duration-300 ease-in-out min-w-0",
-        sidebarCollapsed ? "ml-20" : "ml-64"
+        sidebarCollapsed ? "md:ml-20" : "md:ml-64",
+        "ml-0" // En móvil no hay margen, la sidebar se oculta o superpone
       )}>
         <Header />
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-4 md:p-8">
           <TooltipProvider>
             {children}
           </TooltipProvider>

@@ -214,7 +214,129 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
             </div>
           </div>
         )}
-        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
+        
+        {/* VISTA MÓVIL (Tarjetas) */}
+        <div className="block md:hidden p-4 space-y-4">
+          {displayData.length === 0 ? (
+            <div className="text-center py-8 text-slate-500 font-bold bg-slate-50/50 rounded-xl">
+              <FilterX className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              No hay clientes registrados.
+            </div>
+          ) : (
+            displayData.map((client, index) => {
+              const daysSinceLastContact = getDaysSinceContact(client.ultimoContacto);
+              const isOverdue = isFollowUpOverdue(client);
+              const daysOverdue = isOverdue ? getDaysSinceContact(client.proximoSeguimiento) : 0;
+              const daysToShow = isOverdue ? daysOverdue : daysSinceLastContact;
+              const semaforo = calculateClientSemaforo(client);
+              
+              return (
+                <div key={client.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                  {/* Etiqueta de Clasificación */}
+                  <div className="absolute top-4 right-4">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-slate-100 cursor-pointer outline-none text-slate-400 hover:text-primary transition-all">
+                        <MoreHorizontal className="h-5 w-5" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56 p-1 bg-white border border-border shadow-2xl z-50 rounded-xl">
+                          <DropdownMenuItem
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white transition-colors"
+                            onClick={() => handleOpenDetails(client)}
+                          >
+                            <Eye className="w-4 h-4 opacity-80" /> Ver Ficha CRM
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white transition-colors"
+                            onClick={() => handleOpenEdit(client)}
+                          >
+                            <Edit className="w-4 h-4 opacity-80" /> Editar Registro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-primary focus:!bg-[#001F3F] focus:!text-white transition-colors"
+                            onClick={() => handleOpenFollowUp(client)}
+                          >
+                            <Calendar className="w-4 h-4 opacity-80" /> Registrar Acción
+                          </DropdownMenuItem>
+                          <div className="h-px bg-slate-100 my-1" />
+                          <DropdownMenuItem
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-success focus:!bg-[#001F3F] focus:!text-white transition-colors"
+                            onClick={() => handleWhatsAppContact(client)}
+                          >
+                            <MessageSquare className="w-4 h-4 opacity-80" /> Contactar WhatsApp
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 font-black text-[10px] uppercase cursor-pointer py-3 rounded-lg text-error focus:!bg-[#001F3F] focus:!text-white transition-colors"
+                            onClick={() => handleDeleteClient(client.id)}
+                          >
+                            <Trash2 className="w-4 h-4 opacity-80" /> Eliminar Cliente
+                          </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  <div className="pr-10 flex flex-col">
+                    <button
+                      onClick={() => handleOpenDetails(client)}
+                      className="text-left font-black text-sm text-primary uppercase leading-tight max-w-full"
+                    >
+                      {client.empresa}
+                    </button>
+                    <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{client.codigo} • RUC: {client.ruc}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">Contacto</span>
+                      <span className="text-[11px] font-black text-slate-700 uppercase truncate">{client.contacto}</span>
+                      <span className="text-[10px] font-semibold text-slate-500">{client.telefono}</span>
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase">Asesor / Etapa</span>
+                      <span className="text-[11px] font-black text-primary uppercase">{getAsignadoName(client.asignadoA)}</span>
+                      <span className="text-[9px] font-bold text-slate-500 uppercase bg-slate-100 w-fit px-1.5 py-0.5 rounded mt-0.5">{client.etapaComercial}</span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <div className={cn(
+                          "w-2 h-2 rounded-full",
+                          semaforo === 'Verde' ? "bg-success" :
+                          semaforo === 'Amarillo' ? "bg-warning" : "bg-error"
+                        )} />
+                        <span className={cn(
+                          "text-[10px] font-black",
+                          daysToShow > 15 ? "text-error" : daysToShow > 7 ? "text-warning" : "text-success"
+                        )}>
+                          {daysToShow === 999 ? "S.C." : `${daysToShow}D`}
+                        </span>
+                      </div>
+                      <Badge className={cn(
+                          "font-black text-[8px] uppercase px-1.5 py-0 border-none shadow-none ml-2",
+                          client.clasificacion === "MUY_RENTABLE" ? "bg-green-100 text-green-700" :
+                          client.clasificacion === "RENTABLE" ? "bg-blue-100 text-blue-700" :
+                          "bg-slate-100 text-slate-500"
+                      )}>
+                          {client.clasificacion?.replace('MUY_', 'M.').replace('_', ' ') || "RENTABLE"}
+                      </Badge>
+                    </div>
+                    
+                    <span className={cn(
+                        "text-[9px] font-black px-2 py-1 rounded",
+                        isOverdue ? "bg-error text-white" : "text-slate-700 bg-slate-100"
+                    )}>
+                        Próx: {formatDate(client.proximoSeguimiento)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* VISTA PC (Tabla Clásica) */}
+        <div className="hidden md:block overflow-x-auto scrollbar-thin scrollbar-thumb-slate-200">
           <Table className="min-w-full border-separate border-spacing-0">
             <TableHeader className="bg-slate-50">
               <TableRow className="border-b border-border/80">

@@ -165,7 +165,48 @@ export default function KardexPage() {
             </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        {/* VISTA MÓVIL (Tarjetas) */}
+        <div className="block md:hidden space-y-4">
+            {loading ? (
+                <div className="text-center py-10 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Kardex...</div>
+            ) : movimientos.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 font-bold uppercase text-[10px]">No se encontraron movimientos.</div>
+            ) : (
+                movimientos.map((mov) => (
+                    <div key={mov.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                        <div className="absolute top-4 right-4 flex items-center">
+                            <Badge className={cn("border-none font-black text-[8px] uppercase px-2 h-5 flex items-center gap-1 shadow-none", mov.tipo === 'ENTRADA' ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700")}>
+                                {mov.tipo === 'ENTRADA' ? <ArrowUpRight className="w-2.5 h-2.5"/> : <ArrowDownLeft className="w-2.5 h-2.5"/>}
+                                {mov.tipo}
+                            </Badge>
+                        </div>
+
+                        <div className="flex flex-col gap-1 pr-20">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1"><PackageCheck className="w-3.5 h-3.5 text-success"/> {new Date(mov.fecha).toLocaleString()}</span>
+                            <span className="font-black text-sm text-slate-800 uppercase leading-tight">{mov.insumo?.nombre}</span>
+                            <span className="text-[9px] text-slate-400 font-bold uppercase">{mov.insumo?.categoria}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[9px] text-slate-500 font-bold uppercase">Cantidad</span>
+                                <span className="font-black text-sm text-slate-800">{mov.cantidad} {mov.insumo?.unidadMedida}</span>
+                            </div>
+                            <div className="flex flex-col gap-1 items-end">
+                                <span className="text-[9px] text-slate-500 font-bold uppercase">Motivo / Proyecto</span>
+                                <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight text-right">{mov.motivo}</span>
+                                {mov.proyectoId && (
+                                    <span className="text-[8px] font-black text-primary uppercase text-right mt-0.5">PROY: {proyectos.find(p => p.id === mov.proyectoId)?.codigo || 'EXTERNO'}</span>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+
+        {/* VISTA PC */}
+        <div className="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden">
             <Table>
                 <TableHeader className="bg-slate-50/50">
                     <TableRow>
@@ -216,36 +257,36 @@ export default function KardexPage() {
                     )}
                 </TableBody>
             </Table>
-
-            {/* Paginación Integrada (Estilo Bandeja Técnica) */}
-            {movimientoTotalPages > 1 && (
-                <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
-                        Página {currentPage} de {movimientoTotalPages} — Total: {totalMovimientos} movimientos
-                    </p>
-                    <div className="flex gap-2 mr-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage <= 1 || loading}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            <ChevronLeft className="w-3 h-3" /> Anterior
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage >= movimientoTotalPages || loading}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            Siguiente <ChevronRight className="w-3 h-3" />
-                        </Button>
-                    </div>
-                </div>
-            )}
         </div>
+
+        {/* Paginación Integrada (Estilo Bandeja Técnica) */}
+        {movimientoTotalPages > 1 && (
+            <div className="mt-4 md:mt-0 p-3 bg-slate-50 md:border-t md:border-border rounded-xl md:rounded-none md:rounded-b-xl border border-slate-200 md:border-x-slate-100 md:border-b-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 text-center sm:text-left">
+                    Página {currentPage} de {movimientoTotalPages} — Total: {totalMovimientos} movimientos
+                </p>
+                <div className="flex justify-center gap-2 mr-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage <= 1 || loading}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        <ChevronLeft className="w-3 h-3" /> Anterior
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage >= movimientoTotalPages || loading}
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        Siguiente <ChevronRight className="w-3 h-3" />
+                    </Button>
+                </div>
+            </div>
+        )}
       </div>
     </div>
   );

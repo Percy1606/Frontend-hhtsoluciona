@@ -100,7 +100,59 @@ export default function AuditoriaPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-2xl bg-[#ffffffcc] backdrop-blur-sm overflow-hidden rounded-2xl">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {loading ? (
+          <div className="text-center py-10 flex flex-col items-center gap-2">
+              <div className="w-6 h-6 border-4 border-[#001F3F] border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</span>
+          </div>
+        ) : logs.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground font-bold italic">No hay registros para mostrar.</div>
+        ) : (
+          logs.map((log) => (
+            <div key={log.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+              <div className="absolute top-4 right-4 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#001F3F]" onClick={() => setSelectedLog(log)}><Eye className="w-4 h-4" /></Button>
+              </div>
+              <div className="flex flex-col gap-1 pr-12">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">{format(new Date(log.fechaCreacion), "dd/MM/yyyy HH:mm", { locale: es })}</span>
+                <span className="font-black text-sm text-[#001F3F] uppercase leading-tight">{log.usuario?.nombre || log.usuarioId}</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase text-slate-500">Módulo</span>
+                  <Badge variant="secondary" className="text-[9px] font-black uppercase px-2 py-0.5 bg-[#f1f5f9] text-[#64748b] border-none w-fit">{log.modulo}</Badge>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[9px] font-black uppercase text-slate-500">Acción</span>
+                  <span className="text-[11px] font-bold text-[#001F3F] text-right">{log.accion}</span>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+        
+        {/* Paginación Móvil */}
+        {totalPages > 1 && (
+            <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-between gap-3 mt-4">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest text-center">
+                    Página {page} de {totalPages} — Total: {totalLogs} eventos
+                </p>
+                <div className="flex justify-center gap-2">
+                    <Button variant="outline" size="sm" disabled={page <= 1 || loading} onClick={() => fetchLogs(page - 1)} className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white">
+                        Anterior
+                    </Button>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages || loading} onClick={() => fetchLogs(page + 1)} className="h-7 px-4 font-black text-[9px] uppercase border-slate-200 bg-white">
+                        Siguiente
+                    </Button>
+                </div>
+            </div>
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <Card className="hidden md:block border-none shadow-2xl bg-[#ffffffcc] backdrop-blur-sm overflow-hidden rounded-2xl">
         <CardContent className="p-0">
           <Table>
             <TableHeader className="bg-[#f8fafc80]">

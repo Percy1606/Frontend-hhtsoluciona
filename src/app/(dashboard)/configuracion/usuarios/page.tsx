@@ -265,7 +265,72 @@ export default function UsuariosPage() {
               </div>
             </div>
           ) : (
-            <Table>
+            <>
+              {/* VISTA MÓVIL */}
+              <div className="block md:hidden space-y-4 p-4">
+                {filteredUsuarios.length === 0 ? (
+                  <div className="text-center text-muted-foreground p-8">No se encontraron usuarios que coincidan con su búsqueda.</div>
+                ) : (
+                  filteredUsuarios.map((user) => (
+                    <div key={user.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                      <div className="absolute top-4 right-4 flex items-center">
+                        {isAdmin ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-xl hover:bg-slate-50 text-slate-500 transition-all outline-none cursor-pointer">
+                              <MoreVertical className="h-5 w-5" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-100">
+                              <DropdownMenuItem className="flex items-center gap-3 p-3 rounded-lg cursor-pointer" onClick={() => handleOpenModal(user)}>
+                                <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Edit2 className="h-4 w-4" /></div>
+                                <div className="flex flex-col"><span className="font-semibold text-sm">Editar Datos</span></div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="flex items-center gap-3 p-3 rounded-lg cursor-pointer mt-1" onClick={() => toggleUserStatus(user)}>
+                                <div className={user.activo ? "p-2 bg-rose-50 text-rose-600 rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 rounded-lg"}>
+                                  {user.activo ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                                </div>
+                                <div className="flex flex-col text-left"><span className={`font-semibold text-sm ${user.activo ? "text-rose-600" : "text-emerald-600"}`}>{user.activo ? "Desactivar" : "Activar"}</span></div>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <Badge variant="outline" className="text-[10px] border-slate-200 text-slate-400">Lectura</Badge>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-3 pr-10">
+                        <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#001F3F] to-[#003087] flex items-center justify-center text-white font-bold shadow-sm">
+                          {user.nombre.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-800">{user.nombre}</span>
+                          <span className="text-xs font-medium text-[#003087]">@{user.username}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-1.5 text-xs text-slate-700 font-semibold bg-slate-50 px-2 py-1 rounded-md w-fit">
+                            <Shield className="h-3.5 w-3.5 text-slate-500" /> {user.rol}
+                          </div>
+                          <Badge className={user.activo ? "bg-emerald-50 text-emerald-700 border-emerald-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]" : "bg-rose-50 text-rose-700 border-rose-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]"}>
+                            {user.activo ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />} {user.activo ? "Activo" : "Inactivo"}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col gap-0.5 justify-center">
+                          <span className="text-[11px] font-bold text-slate-700 truncate">{user.responsable?.nombre || "No vinculado"}</span>
+                          {user.responsable && (
+                            <span className="text-[9px] uppercase tracking-wider text-muted-foreground font-bold">{user.responsable.area.replace(/([A-Z])/g, ' $1').trim()}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* VISTA PC */}
+              <div className="hidden md:block">
+                <Table>
               <TableHeader className="bg-slate-50/30">
                 <TableRow className="hover:bg-transparent border-slate-100">
                   <TableHead className="py-4 px-6">Información Personal</TableHead>
@@ -373,6 +438,8 @@ export default function UsuariosPage() {
                 ))}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

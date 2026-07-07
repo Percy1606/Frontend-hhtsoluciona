@@ -328,7 +328,74 @@ function AdminTrabajadoresView() {
               </div>
             </div>
           ) : (
-            <Table>
+            <>
+              {/* VISTA MÓVIL */}
+              <div className="block md:hidden space-y-4 p-4">
+                {filteredWorkers.length === 0 ? (
+                  <div className="text-center text-muted-foreground p-8">No se encontró personal registrado.</div>
+                ) : (
+                  filteredWorkers.map((worker) => (
+                    <div key={worker.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                      <div className="absolute top-4 right-4 flex items-center">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-xl hover:bg-slate-50 text-slate-500 transition-all outline-none">
+                            <MoreVertical className="h-5 w-5" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-100">
+                            <DropdownMenuItem className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => handleOpenModal(worker)}>
+                              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Edit2 className="h-4 w-4" /></div>
+                              <div className="flex flex-col"><span className="font-semibold text-sm">Editar Perfil</span><span className="text-[10px] text-muted-foreground">Actualizar datos y contacto</span></div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="group flex items-center gap-3 p-3 rounded-lg cursor-pointer mt-1" onClick={() => toggleWorkerStatus(worker)}>
+                              <div className={worker.activo ? "p-2 bg-rose-50 text-rose-600 rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 rounded-lg"}>
+                                {worker.activo ? <Trash2 className="h-4 w-4" /> : <ShieldCheck className="h-4 w-4" />}
+                              </div>
+                              <div className="flex flex-col text-left">
+                                <span className={`font-semibold text-sm ${worker.activo ? "text-rose-600" : "text-emerald-600"}`}>{worker.activo ? "Dar de Baja" : "Reincorporar"}</span>
+                                <span className="text-[10px] text-muted-foreground">{worker.activo ? "Cesará sus funciones" : "Habilitará al trabajador"}</span>
+                              </div>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+
+                      <div className="flex items-center gap-3 pr-10">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm ${worker.color}`}>
+                          {worker.nombre.charAt(0)}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-slate-800 leading-tight">{worker.nombre}</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{worker.cargo}</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div className="flex flex-col gap-2">
+                          <Badge className={`${areaColors[worker.area] || "bg-slate-100 text-slate-700"} border shadow-none px-2 py-0.5 rounded-md font-medium text-[9px] w-fit uppercase`}>
+                            {worker.area.replace(/([A-Z])/g, ' $1').trim()}
+                          </Badge>
+                          <Badge className={worker.activo ? "bg-emerald-50 text-emerald-700 border-emerald-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]" : "bg-rose-50 text-rose-700 border-rose-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]"}>
+                            {worker.activo ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                            {worker.activo ? "Activo" : "Baja"}
+                          </Badge>
+                        </div>
+                        <div className="flex flex-col gap-1 text-[10px]">
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Mail className="h-3 w-3 text-[#003087]" /> <span className="truncate">{worker.email || "Sin correo"}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Phone className="h-3 w-3 text-[#003087]" /> {worker.telefono || "Sin teléfono"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* VISTA PC */}
+              <div className="hidden md:block">
+                <Table>
               <TableHeader className="bg-slate-50/30">
                 <TableRow className="hover:bg-transparent border-slate-100">
                   <TableHead className="py-4 px-6">Trabajador</TableHead>
@@ -429,6 +496,8 @@ function AdminTrabajadoresView() {
                 )}
               </TableBody>
             </Table>
+            </div>
+            </>
           )}
         </CardContent>
       </Card>

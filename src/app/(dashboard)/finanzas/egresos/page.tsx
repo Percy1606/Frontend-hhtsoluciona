@@ -288,7 +288,115 @@ export default function EgresosPage() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {paginatedGastos.map((g, index) => (
+          <div key={g.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+            <div className="absolute top-4 right-2 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+              {g.comprobanteUrl && (
+                <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Documento Adjunto">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 rounded-md">
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </Button>
+                </a>
+              )}
+              {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-500 rounded-md" onClick={() => handleApproveGasto(g.id)}>
+                  <CheckCircle className="w-3.5 h-3.5" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 rounded-md" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }}>
+                <Edit2 className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 rounded-md" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }}>
+                <Trash2 className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+
+            <div className="pr-[110px] flex flex-col">
+              <span className="font-black text-sm text-primary uppercase leading-tight">{g.codigo || 'S/N'}</span>
+              <span className="text-[10px] font-bold text-slate-700 mt-1 line-clamp-2 leading-tight" title={g.concepto}>{g.concepto}</span>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              {g.proveedor ? (
+                <div className="flex flex-col">
+                  <span className="font-black text-[11px] text-slate-700 truncate">{g.proveedor.razonSocial}</span>
+                  <span className="text-[9px] text-slate-400 font-bold">RUC: {g.proveedor.ruc || 'S/N'}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-1 text-red-600">
+                  <AlertTriangle className="w-3 h-3" />
+                  <span className="text-[9px] font-black uppercase">Sin Proveedor</span>
+                </div>
+              )}
+              
+              {g.proyecto ? (
+                <div className="flex flex-col mt-1">
+                  <span className="font-black text-[10px] text-blue-700 truncate">{g.proyecto.nombre}</span>
+                  <span className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'N/A'}</span>
+                </div>
+              ) : (
+                <div className="flex flex-col mt-1">
+                  <span className="font-black text-[10px] text-slate-500 italic truncate">Gasto General</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'ADMINISTRACIÓN'}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-slate-50">
+              <div className="flex flex-col gap-1.5">
+                <span className="text-[9px] text-slate-500 flex items-center gap-1">
+                  <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                </span>
+                {g.fechaProgramadaPago && (
+                  <span className="text-[9px] text-amber-600 flex items-center gap-1 font-medium">
+                    <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
+                  </span>
+                )}
+                {g.fechaPago && (
+                  <span className="text-[9px] text-emerald-600 flex items-center gap-1 font-medium">
+                    <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
+                  </span>
+                )}
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                <span className="font-mono font-black text-sm text-slate-800 tracking-tight">
+                  S/ {Number(g.montoTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                {g.estado === 'PAGADO' && Number(g.saldoPendiente) > 0 && (
+                  <span className="font-mono text-[9px] text-red-500 font-bold mt-1">
+                    Saldo: S/ {Number(g.saldoPendiente).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-1 flex items-center justify-between">
+              <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-2 py-0.5",
+                g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
+                g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
+                "text-slate-500 bg-slate-50 border-slate-200"
+              )}>
+                {g.prioridad || 'MEDIA'}
+              </Badge>
+              <Badge className={cn("border font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
+                {gastoStatus[g.estado]?.label || g.estado}
+              </Badge>
+            </div>
+          </div>
+        ))}
+        
+        {filteredGastos.length === 0 && (
+          <div className="text-center py-8 text-slate-500 font-bold bg-slate-50/50 rounded-xl flex flex-col items-center justify-center gap-2">
+            <TrendingDown className="w-8 h-8 opacity-30" />
+            No se encontraron gastos
+          </div>
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-muted/50 h-12">
             <TableRow className="hover:bg-transparent border-none">

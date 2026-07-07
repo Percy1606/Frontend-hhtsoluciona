@@ -344,7 +344,52 @@ export default function OperacionesPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
+          {/* VISTA MÓVIL (Tarjetas) */}
+          <div className="block md:hidden space-y-4">
+            {filteredProjects.length === 0 ? (
+                <div className="text-center py-20 text-slate-400 font-medium italic">No se encontraron proyectos con los filtros aplicados</div>
+            ) : (
+                filteredProjects.map((proyecto) => (
+                    <div key={proyecto.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                        <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10 rounded-full" onClick={() => { setSelectedProject(proyecto); setIsDetailsModalOpen(true); }}><Eye className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-secondary hover:bg-secondary/10 rounded-full"><Pencil className="w-4 h-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-error hover:bg-red-50 rounded-full" onClick={() => deleteProyecto(proyecto.id)}><Trash2 className="w-4 h-4" /></Button>
+                        </div>
+                        <div className="pr-24 flex flex-col gap-1">
+                            <span className="font-bold text-primary text-xs uppercase tracking-tight">{proyecto.codigo}</span>
+                            <span className="text-sm font-black text-slate-700 uppercase leading-tight">{proyecto.nombre}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 mt-1">
+                            <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-primary text-[9px] font-black uppercase">{getResponsableName(proyecto.responsablePrincipalId).charAt(0)}</div>
+                            <span className="text-[10px] font-black text-slate-700 uppercase">{getResponsableName(proyecto.responsablePrincipalId)}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-500">Cronograma</span>
+                                <span className="text-[10px] font-medium text-slate-400 flex items-center gap-1"><Calendar className="w-3 h-3"/> {formatDate(proyecto.fechaInicio)}</span>
+                                <span className="text-[10px] font-medium text-primary ml-4">{formatDate(proyecto.fechaFinEstimada)}</span>
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-500">Avance / Estado</span>
+                                <div className="flex items-center gap-2 w-full justify-end">
+                                    <div className="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                                        <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${proyecto.avanceCalculado}%` }} />
+                                    </div>
+                                    <span className="text-[10px] font-black text-slate-700">{proyecto.avanceCalculado}%</span>
+                                </div>
+                                <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none mt-1 h-4", statusColors[proyecto.estado])}>{proyecto.estado}</Badge>
+                            </div>
+                        </div>
+                    </div>
+                ))
+            )}
+          </div>
+
+          {/* VISTA PC */}
+          <div className="hidden md:block bg-white rounded-2xl border border-border shadow-sm overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow>

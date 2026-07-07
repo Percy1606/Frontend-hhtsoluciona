@@ -240,7 +240,75 @@ export default function InventarioPage() {
             </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        {/* VISTA MÓVIL (Tarjetas) */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-10 animate-pulse font-black text-[10px] text-slate-400">CARGANDO ALMACÉN...</div>
+          ) : insumos.length === 0 ? (
+            <div className="text-center py-10 text-slate-400 font-bold uppercase text-[10px]">No se encontraron insumos.</div>
+          ) : (
+            insumos.map((item, index) => (
+              <div key={item.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                <div className="absolute top-4 right-2 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={() => handleOpenDetalle(item)}><Eye className="w-4 h-4"/></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-600" onClick={() => {
+                      const newStock = window.prompt(`Ajustar stock actual para: ${item.nombre}\nStock Actual: ${item.stockActual}`, item.stockActual.toString());
+                      if (newStock !== null && !isNaN(Number(newStock))) {
+                          useLogisticaStore.getState().updateInsumo(item.id, { stockActual: Number(newStock) }).then(() => toast.success("Stock ajustado"));
+                      }
+                  }}><RefreshCw className="w-4 h-4"/></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" onClick={() => handleEdit(item)}><Edit2 className="w-4 h-4"/></Button>
+                  {user?.rol === 'ADMIN' && (
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-error" onClick={() => handleRemove(item)}><Trash2 className="w-4 h-4"/></Button>
+                  )}
+                </div>
+
+                <div className="pr-[120px] flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-[8px] px-1.5 py-0 rounded bg-slate-100 text-slate-500 border-none font-mono">INS-{item.id.substring(0,6).toUpperCase()}</Badge>
+                    {item.stockActual === 0 ? (
+                        <Badge variant="destructive" className="text-[8px] px-1.5 py-0 h-4 bg-red-100 text-red-700 hover:bg-red-100 border-none">AGOTADO</Badge>
+                    ) : item.stockActual <= item.stockMinimo ? (
+                        <Badge variant="destructive" className="text-[8px] px-1.5 py-0 h-4 bg-orange-100 text-orange-700 hover:bg-orange-100 border-none">CRÍTICO</Badge>
+                    ) : (
+                        <Badge variant="outline" className="text-[8px] px-1.5 py-0 h-4 bg-emerald-50 text-emerald-700 border-emerald-200">DISPONIBLE</Badge>
+                    )}
+                  </div>
+                  <span className="font-black text-sm text-slate-800 uppercase leading-tight">{item.nombre}</span>
+                  <span className="text-[9px] text-slate-400 font-bold uppercase">{item.descripcion || 'Sin descripción'}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-slate-50">
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[9px] text-slate-500 font-bold uppercase">Categoría</span>
+                    <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 text-slate-500 w-fit">{item.categoria || 'General'}</Badge>
+                    <span className="text-[10px] text-slate-500 font-bold uppercase mt-1">Unidad: {item.unidadMedida}</span>
+                  </div>
+                  <div className="flex flex-col items-end gap-1">
+                    <div className="text-[10px] font-medium flex justify-between w-full">
+                      <span className="text-slate-500 uppercase">Stock</span>
+                      <div className="flex items-center gap-1">
+                        <span className={cn("font-black", item.stockActual <= item.stockMinimo ? "text-error" : "text-primary")}>{item.stockActual}</span>
+                        {item.stockActual <= item.stockMinimo && <AlertCircle className="w-3 h-3 text-error animate-pulse" />}
+                      </div>
+                    </div>
+                    <div className="text-[10px] font-medium flex justify-between w-full border-t border-slate-100 pt-0.5">
+                      <span className="text-slate-500 uppercase">Precio</span>
+                      <span className="font-black text-slate-700">S/ {Number(item.precioReferencial || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="text-[10px] font-medium flex justify-between w-full border-t border-slate-100 pt-0.5">
+                      <span className="text-slate-500 uppercase">Total</span>
+                      <span className="font-black text-blue-700">S/ {(item.stockActual * (item.precioReferencial || 0)).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* VISTA PC */}
+        <div className="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden">
             <Table>
                 <TableHeader className="bg-slate-50/50">
                     <TableRow>
@@ -353,36 +421,36 @@ export default function InventarioPage() {
                     )}
                 </TableBody>
             </Table>
-
-            {/* Paginación Integrada (Estilo Bandeja Técnica) */}
-            {insumoTotalPages > 1 && (
-                <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
-                        Página {currentPage} de {insumoTotalPages} — Total: {totalInsumos} insumos
-                    </p>
-                    <div className="flex gap-2 mr-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage <= 1 || loading}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            <ChevronLeft className="w-3 h-3" /> Anterior
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage >= insumoTotalPages || loading}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            Siguiente <ChevronRight className="w-3 h-3" />
-                        </Button>
-                    </div>
-                </div>
-            )}
         </div>
+
+        {/* Paginación Integrada (Estilo Bandeja Técnica) */}
+        {insumoTotalPages > 1 && (
+            <div className="mt-4 md:mt-0 p-3 bg-slate-50 md:border-t md:border-border rounded-xl md:rounded-none md:rounded-b-xl border border-slate-200 md:border-x-slate-100 md:border-b-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 text-center sm:text-left">
+                    Página {currentPage} de {insumoTotalPages} — Total: {totalInsumos} insumos
+                </p>
+                <div className="flex justify-center gap-2 mr-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage <= 1 || loading}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        <ChevronLeft className="w-3 h-3" /> Anterior
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage >= insumoTotalPages || loading}
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        Siguiente <ChevronRight className="w-3 h-3" />
+                    </Button>
+                </div>
+            </div>
+        )}
       </div>
 
       <InsumoForm isOpen={isInsumoModalOpen} onClose={() => setIsInsumoModalOpen(false)} insumo={selectedInsumo} />

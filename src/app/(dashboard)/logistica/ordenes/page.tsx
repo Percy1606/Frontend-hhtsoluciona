@@ -233,7 +233,67 @@ export default function OrdenesCompraPage() {
             </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
+        {/* VISTA MÓVIL */}
+        <div className="block md:hidden space-y-4">
+            {loading ? (
+                <div className="text-center py-10 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</div>
+            ) : ordenes.length === 0 ? (
+                <div className="text-center py-10 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de materiales.</div>
+            ) : (
+                ordenes.map((oc, index) => (
+                    <div key={oc.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                        <div className="absolute top-4 right-2 flex items-center">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-8 w-8 text-primary"><Eye className="w-4 h-4"/></Button>
+                            {oc.estado !== 'RECIBIDO' && oc.estado !== 'CANCELADO' && (
+                                <>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-blue-600"
+                                        onClick={() => handleEdit(oc)}
+                                    >
+                                        <Edit2 className="w-4 h-4" />
+                                    </Button>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        className="h-8 w-8 text-error"
+                                        onClick={() => handleDeleteClick(oc)}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </>
+                            )}
+                        </div>
+                        
+                        <div className="pr-[100px] flex flex-col">
+                            <span className="font-black text-primary text-sm uppercase leading-tight">{oc.codigo}</span>
+                            <span className="font-bold text-[10px] uppercase text-slate-600 mt-1">{oc.proveedor?.razonSocial}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 mt-1">
+                            <div className="flex flex-col">
+                                <span className="text-[9px] font-bold text-slate-400 uppercase">Proyecto</span>
+                                <span className="text-[10px] font-black text-slate-700 uppercase truncate">
+                                    {oc.gasto?.proyecto?.nombre || "Stock General"}
+                                </span>
+                            </div>
+                            <div className="flex flex-col items-end">
+                                <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-2", estadoCompraColors[oc.estado])}>{oc.estado}</Badge>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
+                            <span className="text-[10px] text-slate-500 font-bold">{new Date(oc.fechaEmision).toLocaleDateString()}</span>
+                            <span className="font-black text-sm text-slate-800">S/ {Number(oc.montoTotal || 0).toFixed(2)}</span>
+                        </div>
+                    </div>
+                ))
+            )}
+        </div>
+
+        {/* VISTA PC */}
+        <div className="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden">
             <Table>
                 <TableHeader className="bg-slate-50/50">
                     <TableRow>

@@ -465,8 +465,65 @@ export default function CotizacionesInboxPage() {
         </div>
       </div>
 
-      {/* Tabla Estilo Documental */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {loading ? (
+          <div className="text-center py-10 uppercase text-[10px] font-black text-slate-400 animate-pulse">Sincronizando con Gestión Documental...</div>
+        ) : filteredQuotes.length === 0 ? (
+          <div className="text-center py-10 text-muted-foreground uppercase text-[10px] font-bold">No hay proformas registradas en esta bandeja.</div>
+        ) : (
+          filteredQuotes.map((quote, index) => (
+            <div key={quote.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+              <div className="absolute top-4 right-4 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-indigo-600" onClick={() => handlePreviewFile(quote)} title="Ver en Nueva Pestaña"><Eye className="w-4 h-4" /></Button>
+                {canManageFinances && (
+                  <>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-secondary" onClick={() => openModal(quote)} title="Editar"><Edit className="w-4 h-4" /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger className="h-7 w-7 text-slate-400 hover:text-primary flex items-center justify-center rounded-lg hover:bg-primary/10 transition-colors outline-none cursor-pointer">
+                        <MoreVertical className="w-4 h-4" />
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-white border-slate-200 w-48 shadow-xl rounded-xl p-1">
+                        <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-primary focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => { setSelectedQuote(quote); setIsContractModalOpen(true); }}>
+                          <FileCheck className="w-4 h-4 opacity-80" /> Subir OS / Contrato
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="gap-2 font-black text-[9px] uppercase cursor-pointer py-2.5 text-error focus:!bg-[#001F3F] focus:!text-white data-[highlighted]:!bg-[#001F3F] data-[highlighted]:!text-white transition-colors" onClick={() => handleDeleteQuote(quote.id)}>
+                          <Trash2 className="w-4 h-4 opacity-80" /> Eliminar Permanente
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1 pr-24">
+                <span className="font-black text-xs text-primary">{quote.codigo || "—"}</span>
+                <span className="font-black text-sm text-slate-700 uppercase leading-tight">{quote.referencia || "Cotización Comercial"}</span>
+                <span className="text-[10px] text-slate-400 font-bold mt-0.5 uppercase">{quote.empresa}</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                <div className="flex flex-col gap-1">
+                  <span className="text-[9px] font-black uppercase text-slate-500 bg-slate-50 w-fit px-2 py-0.5 rounded-md border border-slate-200">Propuesta Comercial</span>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1 mt-1"><Calendar className="w-3 h-3"/> {formatDate(quote.fecha)}</span>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <span className="text-[10px] font-bold text-slate-600">v{quote.version || 1}</span>
+                  <Badge className={cn("text-[9px] font-black uppercase border-none px-2 h-5 shadow-none mt-1",
+                    quote.estado === "Aprobado" ? "bg-success text-white" : 
+                    quote.estado === "Obsoleto" || quote.estado === "Rechazado" ? "bg-error text-white" : 
+                    quote.estado === "Revisado" || quote.estado === "Enviado" ? "bg-blue-500 text-white" : "bg-warning/20 text-warning-foreground"
+                  )}>{quote.estado}</Badge>
+                </div>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block rounded-xl border border-border bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
@@ -570,14 +627,15 @@ export default function CotizacionesInboxPage() {
             )}
           </TableBody>
         </Table>
+      </div>
 
         {/* Paginación Integrada (Estilo Cartera) */}
         {quoteTotalPages > 1 && (
-          <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
-            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+          <div className="mt-4 md:mt-0 p-3 bg-slate-50 md:border-t md:border-border rounded-xl md:rounded-none md:rounded-b-xl border border-slate-200 md:border-x-slate-100 md:border-b-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2 text-center sm:text-left">
               Página {quotePage} de {quoteTotalPages} — Total: {totalQuotes} registros
             </p>
-            <div className="flex gap-2 mr-2">
+            <div className="flex justify-center gap-2 mr-2">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -599,7 +657,6 @@ export default function CotizacionesInboxPage() {
             </div>
           </div>
         )}
-      </div>
 
       {/* Modal Principal de Cotización */}
       <Dialog open={isModalOpen} onOpenChange={(open) => {

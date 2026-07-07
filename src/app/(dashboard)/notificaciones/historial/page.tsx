@@ -86,7 +86,62 @@ export default function HistorialNotificacionesPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-3">
+        {loading ? (
+            <div className="py-20 text-center animate-pulse font-black text-slate-400 uppercase text-xs">Sincronizando historial...</div>
+        ) : notifications.length === 0 ? (
+            <div className="py-20 text-center text-slate-400 font-bold uppercase text-xs">No tienes notificaciones registradas.</div>
+        ) : (
+            notifications.map((n) => (
+                <div key={n.id} className={cn("bg-white border rounded-xl p-4 shadow-sm flex flex-col gap-2 relative", !n.leida ? "border-primary/30 bg-primary/[0.02]" : "border-slate-200")}>
+                    <div className="absolute top-4 right-4 flex items-center gap-1">
+                        {!n.leida && (
+                            <div className="w-2 h-2 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.5)]" />
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => deleteNotification(n.id)} className="h-6 w-6 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 rounded-full"><Trash2 className="w-3.5 h-3.5" /></Button>
+                    </div>
+
+                    <div className="pr-12 cursor-pointer" onClick={() => { if (!n.leida) markAsRead(n.id); const url = getNotificationLink(n); if (url) router.push(url); }}>
+                        <div className="flex items-center gap-2 mb-1">
+                            <Badge className={cn("font-black text-[8px] uppercase px-2 py-0 border-none",
+                                n.tipo === 'SEGUIMIENTO' ? "bg-warning/20 text-warning-foreground" :
+                                n.tipo === 'VISITA' ? "bg-accent/20 text-accent-foreground" : 
+                                n.tipo === 'COTIZACION' ? "bg-secondary/20 text-secondary-foreground" :
+                                n.tipo === 'TECNICO' ? "bg-emerald-500/20 text-emerald-700" :
+                                "bg-primary/20 text-primary"
+                            )}>{n.tipo}</Badge>
+                            <span className="text-[9px] font-bold uppercase text-slate-400 flex items-center gap-1"><Clock className="w-3 h-3"/> {format(new Date(n.createdAt), "dd/MM HH:mm")}</span>
+                        </div>
+                        <p className={cn("font-black text-xs uppercase leading-tight mt-1", n.leida ? "text-slate-500" : "text-primary")}>{n.titulo}</p>
+                        <p className="text-[10px] text-slate-500 font-medium mt-1 leading-snug">{n.mensaje}</p>
+                    </div>
+
+                    {!n.leida && (
+                        <div className="pt-2 border-t border-slate-100 mt-1 flex justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => markAsRead(n.id)} className="h-6 text-primary hover:bg-primary/10 font-black text-[9px] uppercase px-2">Marcar leído</Button>
+                        </div>
+                    )}
+                </div>
+            ))
+        )}
+
+        {/* Paginación Móvil */}
+        {totalPages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 mt-4">
+                <p className="text-[9px] font-black uppercase text-slate-400 text-center">
+                    Página {page} de {totalPages} — Total: {totalNotifications}
+                </p>
+                <div className="flex justify-center gap-2">
+                    <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => fetchNotifications(page - 1)} className="h-7 px-4 text-[9px] font-black uppercase border-slate-200 bg-white">Anterior</Button>
+                    <Button variant="outline" size="sm" disabled={page >= totalPages} onClick={() => fetchNotifications(page + 1)} className="h-7 px-4 text-[9px] font-black uppercase border-slate-200 bg-white">Siguiente</Button>
+                </div>
+            </div>
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
@@ -199,7 +254,7 @@ export default function HistorialNotificacionesPage() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-200">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 bg-slate-50 rounded-xl border border-slate-200 hidden md:flex">
             <p className="text-[10px] font-black uppercase text-slate-400">
                 Página {page} de {totalPages} — Total: {totalNotifications} alertas
             </p>

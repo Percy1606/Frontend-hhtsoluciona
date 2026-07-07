@@ -263,7 +263,110 @@ export default function IngresosPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {paginatedFacturas.map((inv, index) => {
+          const montoPagado = inv.montoTotal - inv.saldoPendiente;
+          const isUnpaidWithDate = !!inv.fechaVencimiento && (inv.estado === 'PENDIENTE' || inv.estado === 'PAGO_PARCIAL');
+          let visualStatus = inv.estado;
+          let visualBadgeClass = financeStatus[inv.estado];
+          if (inv.estado === 'PENDIENTE') {
+              if (inv.montoTotal === 0) {
+                visualStatus = 'BORRADOR';
+                visualBadgeClass = "bg-slate-100 text-slate-500 border-slate-200";
+              } else {
+                visualStatus = 'PENDIENTE';
+                visualBadgeClass = "bg-blue-50 text-blue-600 border-blue-200";
+              }
+          }
+          let hitoDesc = "";
+          if (inv.hitoPago) {
+            hitoDesc = inv.hitoPago.descripcion || `Cuota ${inv.hitoPago.codigo || 'asignada'}`;
+          }
+
+          return (
+            <div key={inv.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+              <div className="absolute top-4 right-2 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                {inv.estado !== 'PAGADA' && inv.estado !== 'ANULADA' && (
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600" onClick={() => { setSelectedFactura(inv); setIsPagoModalOpen(true); }}><DollarSign className="w-4 h-4" /></Button>
+                )}
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-indigo-600" onClick={async () => {
+                  try {
+                    const fullFactura = await api.get(`/finanzas/facturas/${inv.id}`);
+                    setSelectedFactura(fullFactura);
+                    setIsHistoryModalOpen(true);
+                  } catch (e) {
+                    toast.error("Error al cargar historial de pagos");
+                  }
+                }}><Clock className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-600" onClick={() => { setEditingFactura(inv); setIsModalOpen(true); }}><Edit2 className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-red-600" onClick={() => { setFacturaToDelete({ id: inv.id, name: `Factura ${inv.codigo}` }); setDeleteModalOpen(true); }}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+
+              <div className="pr-[110px] flex flex-col">
+                <span className="font-black text-sm text-slate-800 uppercase">{inv.codigo}</span>
+                <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{CLASIFICACIONES_NEGOCIO[inv.clasificacion] || 'Venta Directa'}</span>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                {inv.cliente?.empresa && inv.cliente?.empresa !== "none" ? (
+                  <p className="font-bold text-xs text-slate-800 truncate" title={inv.cliente.empresa}>{inv.cliente.empresa}</p>
+                ) : (
+                  <p className="font-bold text-xs text-red-500 flex items-center gap-1">⚠️ Cliente Inválido / No Asignado</p>
+                )}
+                <p className="text-[10px] text-slate-500 truncate uppercase font-bold tracking-tighter">
+                  {inv.proyecto?.nombre ? `Ref: ${inv.proyecto.nombre}` : 'Sin Referencia'}
+                </p>
+                {hitoDesc && (
+                  <Badge variant="outline" className="text-[8px] bg-slate-50 py-0 px-1 border-slate-200 text-slate-500 w-fit">
+                    {hitoDesc}
+                  </Badge>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-slate-50">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-600">
+                    <Calendar className="w-3 h-3 text-slate-400" /> {formatDate(inv.fechaEmision)}
+                  </div>
+                  <div className={cn("flex items-center gap-1.5 text-[11px] font-bold", isUnpaidWithDate ? "text-red-600" : "text-slate-500")}>
+                    <Clock className={cn("w-3 h-3", isUnpaidWithDate ? "text-red-500" : "text-slate-400")} /> {formatDate(inv.fechaVencimiento)}
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-1">
+                  <div className="text-[10px] font-medium flex justify-between w-full">
+                    <span className="text-slate-500 uppercase">Total</span>
+                    <span className="font-mono font-black text-slate-800">{formatCurrency(inv.montoTotal)}</span>
+                  </div>
+                  <div className="text-[10px] font-medium flex justify-between w-full border-t border-slate-100 pt-0.5">
+                    <span className="text-emerald-600/80 uppercase">Pagado</span>
+                    <span className={cn("font-mono font-bold", montoPagado > 0 ? "text-emerald-600" : "text-slate-300")}>{formatCurrency(montoPagado)}</span>
+                  </div>
+                  <div className="text-[10px] font-medium flex justify-between w-full border-t border-slate-100 pt-0.5">
+                    <span className="text-red-500/80 uppercase">Saldo</span>
+                    <span className={cn("font-mono font-black", inv.saldoPendiente > 0 ? "text-red-600" : "text-slate-300")}>{formatCurrency(inv.saldoPendiente)}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-1">
+                <Badge className={cn("border font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md", visualBadgeClass)}>
+                  {visualStatus.replace('_', ' ')}
+                </Badge>
+              </div>
+            </div>
+          );
+        })}
+        {filteredFacturas.length === 0 && (
+          <div className="text-center py-8 text-slate-500 font-bold bg-slate-50/50 rounded-xl flex flex-col items-center justify-center gap-2">
+            <Receipt className="w-8 h-8 opacity-30" />
+            No se encontraron facturas
+          </div>
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-slate-50/80 h-12 border-b border-slate-100">
             <TableRow className="hover:bg-transparent border-none">

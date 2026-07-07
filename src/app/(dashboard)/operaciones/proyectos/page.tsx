@@ -529,7 +529,72 @@ export default function ProyectosPage() {
         </TabsList>
 
         <TabsContent value="proyectos" className="mt-2">
-          <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+          {/* VISTA MÓVIL */}
+          <div className="block md:hidden space-y-4">
+            {proyectosFiltrados.map((proyecto, index) => (
+              <div key={proyecto.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                <div className="absolute top-4 right-2 flex items-center">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" onClick={() => handleOpenDetail(proyecto)}><Eye className="w-4 h-4" /></Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-secondary" onClick={() => handleEditProyecto(proyecto)}><Pencil className="w-4 h-4" /></Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-8 w-8 text-error" 
+                    onClick={() => {
+                      setProjectToDeleteId(proyecto.id);
+                      setProjectToDeleteName(proyecto.nombre);
+                      setIsSecureDeleteOpen(true);
+                    }}
+                  ><Trash2 className="w-4 h-4" /></Button>
+                </div>
+                
+                <div className="pr-[100px] flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-slate-400 mb-0.5">
+                    {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                  </span>
+                  <button onClick={() => handleOpenDetail(proyecto)} className="text-left font-black text-sm text-primary uppercase leading-tight max-w-full hover:underline">
+                    {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
+                  </button>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{proyecto.codigo}</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 mt-1">
+                  <div className="flex flex-col">
+                    <span className="text-[9px] font-bold text-slate-400 uppercase">Líder</span>
+                    <span className="text-[11px] font-black text-slate-700 uppercase truncate">
+                      {getResponsableName(proyecto.responsablePrincipalId)}
+                    </span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-2", statusColors[proyecto.estado])}>
+                      {proyecto.estado}
+                    </Badge>
+                  </div>
+                </div>
+
+                <div className="border-t border-slate-100 pt-3 mt-1 w-full space-y-1">
+                  <div className="flex justify-between items-center text-[10px] font-black">
+                    <span className="text-slate-500 uppercase tracking-widest text-[8px]">Avance Físico</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-slate-800">{proyecto.avance || 0}%</span>
+                      <div className={cn("w-2 h-2 rounded-full", semaforoColors[proyecto.semaforo])} />
+                    </div>
+                  </div>
+                  <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                    <div className={cn("h-full transition-all", (proyecto.avance || 0) === 100 ? "bg-emerald-500" : "bg-primary")} style={{ width: `${proyecto.avance || 0}%` }} />
+                  </div>
+                </div>
+              </div>
+            ))}
+            {proyectosFiltrados.length === 0 && (
+              <div className="text-center py-8 text-slate-500 font-bold bg-slate-50/50 rounded-xl">
+                No hay proyectos que coincidan.
+              </div>
+            )}
+          </div>
+
+          {/* VISTA PC */}
+          <div className="hidden md:block bg-white rounded-xl border border-border shadow-sm overflow-hidden">
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow>

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { Plus, Trash2, Clock, CheckCircle2, Loader2, Edit2 } from "lucide-react";
+import { Plus, Trash2, Clock, CheckCircle2, Loader2, Edit2, Edit, XCircle, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 
@@ -132,7 +132,67 @@ export default function MisHorasExtras() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {loading ? (
+            <div className="text-center py-10"><Loader2 className="w-6 h-6 animate-spin mx-auto text-slate-400" /></div>
+        ) : gastos.length === 0 ? (
+            <div className="text-center py-10 text-slate-500 font-bold uppercase text-[10px]">No tienes solicitudes de horas extras.</div>
+        ) : (
+            gastos.map((g) => {
+                const isRevision = g.concepto.includes("[RRHH-REVISION]");
+                const isAprobado = g.concepto.includes("[RRHH-APROBADO]");
+                const isRechazado = g.concepto.includes("[RRHH-RECHAZADO]");
+                const isCancelado = g.concepto.includes("[CANCELADO]");
+                const cleanConcepto = g.concepto.replace("[RRHH-REVISION]", "").replace("[RRHH-APROBADO]", "").replace("[RRHH-RECHAZADO]", "").replace("[CANCELADO]", "").trim();
+                
+                return (
+                    <div key={g.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                        <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                            {isRevision && (
+                                <>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-secondary hover:bg-secondary/10 rounded-full" onClick={() => openEdit(g)}><Edit className="w-4 h-4" /></Button>
+                                    <Button variant="ghost" size="icon" className="h-7 w-7 text-error hover:bg-red-50 rounded-full" onClick={() => handleDelete(g)}><Trash2 className="w-4 h-4" /></Button>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="pr-16 flex flex-col gap-1">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase">{new Date(g.fechaEmision).toLocaleDateString('es-PE', { timeZone: 'UTC' })}</span>
+                            <span className="font-black text-sm text-slate-700 uppercase leading-tight">{cleanConcepto}</span>
+                        </div>
+                        <p className="text-[10px] text-slate-600 uppercase font-medium mt-1">{g.justificacion}</p>
+
+                        <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-500">Monto (S/.)</span>
+                                {Number(g.montoTotal) === 0 ? (
+                                    <span className="text-slate-400 italic font-normal text-[10px]">Por definir</span>
+                                ) : (
+                                    <span className="font-black text-sm text-slate-800">S/. {Number(g.montoTotal).toFixed(2)}</span>
+                                )}
+                            </div>
+                            <div className="flex flex-col items-end gap-1">
+                                <span className="text-[9px] font-black uppercase text-slate-500">Estado</span>
+                                {isCancelado ? (
+                                    <Badge variant="outline" className="bg-slate-100 text-slate-500 border-slate-300 text-[8px] uppercase font-black">Cancelado</Badge>
+                                ) : isAprobado ? (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-600 border-blue-200 text-[8px] uppercase font-black"><CheckCircle2 className="w-3 h-3 mr-1" /> Aprobado</Badge>
+                                ) : isRechazado ? (
+                                    <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 text-[8px] uppercase font-black"><XCircle className="w-3 h-3 mr-1" /> Rechazado</Badge>
+                                ) : (
+                                    <Badge variant="outline" className="bg-amber-50 text-amber-600 border-amber-200 text-[8px] uppercase font-black"><AlertCircle className="w-3 h-3 mr-1" /> En Revisión</Badge>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            })
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>

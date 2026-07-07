@@ -22,7 +22,8 @@ import {
   CheckCircle2,
   Clock,
   AlertTriangle,
-  Folder
+  Folder,
+  Calendar
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate } from "@/lib/utils";
@@ -266,8 +267,56 @@ export default function DocumentalPage() {
         </div>
       </div>
 
-      {/* Tabla de Documentos */}
-      <div className="rounded-xl border border-border bg-white overflow-hidden shadow-sm">
+      {/* VISTA MÓVIL (Tarjetas) */}
+      <div className="block md:hidden space-y-4">
+        {loading ? (
+            <div className="text-center py-8 flex items-center justify-center gap-2">
+                <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-[10px] font-black uppercase text-slate-500">Cargando documentos...</span>
+            </div>
+        ) : documentos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground text-[10px] font-bold uppercase">No se encontraron documentos</div>
+        ) : (
+            documentos.map((doc) => (
+                <div key={doc.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
+                    <div className="absolute top-4 right-4 flex items-center gap-1 bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10 rounded-full"><Eye className="w-4 h-4" /></Button>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-primary hover:bg-primary/10 rounded-full"><Download className="w-4 h-4" /></Button>
+                    </div>
+
+                    <div className="pr-16 flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <span className="font-black text-xs text-primary">{doc.codigo}</span>
+                            <Badge className={cn("text-[8px] font-black uppercase px-2 py-0 h-4 border-none shadow-none", tipoColors[doc.tipo])}>{doc.tipo}</Badge>
+                        </div>
+                        <span className="font-black text-sm text-primary uppercase leading-tight mt-1">{doc.nombre}</span>
+                        {doc.numero && <span className="text-[10px] text-muted-foreground font-bold uppercase">Ref: {doc.numero}</span>}
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {doc.etiquetas?.slice(0, 2).map((et, idx) => (
+                                <span key={idx} className="text-[9px] bg-muted px-1.5 py-0.5 rounded text-slate-500 font-bold">{et}</span>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mt-1 pt-2 border-t border-slate-50">
+                        <div className="flex flex-col gap-1">
+                            <span className="text-[9px] font-black uppercase text-slate-500">Área / Subtipo</span>
+                            <span className={cn("font-bold text-[10px] uppercase", areaColors[doc.area])}>{doc.area}</span>
+                            <span className="text-[9px] text-muted-foreground uppercase">{doc.subtipo}</span>
+                        </div>
+                        <div className="flex flex-col items-end gap-1">
+                            <span className="text-[10px] font-bold text-slate-600">v{doc.version}</span>
+                            <Badge className={cn("border-none font-black text-[8px] uppercase tracking-wider px-2 h-4", estadoColors[doc.estado])}>{doc.estado}</Badge>
+                            <span className="text-[8px] font-bold uppercase text-slate-400 mt-1"><Calendar className="w-2.5 h-2.5 inline"/> {formatDate(doc.fechaSubida)}</span>
+                        </div>
+                    </div>
+                </div>
+            ))
+        )}
+      </div>
+
+      {/* VISTA PC */}
+      <div className="hidden md:block rounded-xl border border-border bg-white overflow-hidden shadow-sm">
         <Table>
           <TableHeader className="bg-muted/50">
             <TableRow>
