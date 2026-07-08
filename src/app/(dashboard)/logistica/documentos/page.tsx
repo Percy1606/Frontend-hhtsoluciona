@@ -18,6 +18,7 @@ import {
   Clock,
 } from "lucide-react";
 import { formatDate, getSecureUrl, cn } from "@/lib/utils";
+import { useCRMStore } from "@/store/crm-store";
 
 const tipoLabel: Record<string, string> = {
   Tecnica: "Técnico",
@@ -60,8 +61,11 @@ export default function DocumentacionLogisticaPage() {
   const [search, setSearch] = useState("");
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
+  const { quotes, fetchQuotes } = useCRMStore();
+
   useEffect(() => {
     fetchProyectosConDocumentos();
+    fetchQuotes(1, 500);
   }, []);
 
   const fetchProyectosConDocumentos = async () => {
@@ -93,16 +97,47 @@ export default function DocumentacionLogisticaPage() {
 
   const q = search.toLowerCase().trim();
 
+  // Enriquecer proyectos con documentos de sus cotizaciones si no están vinculados explícitamente
+  const proyectosEnriquecidos = useMemo(() => {
+    return proyectos.map(p => {
+      const docsProyecto = (p.documentos || []).map((d: any) => ({ ...d, origen: 'proyecto' }));
+      
+      let rawCotizacionDocs = p.cotizacion?.documentos || p.cotizacionOrigen?.documentos || [];
+      if (rawCotizacionDocs.length === 0 && p.clientId) {
+        const quotesDelCliente = quotes.filter(q => q.clientId === p.clientId);
+        rawCotizacionDocs = quotesDelCliente.flatMap(q => q.documentos || []);
+      }
+      
+      const docsCotizacion = rawCotizacionDocs.map((d: any) => ({
+        id: d.id,
+        nombre: d.nombre,
+        tipo: d.subtype === 'ORDEN_SERVICIO' ? 'OS / CONTRATO' : 'COTIZACIÓN / PROPUESTA',
+        url: d.url,
+        estado: 'Aprobado',
+        fechaSubida: d.fechaSubida || d.createdAt || new Date().toISOString(),
+        subidoPor: d.subidoPor || 'CRM',
+        origen: 'cotizacion'
+      }));
+      
+      const uniqueDocsMap = new Map();
+      [...docsCotizacion, ...docsProyecto].forEach(doc => {
+        if (doc.id) uniqueDocsMap.set(doc.id, doc);
+      });
+      
+      return { ...p, documentos: Array.from(uniqueDocsMap.values()) };
+    });
+  }, [proyectos, quotes]);
+
   const proyectosFiltrados = useMemo(() => {
-    if (!q) return proyectos;
-    return proyectos.filter((p) => {
+    if (!q) return proyectosEnriquecidos;
+    return proyectosEnriquecidos.filter((p) => {
       if (p.nombre?.toLowerCase().includes(q)) return true;
       if (p.codigo?.toLowerCase().includes(q)) return true;
       if (p.cliente?.empresa?.toLowerCase().includes(q)) return true;
       if (p.cliente?.nombre?.toLowerCase().includes(q)) return true;
       return p.documentos?.some((d: any) => d.nombre?.toLowerCase().includes(q));
     });
-  }, [proyectos, q]);
+  }, [proyectosEnriquecidos, q]);
 
   const totalDocs = useMemo(
     () => proyectosFiltrados.reduce((sum, p) => sum + p.documentos.length, 0),
