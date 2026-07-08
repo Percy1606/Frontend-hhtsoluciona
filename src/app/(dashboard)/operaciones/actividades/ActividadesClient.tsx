@@ -642,8 +642,8 @@ export default function ActividadesClient() {
                       </h2>
                     </div>
                     {proyectoFull?.clientId && (
-                      <div className="text-[9px] font-black tracking-widest uppercase text-amber-300 truncate" title={crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}>
-                        {crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}
+                      <div className="text-[9px] font-black tracking-widest uppercase text-amber-300 truncate" title={(proyectoFull as any).cliente?.empresa || (proyectoFull as any).cliente?.nombre || crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}>
+                        {(proyectoFull as any).cliente?.empresa || (proyectoFull as any).cliente?.nombre || crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}
                       </div>
                     )}
                   </div>
