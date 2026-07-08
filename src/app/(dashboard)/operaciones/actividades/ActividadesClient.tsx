@@ -822,7 +822,7 @@ export default function ActividadesClient() {
                               <TableRow
                                 key={actividad.id}
                                 className={cn(
-                                  "hover:bg-slate-50/50 transition-colors border-b border-slate-100/60",
+                                  "hover:bg-slate-50/50 transition-colors border-b border-slate-300 border-dashed",
                                   needsAttention ? "bg-red-50/20" : "",
                                 )}
                               >

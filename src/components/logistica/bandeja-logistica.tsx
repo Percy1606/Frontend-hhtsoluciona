@@ -143,10 +143,10 @@ export default function BandejaLogistica() {
               
               return (
                 <TableRow key={p.id} className="hover:bg-primary/5 transition-colors group">
-                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-50 p-2">
+                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-300 border-dashed p-2">
                     {startIndex + index + 1}
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="font-black text-[11px] text-primary uppercase leading-tight">{p.codigo}</div>
                     <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
                       {p.nombre?.replace(/^proyecto:\s*/i, '')}
@@ -155,11 +155,11 @@ export default function BandejaLogistica() {
                       Creado: {format(new Date(p.fechaCreacion), "dd MMM yyyy", { locale: es })}
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cliente.empresa}</div>
                     <div className="text-[9px] font-bold text-slate-400 mt-0.5">Cotización: {p.cotizacionOrigen?.codigo}</div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex flex-col gap-1">
                       {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
                         <Badge key={os.id} variant="outline" className="w-fit text-[8px] font-black uppercase px-1 py-0 h-4 border-slate-200 bg-slate-50/50">
@@ -171,12 +171,12 @@ export default function BandejaLogistica() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-slate-700 font-mono">
                       S/ {saldoDisponible.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <Select
                       value={p.estadoLogistica || ""}
                       onValueChange={(val) => handleUpdateEstado(p.id, val)}

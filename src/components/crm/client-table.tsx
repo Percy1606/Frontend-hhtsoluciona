@@ -372,9 +372,9 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                   
                   return (
                     <TableRow key={client.id} className="hover:bg-primary/5 transition-colors group">
-                      <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-50 p-2">{index + 1}</TableCell>
+                      <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-300 border-dashed p-2">{index + 1}</TableCell>
                     
-                    <TableCell className="border-b border-slate-50 p-1.5">
+                    <TableCell className="border-b border-slate-300 border-dashed p-1.5">
                       <div className="flex flex-col">
                         <button
                           onClick={() => handleOpenDetails(client)}
@@ -387,14 +387,14 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                       </div>
                     </TableCell>
 
-                    <TableCell className="border-b border-slate-50 p-2">
+                    <TableCell className="border-b border-slate-300 border-dashed p-2">
                       <div className="flex flex-col">
                         <span className="font-bold text-[10px] text-slate-600 tracking-tight">{client.ruc}</span>
                         <span className="text-[8px] font-black text-primary uppercase">{client.tarifa || "MT3"}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-center border-b border-slate-50 p-2">
+                    <TableCell className="text-center border-b border-slate-300 border-dashed p-2">
                       <Badge className={cn(
                         "font-black text-[8px] uppercase px-1.5 py-0 border-none shadow-none",
                         client.clasificacion === "MUY_RENTABLE" ? "bg-green-100 text-green-700" :
@@ -405,14 +405,14 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="border-b border-slate-50 p-2">
+                    <TableCell className="border-b border-slate-300 border-dashed p-2">
                       <div className="flex flex-col">
                         <span className="text-[11px] font-black text-slate-700 uppercase truncate max-w-[170px]">{client.contacto}</span>
                         <span className="text-[9px] font-bold text-slate-400">{client.telefono}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="border-b border-slate-50 p-2">
+                    <TableCell className="border-b border-slate-300 border-dashed p-2">
                       <div className="flex flex-col">
                         <span className="text-[8px] font-black text-primary uppercase bg-primary/5 px-1 rounded w-fit border border-primary/10 mb-0.5">
                           {client.etapaComercial}
@@ -421,7 +421,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-center border-b border-slate-50 p-2">
+                    <TableCell className="text-center border-b border-slate-300 border-dashed p-2">
                         <span className={cn(
                             "text-[10px] font-black px-1.5 py-0.5 rounded",
                             isOverdue ? "bg-error text-white" : "text-slate-700 bg-slate-100"
@@ -430,7 +430,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                         </span>
                     </TableCell>
 
-                    <TableCell className="text-center border-b border-slate-50 p-2">
+                    <TableCell className="text-center border-b border-slate-300 border-dashed p-2">
                       <div className="flex flex-col items-center gap-0.5">
                         <div className={cn(
                             "text-[9px] font-black",
@@ -446,7 +446,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-center border-b border-slate-50 p-2">
+                    <TableCell className="text-center border-b border-slate-300 border-dashed p-2">
                       <Badge variant="outline" className={cn(
                         "text-[8px] font-black uppercase px-1 py-0 h-4",
                         client.prioridad === "Crítica" ? "border-error text-error bg-red-50" : 
@@ -457,14 +457,14 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                       </Badge>
                     </TableCell>
 
-                    <TableCell className="border-b border-slate-50 p-2">
+                    <TableCell className="border-b border-slate-300 border-dashed p-2">
                       <div className="flex flex-col">
                         <span className="text-[10px] font-bold text-slate-600 truncate max-w-[210px] uppercase" title={client.direccion}>{client.direccion}</span>
                         <span className="text-[8px] font-black text-primary uppercase">{client.zona}</span>
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-right border-b border-slate-50 sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-5px_0_10px_rgba(0,0,0,0.05)] transition-colors p-2">
+                    <TableCell className="text-right border-b border-slate-300 border-dashed sticky right-0 bg-white group-hover:bg-slate-50 shadow-[-5px_0_10px_rgba(0,0,0,0.05)] transition-colors p-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger className="inline-flex items-center justify-center h-8 w-8 rounded-full hover:bg-primary/10 cursor-pointer outline-none text-slate-400 hover:text-primary transition-all">
                           <MoreHorizontal className="h-5 w-5" />

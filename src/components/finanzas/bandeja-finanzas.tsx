@@ -145,10 +145,10 @@ export default function BandejaFinanzas() {
               
               return (
                 <TableRow key={p.id} className="hover:bg-primary/5 transition-colors group">
-                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-50 p-2">
+                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-300 border-dashed p-2">
                     {startIndex + index + 1}
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="font-black text-[11px] text-primary uppercase leading-tight">{p.codigo}</div>
                     <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
                       {p.nombre?.replace(/^proyecto:\s*/i, '')}
@@ -157,11 +157,11 @@ export default function BandejaFinanzas() {
                       Creado: {format(new Date(p.fechaCreacion), "dd MMM yyyy", { locale: es })}
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cliente.empresa}</div>
                     <div className="text-[9px] font-bold text-slate-400 mt-0.5">RUC: {p.cliente.ruc}</div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cotizacionOrigen?.codigo}</div>
                     <div className="flex flex-wrap gap-1 mt-1">
                       {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
@@ -171,7 +171,7 @@ export default function BandejaFinanzas() {
                       ))}
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-emerald-600 font-mono">
                       S/ {totalAdelantos.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                     </div>
@@ -182,7 +182,7 @@ export default function BandejaFinanzas() {
                       {p.cotizacionOrigen?.formaPago}
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex items-center">
                       <Button
                         variant="outline"
@@ -197,7 +197,7 @@ export default function BandejaFinanzas() {
                       </Button>
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex items-center space-x-2">
                       <Switch
                         checked={p.autorizaCompras}
@@ -208,7 +208,7 @@ export default function BandejaFinanzas() {
                       </span>
                     </div>
                   </TableCell>
-                  <TableCell className="border-b border-slate-50 p-2">
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <Select
                       value={p.estadoFinanciero || 'SinPago'}
                       onValueChange={(val) => handleUpdate(p.id, { estadoFinanciero: val })}
@@ -230,7 +230,7 @@ export default function BandejaFinanzas() {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell className="text-right border-b border-slate-50 p-2">
+                  <TableCell className="text-right border-b border-slate-300 border-dashed p-2">
                     <Button 
                       size="sm" 
                       onClick={() => {

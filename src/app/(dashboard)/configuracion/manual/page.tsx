@@ -231,8 +231,8 @@ export default function ManualPage() {
                                 <section.icon className="h-8 w-8" />
                             </div>
                             <div>
-                                <h3 className="text-xl font-black text-[#001F3F] uppercase tracking-tight">{section.title}</h3>
-                                <p className="text-[#64748B] font-medium text-sm mt-1">{section.content}</p>
+                                <h3 className="text-sm font-black text-[#001F3F] uppercase tracking-tight">{section.title}</h3>
+                                <p className="text-[#64748B] font-medium text-xs mt-1">{section.content}</p>
                             </div>
                         </div>
                         <div className="shrink-0 w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#F1F5F9] transition-colors">

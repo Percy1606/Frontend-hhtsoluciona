@@ -387,7 +387,7 @@ export default function OrdenesCompraPage() {
                 {isOpen && (
                   <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
                     {grupo.ordenes.map((oc, idx) => (
-                      <div key={oc.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.ordenes.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                      <div key={oc.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.ordenes.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="font-black text-xs uppercase tracking-wide text-slate-700">
                             {oc.codigo}

@@ -1,13 +1,5 @@
 "use client";
 
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,11 +19,16 @@ import {
   AlertTriangle,
   ExternalLink,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  FolderKanban,
+  ChevronDown,
+  Eye,
+  CheckCircle2,
+  Clock
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate, formatLargeCurrency } from "@/lib/utils";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
 import { ModernDialog } from "@/components/ui/modern-dialog";
@@ -41,6 +38,9 @@ import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
 import { useAuthStore } from "@/store/auth-store";
 import { GastosFijosModal } from "@/components/finanzas/gastos-fijos-modal";
+import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const gastoStatus: Record<string, { label: string, color: string }> = {
   "PENDIENTE": { label: "BORRADOR", color: "bg-slate-100 text-slate-600 border-slate-200" },
@@ -52,29 +52,41 @@ const gastoStatus: Record<string, { label: string, color: string }> = {
 
 export default function EgresosPage() {
   const { user } = useAuthStore();
+  const { proyectos, fetchProyectos } = useOperacionesStore();
+  const { quotes: globalQuotes, fetchQuotes } = useCRMStore();
+
   const [gastos, setGastos] = useState<Gasto[]>([]);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isGastosFijosOpen, setIsGastosFijosOpen] = useState(false);
+  
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [statusFilter, setStatusFilter] = useState("TODOS");
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [gastoToDelete, setGastoToDelete] = useState<{id: string, name: string} | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const itemsPerPage = 12;
+
+  const toggleProject = (id: string) => {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpanded(next);
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const res = await api.get('/finanzas/gastos?limit=1000');
       const data = Array.isArray(res) ? res : (res.data || []);
-      // Finanzas no debe ver gastos de Horas Extras que sigan en revisión por RRHH
       const filteredData = data.filter((g: any) => !(g.tipo === "PLANILLA" && g.concepto.includes("[RRHH-REVISION]")));
       setGastos(filteredData);
     } catch (e) {
@@ -87,6 +99,8 @@ export default function EgresosPage() {
 
   useEffect(() => {
     fetchData();
+    fetchProyectos(1, 100);
+    fetchQuotes(1, 500);
   }, []);
 
   const handleCreateOrUpdateGasto = async (data: any) => {
@@ -148,13 +162,75 @@ export default function EgresosPage() {
       matchesDate = gDate >= fromTime && gDate <= toTime;
     }
 
-    return matchesSearch && matchesDate;
+    const matchesStatus = statusFilter === "TODOS" || g.estado === statusFilter;
+
+    return matchesSearch && matchesDate && matchesStatus;
   });
 
-  const totalPages = Math.ceil(filteredGastos.length / itemsPerPage);
-  const paginatedGastos = filteredGastos.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const gastosPorProyecto = useMemo(() => {
+    const map = new Map<string, { proyectoId: string, proyectoCodigo: string, proyectoNombre: string, clienteNombre: string, gastos: any[], totalAprobado: number, totalPendiente: number }>();
+    const unassignedId = 'unassigned';
+    
+    filteredGastos.forEach(g => {
+      const pId = g.proyectoId || unassignedId;
+      const proyectoStore = proyectos.find(p => p.id === pId);
+      
+      const codigo = proyectoStore?.codigo || g.proyecto?.codigo || 'GASTOS GENERALES';
+      const nombre = proyectoStore?.nombre || g.proyecto?.nombre || 'ADMINISTRACIÓN / OFICINA / PLANILLA';
+      
+      let clienteNombre = (proyectoStore as any)?.cliente?.empresa || (proyectoStore as any)?.cliente?.nombre || (g.proyecto as any)?.cliente?.empresa || (g.proyecto as any)?.cliente?.nombre;
+      
+      if (!clienteNombre) {
+        const searchCode = proyectoStore?.codigo || g.proyecto?.codigo || codigo;
+        const linkedQuote = globalQuotes.find(q => {
+            if ((proyectoStore as any)?.cotizacionId && q.id === (proyectoStore as any).cotizacionId) return true;
+            
+            if (searchCode && q.codigo) {
+                const projNum = searchCode.split("-").slice(-2).join("-");
+                if (projNum && q.codigo.includes(projNum)) return true;
+                if (projNum && q.codigo.includes(projNum.replace("26-", "2026-"))) return true;
+            }
+            return false;
+        });
+        
+        if (linkedQuote) {
+            clienteNombre = (linkedQuote as any).cliente?.empresa || (linkedQuote as any).cliente?.nombre;
+        }
+      }
+      
+      if (!clienteNombre) clienteNombre = pId === unassignedId ? 'Oficina Central' : 'Sin Cliente';
 
-  // KPIs
+      if (!map.has(pId)) {
+        map.set(pId, {
+          proyectoId: pId,
+          proyectoCodigo: codigo,
+          proyectoNombre: nombre,
+          clienteNombre: clienteNombre,
+          gastos: [],
+          totalAprobado: 0,
+          totalPendiente: 0,
+        });
+      }
+      const grupo = map.get(pId)!;
+      grupo.gastos.push(g);
+      const mTotal = Number(g.montoTotal || 0);
+      if (g.estado === 'PAGADO' || g.estado === 'APROBADO') {
+        grupo.totalAprobado += mTotal;
+      } else if (g.estado !== 'ANULADO') {
+        grupo.totalPendiente += mTotal;
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.proyectoId === unassignedId) return 1;
+      if (b.proyectoId === unassignedId) return -1;
+      return a.proyectoCodigo.localeCompare(b.proyectoCodigo);
+    });
+  }, [filteredGastos, proyectos, globalQuotes]);
+
+  const totalPages = Math.ceil(gastosPorProyecto.length / itemsPerPage) || 1;
+  const paginatedFolders = gastosPorProyecto.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
   
@@ -179,7 +255,7 @@ export default function EgresosPage() {
   }
 
   return (
-    <div className="space-y-8 pb-10">
+    <div className="space-y-6 pb-10">
       
       {/* KPIs SUPERIORES */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
@@ -248,353 +324,228 @@ export default function EgresosPage() {
         </div>
       </div>
 
-      <div className="bg-white p-3 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row items-end gap-3">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por concepto, proveedor o comprobante..." 
-            className="pl-9 h-10 border-none bg-muted/30 rounded-lg text-xs font-medium" 
-          />
-        </div>
-        <div className="flex items-center gap-2 border-r pr-3">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
-            <Input 
-              type="date" 
-              value={dateFrom} 
-              onChange={(e) => setDateFrom(e.target.value)}
-              className="h-10 w-36 border-slate-200 rounded-lg text-xs font-bold text-slate-500"
-            />
-          </div>
-          <span className="text-slate-300 font-bold mt-4">-</span>
-          <div className="space-y-1">
-            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
-            <Input 
-              type="date" 
-              value={dateTo} 
-              onChange={(e) => setDateTo(e.target.value)}
-              className="h-10 w-36 border-slate-200 rounded-lg text-xs font-bold text-slate-500"
-            />
-          </div>
-        </div>
-        <Button 
-          variant="outline" 
-          onClick={() => { setDateFrom(""); setDateTo(""); setSearch(""); }}
-          className="h-10 px-4 gap-2 text-xs font-bold rounded-lg border-border text-slate-500 hover:text-slate-700"
-        >
-          Limpiar
-        </Button>
-      </div>
-
-      {/* VISTA MÓVIL (Tarjetas) */}
-      <div className="block md:hidden space-y-4">
-        {paginatedGastos.map((g, index) => (
-          <div key={g.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
-            <div className="absolute top-4 right-2 flex items-center bg-white/80 rounded-lg p-1 backdrop-blur-sm z-10">
-              {g.comprobanteUrl && (
-                <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Documento Adjunto">
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 rounded-md">
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </Button>
-                </a>
-              )}
-              {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-amber-500 rounded-md" onClick={() => handleApproveGasto(g.id)}>
-                  <CheckCircle className="w-3.5 h-3.5" />
+      <div className="bg-white p-5 rounded-2xl border border-border shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-end mb-6">
+            <div className="md:col-span-2">
+                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Búsqueda</label>
+                <div className="relative mt-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <Input 
+                        placeholder="Buscar concepto o proveedor..." 
+                        className="pl-10 h-10 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs shadow-none focus:bg-white transition-all"
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                    />
+                </div>
+            </div>
+            <div>
+                <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Estado</label>
+                <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "TODOS")}>
+                    <SelectTrigger className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1">
+                        <SelectValue placeholder="Estado" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="TODOS" className="font-bold text-xs uppercase text-slate-600">Todos</SelectItem>
+                        <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-slate-500">Pendiente / Borrador</SelectItem>
+                        <SelectItem value="SOLICITADO" className="font-bold text-xs uppercase text-amber-600">Solicitado</SelectItem>
+                        <SelectItem value="APROBADO" className="font-bold text-xs uppercase text-blue-600">Aprobado</SelectItem>
+                        <SelectItem value="PAGADO" className="font-bold text-xs uppercase text-green-600">Pagado</SelectItem>
+                        <SelectItem value="ANULADO" className="font-bold text-xs uppercase text-red-600">Anulado</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+            <div>
+                <label htmlFor="date-from" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
+                <Input 
+                    id="date-from"
+                    type="date" 
+                    value={dateFrom} 
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
+                />
+            </div>
+            <div>
+                <label htmlFor="date-to" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
+                <Input 
+                    id="date-to"
+                    type="date" 
+                    value={dateTo} 
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
+                />
+            </div>
+            <div>
+                <Button 
+                    variant="outline" 
+                    onClick={() => { setDateFrom(""); setDateTo(""); setSearch(""); setStatusFilter("TODOS"); setCurrentPage(1); }}
+                    className="h-10 w-full px-4 gap-2 text-xs font-bold rounded-lg border-border text-slate-500 hover:text-slate-700"
+                >
+                    Limpiar Filtros
                 </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 rounded-md" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }}>
-                <Edit2 className="w-3.5 h-3.5" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-red-400 rounded-md" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }}>
-                <Trash2 className="w-3.5 h-3.5" />
-              </Button>
             </div>
+        </div>
 
-            <div className="pr-[110px] flex flex-col">
-              <span className="font-black text-sm text-primary uppercase leading-tight">{g.codigo || 'S/N'}</span>
-              <span className="text-[10px] font-bold text-slate-700 mt-1 line-clamp-2 leading-tight" title={g.concepto}>{g.concepto}</span>
-            </div>
-
-            <div className="flex flex-col gap-1">
-              {g.proveedor ? (
-                <div className="flex flex-col">
-                  <span className="font-black text-[11px] text-slate-700 truncate">{g.proveedor.razonSocial}</span>
-                  <span className="text-[9px] text-slate-400 font-bold">RUC: {g.proveedor.ruc || 'S/N'}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 text-red-600">
-                  <AlertTriangle className="w-3 h-3" />
-                  <span className="text-[9px] font-black uppercase">Sin Proveedor</span>
-                </div>
-              )}
-              
-              {g.proyecto ? (
-                <div className="flex flex-col mt-1">
-                  <span className="font-black text-[10px] text-blue-700 truncate">{g.proyecto.nombre}</span>
-                  <span className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'N/A'}</span>
-                </div>
-              ) : (
-                <div className="flex flex-col mt-1">
-                  <span className="font-black text-[10px] text-slate-500 italic truncate">Gasto General</span>
-                  <span className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'ADMINISTRACIÓN'}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 mt-1 pt-2 border-t border-slate-50">
-              <div className="flex flex-col gap-1.5">
-                <span className="text-[9px] text-slate-500 flex items-center gap-1">
-                  <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
-                </span>
-                {g.fechaProgramadaPago && (
-                  <span className="text-[9px] text-amber-600 flex items-center gap-1 font-medium">
-                    <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
-                  </span>
-                )}
-                {g.fechaPago && (
-                  <span className="text-[9px] text-emerald-600 flex items-center gap-1 font-medium">
-                    <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
-                  </span>
-                )}
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                <span className="font-mono font-black text-sm text-slate-800 tracking-tight">
-                  S/ {Number(g.montoTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-                {g.estado === 'PAGADO' && Number(g.saldoPendiente) > 0 && (
-                  <span className="font-mono text-[9px] text-red-500 font-bold mt-1">
-                    Saldo: S/ {Number(g.saldoPendiente).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-1 flex items-center justify-between">
-              <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-2 py-0.5",
-                g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
-                g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
-                "text-slate-500 bg-slate-50 border-slate-200"
-              )}>
-                {g.prioridad || 'MEDIA'}
-              </Badge>
-              <Badge className={cn("border font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
-                {gastoStatus[g.estado]?.label || g.estado}
-              </Badge>
-            </div>
+        {/* Lista agrupada por proyecto (Carpetas) */}
+        {gastosPorProyecto.length === 0 ? (
+          <div className="py-20 text-center bg-white rounded-2xl border border-slate-200">
+            <TrendingDown className="w-12 h-12 mx-auto text-slate-200 mb-4 opacity-30" />
+            <p className="text-sm font-black uppercase text-slate-400 tracking-wider">No se encontraron gastos</p>
           </div>
-        ))}
-        
-        {filteredGastos.length === 0 && (
-          <div className="text-center py-8 text-slate-500 font-bold bg-slate-50/50 rounded-xl flex flex-col items-center justify-center gap-2">
-            <TrendingDown className="w-8 h-8 opacity-30" />
-            No se encontraron gastos
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {paginatedFolders.map((grupo) => {
+              const isOpen = expanded.has(grupo.proyectoId);
+              return (
+              <div key={grupo.proyectoId} className={cn("bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-slate-300", isOpen && "row-span-2")}>
+                <button
+                  type="button"
+                  onClick={() => toggleProject(grupo.proyectoId)}
+                  className="w-full text-left transition-colors duration-150"
+                >
+                  <div className="p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-error shadow-md shadow-error/20" : "bg-error/5")}>
+                          <FolderKanban className={cn("w-5 h-5 transition-colors duration-200", isOpen ? "text-white" : "text-error")} />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate max-w-[180px]" title={`${grupo.proyectoCodigo} - ${grupo.proyectoNombre}`}>
+                            {grupo.proyectoCodigo}
+                            {grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() ? ` - ${grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim()}` : ''}
+                          </h2>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate max-w-[180px]" title={grupo.clienteNombre}>
+                            {grupo.clienteNombre}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-error/10 text-error" : "text-slate-300")}>
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Ejecutado/Aprobado">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalAprobado || 0).toFixed(2)}</span>
+                      </span>
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Pendiente">
+                        <Clock className="w-3 h-3 text-orange-400" />
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalPendiente || 0).toFixed(2)}</span>
+                      </span>
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Cant. Gastos">
+                        <TrendingDown className="w-3 h-3 text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-600">{grupo.gastos.length}</span>
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {isOpen && (
+                  <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
+                    {grupo.gastos.map((g, idx) => (
+                      <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
+                        <div className="flex items-start justify-between mb-1.5">
+                          <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
+                            {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
+                          </span>
+                          <div className="flex gap-1 shrink-0 ml-2">
+                            {g.comprobanteUrl && (
+                                <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Adjunto">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
+                                        <ExternalLink className="w-3 h-3" />
+                                    </Button>
+                                </a>
+                            )}
+                            {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
+                                <Button variant="ghost" size="icon" onClick={() => handleApproveGasto(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
+                                    <CheckCircle className="w-3 h-3" />
+                                </Button>
+                            )}
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                              <Edit2 className="w-3 h-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={g.proveedor?.razonSocial}>
+                            {g.proveedor?.razonSocial || "Sin Proveedor"}
+                          </span>
+                          <div className="flex items-center gap-1">
+                              <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-1.5 py-0",
+                                  g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
+                                  g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
+                                  "text-slate-500 bg-slate-50 border-slate-200"
+                              )}>
+                                  {g.prioridad || 'MEDIA'}
+                              </Badge>
+                              <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-1.5 py-0 rounded", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
+                                {gastoStatus[g.estado]?.label || g.estado}
+                              </Badge>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/60">
+                          <div className="flex flex-col gap-0.5">
+                            <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1.5">
+                                <Calendar className="w-3 h-3" />
+                                {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                            </span>
+                            {g.fechaProgramadaPago && (
+                                <span className="text-[9px] text-amber-600 font-bold flex items-center gap-1.5">
+                                    <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
+                                </span>
+                            )}
+                            {g.fechaPago && (
+                                <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1.5">
+                                    <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
+                                </span>
+                            )}
+                          </div>
+                          <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              );
+            })}
           </div>
         )}
-      </div>
 
-      {/* VISTA PC */}
-      <div className="hidden md:block bg-white rounded-2xl border border-border overflow-hidden shadow-sm">
-        <Table>
-          <TableHeader className="bg-muted/50 h-12">
-            <TableRow className="hover:bg-transparent border-none">
-              <TableHead className="w-[40px] font-black text-[10px] uppercase tracking-widest text-primary pl-4 text-center">Nº</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary pl-4">Doc. & Fechas</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Concepto & Prioridad</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proveedor</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary">Proyecto & Área</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-right">Importe</TableHead>
-              <TableHead className="font-black text-[10px] uppercase tracking-widest text-primary text-center">Estado</TableHead>
-              <TableHead className="w-[120px] text-right pr-6">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedGastos.map((g, index) => (
-              <TableRow key={g.id} className="hover:bg-muted/10 transition-colors border-border group py-2">
-                <TableCell className="pl-4 text-center align-top pt-4 font-black text-xs text-slate-400">
-                  {(currentPage - 1) * itemsPerPage + index + 1}
-                </TableCell>
-                
-                {/* 1. Doc y Fechas */}
-                <TableCell className="pl-4 align-top pt-4 pb-4">
-                  <div className="font-black text-xs text-primary mb-1.5">{g.codigo || 'S/N'}</div>
-                  <div className="flex flex-col gap-1">
-                    <span className="text-[9px] text-slate-500 flex items-center gap-1">
-                      <Calendar className="w-3 h-3 text-slate-400" /> {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
-                    </span>
-                    {g.fechaProgramadaPago && (
-                      <span className="text-[9px] text-amber-600 flex items-center gap-1 font-medium">
-                        <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
-                      </span>
-                    )}
-                    {g.fechaPago && (
-                      <span className="text-[9px] text-emerald-600 flex items-center gap-1 font-medium">
-                        <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-
-                {/* 2. Concepto y Prioridad */}
-                <TableCell className="align-top pt-4 pb-4">
-                  <div className="max-w-[220px]">
-                    <p className="font-bold text-xs text-slate-700 line-clamp-2 leading-tight mb-2" title={g.concepto}>{g.concepto}</p>
-                    <Badge variant="outline" className={cn(
-                      "text-[8px] font-black uppercase tracking-tighter border",
-                      g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
-                      g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
-                      "text-slate-500 bg-slate-50 border-slate-200"
-                    )}>
-                      {g.prioridad || 'MEDIA'}
-                    </Badge>
-                  </div>
-                </TableCell>
-
-                {/* 3. Proveedor */}
-                <TableCell className="align-top pt-4 pb-4">
-                  {g.proveedor ? (
-                    <div className="max-w-[150px]">
-                      <p className="font-black text-[10px] text-slate-700 truncate" title={g.proveedor.razonSocial}>{g.proveedor.razonSocial}</p>
-                      <p className="text-[9px] text-slate-400 font-bold mt-0.5">RUC: {g.proveedor.ruc || 'S/N'}</p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded border border-red-100 max-w-fit mt-1">
-                      <AlertTriangle className="w-3 h-3" />
-                      <span className="text-[9px] font-black uppercase">Sin Proveedor</span>
-                    </div>
-                  )}
-                </TableCell>
-
-                {/* 4. Proyecto y Área */}
-                <TableCell className="align-top pt-4 pb-4">
-                  {g.proyecto ? (
-                    <div className="max-w-[160px]">
-                      <p className="font-black text-[10px] text-blue-700 truncate" title={g.proyecto.nombre}>{g.proyecto.nombre}</p>
-                      <p className="text-[9px] text-slate-500 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'N/A'}</p>
-                    </div>
-                  ) : (
-                    <div className="max-w-[160px]">
-                      <p className="font-black text-[10px] text-slate-500 italic truncate">Gasto General</p>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase mt-0.5">C.C: {(g as any).area || 'ADMINISTRACIÓN'}</p>
-                    </div>
-                  )}
-                </TableCell>
-
-                {/* 5. Importe */}
-                <TableCell className="text-right align-top pt-4 pb-4">
-                  <div className="flex flex-col items-end">
-                    <span className="font-mono font-black text-sm text-slate-800 tracking-tight">
-                      S/ {Number(g.montoTotal).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                    {g.estado === 'PAGADO' && Number(g.saldoPendiente) > 0 && (
-                      <span className="font-mono text-[9px] text-red-500 font-bold mt-1">
-                        Saldo: S/ {Number(g.saldoPendiente).toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                      </span>
-                    )}
-                  </div>
-                </TableCell>
-
-                {/* 6. Estado */}
-                <TableCell className="text-center align-top pt-4 pb-4">
-                  <Badge className={cn("border font-black text-[9px] uppercase tracking-wider px-2 py-0.5 rounded-md", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
-                    {gastoStatus[g.estado]?.label || g.estado}
-                  </Badge>
-                </TableCell>
-
-                {/* 7. Acciones */}
-                <TableCell className="pr-6 text-right align-top pt-4 pb-4">
-                  <div className="flex items-center justify-end gap-0.5">
-                    {g.comprobanteUrl && (
-                      <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Documento Adjunto">
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-blue-500 hover:bg-blue-50 hover:text-blue-600 rounded-md">
-                          <ExternalLink className="w-3.5 h-3.5" />
-                        </Button>
-                      </a>
-                    )}
-                    {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-7 w-7 text-amber-500 hover:bg-amber-50 hover:text-amber-600 rounded-md" 
-                        title="Aprobar Gasto"
-                        onClick={() => handleApproveGasto(g.id)}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 text-slate-400 hover:bg-slate-100 hover:text-slate-600 rounded-md" 
-                      title="Editar"
-                      onClick={() => {
-                        setEditingGasto(g);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-7 w-7 text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-md" 
-                      title="Eliminar"
-                      onClick={() => {
-                        setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` });
-                        setDeleteModalOpen(true);
-                      }}
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-            
-            {filteredGastos.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={8} className="h-40 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2 opacity-30">
-                    <TrendingDown className="w-12 h-12" />
-                    <p className="font-black text-xs uppercase tracking-widest">No se encontraron gastos</p>
-                  </div>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
-
+        {/* Paginación */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 bg-slate-50/50">
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-              Mostrando {(currentPage - 1) * itemsPerPage + 1} - {Math.min(currentPage * itemsPerPage, filteredGastos.length)} de {filteredGastos.length}
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="h-8 border-slate-200"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-[11px] font-black text-primary px-2">
-                Página {currentPage} de {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 border-slate-200"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
+            <div className="p-3 mt-4 bg-white border border-border shadow-sm rounded-xl flex items-center justify-between">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                    Página {currentPage} de {totalPages} — Total: {gastosPorProyecto.length} carpetas
+                </p>
+                <div className="flex gap-2 mr-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage <= 1 || loading}
+                        onClick={() => setCurrentPage(currentPage - 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        <ChevronLeft className="w-3 h-3" />
+                        Anterior
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage >= totalPages || loading}
+                        onClick={() => setCurrentPage(currentPage + 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        Siguiente
+                        <ChevronRight className="w-3 h-3" />
+                    </Button>
+                </div>
             </div>
-          </div>
         )}
       </div>
 

@@ -349,7 +349,7 @@ export default function UsuariosPage() {
                   </TableRow>
                 ) : (
                   filteredUsuarios.map((user) => (
-                    <TableRow key={user.id} className="group transition-colors hover:bg-slate-50/50 border-slate-50">
+                    <TableRow key={user.id} className="group transition-colors hover:bg-slate-50/50 border-slate-300 border-dashed">
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center gap-4">
                           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#001F3F] to-[#003087] flex items-center justify-center text-white font-bold shadow-sm">

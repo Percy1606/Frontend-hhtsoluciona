@@ -414,7 +414,7 @@ function AdminTrabajadoresView() {
                   </TableRow>
                 ) : (
                   filteredWorkers.map((worker) => (
-                    <TableRow key={worker.id} className="group transition-colors hover:bg-slate-50/50 border-slate-50">
+                    <TableRow key={worker.id} className="group transition-colors hover:bg-slate-50/50 border-slate-300 border-dashed">
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center gap-4">
                           <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold shadow-sm ${worker.color}`}>

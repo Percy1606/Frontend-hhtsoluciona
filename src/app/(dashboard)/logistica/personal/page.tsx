@@ -567,10 +567,10 @@ export default function PersonalPage() {
                     <HardHat className="w-3 h-3 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-black text-[10px] uppercase text-primary leading-tight truncate">
+                    <h3 className="font-black text-xs uppercase text-primary leading-tight truncate">
                       {grupo.proyectoCodigo}
                     </h3>
-                    <p className="font-bold text-[8px] text-slate-600 truncate">
+                    <p className="font-bold text-[10px] text-slate-600 truncate mt-0.5">
                       {grupo.proyectoNombre}
                     </p>
                     <div className="flex items-center gap-1.5 mt-0.5 text-[6px] font-bold text-slate-400 uppercase tracking-wide">
@@ -622,11 +622,11 @@ export default function PersonalPage() {
                     })() : { activo: false, dias: 0 };
                     return (                      <div
                       key={p.id}
-                      className={`px-3 py-2 transition-colors hover:bg-slate-50/80 ${idx < grupo.workers.length - 1 ? 'border-b border-slate-100' : ''}`}
+                      className={`px-3 py-2 transition-colors hover:bg-slate-50/80 ${idx < grupo.workers.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}
                     >
                       {/* Línea 1: Nombre + acciones */}
                       <div className="flex items-center justify-between mb-1">
-                        <span className={`font-black text-[12px] uppercase tracking-wide truncate ${!p.activo ? 'text-slate-400' : 'text-slate-800'}`}>
+                        <span className={`font-black text-[11px] uppercase tracking-wide truncate ${!p.activo ? 'text-slate-400' : 'text-slate-800'}`}>
                           {p.nombre}
                         </span>
                         <div className="flex gap-1 shrink-0 ml-2">

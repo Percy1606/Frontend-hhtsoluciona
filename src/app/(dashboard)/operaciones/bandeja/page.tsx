@@ -334,15 +334,15 @@ export default function BandejaTecnicaPage() {
         </div>
       </div>
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden print:hidden flex-1">
-        <div className="divide-y divide-slate-100">
+        <div className="flex flex-col">
           {filteredFichas.length === 0 ? (
             <div className="h-48 text-center flex flex-col items-center justify-center gap-3">
               <FilterX className="w-8 h-8 text-slate-200" />
               <p className="text-slate-400 font-bold italic text-xs uppercase tracking-tighter">Sin registros activos</p>
             </div>
           ) : (
-            filteredFichas.map((ficha) => (
-              <div key={ficha.id} className="p-5 flex flex-col md:flex-row md:items-stretch gap-6 hover:bg-slate-50/30 transition-all duration-200 group">
+            filteredFichas.map((ficha, idx) => (
+              <div key={ficha.id} className={`p-5 flex flex-col md:flex-row md:items-stretch gap-6 hover:bg-slate-50/30 transition-all duration-200 group ${idx < filteredFichas.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
                 {/* Lado Izquierdo: Información y Fila Central */}
                 <div className="flex-1 flex flex-col justify-between space-y-4">
                   {/* Fila Superior: Cliente, RUC, Fecha, Estado */}
