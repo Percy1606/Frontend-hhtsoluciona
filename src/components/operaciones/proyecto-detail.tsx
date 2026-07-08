@@ -149,7 +149,15 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
 
   const todosLosDocs = useMemo(() => {
     const docsProyecto = (proyecto.documentos || []).map(d => ({ ...d, origen: 'proyecto' }));
-    const rawCotizacionDocs = cotizacionCompleta?.documentos || (proyecto as any).cotizacion?.documentos || (proyecto as any).cotizacionOrigen?.documentos || [];
+    
+    let rawCotizacionDocs = cotizacionCompleta?.documentos || (proyecto as any).cotizacion?.documentos || (proyecto as any).cotizacionOrigen?.documentos || [];
+    
+    // Si no hay documentos y no se encontr cotizacin explcita vinculada, jalar todos los documentos de cotizaciones que pertenecen al mismo cliente.
+    if (rawCotizacionDocs.length === 0 && proyecto.clientId) {
+      const quotesDelCliente = quotes.filter(q => q.clientId === proyecto.clientId);
+      rawCotizacionDocs = quotesDelCliente.flatMap(q => q.documentos || []);
+    }
+
     const docsCotizacion = rawCotizacionDocs.map((d: any) => ({
       id: d.id,
       nombre: d.nombre,
@@ -169,7 +177,8 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
       }
     });
     return Array.from(uniqueDocsMap.values());
-  }, [proyecto.documentos, cotizacionCompleta, (proyecto as any).cotizacion, (proyecto as any).cotizacionOrigen]);
+  }, [proyecto.documentos, cotizacionCompleta, (proyecto as any).cotizacion, (proyecto as any).cotizacionOrigen, quotes, proyecto.clientId]);
+
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
