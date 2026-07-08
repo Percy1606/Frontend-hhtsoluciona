@@ -44,6 +44,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useLogisticaStore } from "@/store/logistica-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
 import { useAuthStore } from "@/store/auth-store";
 import { api } from "@/lib/api";
 import { Loader2, Plus, Trash2, ShoppingCart, Check, ChevronsUpDown, Calendar, Link2, FileText, Calculator } from "lucide-react";
@@ -83,6 +84,7 @@ interface OrdenCompraFormProps {
 export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFormProps) {
   const { createOrden, updateOrden, proveedores, insumos, loading: storeLoading, totalOrdenes } = useLogisticaStore();
   const { proyectos } = useOperacionesStore();
+  const globalQuotes = useCRMStore(state => state.quotes);
   const [openProveedor, setOpenProveedor] = useState(false);
   const [openProyecto, setOpenProyecto] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -91,6 +93,24 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
   const [presupuesto, setPresupuesto] = useState<any>(null);
   const [loadingPresupuesto, setLoadingPresupuesto] = useState(false);
   const budgetPanelRef = useRef<HTMLDivElement>(null);
+
+  const getProjectLabel = (p: any) => {
+    let clientName = (p as any).cliente?.empresa || (p as any).cliente?.nombre;
+    if (!clientName) {
+      const projNum = p.codigo?.split("-").slice(-2).join("-");
+      const quote = globalQuotes.find(q => 
+        ((p as any).cotizacionId && q.id === (p as any).cotizacionId) ||
+        (projNum && q.codigo?.includes(projNum)) ||
+        (projNum && q.codigo?.includes(projNum.replace("26-", "2026-")))
+      );
+      if (quote) {
+        clientName = (quote as any).cliente?.empresa || (quote as any).cliente?.nombre;
+      }
+    }
+    
+    let cleanName = p.nombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim();
+    return `${p.codigo}${cleanName ? ` - ${cleanName}` : ''}${clientName ? ` (${clientName})` : ''}`;
+  };
 
   const user = useAuthStore(state => state.user);
   const canApprove = user?.rol === 'ADMIN' || user?.rol === 'FINANZAS' || user?.rol === 'GERENCIA';
@@ -400,7 +420,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                                     </SelectTrigger>
                                     </FormControl>
                                     <SelectContent className="bg-white border-slate-200">
-                                        <SelectItem value="PENDIENTE" className="font-bold text-xs text-orange-600">PENDIENTE / BORRADOR</SelectItem>
+                                        <SelectItem value="PENDIENTE" className="font-bold text-xs text-orange-600">PENDIENTE</SelectItem>
                                         <SelectItem value="APROBADO" className="font-bold text-xs text-blue-600">APROBADA</SelectItem>
                                         <SelectItem value="RECIBIDO" className="font-bold text-xs text-emerald-600">RECIBIDA (ALMACÉN)</SelectItem>
                                         <SelectItem value="CANCELADO" className="font-bold text-xs text-red-600">ANULADA</SelectItem>
@@ -414,7 +434,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                         <FormItem>
                             <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Estado OM</FormLabel>
                             <div className="h-10 flex items-center px-3 border border-slate-200 bg-slate-50 rounded-xl font-bold text-xs text-slate-500 uppercase">
-                                {!initialData ? "PENDIENTE / BORRADOR" : (form.watch("estado") === "PENDIENTE" ? "PENDIENTE / BORRADOR" : form.watch("estado"))}
+                                {!initialData ? "PENDIENTE" : (form.watch("estado") === "PENDIENTE" ? "PENDIENTE" : form.watch("estado"))}
                             </div>
                             <p className="text-[9px] text-slate-400 font-bold mt-1 leading-tight">
                                 {!initialData ? "Las órdenes nuevas inician en PENDIENTE." : "Solo Finanzas o Gerencia puede cambiar el estado."}
@@ -445,7 +465,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                                             {field.value && field.value !== "none"
                                                 ? (() => {
                                                     const p = proyectos.find((p) => p.id === field.value);
-                                                    return p ? `${p.codigo} - ${p.nombre}` : "Para Stock General";
+                                                    return p ? getProjectLabel(p) : "Para Stock General";
                                                     })()
                                                 : "Para Stock General"}
                                             </span>
@@ -486,7 +506,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                                                 p.id === field.value ? "opacity-100" : "opacity-0"
                                             )}
                                             />
-                                            {p.codigo} - {p.nombre}
+                                            {getProjectLabel(p)}
                                         </CommandItem>
                                         ))}
                                     </CommandGroup>

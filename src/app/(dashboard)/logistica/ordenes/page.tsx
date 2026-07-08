@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -23,7 +23,9 @@ import {
   Edit2,
   Trash2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ChevronDown,
+  FolderKanban
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import {
@@ -36,6 +38,8 @@ import {
 import { cn } from "@/lib/utils";
 import { useLogisticaStore } from "@/store/logistica-store";
 import { useAuthStore } from "@/store/auth-store";
+import { useOperacionesStore } from "@/store/operaciones-store";
+import { useCRMStore } from "@/store/crm-store";
 import { OrdenCompraForm } from "@/components/logistica/orden-compra-form";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 import { toast } from "sonner";
@@ -79,6 +83,14 @@ export default function OrdenesCompraPage() {
   const fetchProveedores = useLogisticaStore(state => state.fetchProveedores);
   const fetchInsumos = useLogisticaStore(state => state.fetchInsumos);
 
+  // Proyectos para mapear nombres de clientes
+  const proyectos = useOperacionesStore(state => state.proyectos);
+  const fetchProyectos = useOperacionesStore(state => state.fetchProyectos);
+  
+  // CRM para mapear clientes desde cotizaciones (fallback)
+  const globalQuotes = useCRMStore(state => state.quotes);
+  const fetchQuotes = useCRMStore(state => state.fetchQuotes);
+
   // Estado local para paginación estable
   const [currentPage, setCurrentPage] = useState(1);
   const [isOrdenModalOpen, setIsOrdenModalOpen] = useState(false);
@@ -91,17 +103,93 @@ export default function OrdenesCompraPage() {
   const [isSecureDeleteOpen, setIsSecureDeleteOpen] = useState(false);
   const [ordenToDelete, setOrdenToDelete] = useState<any>(null);
   const [deleting, setDeleting] = useState(false);
+  
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
-  // Carga inicial de catálogos
+  const toggleProject = (id: string) => {
+    const next = new Set(expanded);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setExpanded(next);
+  };
+
+  // Carga inicial de catálogos y proyectos
   useEffect(() => {
     fetchProveedores();
     fetchInsumos();
-  }, [fetchProveedores, fetchInsumos]);
+    fetchProyectos(1, 100);
+    fetchQuotes(1, 500); // Fetch para fallback de clientes
+  }, [fetchProveedores, fetchInsumos, fetchProyectos, fetchQuotes]);
 
   // Sincronización de Ordenes (Paginación + Búsqueda + Filtros)
+  // Nota: Para agrupar correctamente por proyecto, podríamos querer cargar más items (ej. 100 o 500)
+  // pero mantendremos la paginación a 100 para tener un buen balance.
   useEffect(() => {
-    fetchOrdenes(currentPage, 20, searchTerm, statusFilter, dateFrom, dateTo);
+    fetchOrdenes(currentPage, 100, searchTerm, statusFilter, dateFrom, dateTo);
   }, [fetchOrdenes, currentPage, searchTerm, statusFilter, dateFrom, dateTo]);
+
+  const ordenesPorProyecto = useMemo(() => {
+    const map = new Map<string, { proyectoId: string, proyectoCodigo: string, proyectoNombre: string, clienteNombre: string, ordenes: any[], totalRecibido: number, totalPendiente: number }>();
+    const unassignedId = 'unassigned';
+    
+    ordenes.forEach(oc => {
+      const pId = (oc as any).proyectoId || unassignedId;
+      const proyectoStore = proyectos.find(p => p.id === pId);
+      
+      const codigo = proyectoStore?.codigo || oc.gasto?.proyecto?.codigo || 'ÓRDENES GENERALES';
+      const nombre = proyectoStore?.nombre || oc.gasto?.proyecto?.nombre || 'ALMACÉN / INVENTARIO DIRECTO';
+      
+      // Intentar obtener el cliente de todas las formas posibles
+      let clienteNombre = (proyectoStore as any)?.cliente?.empresa || (proyectoStore as any)?.cliente?.nombre || oc.gasto?.proyecto?.cliente?.empresa || oc.gasto?.proyecto?.cliente?.nombre;
+      
+      if (!clienteNombre) {
+        // Fallback: Buscar en las cotizaciones globales
+        const searchCode = proyectoStore?.codigo || oc.gasto?.proyecto?.codigo || codigo;
+        const linkedQuote = globalQuotes.find(q => {
+            if ((proyectoStore as any)?.cotizacionId && q.id === (proyectoStore as any).cotizacionId) return true;
+            
+            if (searchCode && q.codigo) {
+                const projNum = searchCode.split("-").slice(-2).join("-"); // Ej: "26-002"
+                if (projNum && q.codigo.includes(projNum)) return true;
+                if (projNum && q.codigo.includes(projNum.replace("26-", "2026-"))) return true;
+            }
+            return false;
+        });
+        
+        if (linkedQuote) {
+            clienteNombre = (linkedQuote as any).cliente?.empresa || (linkedQuote as any).cliente?.nombre;
+        }
+      }
+      
+      if (!clienteNombre) clienteNombre = 'Sin Cliente';
+
+      if (!map.has(pId)) {
+        map.set(pId, {
+          proyectoId: pId,
+          proyectoCodigo: codigo,
+          proyectoNombre: nombre,
+          clienteNombre: clienteNombre,
+          ordenes: [],
+          totalRecibido: 0,
+          totalPendiente: 0,
+        });
+      }
+      const grupo = map.get(pId)!;
+      grupo.ordenes.push(oc);
+      const mTotal = Number(oc.montoTotal || 0);
+      if (oc.estado === 'RECIBIDO') {
+        grupo.totalRecibido += mTotal;
+      } else if (oc.estado !== 'CANCELADO') {
+        grupo.totalPendiente += mTotal;
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (a.proyectoId === unassignedId) return 1;
+      if (b.proyectoId === unassignedId) return -1;
+      return a.proyectoCodigo.localeCompare(b.proyectoCodigo);
+    });
+  }, [ordenes, proyectos, globalQuotes]);
 
   const handlePageChange = (newPage: number) => {
     setCurrentPage(newPage);
@@ -233,177 +321,148 @@ export default function OrdenesCompraPage() {
             </div>
         </div>
 
-        {/* VISTA MÓVIL */}
-        <div className="block md:hidden space-y-4">
-            {loading ? (
-                <div className="text-center py-10 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</div>
-            ) : ordenes.length === 0 ? (
-                <div className="text-center py-10 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de materiales.</div>
-            ) : (
-                ordenes.map((oc, index) => (
-                    <div key={oc.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
-                        <div className="absolute top-4 right-2 flex items-center">
-                            <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-8 w-8 text-primary"><Eye className="w-4 h-4"/></Button>
+        {/* Lista agrupada por proyecto (Diseño unificado PC/Móvil) */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <div className="animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</div>
+          </div>
+        ) : ordenesPorProyecto.length === 0 ? (
+          <div className="py-20 text-center bg-white rounded-2xl border border-slate-200">
+            <ShoppingCart className="w-12 h-12 mx-auto text-slate-200 mb-4" />
+            <p className="text-sm font-black uppercase text-slate-400 tracking-wider">No se encontraron órdenes</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {ordenesPorProyecto.map((grupo) => {
+              const isOpen = expanded.has(grupo.proyectoId);
+              return (
+              <div key={grupo.proyectoId} className={cn("bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-slate-300", isOpen && "row-span-2")}>
+                {/* Cabecera del Proyecto */}
+                <button
+                  type="button"
+                  onClick={() => toggleProject(grupo.proyectoId)}
+                  className="w-full text-left transition-colors duration-150"
+                >
+                  <div className="p-4">
+                    {/* TOP ROW */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary shadow-md shadow-primary/20" : "bg-primary/5")}>
+                          <FolderKanban className={cn("w-5 h-5 transition-colors duration-200", isOpen ? "text-white" : "text-primary")} />
+                        </div>
+                        <div className="min-w-0">
+                          <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate max-w-[180px]" title={`${grupo.proyectoCodigo} - ${grupo.proyectoNombre}`}>
+                            {grupo.proyectoCodigo}
+                            {grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() ? ` - ${grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim()}` : ''}
+                          </h2>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate max-w-[180px]" title={grupo.clienteNombre}>
+                            {grupo.clienteNombre}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary/10 text-primary" : "text-slate-300")}>
+                        {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      </div>
+                    </div>
+
+                    {/* BADGES ROW */}
+                    <div className="flex items-center gap-2 mt-3 flex-wrap">
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Recibido">
+                        <CheckCircle2 className="w-3 h-3 text-green-500" />
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalRecibido || 0).toFixed(2)}</span>
+                      </span>
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Pendiente">
+                        <Clock className="w-3 h-3 text-orange-400" />
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalPendiente || 0).toFixed(2)}</span>
+                      </span>
+                      <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Cant. Órdenes">
+                        <ShoppingCart className="w-3 h-3 text-slate-400" />
+                        <span className="text-[9px] font-bold text-slate-600">{grupo.ordenes.length}</span>
+                      </span>
+                    </div>
+                  </div>
+                </button>
+
+                {/* Lista de Órdenes */}
+                {isOpen && (
+                  <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
+                    {grupo.ordenes.map((oc, idx) => (
+                      <div key={oc.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.ordenes.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="font-black text-xs uppercase tracking-wide text-slate-700">
+                            {oc.codigo}
+                          </span>
+                          <div className="flex gap-1 shrink-0 ml-2">
+                            <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                              <Eye className="w-3 h-3" />
+                            </Button>
                             {oc.estado !== 'RECIBIDO' && oc.estado !== 'CANCELADO' && (
-                                <>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-blue-600"
-                                        onClick={() => handleEdit(oc)}
-                                    >
-                                        <Edit2 className="w-4 h-4" />
-                                    </Button>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        className="h-8 w-8 text-error"
-                                        onClick={() => handleDeleteClick(oc)}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                </>
+                              <>
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-6 w-6 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(oc)} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </>
                             )}
+                          </div>
                         </div>
                         
-                        <div className="pr-[100px] flex flex-col">
-                            <span className="font-black text-primary text-sm uppercase leading-tight">{oc.codigo}</span>
-                            <span className="font-bold text-[10px] uppercase text-slate-600 mt-1">{oc.proveedor?.razonSocial}</span>
+                        <div className="flex items-center justify-between mt-1">
+                          <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={oc.proveedor?.razonSocial}>
+                            {oc.proveedor?.razonSocial}
+                          </span>
+                          <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-1.5", estadoCompraColors[oc.estado])}>
+                            {oc.estado}
+                          </Badge>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 mt-1">
-                            <div className="flex flex-col">
-                                <span className="text-[9px] font-bold text-slate-400 uppercase">Proyecto</span>
-                                <span className="text-[10px] font-black text-slate-700 uppercase truncate">
-                                    {oc.gasto?.proyecto?.nombre || "Stock General"}
-                                </span>
-                            </div>
-                            <div className="flex flex-col items-end">
-                                <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-2", estadoCompraColors[oc.estado])}>{oc.estado}</Badge>
-                            </div>
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/60">
+                          <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1.5">
+                            <Clock className="w-3 h-3" />
+                            {new Date(oc.fechaEmision).toLocaleDateString()}
+                          </span>
+                          <span className="font-black text-[11px] text-slate-800">S/ {Number(oc.montoTotal || 0).toFixed(2)}</span>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        )}
 
-                        <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-                            <span className="text-[10px] text-slate-500 font-bold">{new Date(oc.fechaEmision).toLocaleDateString()}</span>
-                            <span className="font-black text-sm text-slate-800">S/ {Number(oc.montoTotal || 0).toFixed(2)}</span>
-                        </div>
-                    </div>
-                ))
-            )}
-        </div>
-
-        {/* VISTA PC */}
-        <div className="hidden md:block bg-white rounded-xl border border-slate-100 overflow-hidden">
-            <Table>
-                <TableHeader className="bg-slate-50/50">
-                    <TableRow>
-                        <TableHead className="font-black text-primary uppercase text-[10px] py-4 pl-6 w-12 text-center">Ítem</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Código</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Proveedor</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Materiales</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Emisión</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Total</TableHead>
-                        <TableHead className="font-black text-primary uppercase text-[10px]">Estado</TableHead>
-                        <TableHead className="text-right font-black text-primary uppercase text-[10px] pr-6">Acciones</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {loading ? (
-                        <TableRow><TableCell colSpan={9} className="text-center py-20 animate-pulse font-black text-[10px] text-slate-400 uppercase">Cargando Órdenes...</TableCell></TableRow>
-                    ) : ordenes.length === 0 ? (
-                        <TableRow><TableCell colSpan={9} className="text-center py-20 text-slate-400 font-bold uppercase text-[10px]">No se encontraron órdenes de materiales.</TableCell></TableRow>
-                    ) : (
-                        ordenes.map((oc, index) => (
-                            <TableRow key={oc.id} className="hover:bg-slate-50/50 transition-colors group">
-                                <TableCell className="pl-6 font-black text-slate-400 text-xs text-center">
-                                    {(currentPage - 1) * 20 + index + 1}
-                                </TableCell>
-                                <TableCell className="font-black text-primary text-xs uppercase group-hover:translate-x-1 transition-transform">{oc.codigo}</TableCell>
-                                <TableCell className="font-bold text-xs uppercase text-slate-600">{oc.proveedor?.razonSocial}</TableCell>
-                                <TableCell className="font-bold text-[10px] uppercase text-slate-500 max-w-[150px] truncate">{oc.gasto?.proyecto?.nombre || "Stock General"}</TableCell>
-                                <TableCell className="font-medium text-[10px] text-slate-500">
-                                  {oc.items && oc.items.length > 0 ? (
-                                    <div className="flex flex-wrap items-center gap-1" title={oc.items.map((item: any) => item.insumo?.nombre).join(", ")}>
-                                      <span className="truncate max-w-[150px]">
-                                        {oc.items.slice(0, 2).map((item: any) => item.insumo?.nombre || "Material").join(", ")}
-                                      </span>
-                                      {oc.items.length > 2 && (
-                                        <Badge variant="secondary" className="text-[8px] h-4 px-1 py-0 bg-slate-100 text-slate-500 hover:bg-slate-200">
-                                          +{oc.items.length - 2}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  ) : "Sin materiales"}
-                                </TableCell>
-                                <TableCell className="text-[10px] text-slate-500 font-bold">{new Date(oc.fechaEmision).toLocaleDateString()}</TableCell>
-                                <TableCell className="font-black text-xs text-slate-800">S/ {Number(oc.montoTotal || 0).toFixed(2)}</TableCell>
-                                <TableCell>
-                                    <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none", estadoCompraColors[oc.estado])}>{oc.estado}</Badge>
-                                </TableCell>
-                                <TableCell className="text-right pr-6">
-                                    <div className="flex justify-end gap-1">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(oc)} className="h-8 w-8 text-primary"><Eye className="w-4 h-4"/></Button>
-                                        
-                                        {oc.estado !== 'RECIBIDO' && oc.estado !== 'CANCELADO' && (
-                                            <>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-blue-600 hover:bg-blue-50"
-                                                    title="Editar Orden"
-                                                    onClick={() => handleEdit(oc)}
-                                                >
-                                                    <Edit2 className="w-4 h-4" />
-                                                </Button>
-                                                <Button 
-                                                    variant="ghost" 
-                                                    size="icon" 
-                                                    className="h-8 w-8 text-error hover:bg-red-50"
-                                                    title="Eliminar Orden"
-                                                    onClick={() => handleDeleteClick(oc)}
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Button>
-                                            </>
-                                        )}
-                                    </div>
-                                </TableCell>
-                            </TableRow>
-                        ))
-                    )}
-                </TableBody>
-            </Table>
-
-            {/* Paginación Integrada (Estilo Bandeja Técnica) */}
-            {ordenTotalPages > 1 && (
-                <div className="p-3 bg-slate-50 border-t border-border flex items-center justify-between">
-                    <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
-                        Página {currentPage} de {ordenTotalPages} — Total: {totalOrdenes} órdenes
-                    </p>
-                    <div className="flex gap-2 mr-2">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage <= 1 || loading}
-                            onClick={() => handlePageChange(currentPage - 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            <ChevronLeft className="w-3 h-3" /> Anterior
-                        </Button>
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={currentPage >= ordenTotalPages || loading}
-                            onClick={() => handlePageChange(currentPage + 1)}
-                            className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
-                        >
-                            Siguiente <ChevronRight className="w-3 h-3" />
-                        </Button>
-                    </div>
+        {/* Paginación Integrada */}
+        {ordenTotalPages > 1 && (
+            <div className="p-3 mt-4 bg-white border border-border shadow-sm rounded-xl flex items-center justify-between">
+                <p className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-2">
+                    Página {currentPage} de {ordenTotalPages} — Total: {totalOrdenes} órdenes
+                </p>
+                <div className="flex gap-2 mr-2">
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage <= 1 || loading}
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        <ChevronLeft className="w-3 h-3" /> Anterior
+                    </Button>
+                    <Button 
+                        variant="outline" 
+                        size="sm" 
+                        disabled={currentPage >= ordenTotalPages || loading}
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        className="h-7 px-3 font-black text-[9px] uppercase border-slate-200 bg-white gap-1"
+                    >
+                        Siguiente <ChevronRight className="w-3 h-3" />
+                    </Button>
                 </div>
-            )}
-        </div>
+            </div>
+        )}
       </div>
 
       <OrdenCompraForm 
