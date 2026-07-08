@@ -87,6 +87,19 @@ const parseSafeDate = (dateVal: any): Date | null => {
   return d;
 };
 
+const getCloseDate = (c: any) => {
+  const interacciones = c.historialInteracciones || c.interacciones || [];
+  if (interacciones.length > 0) {
+    const wonInt = interacciones.find((i: any) => 
+      i.accion === 'Cotización Ganada' || 
+      i.tipo === 'Venta' ||
+      (i.observaciones && i.observaciones.toLowerCase().includes('ha pasado a etapa "ganado"'))
+    );
+    if (wonInt) return wonInt.fecha || wonInt.createdAt;
+  }
+  return c.fechaCreacion || c.createdAt;
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const { user } = useAuthStore();
@@ -137,6 +150,8 @@ export default function DashboardPage() {
   const [contactosList, setContactosList] = useState<any[]>([]);
   const [prospectosModalOpen, setProspectosModalOpen] = useState(false);
   const [prospectosList, setProspectosList] = useState<any[]>([]);
+  const [visitasModalOpen, setVisitasModalOpen] = useState(false);
+  const [visitasList, setVisitasList] = useState<any[]>([]);
 
   const fetchOnlineUsers = useCallback(async () => {
     try {
@@ -175,24 +190,24 @@ export default function DashboardPage() {
         return; 
       }
 
-      // Cargar datos defensivamente de todos los módulos
-      try {
-        const results = await Promise.allSettled([
-          fetchProyectos(1, 1000), 
-          fetchResponsables(),
-          fetchClients(1, 1000),
-          fetchQuotes(1, 1000),
-          fetchOrdenes(1, 1000),
-          fetchInsumos(1, 1000),
-          fetchPersonal(1, 1000),
-          fetchProveedores(),
-          fetchUnreadCount(),
-          fetchOnlineUsers(),
-          fetchGlobalKPIs(),
-          api.get('/finanzas/facturas'),
-          api.get('/finanzas/gastos?limit=1000')
-        ]);
-        
+      // Cargar datos asíncronamente para que el dashboard no se quede congelado
+      setLoading(false);
+      
+      Promise.allSettled([
+        fetchProyectos(1, 1000), 
+        fetchResponsables(),
+        fetchClients(1, 1000),
+        fetchQuotes(1, 1000),
+        fetchOrdenes(1, 1000),
+        fetchInsumos(1, 1000),
+        fetchPersonal(1, 1000),
+        fetchProveedores(),
+        fetchUnreadCount(),
+        fetchOnlineUsers(),
+        fetchGlobalKPIs(),
+        api.get('/finanzas/facturas'),
+        api.get('/finanzas/gastos?limit=1000')
+      ]).then(results => {
         const facturasResult = results[11];
         if (facturasResult && facturasResult.status === 'fulfilled') {
           const data = facturasResult.value;
@@ -204,11 +219,9 @@ export default function DashboardPage() {
           const data = gastosResult.value;
           setGastos(Array.isArray(data) ? data : (data?.data || []));
         }
-      } catch (error) {
-        console.error("Error durante la carga inicial del dashboard:", error);
-      } finally {
-        setLoading(false);
-      }
+      }).catch(error => {
+        console.error("Error durante la carga del dashboard:", error);
+      });
     };
 
     checkAccessAndLoad();
@@ -378,7 +391,7 @@ export default function DashboardPage() {
 
     return {
       totalLeads: filteredClients.length,
-      ganados: clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt)).length,
+      ganados: clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length,
       perdidos: clients.filter((c: any) => c.etapaComercial === 'Perdido' && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt)).length,
       enNegociacion: filteredClients.filter((c: any) => ['Negociación', 'Cotización Enviada', 'Seguimiento'].includes(c.etapaComercial)).length,
       contactados: filteredClients.filter((c: any) => ['Prospecto', 'Contactado', 'Llamada Realizada', 'Visita Agendada', 'Inspección Realizada'].includes(c.etapaComercial)).length,
@@ -1298,8 +1311,8 @@ export default function DashboardPage() {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
                     return clienteCot?.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
                   }).length,
-                  contactos: contactosPeriodoList.length,
-                  contactosHoy: contactosHoyList.length,
+                  contactos: contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
+                  contactosHoy: contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
                   contactosPeriodoList: contactosPeriodoList,
                   visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length,
                 };
@@ -1319,7 +1332,7 @@ export default function DashboardPage() {
                   if (dayOfWeek !== 0 && dayOfWeek !== 6) {
                     const dateStr = getPeruDateString(d);
                     const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
-                    const contactosDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr)).length, 0);
+                    const contactosDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && !i.tipo?.toLowerCase().includes('visit')).length, 0);
                     const visitasDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && i.tipo?.toLowerCase().includes('visit')).length, 0);
                     
                     data.unshift({ // unshift para mantener el orden cronológico
@@ -1343,7 +1356,7 @@ export default function DashboardPage() {
                     const prospectosPeriodo = filteredClients.length;
                     const seguimientosPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt)).length, 0);
                     const visitasPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt) && i.tipo?.toLowerCase().includes('visit')).length, 0);
-                    const cierresPeriodo = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && (isInRange(c.fechaActualizacion || '') || isInRange(c.fechaCreacion || '') || isInRange(c.ultimoContacto || ''))).length;
+                    const cierresPeriodo = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
                     return (
                       <div className="bg-slate-900 rounded-2xl px-5 py-4 flex flex-col lg:flex-row lg:items-center justify-between text-white shadow-xl hover:shadow-2xl hover:scale-[1.01] transition-all cursor-pointer gap-4 border border-slate-800" onClick={() => router.push('/crm/cartera')}>
@@ -1572,7 +1585,7 @@ export default function DashboardPage() {
                             {sellers.map((seller) => {
                               const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0, contactosPeriodoList: [] };
                               
-                              const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt));
+                              const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
                               const ganadosEnPeriodo = clientesGanados.length;
                               const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
                               
@@ -1627,7 +1640,26 @@ export default function DashboardPage() {
                                       </div>
                                     )}
                                   </td>
-                                  <td className="px-6 py-4 text-center font-black text-purple-600">{isAriana ? '-' : data.visitas}</td>
+                                  <td className="px-6 py-4 text-center font-black text-purple-600">
+                                    {isAriana ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {data.visitas}
+                                        {data.visitas > 0 && (
+                                          <Badge 
+                                            className="bg-purple-100 text-purple-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-purple-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit')) || [];
+                                              setVisitasList(visitasPeriodoList);
+                                              setVisitasModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="px-6 py-4 text-center font-black text-emerald-600">
                                     {isAriana ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
@@ -1637,7 +1669,7 @@ export default function DashboardPage() {
                                             className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setContactosList(data.contactosPeriodoList || []);
+                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')) || []);
                                               setContactosModalOpen(true);
                                             }}
                                           >
@@ -2081,6 +2113,46 @@ export default function DashboardPage() {
               })
             ) : (
               <p className="text-sm text-slate-500 text-center py-4">No hay seguimientos registrados.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE VISITAS */}
+      <Dialog open={visitasModalOpen} onOpenChange={setVisitasModalOpen}>
+        <DialogContent className="max-w-md bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <MapPin className="w-5 h-5 text-purple-500" />
+              Auditoría de Visitas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
+            {visitasList.length > 0 ? (
+              visitasList.map((int: any, i: number) => (
+                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
+                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
+                    </p>
+                    {(int.comentario || int.notas || int.observaciones) && (
+                      <p 
+                        className="text-xs text-slate-600 mt-1.5 italic line-clamp-2"
+                        title={int.comentario || int.notas || int.observaciones}
+                      >
+                        "{int.comentario || int.notas || int.observaciones}"
+                      </p>
+                    )}
+                  </div>
+                  <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] uppercase">
+                    {int.accion?.toLowerCase().includes('técnica') || int.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (int.tipo || 'VISITA')}
+                  </Badge>
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-slate-500 text-center py-4">No hay visitas registradas.</p>
             )}
           </div>
         </DialogContent>

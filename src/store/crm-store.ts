@@ -68,8 +68,15 @@ export const getDaysSinceContact = (dateString?: string) => {
 export const calculateClientSemaforo = (client: Client) => {
   const days = getDaysSinceContact(client.ultimoContacto);
   const isOverdue = isFollowUpOverdue(client);
-  if (isOverdue || days > 15) return 'Rojo';
-  if (days > 7) return 'Amarillo';
+
+  if (client.etapaComercial === 'Ganado' || client.etapaComercial === 'Orden de Servicio') {
+    if (isOverdue || days > 120) return 'Rojo';
+    if (days > 90) return 'Amarillo';
+    return 'Verde';
+  }
+
+  if (isOverdue || days > 20) return 'Rojo';
+  if (days > 10) return 'Amarillo';
   return 'Verde';
 };
 
@@ -705,17 +712,7 @@ export const useCRMStore = create<CRMState>()(
           const client = get().clients.find(c => c.id === clientId);
           await api.post('/crm/actividades', { clienteId: clientId, usuarioId: user?.id || 'Sistema', tipoActividad: 'VISITA_TECNICA', descripcion: observaciones, fechaActividad: fecha, estado: 'PENDIENTE', tecnicoId, clienteNombre: client?.empresa || 'Empresa' });
           await api.post('/operaciones/fichas-tecnicas', { clienteId: clientId, tecnicoId: tecnicoId, fechaVisita: fecha, observaciones: observaciones, estado: 'PENDIENTE', adjuntos: adjuntos || [] });
-          
-          // Registrar en la Bitácora de CRM
-          const fechaFormat = format(new Date(fecha), 'dd/MM/yyyy HH:mm');
-          await api.post('/crm/interacciones', {
-            clientId,
-            fecha: new Date().toISOString(),
-            tipo: 'Visita',
-            accion: `Visita Técnica Programada (${fechaFormat})`,
-            observaciones: observaciones,
-            usuario: user?.nombre || 'Sistema'
-          });
+          // La Bitácora de CRM se registrará automáticamente desde el backend al crear la ficha técnica.
 
           await get().changeStage(clientId, 'Visita Agendada');
           await get().fetchClients(1);

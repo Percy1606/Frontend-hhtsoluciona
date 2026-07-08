@@ -66,6 +66,30 @@ const parseSafeDate = (dateVal: any): Date | null => {
   return d;
 };
 
+const getRealCreator = (c: any) => {
+  if (c.creadoPor) return c.creadoPor;
+  
+  const interacciones = c.historialInteracciones || c.interacciones || [];
+  if (interacciones.length > 0) {
+    const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+    if (sorted[0]?.usuario) return sorted[0].usuario;
+  }
+  return c.asignadoA;
+};
+
+const getCloseDate = (c: any) => {
+  const interacciones = c.historialInteracciones || c.interacciones || [];
+  if (interacciones.length > 0) {
+    const wonInt = interacciones.find((i: any) => 
+      i.accion === 'Cotización Ganada' || 
+      i.tipo === 'Venta' ||
+      (i.observaciones && i.observaciones.toLowerCase().includes('ha pasado a etapa "ganado"'))
+    );
+    if (wonInt) return wonInt.fecha || wonInt.createdAt;
+  }
+  return c.fechaCreacion || c.createdAt;
+};
+
 export function CRMStats() {
   const { clients } = useCRMStore();
   const [selectedSeller, setSelectedSeller] = useState<string>("EQUIPO COMPLETO");
@@ -178,27 +202,43 @@ export function CRMStats() {
   
   const cerradosGanados = filteredClients.filter(c => 
     ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && 
-    isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)
+    isInRange(getCloseDate(c))
   ).length;
-
-  const getRealCreator = (c: any) => {
-    if (c.creadoPor) return c.creadoPor;
-    
-    const interacciones = c.historialInteracciones || c.interacciones || [];
-    if (interacciones.length > 0) {
-      const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
-      if (sorted[0]?.usuario) return sorted[0].usuario;
-    }
-    return c.asignadoA;
-  };
 
   const nuevosProspectos = clients.filter(c => {
     const creador = getRealCreator(c);
     const matchesSeller = selectedSeller === "EQUIPO COMPLETO" || creador?.toLowerCase().includes(selectedSeller.toLowerCase().trim());
     return matchesSeller && isInRange(c.fechaCreacion || (c as any).createdAt);
   }).length;
-  const visitasRealizadas = filteredClients.filter(c => (c as any).tipoContacto === 'Visita' && isInRange(c.ultimoContacto)).length;
-  const seguimientosRealizados = filteredClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
+  const visitasRealizadas = clients.reduce((acc, c) => {
+    const interacciones = c.historialInteracciones || (c as any).interacciones || [];
+    const visitas = interacciones.filter((i: any) => {
+      if (!i.tipo?.toLowerCase().includes('visit') || !isInRange(i.fecha || i.createdAt)) return false;
+      if (selectedSeller !== "EQUIPO COMPLETO") {
+        const isOwner = c.asignadoA?.toLowerCase().trim() === selectedSeller.toLowerCase().trim();
+        const isCreator = i.usuario?.toLowerCase().includes(selectedSeller.toLowerCase().trim());
+        const belongsToSeller = i.usuario ? isCreator : isOwner;
+        if (!belongsToSeller) return false;
+      }
+      return true;
+    });
+    return acc + visitas.length;
+  }, 0);
+
+  const seguimientosRealizados = clients.reduce((acc, c) => {
+    const interacciones = c.historialInteracciones || (c as any).interacciones || [];
+    const seguimientos = interacciones.filter((i: any) => {
+      if (i.tipo?.toLowerCase().includes('visit') || !isInRange(i.fecha || i.createdAt)) return false;
+      if (selectedSeller !== "EQUIPO COMPLETO") {
+        const isOwner = c.asignadoA?.toLowerCase().trim() === selectedSeller.toLowerCase().trim();
+        const isCreator = i.usuario?.toLowerCase().includes(selectedSeller.toLowerCase().trim());
+        const belongsToSeller = i.usuario ? isCreator : isOwner;
+        if (!belongsToSeller) return false;
+      }
+      return true;
+    });
+    return acc + seguimientos.length;
+  }, 0);
 
   const ratioCierre = nuevosProspectos > 0 
     ? `${Math.min(100, Math.round((cerradosGanados / nuevosProspectos) * 100))}%` 
@@ -242,7 +282,7 @@ export function CRMStats() {
 
   const sellerComparisonData = sellers.map(seller => {
     const sellerClients = clients.filter(c => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
-    const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange((c as any).fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
+    const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
     const prospectosCount = clients.filter(c => getRealCreator(c)?.toLowerCase().includes(seller.name.toLowerCase().trim()) && isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = sellerClients.filter(c => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
     return { name: seller.name, won, prospectos: prospectosCount, contactos: contactosCount, total: sellerClients.length };
@@ -306,8 +346,8 @@ export function CRMStats() {
       return acc;
     }, []);
 
-    const contactosCount = contactosPeriodoList.length;
-    const contactosHoy = contactosHoyList.length;
+    const contactosCount = contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length;
+    const contactosHoy = contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length;
 
     const prospectosCount = clients.filter((c: any) => {
       const creador = getRealCreator(c);
@@ -321,7 +361,7 @@ export function CRMStats() {
 
     const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length;
     
-    const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt)).length;
+    const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
     const isValentina = seller.name.toLowerCase() === 'valentina';
     const isAriana = seller.name.toLowerCase() === 'ariana';
@@ -703,7 +743,7 @@ export function CRMStats() {
                     const isValentina = data.name.toLowerCase() === 'valentina';
                     const isAriana = data.name.toLowerCase() === 'ariana';
                     
-                    const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(c.fechaActualizacion || (c as any).updatedAt || c.fechaCreacion || (c as any).createdAt));
+                    const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
                     const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
 
                     return (
@@ -768,7 +808,7 @@ export function CRMStats() {
                                   className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setContactosList(data.contactosPeriodoList || []);
+                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')) || []);
                                     setContactosModalOpen(true);
                                   }}
                                 >
@@ -1078,7 +1118,7 @@ export function CRMStats() {
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">
                         <Badge variant="outline" className="text-[10px] bg-white text-purple-700 border-purple-200">
-                          {interaccion.tipo || 'Visita'}
+                          {interaccion.accion?.toLowerCase().includes('técnica') || interaccion.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (interaccion.tipo || 'VISITA')}
                         </Badge>
                         <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md">
                           {formattedDate}
