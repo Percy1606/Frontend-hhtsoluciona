@@ -47,12 +47,21 @@ export function RetiroEquipoModal() {
 
   const fetchEquipos = async () => {
     try {
-      // Fetch insumos (limit 100 for now, could filter by categoria EQUIPO in backend ideally)
-      const res = await api.get('/logistica/insumos?limit=100');
-      // Filtramos insumos que tengan categoría 'EQUIPO' o 'EQUIPOS', y que tengan stock
-      const filtered = res.data.data.filter((i: Insumo) => 
-        i.categoria?.toUpperCase().includes('EQUIPO') || true // Dejamos true en caso de que aún no clasifiquen bien
-      );
+      const res = await api.get('/logistica/insumos?limit=1000');
+      let rawData: Insumo[] = [];
+      
+      if (res && res.data && Array.isArray(res.data)) {
+        rawData = res.data;
+      } else if (Array.isArray(res)) {
+        rawData = res;
+      } else if (res && res.data && res.data.data && Array.isArray(res.data.data)) {
+        rawData = res.data.data;
+      }
+
+      const filtered = (rawData || []).filter((i: Insumo) => {
+        const cat = i.categoria ? i.categoria.toUpperCase() : "";
+        return cat.includes('EQUIPO') || cat.includes('EPP');
+      });
       setEquipos(filtered);
     } catch (error) {
       console.error("Error fetching equipos", error);
