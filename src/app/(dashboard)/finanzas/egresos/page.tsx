@@ -72,6 +72,12 @@ export default function EgresosPage() {
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
+  const [cajas, setCajas] = useState<any[]>([]);
+  const [approveModalOpen, setApproveModalOpen] = useState(false);
+  const [gastoToApprove, setGastoToApprove] = useState<string | null>(null);
+  const [selectedCajaId, setSelectedCajaId] = useState<string>("");
+  const [approving, setApproving] = useState(false);
+
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
 
@@ -97,10 +103,20 @@ export default function EgresosPage() {
     }
   };
 
+  const fetchCajas = async () => {
+    try {
+      const res = await api.get('/finanzas/cajas');
+      setCajas(res || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchData();
     fetchProyectos(1, 100);
     fetchQuotes(1, 500);
+    fetchCajas();
   }, []);
 
   const handleCreateOrUpdateGasto = async (data: any) => {
@@ -139,13 +155,28 @@ export default function EgresosPage() {
     }
   };
 
-  const handleApproveGasto = async (id: string) => {
+  const openApproveModal = (id: string) => {
+    setGastoToApprove(id);
+    setSelectedCajaId("");
+    setApproveModalOpen(true);
+  };
+
+  const handleApproveGasto = async () => {
+    if (!gastoToApprove || !selectedCajaId) {
+      toast.error("Seleccione una caja de origen");
+      return;
+    }
+    setApproving(true);
     try {
-      await api.post(`/finanzas/gastos/${id}/aprobar`, {});
+      await api.post(`/finanzas/gastos/${gastoToApprove}/aprobar`, { cajaId: selectedCajaId });
       toast.success("Gasto aprobado con éxito");
+      setApproveModalOpen(false);
+      setGastoToApprove(null);
       fetchData();
     } catch (error: any) {
       toast.error("Error al aprobar", { description: error.message });
+    } finally {
+      setApproving(false);
     }
   };
 
@@ -457,13 +488,15 @@ export default function EgresosPage() {
                                 </a>
                             )}
                             {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
-                                <Button variant="ghost" size="icon" onClick={() => handleApproveGasto(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
+                                <Button variant="ghost" size="icon" onClick={() => openApproveModal(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
                                     <CheckCircle className="w-3 h-3" />
                                 </Button>
                             )}
-                            <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
-                              <Edit2 className="w-3 h-3" />
-                            </Button>
+                            {(g.estado !== 'APROBADO' && g.estado !== 'PAGADO') && (
+                              <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                                <Edit2 className="w-3 h-3" />
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
                               <Trash2 className="w-3 h-3" />
                             </Button>
@@ -580,6 +613,41 @@ export default function EgresosPage() {
         open={isGastosFijosOpen}
         onOpenChange={setIsGastosFijosOpen}
       />
+
+      <ModernDialog
+        isOpen={approveModalOpen}
+        onOpenChange={setApproveModalOpen}
+        title="Aprobar Gasto"
+        maxWidth="sm:max-w-md"
+      >
+        <div className="p-4 flex flex-col gap-4">
+          <p className="text-sm text-slate-600">Seleccione la caja o cuenta de origen para este gasto. Una vez aprobado y asignado, el fondo quedará reservado.</p>
+          <div className="space-y-2">
+            <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Caja Origen</label>
+            <Select value={selectedCajaId} onValueChange={(val) => setSelectedCajaId(val || "")}>
+              <SelectTrigger className="h-12 w-full border-slate-200 rounded-xl font-bold">
+                <SelectValue placeholder="Seleccione una caja" />
+              </SelectTrigger>
+              <SelectContent>
+                {cajas.map(c => (
+                  <SelectItem key={c.id} value={c.id} className="font-bold text-slate-700">
+                    {c.nombre} (S/ {Number(c.saldoActual || 0).toLocaleString()})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-3 mt-4">
+            <Button variant="outline" onClick={() => setApproveModalOpen(false)} className="rounded-xl font-bold" disabled={approving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleApproveGasto} className="rounded-xl font-bold bg-blue-600 hover:bg-blue-700 text-white" disabled={!selectedCajaId || approving}>
+              {approving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <CheckCircle className="w-4 h-4 mr-2" />}
+              Aprobar Gasto
+            </Button>
+          </div>
+        </div>
+      </ModernDialog>
     </div>
   );
 }
