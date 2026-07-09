@@ -188,8 +188,8 @@ export default function EgresosPage() {
     let matchesDate = true;
     if (dateFrom || dateTo) {
       const gDate = new Date(g.fechaEmision).getTime();
-      const fromTime = dateFrom ? new Date(dateFrom).getTime() : 0;
-      const toTime = dateTo ? new Date(dateTo).getTime() : Infinity;
+      const fromTime = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : 0;
+      const toTime = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : Infinity;
       matchesDate = gDate >= fromTime && gDate <= toTime;
     }
 
@@ -253,8 +253,8 @@ export default function EgresosPage() {
     });
 
     return Array.from(map.values()).sort((a, b) => {
-      if (a.proyectoId === unassignedId) return 1;
-      if (b.proyectoId === unassignedId) return -1;
+      if (a.proyectoId === unassignedId) return -1;
+      if (b.proyectoId === unassignedId) return 1;
       return a.proyectoCodigo.localeCompare(b.proyectoCodigo);
     });
   }, [filteredGastos, proyectos, globalQuotes]);
@@ -272,9 +272,9 @@ export default function EgresosPage() {
   }).reduce((acc, g) => acc + Number(g.montoTotal), 0);
 
   const totalEgresos = filteredGastos.reduce((acc, g) => acc + Number(g.montoTotal), 0);
-  const pendientesAprob = gastos.filter(g => g.estado === 'SOLICITADO').length;
-  const porRendir = gastos.filter(g => g.estado === 'PAGADO' && (g as any).estadoRendicion !== 'COMPLETADA').length;
-  const gastosCriticos = gastos.filter(g => g.prioridad === 'CRITICA' || g.prioridad === 'ALTA').length;
+  const pendientesAprob = filteredGastos.filter(g => g.estado === 'SOLICITADO').length;
+  const porRendir = filteredGastos.filter(g => g.estado === 'PAGADO' && (g as any).estadoRendicion !== 'COMPLETADA').length;
+  const gastosCriticos = filteredGastos.filter(g => g.prioridad === 'CRITICA' || g.prioridad === 'ALTA').length;
 
   if (loading && gastos.length === 0) {
     return (

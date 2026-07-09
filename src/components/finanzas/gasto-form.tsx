@@ -523,15 +523,12 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                       <FormLabel className="font-black text-[11px] uppercase text-slate-600 tracking-wider">Monto Solicitado (S/.) *</FormLabel>
                       <FormControl>
                         <Input 
-                          type="text" 
+                          type="number" 
+                          step="0.01"
                           autoComplete="off"
                           placeholder="0.00"
-                          value={field.value === 0 ? "" : Number(field.value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
-                          onChange={e => {
-                            const rawValue = e.target.value.replace(/[^0-9.]/g, '');
-                            const val = parseFloat(rawValue) || 0;
-                            field.onChange(val);
-                          }}
+                          value={field.value || ""}
+                          onChange={e => field.onChange(e.target.value)}
                           className="bg-slate-50 border-slate-200 h-12 font-black text-xl text-primary shadow-inner"
                         />
                       </FormControl>
