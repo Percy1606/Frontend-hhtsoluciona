@@ -291,16 +291,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     </div>
                   </div>
                   
-                  {projectStats && !projectStats.hasAdelanto && (
-                    <Alert variant="destructive" className="bg-red-50 border-red-200">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle className="text-xs font-black uppercase tracking-widest text-red-800">Bloqueo Financiero</AlertTitle>
-                      <AlertDescription className="text-[10px] font-bold text-red-600">
-                        El cliente aún no ha realizado ningún pago o adelanto para este proyecto. No se puede aprobar la compra de materiales ni ejecutar el pago.
-                      </AlertDescription>
-                    </Alert>
-                  )}
-                  
+
                   {projectStats && watchMonto > Number(selectedProjectObj.costoPresupuestado || selectedProjectObj.presupuesto || 0) && (
                     <Alert className="bg-orange-50 border-orange-200">
                       <AlertTriangle className="h-4 w-4 text-orange-600" />
@@ -573,14 +564,14 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                           <SelectItem value="SOLICITADO" className="font-bold text-xs text-amber-600">2. PENDIENTE DE APROBACIÓN</SelectItem>
                           <SelectItem 
                             value="APROBADO" 
-                            disabled={!isFinanzasOrAdmin || (projectStats && !projectStats.hasAdelanto)} 
+                            disabled={!isFinanzasOrAdmin} 
                             className="font-bold text-xs text-blue-600"
                           >
                             3. APROBADO (LISTO PARA PAGO) {!isFinanzasOrAdmin ? '(Solo Finanzas)' : ''}
                           </SelectItem>
                           <SelectItem 
                             value="PAGADO" 
-                            disabled={!isFinanzasOrAdmin || (projectStats && !projectStats.hasAdelanto)} 
+                            disabled={!isFinanzasOrAdmin} 
                             className="font-bold text-xs text-green-600"
                           >
                             4. EJECUTADO / PAGADO {!isFinanzasOrAdmin ? '(Solo Finanzas)' : ''}
