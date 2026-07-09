@@ -557,7 +557,7 @@ export default function ProyectosPage() {
                   <button onClick={() => handleOpenDetail(proyecto)} className="text-left font-black text-sm text-primary uppercase leading-tight max-w-full hover:underline">
                     {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
                   </button>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{proyecto.codigo}</span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</span>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 mt-1">
@@ -601,8 +601,8 @@ export default function ProyectosPage() {
               <TableHeader className="bg-slate-50/50">
                 <TableRow>
                   <TableHead className="font-black text-primary uppercase text-[10px] py-3 pl-6 w-[50px]">Item</TableHead>
-                  <TableHead className="font-black text-primary uppercase text-[10px] py-3">Código</TableHead>
-                  <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto / Cliente</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px] py-3">Orden de Servicio</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px]">Cliente / Nombre</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-center">Líder</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-center">Avance</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-right">Estado</TableHead>
@@ -613,13 +613,13 @@ export default function ProyectosPage() {
                 {proyectosFiltrados.map((proyecto, index) => (
                   <TableRow key={proyecto.id} className="hover:bg-slate-50/50 transition-colors group">
                     <TableCell className="font-bold text-xs text-slate-400 pl-6">{index + 1}</TableCell>
-                    <TableCell className="font-bold text-xs text-primary">{proyecto.codigo}</TableCell>
+                    <TableCell className="font-black text-[13px] text-primary">{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</TableCell>
                     <TableCell>
                       <div className="flex flex-col">
-                        <span className="text-[9px] font-black uppercase text-slate-400 mb-0.5">
+                        <span className="text-[11px] font-black uppercase text-slate-700 mb-0.5">
                             {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                         </span>
-                        <p className="font-black text-[12px] text-primary group-hover:text-secondary transition-colors uppercase truncate max-w-[280px]">
+                        <p className="font-black text-[10px] text-slate-500 transition-colors uppercase truncate max-w-[280px]">
                           {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
                         </p>
                       </div>

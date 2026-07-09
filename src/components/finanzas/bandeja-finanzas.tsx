@@ -121,10 +121,10 @@ export default function BandejaFinanzas() {
       <Table className="min-w-full border-separate border-spacing-0">
         <TableHeader className="bg-slate-50">
           <TableRow className="border-b border-border/80">
-            <TableHead className="w-[30px] font-black text-primary text-[9px] uppercase text-center p-2">N°</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Proyecto</TableHead>
+            <TableHead className="w-[30px] font-black text-primary text-[9px] uppercase text-center p-2">Nº</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Orden de Servicio</TableHead>
             <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cliente</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cotización / OS</TableHead>
+            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cotización Relacionada</TableHead>
             <TableHead className="font-black text-primary text-[9px] uppercase p-2">Adelantos / Total</TableHead>
             <TableHead className="font-black text-primary text-[9px] uppercase p-2">Ppto. Egresos</TableHead>
             <TableHead className="font-black text-primary text-[9px] uppercase p-2">Autoriza Compras</TableHead>
@@ -149,7 +149,9 @@ export default function BandejaFinanzas() {
                     {startIndex + index + 1}
                   </TableCell>
                   <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="font-black text-[11px] text-primary uppercase leading-tight">{p.codigo}</div>
+                    <div className="font-black text-[11px] text-primary uppercase leading-tight">
+                      {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo || p.codigo}
+                    </div>
                     <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
                       {p.nombre?.replace(/^proyecto:\s*/i, '')}
                     </div>
@@ -162,14 +164,7 @@ export default function BandejaFinanzas() {
                     <div className="text-[9px] font-bold text-slate-400 mt-0.5">RUC: {p.cliente.ruc}</div>
                   </TableCell>
                   <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cotizacionOrigen?.codigo}</div>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
-                        <Badge key={os.id} variant="outline" className="text-[8px] font-black uppercase px-1 py-0 h-4 border-slate-200 bg-slate-50/50">
-                          {os.codigo}
-                        </Badge>
-                      ))}
-                    </div>
+                    <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cotizacionOrigen?.codigo || '-'}</div>
                   </TableCell>
                   <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="text-[11px] font-black text-emerald-600 font-mono">
