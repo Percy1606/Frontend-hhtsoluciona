@@ -298,16 +298,10 @@ export default function ProyectosPage() {
       return;
     }
 
-    // VALIDACIÓN LOCAL: Evitar duplicados (Un proyecto activo por cliente)
+    // VALIDACIÓN LOCAL: Ya no evitamos duplicados porque una cotización puede generar múltiples OS
+    // Obtenemos existingActive de todos modos porque se usa más abajo para Preventa
     const existingActive = proyectos.find(p => p.clientId === newProject.clientId && p.estado !== 'Finalizado');
-    
-    // Si ya existe un proyecto y es Preventa (no tiene ventaContratada), permitiremos que el backend lo actualice al enviar la cotización.
     const isProjectPreventa = existingActive && Number((existingActive as any).ventaContratada) === 0;
-
-    if (existingActive && !isProjectPreventa) {
-        showError("Cliente con Proyecto Activo", `El cliente seleccionado ya tiene un proyecto operativo en curso: "${existingActive.nombre}". Debe finalizarlo antes de iniciar uno nuevo.`);
-        return;
-    }
 
     let cotizacionIdFinal = null;
 
