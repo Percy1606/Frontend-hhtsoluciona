@@ -133,8 +133,11 @@ export default function OrdenesCompraPage() {
     const unassignedId = 'unassigned';
     
     ordenes.forEach(oc => {
-      const pId = (oc as any).proyectoId || unassignedId;
-      const proyectoStore = proyectos.find(p => p.id === pId);
+      // FIX: Buscar el ID del proyecto en todas las rutas posibles para evitar que caigan en unassigned
+      const realProyectoId = (oc as any).proyectoId || oc.gasto?.proyectoId || oc.gasto?.proyecto?.id;
+      const pId = realProyectoId || unassignedId;
+      
+      const proyectoStore = realProyectoId ? proyectos.find(p => p.id === realProyectoId) : undefined;
       
       const codigo = proyectoStore?.codigo || oc.gasto?.proyecto?.codigo || 'ÓRDENES GENERALES';
       const nombre = proyectoStore?.nombre || oc.gasto?.proyecto?.nombre || 'ALMACÉN / INVENTARIO DIRECTO';
@@ -163,9 +166,12 @@ export default function OrdenesCompraPage() {
       
       if (!clienteNombre) clienteNombre = 'Sin Cliente';
 
-      if (!map.has(pId)) {
-        map.set(pId, {
-          proyectoId: pId,
+      // Agrupamos usando el ID correcto extraído (evita que todos vayan a 'unassigned')
+      const groupId = pId; 
+
+      if (!map.has(groupId)) {
+        map.set(groupId, {
+          proyectoId: groupId,
           proyectoCodigo: codigo,
           proyectoNombre: nombre,
           clienteNombre: clienteNombre,
@@ -174,7 +180,7 @@ export default function OrdenesCompraPage() {
           totalPendiente: 0,
         });
       }
-      const grupo = map.get(pId)!;
+      const grupo = map.get(groupId)!;
       grupo.ordenes.push(oc);
       const mTotal = Number(oc.montoTotal || 0);
       if (oc.estado === 'RECIBIDO') {
