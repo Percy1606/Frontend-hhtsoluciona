@@ -631,7 +631,7 @@ export default function EgresosPage() {
               <SelectContent>
                 {cajas.map(c => (
                   <SelectItem key={c.id} value={c.id} className="font-bold text-slate-700">
-                    {c.nombre} (S/ {Number(c.saldoActual || 0).toLocaleString()})
+                    {c.nombre} (S/ {Number(c.saldoDisponible || c.saldoReal || 0).toLocaleString()})
                   </SelectItem>
                 ))}
               </SelectContent>
