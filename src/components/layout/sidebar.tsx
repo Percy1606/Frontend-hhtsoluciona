@@ -90,6 +90,7 @@ const menuItems = [
     href: "/finanzas",
     subItems: [
       { icon: CheckSquare, label: "Bandeja de Proyectos", href: "/finanzas/bandeja" },
+      { icon: FolderKanban, label: "Proyectos y Rentabilidad", href: "/operaciones/proyectos" },
       { icon: Wallet, label: "Cajas y Cuentas", href: "/finanzas/cajas" },
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
       { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },

@@ -51,11 +51,11 @@ const cleanConcepto = (concepto: string) => {
 };
 
 const getTipoVisual = (tipo: string, concepto: string = "") => {
-  if (tipo === 'BLOQUEO') return { label: '🔒 FONDOS RESERVADOS', color: 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/20' };
-  if (tipo === 'LIBERACION') return { label: '↩ FONDOS LIBERADOS', color: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-indigo-500/20' };
-  if (tipo === 'ANULACION' || concepto.toUpperCase().includes('ANULADO')) return { label: '❌ MOV. ANULADO', color: 'bg-red-50 text-red-600 border-red-200 ring-red-500/20' };
+  if (tipo === 'BLOQUEO') return { label: '🔒 FONDOS GASTADOS', color: 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/20' };
+  if (tipo === 'LIBERACION') return { label: '🔓 FONDOS LIBERADOS', color: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-indigo-500/20' };
+  if (tipo === 'ANULACION' || concepto.toUpperCase().includes('ANULADO')) return { label: '🚫 MOV. ANULADO', color: 'bg-red-50 text-red-600 border-red-200 ring-red-500/20' };
   if (tipo === 'EGRESO') return { label: '💸 PAGO EJECUTADO', color: 'bg-rose-50 text-rose-600 border-rose-200 ring-rose-500/20' };
-  if (tipo === 'INGRESO') return { label: '📥 INGRESO', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 ring-emerald-500/20' };
+  if (tipo === 'INGRESO') return { label: '💰 INGRESO', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 ring-emerald-500/20' };
   return { label: tipo, color: 'bg-slate-50 text-slate-600 border-slate-200 ring-slate-500/20' };
 };
 
@@ -182,7 +182,7 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                         </Badge>
                                     </TableCell>
                                     <TableCell className="max-w-[280px] align-top pt-4">
-                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug break-words">{cleanConcepto(t.concepto)}</p>
+                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug break-all">{cleanConcepto(t.concepto)}</p>
                                         {!isSameAsPrev && t.referenciaTipo && (
                                             <div className="mt-1.5 flex flex-wrap gap-1">
                                                 <Badge variant="secondary" className="text-[8px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200">
