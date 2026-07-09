@@ -626,7 +626,9 @@ export default function EgresosPage() {
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Caja Origen</label>
             <Select value={selectedCajaId} onValueChange={(val) => setSelectedCajaId(val || "")}>
               <SelectTrigger className="h-12 w-full border-slate-200 rounded-xl font-bold">
-                <SelectValue placeholder="Seleccione una caja" />
+                <SelectValue placeholder="Seleccione una caja">
+                  {selectedCajaId ? cajas.find(c => c.id === selectedCajaId)?.nombre : "Seleccione una caja"}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
                 {cajas.map(c => (

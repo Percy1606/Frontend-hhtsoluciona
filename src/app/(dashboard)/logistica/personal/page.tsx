@@ -306,14 +306,22 @@ export default function PersonalPage() {
 
   // Agrupar trabajadores por proyecto
   const personalPorProyecto = useMemo(() => {
-    const grupos = new Map<string, { proyectoNombre: string; proyectoCodigo: string; workers: PersonalProyecto[] }>();
+    const grupos = new Map<string, { proyectoNombre: string; proyectoCodigo: string; clienteNombre: string; workers: PersonalProyecto[] }>();
     
     for (const p of filteredPersonal) {
       const key = p.proyectoId;
       if (!grupos.has(key)) {
+        // Encontrar el proyecto para sacar el cliente
+        const proj = proyectos.find(pr => pr.id === key);
+        let cliente = '';
+        if (proj) {
+          cliente = (proj as any).cliente?.empresa || (proj as any).cliente?.nombre || (proj as any).cotizacion?.cliente?.empresa || (proj as any).cotizacion?.cliente?.nombre || '';
+        }
+
         grupos.set(key, {
           proyectoNombre: p.proyectoNombre || p.proyectoCodigo || `#${key.slice(0, 8)}`,
           proyectoCodigo: p.proyectoCodigo || '',
+          clienteNombre: cliente,
           workers: [],
         });
       }
@@ -326,7 +334,7 @@ export default function PersonalPage() {
       totalActivos: data.workers.filter(w => w.activo).length,
       costoDiario: data.workers.filter(w => w.activo).reduce((sum, w) => sum + Number(w.montoDiario), 0),
     }));
-  }, [filteredPersonal]);
+  }, [filteredPersonal, proyectos]);
 
   const roleColor = (rol: string) => {
     switch (rol) {
@@ -567,13 +575,18 @@ export default function PersonalPage() {
                     <HardHat className="w-3 h-3 text-primary" />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-black text-xs uppercase text-primary leading-tight truncate">
+                    <h3 className="font-black text-xs uppercase text-primary leading-tight truncate" title={grupo.proyectoCodigo}>
                       {grupo.proyectoCodigo}
                     </h3>
-                    <p className="font-bold text-[10px] text-slate-600 truncate mt-0.5">
+                    <p className="font-bold text-[10px] text-slate-600 truncate mt-0.5" title={grupo.proyectoNombre}>
                       {grupo.proyectoNombre}
                     </p>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[6px] font-bold text-slate-400 uppercase tracking-wide">
+                    {grupo.clienteNombre && (
+                      <p className="font-black text-[9px] text-blue-600 truncate mt-0.5" title={grupo.clienteNombre}>
+                        {grupo.clienteNombre}
+                      </p>
+                    )}
+                    <div className="flex items-center gap-1.5 mt-1 text-[6px] font-bold text-slate-400 uppercase tracking-wide">
                       <span className="flex items-center gap-1">
                         <Users className="w-2.5 h-2.5" />
                         {grupo.totalActivos} activos

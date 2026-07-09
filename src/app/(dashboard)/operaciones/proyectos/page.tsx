@@ -49,6 +49,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RetiroEquipoModal } from "@/components/operaciones/retiro-equipo-modal";
 import { ProyectoDetail } from "@/components/operaciones/proyecto-detail";
 import { KPIPanel } from "@/components/operaciones/kpi-panel";
 import { toast } from "sonner";
@@ -418,6 +419,7 @@ export default function ProyectosPage() {
           >
             <Clock className="w-4 h-4" /> Mis Horas Extras
           </Button>
+          <RetiroEquipoModal />
           <Button
             variant="outline"
             className="h-9 gap-2 font-black uppercase text-[10px] border-slate-200 bg-white"
