@@ -347,8 +347,20 @@ export function CRMStats() {
       return acc;
     }, []);
 
-    const contactosCount = contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length;
-    const contactosHoy = contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length;
+    const contactosPeriodoTotal = contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit'));
+    const contactosCount = contactosPeriodoTotal.filter((int: any) => int.tipo !== 'No Contesta').length;
+    const fallidosCount = contactosPeriodoTotal.filter((int: any) => int.tipo === 'No Contesta').length;
+    
+    // Calcular Clientes Unicos Atendidos
+    const clientesAtendidosIds = new Set(
+      contactosPeriodoTotal
+        .filter((int: any) => int.tipo !== 'No Contesta')
+        .map((int: any) => int.clienteId || int.clienteNombre)
+    );
+    const clientesAtendidosCount = clientesAtendidosIds.size;
+
+    const contactosHoyListFiltrados = contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit'));
+    const contactosHoy = contactosHoyListFiltrados.filter((int: any) => int.tipo !== 'No Contesta').length;
 
     const prospectosCount = clients.filter((c: any) => {
       const creador = getRealCreator(c);
@@ -386,6 +398,8 @@ export function CRMStats() {
       prospectosHoy,
       visitas: visitasCount,
       contactos: contactosCount,
+      fallidos: fallidosCount,
+      clientesAtendidos: clientesAtendidosCount,
       contactosHoy,
       contactosPeriodoList,
       ganados: ganadosCount,
@@ -734,7 +748,9 @@ export function CRMStats() {
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Asesora</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Nuevos Prospectos</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Visitas</th>
-                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Contactos/Seg.</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Seg. Efectivos</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">No Contesta</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Clientes Atendidos</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Órdenes de Servicio</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Efectividad %</th>
                   </tr>
@@ -818,6 +834,12 @@ export function CRMStats() {
                               )}
                             </div>
                           )}
+                        </td>
+                        <td className="px-6 py-4 text-center font-black text-red-500">
+                          {isAriana ? '-' : data.fallidos}
+                        </td>
+                        <td className="px-6 py-4 text-center font-black text-blue-600">
+                          {isAriana ? '-' : data.clientesAtendidos}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
                           {isAriana ? '-' : (

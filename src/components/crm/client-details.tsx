@@ -467,6 +467,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                           <SelectItem value="Visita">Visita</SelectItem>
                           <SelectItem value="Cotización">Cotización</SelectItem>
                           <SelectItem value="Nota">Nota</SelectItem>
+                          <SelectItem value="No Contesta">No Contesta</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
