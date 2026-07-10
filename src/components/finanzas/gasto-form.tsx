@@ -215,7 +215,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       estado: data.estado,
       fechaEmision: data.fechaEmision,
       area: data.area || null,
-      cajaId: data.cajaId,
+      cajaId: data.cajaId === "none" ? null : data.cajaId,
       montoTotal: parseFloat(data.montoTotal) || 0,
       proyectoId: data.proyectoId === "none" ? null : data.proyectoId,
       proveedorId: data.proveedorId || null,
@@ -518,6 +518,9 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="none" className="font-bold text-xs italic text-slate-500">
+                            NO AFECTA CAJA (Sin movimiento)
+                          </SelectItem>
                           {cajas.map((c) => (
                             <SelectItem key={c.id} value={c.id} className="font-bold text-xs">
                               {c.nombre} <span className="text-[9px] text-slate-400 ml-2">(S/ {Number(c.saldoDisponible).toLocaleString()})</span>
