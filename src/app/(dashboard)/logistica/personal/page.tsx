@@ -124,21 +124,22 @@ export default function PersonalPage() {
       ? proyectos.find((p) => p.id === formData.proyectoId)
       : null;
 
-    const filtrados = proyectos.filter((p) => {
-      // Solo proyectos de cotizaciones ganadas
-      return p.cotizacion;
-    }).map((p) => ({
-      value: p.id,
-      label: `${p.codigo} - ${p.nombre}`,
-      subLabel: p.estado,
-    }));
+    const filtrados = proyectos.map((p) => {
+      const clientName = (p as any).cliente?.razonSocial || (p as any).cliente?.empresa || (p as any).clienteNombre || '';
+      return {
+        value: p.id,
+        label: `${p.codigo} - ${p.nombre}${clientName ? ` - ${clientName}` : ''}`,
+        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${p.codigo}`
+      };
+    });
 
     // Si estamos editando y el proyecto no está en la lista filtrada, agregarlo
     if (proyectoEditando && !filtrados.find((p) => p.value === proyectoEditando.id)) {
+      const clientName = (proyectoEditando as any).cliente?.razonSocial || (proyectoEditando as any).cliente?.empresa || (proyectoEditando as any).clienteNombre || '';
       filtrados.unshift({
         value: proyectoEditando.id,
-        label: `${proyectoEditando.codigo} - ${proyectoEditando.nombre}`,
-        subLabel: proyectoEditando.estado,
+        label: `${proyectoEditando.codigo} - ${proyectoEditando.nombre}${clientName ? ` - ${clientName}` : ''}`,
+        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${proyectoEditando.codigo}`
       });
     }
 
