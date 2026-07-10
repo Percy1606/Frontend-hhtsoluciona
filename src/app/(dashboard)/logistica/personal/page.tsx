@@ -28,6 +28,8 @@ import {
   PiggyBank,
   BarChart3,
   Zap,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,6 +55,7 @@ import { useLogisticaStore, PersonalProyecto } from "@/store/logistica-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { Combobox } from "@/components/ui/combobox";
 import { api } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 const ROLES = ["Técnico", "Operario", "Supervisor", "Otro"] as const;
 const TIPOS_CONTRATO = ["Jornal", "Semanal", "Mensual"] as const;
@@ -158,6 +161,16 @@ export default function PersonalPage() {
     costoTotal: number;
     loading: boolean;
   } | null>(null);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const toggleProject = (id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetchPersonal(page, 50, undefined, filterEstado, search || undefined, dateFrom || undefined, dateTo || undefined);
@@ -223,6 +236,12 @@ export default function PersonalPage() {
           fechaFin: formData.fechaFin || undefined,
         });
       }
+      
+      // Auto-generar el compromiso para no depender del clic manual
+      await generarCompromisoPersonalPorProyecto(formData.proyectoId);
+      fetchCostosPersonal(formData.proyectoId);
+      fetchProjectProfitability(formData.proyectoId);
+      
       setShowForm(false);
       resetForm();
     } catch (err: any) {
@@ -561,17 +580,23 @@ export default function PersonalPage() {
           </Button>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {personalPorProyecto.map((grupo) => {
             const activos = grupo.workers.filter(w => w.activo);
             const costoTotalProyecto = activos.reduce((sum, w) => sum + calcularCostoTotal(w), 0);
+            const isOpen = expanded.has(grupo.proyectoId);
             return (
-            <Card key={grupo.proyectoId} className="border-slate-200 shadow-sm hover:shadow-md transition-shadow overflow-hidden rounded-xl">
+            <Card key={grupo.proyectoId} className={cn("bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-slate-300", isOpen && "row-span-2")}>
+              <button
+                type="button"
+                onClick={() => toggleProject(grupo.proyectoId)}
+                className="w-full text-left transition-colors duration-150"
+              >
               {/* Project identity bar */}
               <div className="px-3 pt-2.5 pb-1.5 flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2.5 min-w-0">
-                  <div className="mt-0.5 p-1 rounded-md bg-primary/10 shrink-0">
-                    <HardHat className="w-3 h-3 text-primary" />
+                  <div className={cn("mt-0.5 p-1 rounded-md shrink-0 transition-all duration-200", isOpen ? "bg-primary shadow-md shadow-primary/20 text-white" : "bg-primary/10 text-primary")}>
+                    <HardHat className="w-3 h-3" />
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-black text-xs uppercase text-primary leading-tight truncate" title={grupo.proyectoCodigo}>
@@ -597,30 +622,21 @@ export default function PersonalPage() {
                     </div>
                   </div>
                 </div>
-                {activos.length > 0 && (
-                  <Button
-                    size="sm"
-                    onClick={() => setComprometerProyecto({
-                      proyectoId: grupo.proyectoId,
-                      proyectoNombre: `${grupo.proyectoCodigo} — ${grupo.proyectoNombre}`,
-                      totalTrabajadores: activos.length,
-                      costoTotal: costoTotalProyecto,
-                      loading: false,
-                    })}
-                    className="h-5 px-1.5 bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[6px] tracking-widest rounded shrink-0"
-                  >
-                    <Banknote className="w-1.5 h-1.5 mr-0.5" />
-                    Comprometer
-                  </Button>
-                )}
+                <div className="flex flex-col items-end gap-1 shrink-0">
+                  <div className={cn("w-6 h-6 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary/10 text-primary" : "text-slate-300")}>
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                  </div>
+                </div>
               </div>
 
               {/* Total amount highlight */}
               <div className="mx-3 mb-1.5 px-2.5 py-1 rounded-lg bg-gradient-to-r from-emerald-50 to-emerald-50/60 border border-emerald-100/80 flex items-center justify-between">
-                <span className="text-[7px] font-bold text-emerald-700 uppercase tracking-wider">Total</span>
+                <span className="text-[7px] font-bold text-emerald-700 uppercase tracking-wider">Total Proyecto</span>
                 <span className="text-xs font-black text-emerald-700 tracking-tight">{formatearMoneda(costoTotalProyecto)}</span>
               </div>
+              </button>
 
+              <div className={cn("transition-all duration-300 ease-in-out overflow-hidden", isOpen ? "max-h-[9999px] opacity-100" : "max-h-0 opacity-0")}>
               {/* Workers list */}
               <div className="border-t border-slate-100">
                 {grupo.workers.length === 0 ? (
@@ -683,6 +699,7 @@ export default function PersonalPage() {
                     </div>
                   )})
                 )}
+              </div>
               </div>
             </Card>
           )})}
