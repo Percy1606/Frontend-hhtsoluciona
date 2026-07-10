@@ -211,10 +211,8 @@ export default function PersonalPage() {
 
     try {
       if (editingId) {
-        // UpdatePersonalDto no acepta proyectoId, proyectoCodigo, proyectoNombre
-        const { proyectoId, proyectoCodigo, proyectoNombre, ...updateData } = formData;
         await updatePersonal(editingId, {
-          ...updateData,
+          ...formData,
           montoDiario: Number(formData.montoDiario),
           fechaFin: formData.fechaFin || undefined,
         });
