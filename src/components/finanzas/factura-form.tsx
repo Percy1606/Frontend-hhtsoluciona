@@ -153,7 +153,7 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
       try {
         const [clientsRes, projectsRes, cajasRes] = await Promise.all([
           api.get('/crm/clientes?limit=500'),
-          api.get('/operaciones/proyectos?limit=500'),
+          api.get('/finanzas/bandeja-proyectos'),
           api.get('/finanzas/cajas')
         ]);
         
@@ -196,22 +196,8 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
 
   const projectOptions = useMemo(() => {
     let filtered = proyectos;
-    
-    // Filtrar: Solo mostrar proyectos cuya cotización de origen esté aprobada/ganada/orden de servicio
-    filtered = filtered.filter((p: any) => {
-      if (p.cotizacionOrigen) {
-        const estadoCot = p.cotizacionOrigen?.estado?.toLowerCase();
-        return (
-          estadoCot === 'aprobada' ||
-          estadoCot === 'ganada' ||
-          estadoCot === 'orden_servicio' ||
-          estadoCot === 'orden de servicio'
-        );
-      }
-      return true; // Permitir proyectos manuales/venta directa
-    });
 
-    if (selectedClienteId) filtered = filtered.filter(p => (p.clienteId || p.clientId) === selectedClienteId);
+    if (selectedClienteId) filtered = filtered.filter(p => (p.clienteId || p.clientId || p.cliente?.id) === selectedClienteId);
     
     return [
       { value: "none", label: "-- Sin Proyecto (Venta Directa) --", subLabel: "" },
@@ -558,8 +544,9 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
                             form.setValue("hitoPagoId", "none");
                             if (val && val !== "none") {
                               const selected = proyectos.find((p) => p.id === val);
-                              if (selected && selected.clienteId) {
-                                form.setValue("clienteId", selected.clienteId);
+                              const cId = selected?.clienteId || selected?.clientId || selected?.cliente?.id;
+                              if (cId) {
+                                form.setValue("clienteId", cId);
                               }
                             }
                           }}
