@@ -120,10 +120,11 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const projectOptions = useMemo(() => {
     const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General (Sin Proyecto)" }];
     proyectos.forEach(p => {
+      const clientName = p.cliente?.razonSocial || p.cliente?.empresa || p.clienteNombre || '';
       options.push({
         value: p.id,
-        label: `${p.codigo} - ${p.nombre}`,
-        subLabel: p.clienteNombre || `CÓDIGO: ${p.codigo}`
+        label: `${p.codigo} - ${p.nombre}${clientName ? ` - ${clientName}` : ''}`,
+        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${p.codigo}`
       });
     });
     return options;
