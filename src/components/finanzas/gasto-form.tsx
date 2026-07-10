@@ -122,8 +122,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     proyectos.forEach(p => {
       options.push({
         value: p.id,
-        label: p.nombre,
-        subLabel: `CÓDIGO: ${p.codigo}`
+        label: `${p.codigo} - ${p.nombre}`,
+        subLabel: p.clienteNombre || `CÓDIGO: ${p.codigo}`
       });
     });
     return options;
