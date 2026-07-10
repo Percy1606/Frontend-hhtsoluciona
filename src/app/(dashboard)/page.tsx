@@ -1249,50 +1249,42 @@ export default function DashboardPage() {
               const chartData = sellers.map(seller => {
                 const contactosPeriodoList = clients.reduce((acc: any[], c: any) => {
                   const interacciones = c.historialInteracciones || c.interacciones || [];
-                  let found = false;
                   
                   interacciones.forEach((int: any) => {
                     const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
                     const isCreator = int.usuario?.toLowerCase().includes(seller.name.toLowerCase().trim());
                     const belongsToSeller = int.usuario ? isCreator : isOwner;
+                    const hasText = !!(int.comentario || int.notas || int.observaciones);
+                    const isVisit = int.tipo?.toLowerCase().includes('visit');
                     
-                    if (belongsToSeller) {
+                    if (belongsToSeller && (hasText || isVisit)) {
                       if (isInRange(int.fecha || int.createdAt)) {
                         acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-                        found = true;
                       }
                     }
                   });
                   
-                  const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
-                  if (isOwner && !found && interacciones.length === 0 && c.ultimoContacto && isInRange(c.ultimoContacto)) {
-                    acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
-                  }
                   return acc;
                 }, []).sort((a: any, b: any) => new Date(b.fecha || b.createdAt).getTime() - new Date(a.fecha || a.createdAt).getTime());
 
                 const contactosHoyList = clients.reduce((acc: any[], c: any) => {
                   const interacciones = c.historialInteracciones || c.interacciones || [];
-                  let found = false;
                   const hoyStr = getPeruDateString();
                   
                   interacciones.forEach((int: any) => {
                     const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
                     const isCreator = int.usuario?.toLowerCase().includes(seller.name.toLowerCase().trim());
                     const belongsToSeller = int.usuario ? isCreator : isOwner;
+                    const hasText = !!(int.comentario || int.notas || int.observaciones);
+                    const isVisit = int.tipo?.toLowerCase().includes('visit');
                     
-                    if (belongsToSeller) {
+                    if (belongsToSeller && (hasText || isVisit)) {
                       if ((int.fecha || int.createdAt)?.startsWith(hoyStr)) {
                         acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
-                        found = true;
                       }
                     }
                   });
                   
-                  const isOwner = c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
-                  if (isOwner && !found && interacciones.length === 0 && c.ultimoContacto?.startsWith(hoyStr)) {
-                    acc.push({ fecha: c.ultimoContacto, tipo: c.tipoContacto || 'Seguimiento', clienteNombre: c.empresa || c.nombre, esLegacy: true });
-                  }
                   return acc;
                 }, []);
 
