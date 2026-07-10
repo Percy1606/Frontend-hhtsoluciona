@@ -68,7 +68,7 @@ export default function ImpuestosPage() {
         </div>
         
         <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
-          <Select value={mes} onValueChange={setMes}>
+          <Select value={mes} onValueChange={(v) => setMes(v || "1")}>
             <SelectTrigger className="w-[140px] h-10 border-none bg-slate-50 font-bold focus:ring-0">
               <SelectValue placeholder="Mes" />
             </SelectTrigger>
@@ -81,7 +81,7 @@ export default function ImpuestosPage() {
             </SelectContent>
           </Select>
 
-          <Select value={anio} onValueChange={setAnio}>
+          <Select value={anio} onValueChange={(v) => setAnio(v || "2026")}>
             <SelectTrigger className="w-[100px] h-10 border-none bg-slate-50 font-bold focus:ring-0">
               <SelectValue placeholder="Año" />
             </SelectTrigger>
@@ -93,10 +93,8 @@ export default function ImpuestosPage() {
           </Select>
 
           <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="icon" className="h-10 w-10 shrink-0 rounded-xl border-slate-200">
-                <Settings2 className="w-4 h-4 text-slate-600" />
-              </Button>
+            <DialogTrigger className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition-colors">
+              <Settings2 className="w-4 h-4 text-slate-600" />
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
