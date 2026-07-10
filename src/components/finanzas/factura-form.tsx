@@ -211,7 +211,7 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
       return true; // Permitir proyectos manuales/venta directa
     });
 
-    if (selectedClienteId) filtered = filtered.filter(p => p.clientId === selectedClienteId);
+    if (selectedClienteId) filtered = filtered.filter(p => (p.clienteId || p.clientId) === selectedClienteId);
     
     return [
       { value: "none", label: "-- Sin Proyecto (Venta Directa) --", subLabel: "" },
