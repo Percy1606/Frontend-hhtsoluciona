@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar, Cell } from 'recharts';
-import { Loader2, TrendingUp, TrendingDown, Receipt, Calendar, AlertCircle, CheckCircle2, Award, FileText, DollarSign } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Receipt, Calendar, AlertCircle, CheckCircle2, Award, FileText, DollarSign, Calculator } from 'lucide-react';
 import { api } from "@/lib/api";
+import Link from "next/link";
 import { formatCurrency, formatLargeCurrency } from "@/lib/utils";
 
 export default function ReportesAvanzadosPage() {
@@ -161,6 +162,10 @@ export default function ReportesAvanzadosPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          <Link href="/finanzas/impuestos" className="flex items-center h-10 px-3 md:px-4 rounded-xl font-bold text-xs uppercase bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors">
+            <Calculator className="w-4 h-4 mr-0 md:mr-2" />
+            <span className="hidden md:inline">Impuestos SUNAT</span>
+          </Link>
           <Select value={vista} onValueChange={(val: any) => setVista(val)}>
             <SelectTrigger className="w-[140px] rounded-xl font-bold text-xs uppercase bg-slate-50 border-none shadow-sm">
               <Calendar className="w-4 h-4 mr-2 text-primary" />

@@ -96,7 +96,6 @@ const menuItems = [
       { icon: TrendingDown, label: "Egresos / Gastos", href: "/finanzas/egresos" },
       { icon: Receipt, label: "Ingresos / Facturas", href: "/finanzas/ingresos" },
       { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones?from=finanzas" },
-      { icon: Calculator, label: "Impuestos (SUNAT)", href: "/finanzas/impuestos" },
       { icon: BarChart, label: "Reportes", href: "/finanzas/reportes" },
     ]
   },

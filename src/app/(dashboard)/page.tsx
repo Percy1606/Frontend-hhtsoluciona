@@ -27,7 +27,9 @@ import {
   Layers,
   Inbox,
   Trophy,
-  DollarSign
+  DollarSign,
+  Calculator,
+  TrendingDown
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn, getPeruDateString } from "@/lib/utils";
@@ -600,6 +602,23 @@ export default function DashboardPage() {
       return true;
     });
   }, [facturas, startDate, endDate]);
+
+  const filteredGastos = useMemo(() => {
+    if (!startDate && !endDate) return gastos;
+    return gastos.filter((g: any) => {
+      const d = parseSafeDate(g.fechaEmision || g.createdAt);
+      if (!d) return false;
+      if (startDate && d < startDate) return false;
+      if (endDate && d > endDate) return false;
+      return true;
+    });
+  }, [gastos, startDate, endDate]);
+
+  const { igvVentas, igvCompras } = useMemo(() => {
+    const ventas = filteredFacturas.filter((f: any) => f.estado !== 'ANULADA').reduce((acc: number, f: any) => acc + (Number(f.montoTotal || 0) / 1.18) * 0.18, 0);
+    const compras = filteredGastos.filter((g: any) => g.estado !== 'ANULADA' && g.estado !== 'RECHAZADO' && g.tipoDocumento === 'FACTURA').reduce((acc: number, g: any) => acc + (Number(g.montoTotal || 0) / 1.18) * 0.18, 0);
+    return { igvVentas: ventas, igvCompras: compras };
+  }, [filteredFacturas, filteredGastos]);
 
   const filteredPersonal = useMemo(() => {
     if (!startDate && !endDate) return personal;
@@ -1916,6 +1935,42 @@ export default function DashboardPage() {
 
           {/* TAB: FINANZAS */}
           <TabsContent value="finanzas" className="space-y-8 outline-none">
+            
+            {/* Quick KPI Row para Impuestos */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Card className="border border-indigo-100 shadow-sm bg-indigo-50/30 hover:bg-indigo-50/50 transition-colors cursor-pointer rounded-2xl" onClick={() => router.push('/finanzas/impuestos')}>
+                <CardContent className="p-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-indigo-800">Declaración de Impuestos</p>
+                    <p className="text-[10px] text-indigo-600/80 font-bold mt-1">Calcular y ver reporte completo</p>
+                  </div>
+                  <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                    <Calculator className="w-6 h-6" />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-emerald-100 shadow-sm bg-emerald-50/30 rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">IGV Ventas</p>
+                  </div>
+                  <p className="text-2xl font-black text-emerald-700">S/ {igvVentas.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-rose-100 shadow-sm bg-rose-50/30 rounded-2xl">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <TrendingDown className="w-4 h-4 text-rose-600" />
+                    <p className="text-xs font-bold uppercase tracking-widest text-rose-800">IGV Compras</p>
+                  </div>
+                  <p className="text-2xl font-black text-rose-700">S/ {igvCompras.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                </CardContent>
+              </Card>
+            </div>
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Left Column: Facturas (Incomes) */}
               <div className="space-y-6">
@@ -1991,7 +2046,7 @@ export default function DashboardPage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {gastos.slice(0, 6).map((g: any) => (
+                        {filteredGastos.slice(0, 6).map((g: any) => (
                           <tr key={g.id} className="hover:bg-slate-50/50 transition-colors">
                             <td className="p-4 text-xs font-bold text-slate-800 truncate max-w-[150px]">{g.concepto}</td>
                             <td className="p-4 text-[9px] font-black text-slate-500 uppercase">{g.tipo}</td>
@@ -2010,7 +2065,7 @@ export default function DashboardPage() {
                             </td>
                           </tr>
                         ))}
-                        {gastos.length === 0 && (
+                        {filteredGastos.length === 0 && (
                           <tr>
                             <td colSpan={4} className="p-8 text-center text-xs text-slate-400">Sin egresos registrados en este período.</td>
                           </tr>
