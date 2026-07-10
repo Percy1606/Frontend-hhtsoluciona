@@ -467,15 +467,35 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                               {form.watch("moneda") === 'PEN' ? 'S/' : '$'}
                             </span>
                             <Input 
-                              type="number" 
-                              step="0.01"
-                              min="0"
+                              type="text" 
                               className="h-12 bg-blue-50/30 border-blue-100 font-black text-blue-700 text-lg pl-10 focus:bg-white transition-colors" 
                               placeholder="0.00"
-                              {...field}
+                              value={field.value || ""}
                               onChange={(e) => {
-                                const val = e.target.value;
-                                field.onChange(val === '' ? 0 : parseFloat(val));
+                                let val = e.target.value;
+                                // Si el usuario escribe o pega algo como "160.480,00" o "160,480.00"
+                                // Removemos caracteres no numericos excepto punto y coma
+                                val = val.replace(/[^\d.,]/g, '');
+                                
+                                // Detectar si usa formato europeo (punto para miles, coma para decimales)
+                                // Ej: 160.480,00 -> 160480.00
+                                if (val.includes(',') && val.includes('.') && val.lastIndexOf(',') > val.lastIndexOf('.')) {
+                                  val = val.replace(/\./g, '').replace(',', '.');
+                                } 
+                                // Si solo tiene coma y no punto, asumimos coma como decimal
+                                else if (val.includes(',') && !val.includes('.')) {
+                                  val = val.replace(',', '.');
+                                }
+                                // Si tiene formato americano 160,480.00
+                                else {
+                                  val = val.replace(/,/g, '');
+                                }
+                                
+                                field.onChange(val === '' ? 0 : val);
+                              }}
+                              onBlur={(e) => {
+                                const num = parseFloat(e.target.value);
+                                field.onChange(isNaN(num) ? 0 : num);
                               }}
                             />
                           </div>

@@ -67,6 +67,7 @@ const ordenSchema = z.object({
   fechaEntrega: z.string().optional(),
   estado: z.string().default("PENDIENTE"),
   incluyeIgv: z.boolean().default(true),
+  aprobarConCredito: z.boolean().default(false),
   archivoFactura: z.string().optional(),
   observacionesLimpias: z.string().optional(),
 
@@ -142,6 +143,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
       fechaEntrega: "",
       estado: "PENDIENTE",
       incluyeIgv: true,
+      aprobarConCredito: false,
       archivoFactura: "",
       observacionesLimpias: "",
       items: [{ insumoId: "", cantidad: 1, precioUnitario: 0 }],
@@ -871,6 +873,27 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
                                 </FormItem>
                             )}
                         />
+
+                        {form.watch("proyectoId") && form.watch("proyectoId") !== "none" && (
+                            <FormField
+                                control={form.control as any}
+                                name="aprobarConCredito"
+                                render={({ field }) => (
+                                    <FormItem className="flex items-center justify-between mb-4">
+                                    <FormLabel className="text-[10px] font-black uppercase text-amber-500 tracking-widest mt-2 cursor-pointer max-w-[80%] leading-tight">
+                                        Aprobar compra a crédito (Sin saldo)
+                                    </FormLabel>
+                                    <FormControl>
+                                        <Switch 
+                                            checked={field.value} 
+                                            onCheckedChange={field.onChange} 
+                                            className="data-[state=checked]:bg-amber-500"
+                                        />
+                                    </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
 
                         <div className="space-y-3 mt-4">
                             <div className="flex justify-between items-center text-slate-300">
