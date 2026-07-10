@@ -1937,36 +1937,46 @@ export default function DashboardPage() {
           <TabsContent value="finanzas" className="space-y-8 outline-none">
             
             {/* Quick KPI Row para Impuestos */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <Card className="border border-indigo-100 shadow-sm bg-indigo-50/30 hover:bg-indigo-50/50 transition-colors cursor-pointer rounded-2xl" onClick={() => router.push('/finanzas/impuestos')}>
-                <CardContent className="p-5 flex items-center justify-between">
+                <CardContent className="p-4 flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-bold uppercase tracking-widest text-indigo-800">Declaración de Impuestos</p>
-                    <p className="text-[10px] text-indigo-600/80 font-bold mt-1">Calcular y ver reporte completo</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-800">Declaración</p>
+                    <p className="text-[9px] text-indigo-600/80 font-bold mt-0.5">Impuestos SUNAT</p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
-                    <Calculator className="w-6 h-6" />
+                  <div className="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0">
+                    <Calculator className="w-4 h-4" />
                   </div>
                 </CardContent>
               </Card>
 
               <Card className="border border-emerald-100 shadow-sm bg-emerald-50/30 rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-800">IGV Ventas</p>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-800">IGV Ventas</p>
+                    <TrendingUp className="w-3 h-3 text-emerald-600" />
                   </div>
-                  <p className="text-2xl font-black text-emerald-700">S/ {igvVentas.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-lg font-black text-emerald-700">S/ {igvVentas.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
                 </CardContent>
               </Card>
 
               <Card className="border border-rose-100 shadow-sm bg-rose-50/30 rounded-2xl">
-                <CardContent className="p-5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <TrendingDown className="w-4 h-4 text-rose-600" />
-                    <p className="text-xs font-bold uppercase tracking-widest text-rose-800">IGV Compras</p>
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-rose-800">IGV Compras</p>
+                    <TrendingDown className="w-3 h-3 text-rose-600" />
                   </div>
-                  <p className="text-2xl font-black text-rose-700">S/ {igvCompras.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-lg font-black text-rose-700">S/ {igvCompras.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
+                </CardContent>
+              </Card>
+
+              <Card className="border border-blue-100 shadow-sm bg-blue-50/30 rounded-2xl">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-blue-800">Saldo IGV</p>
+                    <Activity className="w-3 h-3 text-blue-600" />
+                  </div>
+                  <p className="text-lg font-black text-blue-700">S/ {(igvVentas - igvCompras).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</p>
                 </CardContent>
               </Card>
             </div>

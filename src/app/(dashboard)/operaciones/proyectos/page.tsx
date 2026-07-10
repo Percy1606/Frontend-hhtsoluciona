@@ -27,7 +27,8 @@ import {
   ShieldAlert,
   Lock,
   RotateCw,
-  Clock
+  Clock,
+  DollarSign
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ import { useCRMStore } from "@/store/crm-store";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
+import { GastoForm } from "@/components/finanzas/gasto-form";
 import type { Proyecto, Actividad, EstadoProyecto, Area, Prioridad } from "@/lib/types";
 
 // Componente local para estadísticas compactas
@@ -153,6 +155,22 @@ export default function ProyectosPage() {
   const [activeTab, setActiveTab] = useState("proyectos");
 
   const [isNewProjectModalOpen, setIsNewProjectModalOpen] = useState(false);
+  const [isGastoModalOpen, setIsGastoModalOpen] = useState(false);
+
+  const handleCreateGasto = async (data: any) => {
+    try {
+      const payload = {
+        ...data,
+        proyectoId: (data.proyectoId === 'none' || !data.proyectoId) ? undefined : data.proyectoId,
+      };
+      await api.post('/finanzas/gastos', payload);
+      toast.success("Gasto registrado exitosamente");
+      setIsGastoModalOpen(false);
+    } catch (e) {
+      console.error("Error saving expense", e);
+      toast.error("Error al registrar el gasto");
+    }
+  };
   const [isPreventa, setIsPreventa] = useState(false);
   const [isEditProjectModalOpen, setIsEditProjectModalOpen] = useState(false);
   
@@ -412,6 +430,12 @@ export default function ProyectosPage() {
             onClick={() => router.push('/operaciones/horas-extras')}
           >
             <Clock className="w-4 h-4" /> Mis Horas Extras
+          </Button>
+          <Button
+            className="h-9 gap-2 font-black uppercase text-[10px] bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
+            onClick={() => setIsGastoModalOpen(true)}
+          >
+            <Plus className="w-4 h-4" /> Nuevo Gasto
           </Button>
           <RetiroEquipoModal />
           <Button
@@ -991,6 +1015,22 @@ export default function ProyectosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL NUEVO GASTO */}
+      <ModernDialog
+        isOpen={isGastoModalOpen}
+        onOpenChange={(open) => setIsGastoModalOpen(open)}
+        title="Registrar Nuevo Gasto"
+        maxWidth="sm:max-w-4xl"
+        className="max-h-[90vh] flex flex-col"
+      >
+        <div className="flex-1 overflow-y-auto pr-1">
+          <GastoForm 
+            onSubmit={handleCreateGasto}
+            onCancel={() => setIsGastoModalOpen(false)} 
+          />
+        </div>
+      </ModernDialog>
     </div>
   );
 }
