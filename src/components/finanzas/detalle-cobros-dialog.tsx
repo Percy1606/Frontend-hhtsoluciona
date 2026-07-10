@@ -395,7 +395,7 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
                           {isFacturado ? (
                             <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200 text-[9px]"><FileCheck className="w-3 h-3 mr-1"/> YA FACTURADO</Badge>
                           ) : (
-                            detalle?.cotizacionOrigen?.estado === "ORDEN_SERVICIO" ? (
+                            ['Ganada', 'ORDEN_SERVICIO'].includes(detalle?.cotizacionOrigen?.estado) ? (
                               <Button 
                                 size="sm" 
                                 onClick={() => handleFacturar(hito)} 
