@@ -36,6 +36,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { FacturaForm } from "../finanzas/factura-form";
 
 interface FinancePanelProps {
@@ -84,6 +85,26 @@ export function FinancePanel({ proyectoId }: FinancePanelProps) {
       setLoading(false);
     }
   }, [proyectoId, fetchProjectProfitability]);
+
+  const [isUpdatingSobregiro, setIsUpdatingSobregiro] = useState(false);
+  const toggleSobregiro = async (currentDescripcion: string = "") => {
+    setIsUpdatingSobregiro(true);
+    try {
+      const hasSobregiro = currentDescripcion.includes("[SOBREGIRO_AUTORIZADO]");
+      const newDescripcion = hasSobregiro 
+        ? currentDescripcion.replace("[SOBREGIRO_AUTORIZADO]", "").trim()
+        : `${currentDescripcion} [SOBREGIRO_AUTORIZADO]`.trim();
+        
+      await api.put(`/operaciones/proyectos/${proyectoId}`, { descripcion: newDescripcion });
+      toast.success(hasSobregiro ? "Sobregiro deshabilitado" : "Sobregiro habilitado");
+      // Force reload to update store
+      useOperacionesStore.getState().fetchProyectos();
+    } catch (error) {
+      toast.error("Error al actualizar estado de sobregiro");
+    } finally {
+      setIsUpdatingSobregiro(false);
+    }
+  };
 
   useEffect(() => {
     loadData();
@@ -140,6 +161,21 @@ export function FinancePanel({ proyectoId }: FinancePanelProps) {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-end bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-4">
+        <div className="flex items-center space-x-4">
+          <div className="flex flex-col text-right">
+            <span className="text-sm font-bold text-slate-700">Autorizar Compras a Crédito (Sobregiro)</span>
+            <span className="text-[10px] text-slate-500">Permite a logística saltar el bloqueo de presupuesto</span>
+          </div>
+          <Switch 
+            disabled={totalPagosRecibidos > 0 || isUpdatingSobregiro}
+            checked={currentProyecto?.descripcion?.includes('[SOBREGIRO_AUTORIZADO]')}
+            onCheckedChange={() => toggleSobregiro(currentProyecto?.descripcion || "")}
+            className="data-[state=checked]:bg-amber-500"
+          />
+        </div>
+      </div>
+
       {/* ALERTA DE PRESUPUESTO EXCEDIDO */}
       {presupuestoExcedido && (
         <div className="bg-red-50 border-2 border-red-200 p-4 rounded-2xl flex items-center gap-4 animate-bounce">

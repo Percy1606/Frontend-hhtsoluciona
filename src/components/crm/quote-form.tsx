@@ -473,22 +473,27 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                               value={field.value || ""}
                               onChange={(e) => {
                                 let val = e.target.value;
-                                // Si el usuario escribe o pega algo como "160.480,00" o "160,480.00"
-                                // Removemos caracteres no numericos excepto punto y coma
                                 val = val.replace(/[^\d.,]/g, '');
                                 
-                                // Detectar si usa formato europeo (punto para miles, coma para decimales)
-                                // Ej: 160.480,00 -> 160480.00
-                                if (val.includes(',') && val.includes('.') && val.lastIndexOf(',') > val.lastIndexOf('.')) {
-                                  val = val.replace(/\./g, '').replace(',', '.');
-                                } 
-                                // Si solo tiene coma y no punto, asumimos coma como decimal
-                                else if (val.includes(',') && !val.includes('.')) {
+                                const dots = (val.match(/\./g) || []).length;
+                                const commas = (val.match(/,/g) || []).length;
+                                
+                                if (dots > 1 && commas === 0) {
+                                  // "160.480.00" -> keep only last dot
+                                  const lastDot = val.lastIndexOf('.');
+                                  val = val.substring(0, lastDot).replace(/\./g, '') + '.' + val.substring(lastDot + 1);
+                                } else if (commas > 1 && dots === 0) {
+                                  // "160,480,00" -> keep only last comma as dot
+                                  const lastComma = val.lastIndexOf(',');
+                                  val = val.substring(0, lastComma).replace(/,/g, '') + '.' + val.substring(lastComma + 1);
+                                } else if (dots > 0 && commas > 0) {
+                                  if (val.lastIndexOf(',') > val.lastIndexOf('.')) {
+                                    val = val.replace(/\./g, '').replace(',', '.');
+                                  } else {
+                                    val = val.replace(/,/g, '');
+                                  }
+                                } else if (commas === 1 && dots === 0) {
                                   val = val.replace(',', '.');
-                                }
-                                // Si tiene formato americano 160,480.00
-                                else {
-                                  val = val.replace(/,/g, '');
                                 }
                                 
                                 field.onChange(val === '' ? 0 : val);
