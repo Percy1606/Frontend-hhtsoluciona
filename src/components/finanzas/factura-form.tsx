@@ -190,8 +190,8 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
 
   const clientOptions = useMemo(() => clientes.map(c => ({
     value: c.id,
-    label: c.empresa,
-    subLabel: `RUC: ${c.ruc || 'N/A'}`
+    label: c.empresa || c.nombre || "Cliente sin nombre",
+    subLabel: `RUC/DNI: ${c.ruc || c.dni || 'N/A'}`
   })), [clientes]);
 
   const projectOptions = useMemo(() => {
@@ -473,10 +473,11 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
                           placeholder="0.00"
                           value={field.value === 0 ? "" : field.value}
                           onChange={e => {
-                            const rawValue = e.target.value.replace(/[^0-9.]/g, '');
-                            const val = parseFloat(rawValue) || 0;
-                            field.onChange(val);
-                            recalculateAmounts(val);
+                            let rawValue = e.target.value.replace(/[^0-9.]/g, '');
+                            const parts = rawValue.split('.');
+                            if (parts.length > 2) rawValue = parts[0] + '.' + parts.slice(1).join('');
+                            field.onChange(rawValue);
+                            recalculateAmounts(parseFloat(rawValue) || 0);
                           }}
                           className="bg-emerald-50 border-emerald-200 font-black h-10 text-base text-emerald-700 shadow-inner"
                         />
@@ -518,8 +519,10 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
                             type="text" 
                             value={field.value === 0 ? "" : field.value}
                             onChange={e => {
-                              const val = parseFloat(e.target.value.replace(/[^0-9.]/g, '')) || 0;
-                              field.onChange(val);
+                              let rawValue = e.target.value.replace(/[^0-9.]/g, '');
+                              const parts = rawValue.split('.');
+                              if (parts.length > 2) rawValue = parts[0] + '.' + parts.slice(1).join('');
+                              field.onChange(rawValue);
                               setIsManualBalance(true);
                             }}
                             className="h-8 font-black text-red-600 bg-white border-red-200 px-2"
