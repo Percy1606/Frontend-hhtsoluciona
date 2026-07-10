@@ -395,15 +395,21 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
                           {isFacturado ? (
                             <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-200 text-[9px]"><FileCheck className="w-3 h-3 mr-1"/> YA FACTURADO</Badge>
                           ) : (
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleFacturar(hito)} 
-                              variant="default" 
-                              disabled={!montoValido}
-                              className="w-full text-[10px] uppercase font-bold h-7 bg-slate-800"
-                            >
-                              Emitir Factura
-                            </Button>
+                            detalle?.cotizacionOrigen?.estado === "ORDEN_SERVICIO" ? (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleFacturar(hito)} 
+                                variant="default" 
+                                disabled={!montoValido}
+                                className="w-full text-[10px] uppercase font-bold h-7 bg-slate-800"
+                              >
+                                Emitir Factura
+                              </Button>
+                            ) : (
+                              <div className="text-center p-1.5 bg-amber-50 border border-amber-200 rounded-md">
+                                <span className="text-[9px] font-bold text-amber-700">REQUIERE ORDEN DE SERVICIO</span>
+                              </div>
+                            )
                           )}
                         </div>
                       )}

@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Switch } from "@/components/ui/switch";
 import { useEffect, useState, useMemo } from "react";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
@@ -79,6 +80,10 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       categoriaDistribucion: initialData?.categoriaDistribucion || "",
       concepto: initialData?.concepto || "",
       montoTotal: initialData?.montoTotal || 0,
+      tipoComprobante: (initialData as any)?.tipoComprobante || "FACTURA",
+      aplicaImpuestos: (initialData as any)?.aplicaImpuestos ?? false,
+      montoSubtotal: (initialData as any)?.montoSubtotal || 0,
+      montoIgv: (initialData as any)?.montoIgv || 0,
       fechaEmision: getLocalDateString(initialData?.fechaEmision),
       fechaVencimiento: initialData?.fechaVencimiento ? getLocalDateString(initialData.fechaVencimiento) : "",
       fechaProgramadaPago: initialData?.fechaProgramadaPago ? getLocalDateString(initialData.fechaProgramadaPago) : "",
@@ -172,8 +177,24 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     }
   };
 
-  const watchEstado = form.watch("estado");
+  // Watchers para el cálculo de impuestos
+  const watchAplicaImpuestos = form.watch("aplicaImpuestos");
   const watchMonto = form.watch("montoTotal");
+
+  useEffect(() => {
+    const monto = Number(watchMonto) || 0;
+    if (watchAplicaImpuestos) {
+      const subtotal = monto / 1.18;
+      const igv = monto - subtotal;
+      form.setValue("montoSubtotal", Number(subtotal.toFixed(2)));
+      form.setValue("montoIgv", Number(igv.toFixed(2)));
+    } else {
+      form.setValue("montoSubtotal", monto);
+      form.setValue("montoIgv", 0);
+    }
+  }, [watchAplicaImpuestos, watchMonto, form]);
+
+  const watchEstado = form.watch("estado");
   const watchSaldoPendiente = initialData?.saldoPendiente !== undefined ? Number(initialData.saldoPendiente) : watchMonto;
   
   // Lógica para resumen financiero
@@ -201,6 +222,10 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       fechaVencimiento: data.fechaVencimiento || null,
       fechaProgramadaPago: data.fechaProgramadaPago || null,
       justificacion: justificacionFinal,
+      tipoComprobante: data.tipoComprobante,
+      aplicaImpuestos: data.aplicaImpuestos,
+      montoSubtotal: data.montoSubtotal,
+      montoIgv: data.montoIgv,
     };
     onSubmit(finalData);
   };
@@ -313,7 +338,32 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                 <h4 className="text-xs font-black uppercase tracking-widest text-emerald-700">2. Detalles y Documentación</h4>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <FormField
+                  control={form.control}
+                  name="tipoComprobante"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Tipo Comprobante</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
+                            <SelectValue placeholder="Tipo" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="FACTURA" className="font-bold text-xs">Factura</SelectItem>
+                          <SelectItem value="BOLETA" className="font-bold text-xs">Boleta</SelectItem>
+                          <SelectItem value="RECIBO_HONORARIOS" className="font-bold text-xs">RxH</SelectItem>
+                          <SelectItem value="TICKET" className="font-bold text-xs">Ticket / Varios</SelectItem>
+                          <SelectItem value="OTROS" className="font-bold text-xs">Otros</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
                 <FormField
                   control={form.control}
                   name="codigo"
@@ -514,29 +564,67 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end mb-4">
-                <FormField
-                  control={form.control}
-                  name="montoTotal"
-                  rules={{ required: "Requerido" }}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-black text-[11px] uppercase text-slate-600 tracking-wider">Monto Solicitado (S/.) *</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="number" 
-                          step="0.01"
-                          autoComplete="off"
-                          placeholder="0.00"
-                          value={field.value || ""}
-                          onChange={e => field.onChange(e.target.value)}
-                          className="bg-slate-50 border-slate-200 h-12 font-black text-xl text-primary shadow-inner"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start mb-4">
+                <div className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="montoTotal"
+                    rules={{ required: "Requerido" }}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-black text-[11px] uppercase text-slate-600 tracking-wider">Monto Total (S/.) *</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="number" 
+                            step="0.01"
+                            autoComplete="off"
+                            placeholder="0.00"
+                            value={field.value || ""}
+                            onChange={e => field.onChange(e.target.value)}
+                            className="bg-slate-50 border-slate-200 h-12 font-black text-xl text-primary shadow-inner"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {form.watch("tipoComprobante") === "FACTURA" && (
+                    <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+                      <FormField
+                        control={form.control}
+                        name="aplicaImpuestos"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-center justify-between">
+                            <div className="space-y-0.5">
+                              <FormLabel className="font-bold text-xs text-slate-700 uppercase tracking-wider">Aplica para Crédito Fiscal (IGV)</FormLabel>
+                              <p className="text-[10px] text-slate-500">Separar IGV para declaración de impuestos</p>
+                            </div>
+                            <FormControl>
+                              <Switch
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      {watchAplicaImpuestos && (
+                        <div className="flex justify-between items-center pt-3 border-t border-slate-200">
+                          <div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">Subtotal</p>
+                            <p className="text-sm font-black text-slate-700">S/ {form.watch("montoSubtotal")}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-[10px] font-bold text-slate-400 uppercase">IGV (18%)</p>
+                            <p className="text-sm font-black text-emerald-600">S/ {form.watch("montoIgv")}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   )}
-                />
+                </div>
 
                 <FormField
                   control={form.control}
