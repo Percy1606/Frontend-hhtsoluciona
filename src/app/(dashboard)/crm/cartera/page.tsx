@@ -63,6 +63,10 @@ export default function CarteraPage() {
     fetchClients(page, limit);
   }, [fetchClients, page, limit, filters]);
 
+  useEffect(() => {
+    return () => resetFilters();
+  }, [resetFilters]);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const isFiltered =
@@ -219,7 +223,7 @@ export default function CarteraPage() {
                         <SelectItem value="Angie" className="font-black text-[10px] uppercase">ANGIE</SelectItem>
                         <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
                         <SelectItem value="Ariana" className="font-black text-[10px] uppercase">ARIANA</SelectItem>
-                        <SelectItem value="Nicoll" className="font-black text-[10px] uppercase">NICOLL</SelectItem>
+
                     </SelectContent>
                 </Select>
             </div>

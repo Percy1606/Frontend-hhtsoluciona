@@ -312,7 +312,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Angie">Angie</SelectItem>
                           <SelectItem value="Valentina">Valentina</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
-                          <SelectItem value="Nicoll">Nicoll</SelectItem>
+
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -397,10 +397,9 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                 <FormField
                   control={form.control}
                   name="accion"
-                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Acción Programada <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Acción Programada</FormLabel>
                       <FormControl>
                         <Input placeholder="Ej: Llamar" {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
@@ -410,12 +409,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                 <FormField
                   control={form.control}
                   name="proximoSeguimiento"
-                  rules={{ required: "Requerido" }}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Fecha <span className="text-error">*</span></FormLabel>
+                      <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Fecha</FormLabel>
                       <FormControl>
-                        <Input type="date" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input type="date" min={new Date().toISOString().split("T")[0]} {...field} className="h-9 text-sm border-slate-200" />
                       </FormControl>
                     </FormItem>
                   )}

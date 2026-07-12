@@ -326,7 +326,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                         "text-[9px] font-black px-2 py-1 rounded",
                         isOverdue ? "bg-error text-white" : "text-slate-700 bg-slate-100"
                     )}>
-                        Próx: {formatDate(client.proximoSeguimiento)}
+                        Próx: {client.proximoSeguimiento ? formatDate(client.proximoSeguimiento) : "SIN DEFINIR"}
                     </span>
                   </div>
                 </div>
@@ -426,7 +426,7 @@ export function ClientTable({ mode = "cartera", data }: ClientTableProps) {
                             "text-[10px] font-black px-1.5 py-0.5 rounded",
                             isOverdue ? "bg-error text-white" : "text-slate-700 bg-slate-100"
                         )}>
-                            {formatDate(client.proximoSeguimiento)}
+                            {client.proximoSeguimiento ? formatDate(client.proximoSeguimiento) : "SIN DEFINIR"}
                         </span>
                     </TableCell>
 

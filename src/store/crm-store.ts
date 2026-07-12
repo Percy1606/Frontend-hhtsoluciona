@@ -143,7 +143,7 @@ interface CRMState {
   cloneQuote: (id: string) => Promise<void>;
 
   changeStage: (id: string, newStage: Client['etapaComercial']) => Promise<void>;
-  scheduleFollowUp: (clientId: string, fecha: string, accion: string, tipo: Interaction['tipo']) => Promise<void>;
+  scheduleFollowUp: (clientId: string, fecha: string, accion: string, tipo: Interaction['tipo'], uploadedUrl?: string) => Promise<void>;
   scheduleTechnicalVisit: (clientId: string, tecnicoId: string, fecha: string, observaciones: string, adjuntos?: any[]) => Promise<void>;
 }
 
@@ -373,6 +373,10 @@ export const useCRMStore = create<CRMState>()(
             ventaProyectada: safeNumber((clientData as any).ventaProyectada),
             probabilidad: safeNumber((clientData as any).probabilidad),
           };
+
+          if (!payload.accion) payload.accion = "Sin definir";
+          if (!payload.proximoSeguimiento) delete (payload as any).proximoSeguimiento;
+
           await api.post('/crm/clientes', payload);
           await get().fetchClients(1);
         } catch (error) {
@@ -410,6 +414,9 @@ export const useCRMStore = create<CRMState>()(
             ventaProyectada: safeNumber(data.ventaProyectada),
             probabilidad: safeNumber(data.probabilidad),
           };
+          
+          if (!payload.accion) payload.accion = "Sin definir";
+          if (!payload.proximoSeguimiento) delete (payload as any).proximoSeguimiento;
           
           await api.put(`/crm/clientes/${id}`, payload);
           await get().fetchClients(1);
@@ -690,10 +697,14 @@ export const useCRMStore = create<CRMState>()(
         }
       },
 
-      scheduleFollowUp: async (clientId, fecha, accion, tipo) => {
+      scheduleFollowUp: async (clientId, fecha, accion, tipo, uploadedUrl?) => {
         try {
           const user = useAuthStore.getState().user;
-          await api.post('/crm/interacciones', { clientId, fecha: new Date().toISOString(), tipo, accion: 'Seguimiento registrado', observaciones: accion, usuario: user?.nombre || 'Admin' });
+          let finalObs = accion;
+          if (uploadedUrl) {
+            finalObs = `${accion ? accion + '\n' : ''}[IMG]${uploadedUrl}[/IMG]`;
+          }
+          await api.post('/crm/interacciones', { clientId, fecha: new Date().toISOString(), tipo, accion: 'Seguimiento registrado', observaciones: finalObs, usuario: user?.nombre || 'Admin' });
           const client = get().clients.find(c => c.id === clientId);
           if (client) {
             const { id: _, interacciones, documentos, proyectos, historialInteracciones, archivosAdjuntos, fechaCreacion, fechaActualizacion, deletedAt, _count, ...cleanData } = client as any;

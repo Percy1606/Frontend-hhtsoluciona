@@ -1326,6 +1326,8 @@ export default function DashboardPage() {
                   contactosHoy: contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
                   contactosPeriodoList: contactosPeriodoList,
                   visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length,
+                  fallidos: contactosPeriodoList.filter((int: any) => int.tipo === 'No Contesta').length,
+                  clientesAtendidos: new Set(contactosPeriodoList.filter((int: any) => int.tipo !== 'No Contesta').map((int: any) => int.clienteId || int.clienteNombre)).size,
                 };
               });
 
@@ -1505,7 +1507,7 @@ export default function DashboardPage() {
                         hoy.setHours(0,0,0,0);
                         const seguimientosVencidos = clients.filter((c: any) => c.proximoSeguimiento && new Date(c.proximoSeguimiento) < hoy && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial));
                         const congelados = clients.filter((c: any) => {
-                          if (!c.ultimoContacto) return true; 
+                          if (!c.ultimoContacto) return false; 
                           const days = Math.floor((new Date().getTime() - new Date(c.ultimoContacto).getTime()) / (1000 * 3600 * 24));
                           return days > 15 && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial);
                         });
@@ -1587,14 +1589,15 @@ export default function DashboardPage() {
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Nuevos Prospectos</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Visitas</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Contactos/Seg.</th>
-
+                              <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">No Contesta</th>
+                              <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Clientes Atendidos</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Órdenes de Servicio</th>
                               <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Efectividad %</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-50">
                             {sellers.map((seller) => {
-                              const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0, contactosPeriodoList: [] };
+                              const data = chartData.find(d => d.name === seller.name.split(' ')[0]) || { prospectos: 0, cotizaciones: 0, contactos: 0, visitas: 0, fallidos: 0, clientesAtendidos: 0, contactosPeriodoList: [] };
                               
                               const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
                               const ganadosEnPeriodo = clientesGanados.length;
@@ -1690,7 +1693,44 @@ export default function DashboardPage() {
                                       </div>
                                     )}
                                   </td>
-
+                                  <td className="px-6 py-4 text-center font-black text-red-500">
+                                    {isAriana ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {data.fallidos}
+                                        {data.fallidos > 0 && (
+                                          <Badge 
+                                            className="bg-red-100 text-red-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-red-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo === 'No Contesta') || []);
+                                              setContactosModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 text-center font-black text-blue-600">
+                                    {isAriana ? '-' : (
+                                      <div className="flex items-center justify-center gap-1">
+                                        {data.clientesAtendidos}
+                                        {data.clientesAtendidos > 0 && (
+                                          <Badge 
+                                            className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo !== 'No Contesta') || []);
+                                              setContactosModalOpen(true);
+                                            }}
+                                          >
+                                            Ver
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    )}
+                                  </td>
                                   <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
                                     {isAriana ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
@@ -2146,25 +2186,45 @@ export default function DashboardPage() {
                 if (esVisita) colorClass = "bg-purple-100 text-purple-700";
 
                 return (
-                  <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                    <div>
-                      <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
-                      <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
-                      </p>
-                      {(int.comentario || int.notas || int.observaciones) && (
-                        <p 
-                          className="text-xs text-slate-600 mt-1.5 italic line-clamp-2"
-                          title={int.comentario || int.notas || int.observaciones}
-                        >
-                          "{int.comentario || int.notas || int.observaciones}"
-                        </p>
-                      )}
+                  <div key={i} className="flex items-start justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800 truncate">{int.clienteNombre || 'Sin Nombre'}</p>
+                          <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
+                          </p>
+                        </div>
+                        <Badge className={cn("border-none text-[9px] uppercase shrink-0 ml-2", colorClass)}>
+                          {tipo}
+                        </Badge>
+                      </div>
+                      {(() => {
+                        const obsText = int.comentario || int.notas || int.observaciones || '';
+                        const cleanObs = obsText.replace(/\[IMG\].*?\[\/IMG\]/, '').trim();
+                        
+                        if (!cleanObs) return null;
+                        return (
+                          <div className="mt-2 text-xs text-slate-600 italic line-clamp-2">
+                            "{cleanObs}"
+                          </div>
+                        );
+                      })()}
                     </div>
-                    <Badge className={cn("border-none text-[9px] uppercase", colorClass)}>
-                      {tipo}
-                    </Badge>
+                    {(() => {
+                      const obsText = int.comentario || int.notas || int.observaciones || '';
+                      const imgMatch = obsText.match(/\[IMG\](.*?)\[\/IMG\]/);
+                      const imgUrl = imgMatch ? imgMatch[1] : (int.imagenAdjunta || null);
+
+                      if (!imgUrl) return null;
+                      return (
+                        <div className="shrink-0 flex flex-col items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm self-start">
+                          <span className="text-[7px] font-black uppercase text-slate-400 mb-0.5 tracking-wider">Evidencia</span>
+                          <img src={imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl)} alt="Evidencia" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover cursor-pointer border border-slate-100 hover:opacity-80 transition-opacity" onClick={() => window.open(imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl), '_blank')} title="Ver imagen completa" />
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })
@@ -2186,28 +2246,42 @@ export default function DashboardPage() {
           </DialogHeader>
           <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
             {visitasList.length > 0 ? (
-              visitasList.map((int: any, i: number) => (
-                <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
-                    <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
-                      <Clock className="w-3 h-3" />
-                      {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
-                    </p>
-                    {(int.comentario || int.notas || int.observaciones) && (
-                      <p 
-                        className="text-xs text-slate-600 mt-1.5 italic line-clamp-2"
-                        title={int.comentario || int.notas || int.observaciones}
-                      >
-                        "{int.comentario || int.notas || int.observaciones}"
-                      </p>
+              visitasList.map((int: any, i: number) => {
+                const obsText = int.comentario || int.notas || int.observaciones || '';
+                const imgMatch = obsText.match(/\[IMG\](.*?)\[\/IMG\]/);
+                const cleanObs = obsText.replace(/\[IMG\].*?\[\/IMG\]/, '').trim();
+                const imgUrl = imgMatch ? imgMatch[1] : (int.imagenAdjunta || null);
+
+                return (
+                  <div key={i} className="flex items-start justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
+                          <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
+                          </p>
+                        </div>
+                        <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] uppercase shrink-0">
+                          {int.accion?.toLowerCase().includes('técnica') || int.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (int.tipo || 'VISITA')}
+                        </Badge>
+                      </div>
+                      {cleanObs && (
+                        <div className="mt-2 text-xs text-slate-600 italic line-clamp-2">
+                          "{cleanObs}"
+                        </div>
+                      )}
+                    </div>
+                    {imgUrl && (
+                      <div className="shrink-0 flex flex-col items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm self-start">
+                        <span className="text-[7px] font-black uppercase text-slate-400 mb-0.5 tracking-wider">Evidencia</span>
+                        <img src={imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl)} alt="Evidencia" className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg object-cover cursor-pointer border border-slate-100 hover:opacity-80 transition-opacity" onClick={() => window.open(imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl), '_blank')} title="Ver imagen completa" />
+                      </div>
                     )}
                   </div>
-                  <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] uppercase">
-                    {int.accion?.toLowerCase().includes('técnica') || int.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (int.tipo || 'VISITA')}
-                  </Badge>
-                </div>
-              ))
+                );
+              })
             ) : (
               <p className="text-sm text-slate-500 text-center py-4">No hay visitas registradas.</p>
             )}

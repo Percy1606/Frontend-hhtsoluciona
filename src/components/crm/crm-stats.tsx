@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { cn, getPeruDateString } from "@/lib/utils";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
+import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   BarChart, 
@@ -836,10 +837,42 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-red-500">
-                          {isAriana ? '-' : data.fallidos}
+                          {isAriana ? '-' : (
+                            <div className="flex items-center justify-center gap-1">
+                              {data.fallidos}
+                              {data.fallidos > 0 && (
+                                <Badge 
+                                  className="bg-red-100 text-red-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-red-200 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo === 'No Contesta') || []);
+                                    setContactosModalOpen(true);
+                                  }}
+                                >
+                                  Ver
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-blue-600">
-                          {isAriana ? '-' : data.clientesAtendidos}
+                          {isAriana ? '-' : (
+                            <div className="flex items-center justify-center gap-1">
+                              {data.clientesAtendidos}
+                              {data.clientesAtendidos > 0 && (
+                                <Badge 
+                                  className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo !== 'No Contesta') || []);
+                                    setContactosModalOpen(true);
+                                  }}
+                                >
+                                  Ver
+                                </Badge>
+                              )}
+                            </div>
+                          )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
                           {isAriana ? '-' : (
@@ -1038,28 +1071,50 @@ export function CRMStats() {
               }).format(dateVal) : 'Fecha Inválida';
 
               return (
-                <div key={index} className="flex justify-between items-start p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-emerald-50/30 transition-colors">
-                  <div className="flex items-start gap-3">
+                <div key={index} className="flex justify-between items-start p-4 rounded-xl border border-slate-100 bg-slate-50 hover:bg-emerald-50/30 transition-colors gap-4">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
                     <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
                       <Clock className="w-4 h-4 text-emerald-600" />
                     </div>
-                    <div>
-                      <p className="font-bold text-slate-800 text-sm">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-800 text-sm truncate">
                         {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2" title={interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}>
-                        {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
-                      </p>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        <Badge variant="outline" className="text-[10px] bg-white text-emerald-700 border-emerald-200">
-                          {interaccion.tipo || 'Interacción'}
-                        </Badge>
-                        <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md">
-                          {formattedDate}
-                        </span>
-                      </div>
+                      {(() => {
+                        const obsText = interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.';
+                        const cleanObs = obsText.replace(/\[IMG\].*?\[\/IMG\]/, '').trim();
+
+                        return (
+                          <div className="mt-1.5">
+                            <p className="text-xs text-slate-500 line-clamp-2" title={cleanObs}>
+                              {cleanObs || 'Sin comentarios registrados.'}
+                            </p>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              <Badge variant="outline" className="text-[10px] bg-white text-emerald-700 border-emerald-200 shrink-0">
+                                {interaccion.tipo || 'Interacción'}
+                              </Badge>
+                              <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md shrink-0">
+                                {formattedDate}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
+                  {(() => {
+                    const obsText = interaccion.comentario || interaccion.notas || interaccion.observaciones || '';
+                    const imgMatch = obsText.match(/\[IMG\](.*?)\[\/IMG\]/);
+                    const imgUrl = imgMatch ? imgMatch[1] : (interaccion.imagenAdjunta || null);
+                    
+                    if (!imgUrl) return null;
+                    return (
+                      <div className="shrink-0 flex flex-col items-center bg-white p-1 rounded-xl border border-slate-200 shadow-sm self-start">
+                        <span className="text-[7px] font-black uppercase text-slate-400 mb-0.5 tracking-wider">Evidencia</span>
+                        <img src={imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl)} alt="Evidencia" className="h-14 w-14 sm:h-16 sm:w-16 rounded-lg object-cover cursor-pointer border border-slate-100 hover:opacity-80 transition-opacity" onClick={() => window.open(imgUrl.startsWith('http') ? imgUrl : api.getFileUrl(imgUrl), '_blank')} title="Ver imagen completa" />
+                      </div>
+                    );
+                  })()}
                 </div>
               );
             })}

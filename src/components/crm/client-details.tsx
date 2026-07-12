@@ -74,19 +74,36 @@ const stageList = [
   "Negociación", "Orden de Servicio", "Ganado", "Perdido"
 ];
 
-const sellerList = ["Angie", "Valentina", "Ariana", "Nicoll"];
+const sellerList = ["Angie", "Valentina", "Ariana"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
-  const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile } = useCRMStore();
+  const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile, updateClient } = useCRMStore();
   const { responsables, proyectos, fetchProjectProfitability } = useOperacionesStore();
   const [activeTab, setActiveTab] = useState("general");
   
   const [intType, setIntType] = useState<Interaction['tipo']>("Llamada");
   const [intAction, setIntAction] = useState("");
+  const [intNextDate, setIntNextDate] = useState("");
   const [intObs, setIntObs] = useState("");
   const [intUser, setIntUser] = useState("Angie");
   const [isAddingInt, setIsAddingInt] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
+  
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImagenFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   // Lógica de Fusión: Buscar si este cliente tiene un proyecto operativo
   const vinculadoProyecto = useMemo(() => {
@@ -162,18 +179,48 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const daysSinceContact = getDaysSinceContact(client.ultimoContacto);
   const overdue = isFollowUpOverdue(client);
 
-  const handleAddInteraction = (e: React.FormEvent) => {
+  const handleAddInteraction = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!intAction) return;
-    addInteraction(client.id, {
-      tipo: intType,
-      accion: intAction,
-      observaciones: intObs,
-      usuario: intUser
-    });
-    setIntAction("");
-    setIntObs("");
-    setIsAddingInt(false);
+    
+    setIsUploading(true);
+    try {
+      let uploadedUrl = null;
+      if (imagenFile) {
+        const uploadRes = await useCRMStore.getState().uploadClientFile(imagenFile);
+        uploadedUrl = uploadRes.url;
+      }
+      
+      let finalObs = intObs;
+      if (uploadedUrl) {
+        finalObs = `${intObs ? intObs + '\n' : ''}[IMG]${uploadedUrl}[/IMG]`;
+      }
+      
+      await addInteraction(client.id, {
+        tipo: intType,
+        accion: intAction,
+        observaciones: finalObs,
+        usuario: intUser
+      });
+
+      if (intNextDate) {
+        await updateClient({ ...client, proximoSeguimiento: intNextDate, accion: intAction } as any);
+      } else {
+        await updateClient({ ...client, accion: intAction } as any);
+      }
+
+      setIntAction("");
+      setIntNextDate("");
+      setIntObs("");
+      setImagenFile(null);
+      setImagePreview(null);
+      setIsAddingInt(false);
+    } catch (error) {
+      console.error("Error al guardar gestión:", error);
+      alert("Hubo un error al subir la imagen o guardar la gestión.");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -456,7 +503,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
 
               {isAddingInt && (
                 <form onSubmit={handleAddInteraction} className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="space-y-1">
                       <label className="text-[10px] font-black text-slate-500 uppercase">Tipo</label>
                       <Select value={intType} onValueChange={(val) => setIntType(val as any)}>
@@ -484,34 +531,94 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                       <label className="text-[10px] font-black text-slate-500 uppercase">Acción</label>
                       <Input placeholder="..." value={intAction} onChange={(e) => setIntAction(e.target.value)} required className="h-9 text-xs" />
                     </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-500 uppercase">Próx. Seguimiento</label>
+                      <Input 
+                        type="date" 
+                        min={new Date().toISOString().split("T")[0]}
+                        value={intNextDate} 
+                        onChange={(e) => setIntNextDate(e.target.value)} 
+                        className="h-9 text-xs" 
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-slate-500 uppercase">Observaciones</label>
                     <Textarea placeholder="..." value={intObs} onChange={(e) => setIntObs(e.target.value)} className="min-h-[60px] text-xs resize-none" />
                   </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-slate-500 uppercase">Evidencia / Captura (Opcional)</label>
+                    <Input 
+                      type="file" 
+                      accept="image/*" 
+                      onChange={handleImageChange}
+                      className="text-xs font-bold p-2 h-auto"
+                    />
+                    {imagePreview && (
+                      <div className="mt-2 relative inline-block">
+                        <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg object-contain border border-slate-200" />
+                      </div>
+                    )}
+                  </div>
                   <div className="flex justify-end gap-2">
-                    <Button type="submit" className="bg-primary text-white text-[10px] font-black h-8 px-6 uppercase">Guardar Gestión</Button>
+                    <Button type="submit" disabled={isUploading} className="bg-primary text-white text-[10px] font-black h-8 px-6 uppercase">
+                      {isUploading ? "Guardando..." : "Guardar Gestión"}
+                    </Button>
                   </div>
                 </form>
               )}
 
               <div className="space-y-4">
                 {client.historialInteracciones && client.historialInteracciones.length > 0 ? (
-                  client.historialInteracciones.map((item, i) => (
-                    <div key={item.id || i} className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-black text-slate-800 uppercase">{item.accion}</span>
-                          <Badge className="text-[9px] uppercase font-bold bg-primary/10 text-primary border-none">{item.tipo}</Badge>
+                  client.historialInteracciones.map((item, i) => {
+                    return (
+                      <div key={item.id || i} className="bg-slate-50 border border-slate-200/60 p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow flex gap-4">
+                        <div className="flex-1 space-y-3 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <p className="font-black text-slate-800 text-sm uppercase flex items-center gap-2 truncate">
+                                {item.accion}
+                              </p>
+                              <p className="text-[10px] text-slate-500 font-bold flex items-center gap-1.5 uppercase">
+                                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" /> 
+                                {item.fecha || (item as any).createdAt ? new Date(item.fecha || (item as any).createdAt).toLocaleString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'} 
+                                <span className="mx-1 text-slate-300 shrink-0">•</span>
+                                <User className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate">{getUsuarioNombre(item.usuario || (item as any).responsable)}</span>
+                              </p>
+                            </div>
+                            <Badge variant="outline" className="bg-white font-black text-[9px] uppercase border-slate-200 text-slate-600 shadow-sm shrink-0 ml-2">{item.tipo}</Badge>
+                          </div>
+                          {(() => {
+                            const obsText = item.observaciones || '';
+                            const cleanObs = obsText.replace(/\[IMG\].*?\[\/IMG\]/, '').trim();
+                            
+                            if (!cleanObs) return null;
+                            return (
+                              <div className="border-t border-slate-200/60 pt-3 mt-2">
+                                <div className="text-xs text-slate-600 font-medium leading-relaxed whitespace-pre-wrap">
+                                  {cleanObs}
+                                </div>
+                              </div>
+                            );
+                          })()}
                         </div>
-                        <div className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-2">
-                          <span className="bg-slate-100 px-2 py-0.5 rounded text-slate-600">{getUsuarioNombre(item.usuario)}</span>
-                          <span className="flex items-center gap-1"><Calendar className="w-3 h-3" /> {formatDate(item.fecha)}</span>
-                        </div>
+                        {(() => {
+                          const obsText = item.observaciones || '';
+                          const imgMatch = obsText.match(/\[IMG\](.*?)\[\/IMG\]/);
+                          const imgUrl = imgMatch ? imgMatch[1] : ((item as any).imagenAdjunta || null);
+                          
+                          if (!imgUrl) return null;
+                          return (
+                            <div className="shrink-0 flex flex-col items-center bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm self-start">
+                              <span className="text-[8px] font-black uppercase text-slate-400 mb-1 tracking-wider">Evidencia</span>
+                              <img src={api.getFileUrl(imgUrl)} alt="Evidencia" className="h-16 w-16 sm:h-20 sm:w-20 rounded-lg object-cover cursor-pointer border border-slate-100 hover:opacity-80 transition-opacity" onClick={() => window.open(api.getFileUrl(imgUrl), '_blank')} title="Ver imagen completa" />
+                            </div>
+                          );
+                        })()}
                       </div>
-                      {item.observaciones && <p className="text-xs text-slate-500 font-medium leading-relaxed border-t pt-2">{item.observaciones}</p>}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-10 bg-slate-50/50 border-2 border-dashed border-slate-200 rounded-xl">
                     <p className="text-[10px] font-black text-slate-400 uppercase italic">Sin historial de gestiones</p>

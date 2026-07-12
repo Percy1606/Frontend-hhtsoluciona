@@ -62,6 +62,22 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
     },
   });
 
+  const [imagenFile, setImagenFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImagenFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Sync form with client when modal opens
   useEffect(() => {
     if (client && isOpen) {
@@ -75,7 +91,7 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
 
   if (!client) return null;
 
-  const onSubmit = (data: any) => {
+  const onSubmit = async (data: any) => {
     const selectedDate = new Date(data.fecha + 'T12:00:00'); 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -101,26 +117,45 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
         });
         return;
     }
+    
+    setIsUploading(true);
+    try {
+      let uploadedUrl = null;
+      if (imagenFile) {
+        const uploadRes = await useCRMStore.getState().uploadClientFile(imagenFile);
+        uploadedUrl = uploadRes.url;
+      }
 
-    // 3. Confirmación de fecha pasada
-    if (selectedDate < today) {
-      setModernDialog({
-        isOpen: true,
-        title: "Confirmar Fecha Pasada",
-        description: `Está registrando una gestión con fecha retroactiva (${format(selectedDate, "dd/MM/yyyy")}). ¿Está seguro que desea guardar un historial pasado?`,
-        type: "confirm",
-        showCancel: true,
-        onConfirm: () => {
-          scheduleFollowUp(client.id, data.fecha, data.accion, data.tipo);
-          setModernDialog(prev => ({ ...prev, isOpen: false }));
-          onClose();
-        }
-      });
-      return;
+      // 3. Confirmación de fecha pasada
+      if (selectedDate < today) {
+        setModernDialog({
+          isOpen: true,
+          title: "Confirmar Fecha Pasada",
+          description: `Está registrando una gestión con fecha retroactiva (${format(selectedDate, "dd/MM/yyyy")}). ¿Está seguro que desea guardar un historial pasado?`,
+          type: "confirm",
+          showCancel: true,
+          onConfirm: async () => {
+            await scheduleFollowUp(client.id, data.fecha, data.accion, data.tipo, uploadedUrl);
+            setModernDialog(prev => ({ ...prev, isOpen: false }));
+            setImagenFile(null);
+            setImagePreview(null);
+            onClose();
+          }
+        });
+        setIsUploading(false); // Enable button in background modal
+        return;
+      }
+
+      await scheduleFollowUp(client.id, data.fecha, data.accion, data.tipo, uploadedUrl);
+      setImagenFile(null);
+      setImagePreview(null);
+      onClose();
+    } catch (error) {
+      console.error("Error saving interaction:", error);
+      alert("Hubo un error al subir la imagen o guardar la gestión.");
+    } finally {
+      setIsUploading(false);
     }
-
-    scheduleFollowUp(client.id, data.fecha, data.accion, data.tipo);
-    onClose();
   };
 
   return (
@@ -196,12 +231,26 @@ export function FollowUpModal({ client, isOpen, onClose }: FollowUpModalProps) {
                     </FormItem>
                   )}
                 />
+                <div className="space-y-2">
+                  <FormLabel className="font-bold text-primary text-[10px] uppercase">Evidencia / Captura (Opcional)</FormLabel>
+                  <Input 
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handleImageChange}
+                    className="border-slate-200 text-xs font-bold p-2 h-auto"
+                  />
+                  {imagePreview && (
+                    <div className="mt-2">
+                      <img src={imagePreview} alt="Preview" className="max-h-24 rounded-lg object-contain border border-slate-200" />
+                    </div>
+                  )}
+                </div>
                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                   <Button type="button" variant="ghost" onClick={onClose} className="font-bold text-slate-500 uppercase text-xs">
                     Cancelar
                   </Button>
-                  <Button type="submit" className="bg-primary hover:bg-primary/90 font-black px-8 shadow-lg uppercase text-xs">
-                    Guardar Gestión
+                  <Button type="submit" disabled={isUploading} className="bg-primary hover:bg-primary/90 font-black px-8 shadow-lg uppercase text-xs">
+                    {isUploading ? "Guardando..." : "Guardar Gestión"}
                   </Button>
                 </div>
               </form>
