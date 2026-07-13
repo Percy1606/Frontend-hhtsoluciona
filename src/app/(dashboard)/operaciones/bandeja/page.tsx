@@ -59,9 +59,9 @@ export default function BandejaTecnicaPage() {
   const [fichaToDelete, setFichaToDelete] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   
-  // Filtros - Por defecto el día actual
-  const [startDate, setStartDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
-  const [endDate, setEndDate] = useState<string>(() => format(new Date(), "yyyy-MM-dd"));
+  // Filtros - Fecha libre por defecto
+  const [startDate, setStartDate] = useState<string>("");
+  const [endDate, setEndDate] = useState<string>("");
   const [searchTerm, setSearchQuery] = useState<string>("");
 
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
