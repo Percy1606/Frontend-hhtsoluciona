@@ -786,7 +786,10 @@ export function CRMStats() {
                                   className="bg-slate-100 text-slate-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-slate-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const prospectosPeriodoList = filteredClients.filter((c: any) => getRealCreator(c)?.toLowerCase().includes(data.name.toLowerCase().trim()));
+                                    const prospectosPeriodoList = clients.filter((c: any) => {
+                                      const creador = getRealCreator(c);
+                                      return creador?.toLowerCase().includes(data.name.toLowerCase().trim()) && isInRange(c.fechaCreacion || (c as any).createdAt);
+                                    });
                                     setProspectosList(prospectosPeriodoList);
                                     setProspectosModalOpen(true);
                                   }}
