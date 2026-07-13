@@ -47,6 +47,9 @@ export default function AuditoriaPage() {
   const [purgando, setPurgando] = useState(false);
   const [purgeResult, setPurgeResult] = useState<{ eliminados: number; fechaLimite: string } | null>(null);
   const [confirmarPurga, setConfirmarPurga] = useState(false);
+  const [limpiandoRuido, setLimpiandoRuido] = useState(false);
+  const [ruidoResult, setRuidoResult] = useState<{ eliminados: number } | null>(null);
+  const [confirmarRuido, setConfirmarRuido] = useState(false);
 
   // Pagination state
   const [page, setPage] = useState(1);
@@ -94,6 +97,19 @@ export default function AuditoriaPage() {
       console.error("Error al purgar logs:", error);
     } finally {
       setPurgando(false);
+    }
+  };
+
+  const handleLimpiarRuido = async () => {
+    try {
+      setLimpiandoRuido(true);
+      const result = await api.delete("/auditoria/limpiar-ruido");
+      setRuidoResult(result);
+      fetchLogs(1);
+    } catch (error) {
+      console.error("Error al limpiar ruido:", error);
+    } finally {
+      setLimpiandoRuido(false);
     }
   };
 
@@ -255,15 +271,34 @@ export default function AuditoriaPage() {
             Historial de acciones del sistema — se conservan 90 días (eliminaciones: permanentes).
           </p>
         </div>
-        <Button
-          variant="outline"
-          className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-2 font-bold text-xs uppercase h-10 rounded-xl"
-          onClick={() => setConfirmarPurga(true)}
-        >
-          <Trash2 className="w-4 h-4" />
-          Purgar ahora
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            className="border-orange-200 text-orange-600 hover:bg-orange-50 hover:border-orange-300 gap-2 font-bold text-xs uppercase h-10 rounded-xl"
+            onClick={() => setConfirmarRuido(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Limpiar Ruido
+          </Button>
+          <Button
+            variant="outline"
+            className="border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 gap-2 font-bold text-xs uppercase h-10 rounded-xl"
+            onClick={() => setConfirmarPurga(true)}
+          >
+            <Trash2 className="w-4 h-4" />
+            Purgar &gt;90d
+          </Button>
+        </div>
       </div>
+
+      {ruidoResult && (
+        <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center justify-between">
+          <p className="text-sm font-bold text-orange-700">
+            🧹 Ruido eliminado: <strong>{ruidoResult.eliminados}</strong> logs de CREAR/ACTUALIZAR borrados. Solo quedan los ELIMINAR_*.
+          </p>
+          <button onClick={() => setRuidoResult(null)} className="text-orange-400 hover:text-orange-600 text-lg font-bold ml-4">×</button>
+        </div>
+      )}
 
       {/* Resultado de purga */}
       {purgeResult && (
@@ -526,6 +561,45 @@ export default function AuditoriaPage() {
               onClick={async () => { setConfirmarPurga(false); await handlePurgar(); }}
             >
               {purgando ? "Purgando..." : "Sí, purgar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Diálogo de confirmación de limpieza de ruido */}
+      <Dialog open={confirmarRuido} onOpenChange={setConfirmarRuido}>
+        <DialogContent className="max-w-md border-none shadow-2xl rounded-3xl bg-white">
+          <DialogHeader>
+            <div className="flex items-center gap-3 mb-1">
+              <div className="p-2 bg-orange-50 rounded-xl text-orange-600">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <DialogTitle className="text-lg font-black uppercase text-[#001F3F]">
+                ¿Limpiar el ruido?
+              </DialogTitle>
+            </div>
+          </DialogHeader>
+          <p className="text-sm text-slate-600 mt-1">
+            Se eliminarán <strong>todos</strong> los logs de tipo{" "}
+            <strong className="text-orange-600">CREAR_*</strong> y{" "}
+            <strong className="text-orange-600">ACTUALIZAR_*</strong> sin importar la fecha.
+            Solo quedarán los registros <strong>ELIMINAR_*</strong>.
+            Esta acción no se puede deshacer.
+          </p>
+          <div className="flex gap-3 mt-4 justify-end">
+            <Button
+              variant="outline"
+              className="rounded-xl font-bold"
+              onClick={() => setConfirmarRuido(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={limpiandoRuido}
+              className="bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold"
+              onClick={async () => { setConfirmarRuido(false); await handleLimpiarRuido(); }}
+            >
+              {limpiandoRuido ? "Limpiando..." : "Sí, limpiar"}
             </Button>
           </div>
         </DialogContent>
