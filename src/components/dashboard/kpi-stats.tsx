@@ -44,7 +44,7 @@ export function KPIStats({
   const prospectos = clients.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
   
   const ordenesServicio = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
-  const proyectosActivos = proyectosActivosCount || (globalKPIs as any)?.proyectosActivos || proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion' || p.estado === 'Planificacion').length || 0;
+  const proyectosActivos = proyectosActivosCount || (globalKPIs as any)?.proyectosActivos || proyectos.filter(p => p.estado?.includes('Ejecuci') || p.estado?.includes('Planificaci')).length || 0;
   
   const totalFacturado = customTotalFacturado ?? ((globalKPIs as any)?.totalFacturado ?? 0);
   const totalCobrado = customTotalCobrado ?? ((globalKPIs as any)?.totalCobrado ?? 0);
