@@ -503,13 +503,20 @@ export default function DashboardPage() {
     endOfWeek.setHours(23, 59, 59, 999);
 
     const getRealCreator = (c: any) => {
-      if (c.creadoPor) return c.creadoPor;
-      const interacciones = c.historialInteracciones || c.interacciones || [];
-      if (interacciones.length > 0) {
-        const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
-        if (sorted[0]?.usuario) return sorted[0].usuario;
+      let creator = c.creadoPor;
+      if (!creator) {
+        const interacciones = c.historialInteracciones || c.interacciones || [];
+        if (interacciones.length > 0) {
+          const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+          if (sorted[0]?.usuario) creator = sorted[0].usuario;
+        }
       }
-      return c.asignadoA;
+      if (!creator) {
+        creator = c.asignadoA;
+      }
+      const normalized = creator?.toLowerCase().trim();
+      if (normalized === 'valentina') return 'Ariana'; // Valentina no prospecta, pertenecen a Ariana
+      return creator || c.asignadoA;
     };
 
     return sellers.reduce((acc, s) => {
@@ -1255,13 +1262,20 @@ export default function DashboardPage() {
               const seguimientosTotal = clients.filter((c: any) => c.ultimoContacto && isInRange(c.ultimoContacto)).length;
 
               const getRealCreator = (c: any) => {
-                if (c.creadoPor) return c.creadoPor;
-                const interacciones = c.historialInteracciones || c.interacciones || [];
-                if (interacciones.length > 0) {
-                  const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
-                  if (sorted[0]?.usuario) return sorted[0].usuario;
+                let creator = c.creadoPor;
+                if (!creator) {
+                  const interacciones = c.historialInteracciones || c.interacciones || [];
+                  if (interacciones.length > 0) {
+                    const sorted = [...interacciones].sort((a: any, b: any) => new Date(a.fecha || a.createdAt).getTime() - new Date(b.fecha || b.createdAt).getTime());
+                    if (sorted[0]?.usuario) creator = sorted[0].usuario;
+                  }
                 }
-                return c.asignadoA;
+                if (!creator) {
+                  creator = c.asignadoA;
+                }
+                const normalized = creator?.toLowerCase().trim();
+                if (normalized === 'valentina') return 'Ariana'; // Valentina no prospecta, pertenecen a Ariana
+                return creator || c.asignadoA;
               };
 
               // Datos para el gráfico
