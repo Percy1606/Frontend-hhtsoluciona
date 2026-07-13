@@ -750,7 +750,7 @@ export function CRMStats() {
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Nuevos Prospectos</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Visitas</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Seg. Efectivos</th>
-                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">No Contesta</th>
+                    <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Sin Comunicación</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Clientes Atendidos</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500 text-center">Órdenes de Servicio</th>
                     <th className="px-6 py-4 font-bold text-[10px] uppercase tracking-widest text-slate-500">Efectividad %</th>
