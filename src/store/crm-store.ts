@@ -106,7 +106,7 @@ interface CRMState {
   filters: CRMFilters;
   zones: string[];
   
-  fetchClients: (page?: number, limit?: number, append?: boolean) => Promise<void>;
+  fetchClients: (page?: number, limit?: number, append?: boolean, ignoreFilters?: boolean) => Promise<void>;
   fetchClientById: (id: string) => Promise<Client | null>;
   fetchQuotes: (page?: number, limit?: number) => Promise<void>;
   fetchZones: () => Promise<void>;
@@ -187,7 +187,7 @@ export const useCRMStore = create<CRMState>()(
       },
       zones: [],
 
-      fetchClients: async (page = 1, limit = 20, append = false) => {
+      fetchClients: async (page = 1, limit = 20, append = false, ignoreFilters = false) => {
         set({ loading: true });
         try {
           get().fetchZones();
@@ -198,14 +198,16 @@ export const useCRMStore = create<CRMState>()(
             _t: Date.now().toString(),
           });
 
-          if (filters.searchQuery) queryParams.append('search', filters.searchQuery);
-          if (filters.tarifa) queryParams.append('tarifa', filters.tarifa);
-          if (filters.zona) queryParams.append('zona', filters.zona);
-          if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
-          if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
-          if (filters.estado) queryParams.append('estado', filters.estado);
-          if (filters.fechaDesde) queryParams.append('startDate', filters.fechaDesde);
-          if (filters.fechaHasta) queryParams.append('endDate', filters.fechaHasta);
+          if (!ignoreFilters) {
+            if (filters.searchQuery) queryParams.append('search', filters.searchQuery);
+            if (filters.tarifa) queryParams.append('tarifa', filters.tarifa);
+            if (filters.zona) queryParams.append('zona', filters.zona);
+            if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
+            if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
+            if (filters.estado) queryParams.append('estado', filters.estado);
+            if (filters.fechaDesde) queryParams.append('startDate', filters.fechaDesde);
+            if (filters.fechaHasta) queryParams.append('endDate', filters.fechaHasta);
+          }
 
           const response = await api.get(`/crm/clientes?${queryParams.toString()}`);
           

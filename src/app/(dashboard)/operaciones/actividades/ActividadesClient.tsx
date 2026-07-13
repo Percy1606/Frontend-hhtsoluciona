@@ -248,9 +248,7 @@ export default function ActividadesClient() {
     if (proyectosStore.length === 0) {
       fetchProyectos(1, 200);
     }
-    if (crmClients.length === 0) {
-      fetchClients(1, 1000);
-    }
+    fetchClients(1, 5000, false, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Removemos dependencias para que solo llame al API una vez al inicio
 

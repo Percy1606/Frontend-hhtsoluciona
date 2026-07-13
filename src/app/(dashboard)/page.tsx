@@ -198,7 +198,7 @@ export default function DashboardPage() {
       Promise.allSettled([
         fetchProyectos(1, 1000), 
         fetchResponsables(),
-        fetchClients(1, 1000),
+        fetchClients(1, 5000, false, true),
         fetchQuotes(1, 1000),
         fetchOrdenes(1, 1000),
         fetchInsumos(1, 1000),

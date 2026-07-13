@@ -116,9 +116,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   useEffect(() => {
     if (isOpen) {
       fetchProyectosRef.current(1, 1000).catch(err => console.error("[ActividadForm] Error fetching projects:", err));
-      if (crmClients.length === 0) {
-        fetchClients(1, 1000).catch(err => console.error("[ActividadForm] Error fetching clients:", err));
-      }
+      fetchClients(1, 5000, false, true).catch(err => console.error("[ActividadForm] Error fetching clients:", err));
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
