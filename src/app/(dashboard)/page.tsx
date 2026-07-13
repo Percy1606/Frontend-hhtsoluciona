@@ -806,7 +806,7 @@ export default function DashboardPage() {
           clients={filteredClients} 
           proyectos={filteredProyectos}
           cotizacionesCount={filteredQuotes.length}
-          proyectosActivosCount={filteredProyectos.filter((p: any) => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion').length}
+          proyectosActivosCount={undefined}
           totalFacturado={totalFacturado}
           totalCobrado={totalCobrado}
           porcentajeCobranza={porcentajeCobranza}

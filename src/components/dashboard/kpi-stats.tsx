@@ -44,7 +44,7 @@ export function KPIStats({
   const prospectos = clients.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
   
   const ordenesServicio = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
-  const proyectosActivos = proyectosActivosCount ?? (globalKPIs?.proyectosActivos ?? proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion').length);
+  const proyectosActivos = proyectosActivosCount || (globalKPIs as any)?.proyectosActivos || proyectos.filter(p => p.estado === 'En Ejecución' || p.estado === 'EnEjecucion' || p.estado === 'Planificacion').length || 0;
   
   const totalFacturado = customTotalFacturado ?? ((globalKPIs as any)?.totalFacturado ?? 0);
   const totalCobrado = customTotalCobrado ?? ((globalKPIs as any)?.totalCobrado ?? 0);
@@ -78,7 +78,7 @@ export function KPIStats({
       return formatFinancialValue(kpi.value);
     }
     if (kpi.isPercent) {
-      return `${kpi.value}%`;
+      return `${Number.isInteger(kpi.value) ? kpi.value : Number(kpi.value).toFixed(1)}%`;
     }
     return kpi.value.toLocaleString();
   };
