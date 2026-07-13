@@ -1339,7 +1339,7 @@ export default function DashboardPage() {
                   contactos: contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
                   contactosHoy: contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
                   contactosPeriodoList: contactosPeriodoList,
-                  visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length,
+                  visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')).length,
                   fallidos: contactosPeriodoList.filter((int: any) => int.tipo === 'No Contesta').length,
                   clientesAtendidos: new Set(contactosPeriodoList.filter((int: any) => int.tipo !== 'No Contesta').map((int: any) => int.clienteId || int.clienteNombre)).size,
                 };
@@ -1360,7 +1360,7 @@ export default function DashboardPage() {
                     const dateStr = getPeruDateString(d);
                     const dayName = d.toLocaleDateString('es-ES', { weekday: 'short' }).toUpperCase();
                     const contactosDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && !i.tipo?.toLowerCase().includes('visit')).length, 0);
-                    const visitasDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && i.tipo?.toLowerCase().includes('visit')).length, 0);
+                    const visitasDia = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => (i.fecha || i.createdAt)?.startsWith(dateStr) && i.tipo?.toLowerCase().includes('visit') && !i.accion?.toLowerCase().includes('finalizada') && !i.accion?.toLowerCase().includes('culminada')).length, 0);
                     
                     data.unshift({ // unshift para mantener el orden cronológico
                       name: dayName,
@@ -1382,7 +1382,7 @@ export default function DashboardPage() {
                   {(() => {
                     const prospectosPeriodo = filteredClients.length;
                     const seguimientosPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt)).length, 0);
-                    const visitasPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt) && i.tipo?.toLowerCase().includes('visit')).length, 0);
+                    const visitasPeriodo = clients.reduce((acc: number, c: any) => acc + (c.historialInteracciones || c.interacciones || []).filter((i: any) => isInRange(i.fecha || i.createdAt) && i.tipo?.toLowerCase().includes('visit') && !i.accion?.toLowerCase().includes('finalizada') && !i.accion?.toLowerCase().includes('culminada')).length, 0);
                     const cierresPeriodo = clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
                     return (
@@ -1680,7 +1680,7 @@ export default function DashboardPage() {
                                             className="bg-purple-100 text-purple-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-purple-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit')) || [];
+                                              const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')) || [];
                                               setVisitasList(visitasPeriodoList);
                                               setVisitasModalOpen(true);
                                             }}

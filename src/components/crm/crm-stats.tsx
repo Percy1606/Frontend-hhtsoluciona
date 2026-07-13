@@ -221,6 +221,8 @@ export function CRMStats() {
     const interacciones = c.historialInteracciones || (c as any).interacciones || [];
     const visitas = interacciones.filter((i: any) => {
       if (!i.tipo?.toLowerCase().includes('visit') || !isInRange(i.fecha || i.createdAt)) return false;
+      const isFinalized = i.accion?.toLowerCase().includes('finalizada') || i.accion?.toLowerCase().includes('culminada');
+      if (isFinalized) return false;
       if (selectedSeller !== "EQUIPO COMPLETO") {
         const isOwner = c.asignadoA?.toLowerCase().trim() === selectedSeller.toLowerCase().trim();
         const isCreator = i.usuario?.toLowerCase().includes(selectedSeller.toLowerCase().trim());
@@ -379,7 +381,7 @@ export function CRMStats() {
       return c.fechaCreacion?.startsWith(getPeruDateString());
     }).length;
 
-    const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit')).length;
+    const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')).length;
     
     const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
@@ -815,7 +817,7 @@ export function CRMStats() {
                                   className="bg-purple-100 text-purple-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-purple-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit')) || [];
+                                    const visitasPeriodoList = data.contactosPeriodoList?.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')) || [];
                                     setVisitasList(visitasPeriodoList);
                                     setVisitasModalOpen(true);
                                   }}
