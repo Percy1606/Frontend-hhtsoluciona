@@ -1086,7 +1086,7 @@ export function CRMStats() {
 
                         return (
                           <div className="mt-1.5">
-                            <p className="text-xs text-slate-500 line-clamp-2" title={cleanObs}>
+                            <p className="text-xs text-slate-600 whitespace-pre-wrap">
                               {cleanObs || 'Sin comentarios registrados.'}
                             </p>
                             <div className="flex flex-wrap gap-2 mt-2">
@@ -1191,7 +1191,7 @@ export function CRMStats() {
                       <p className="font-bold text-slate-800 text-sm">
                         {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1 line-clamp-2" title={interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}>
+                      <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">
                         {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-2">

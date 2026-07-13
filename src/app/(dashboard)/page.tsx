@@ -2268,7 +2268,7 @@ export default function DashboardPage() {
                         </Badge>
                       </div>
                       {cleanObs && (
-                        <div className="mt-2 text-xs text-slate-600 italic line-clamp-2">
+                      <div className="mt-2 text-xs text-slate-600 whitespace-pre-wrap">
                           "{cleanObs}"
                         </div>
                       )}
