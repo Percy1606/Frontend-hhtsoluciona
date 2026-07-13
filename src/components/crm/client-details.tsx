@@ -463,7 +463,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
 
               {client.observaciones && (
                 <div className="bg-primary/[0.02] p-5 rounded-xl border border-primary/5 space-y-2">
-                  <h4 className="text-[10px] font-black uppercase tracking-wider text-primary">Observaciones del Registro</h4>
+                  <h4 className="text-[10px] font-black uppercase tracking-wider text-primary">Monto de Recibo / Observaciones</h4>
                   <p className="text-xs text-slate-600 leading-relaxed font-medium italic">
                     "{client.observaciones}"
                   </p>

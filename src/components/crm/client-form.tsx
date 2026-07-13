@@ -427,10 +427,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
               name="observaciones"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Observaciones Generales</FormLabel>
+                  <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Monto de Recibo / Observaciones Generales</FormLabel>
                   <FormControl>
                     <Textarea 
-                      placeholder="Detalles adicionales..." 
+                      placeholder="Monto de recibo y detalles adicionales..." 
                       className="min-h-[80px] text-sm resize-none border-slate-200"
                       {...field} 
                     />
