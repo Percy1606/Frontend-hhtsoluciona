@@ -150,6 +150,7 @@ export default function DashboardPage() {
   const [cierresList, setCierresList] = useState<any[]>([]);
   const [contactosModalOpen, setContactosModalOpen] = useState(false);
   const [contactosList, setContactosList] = useState<any[]>([]);
+  const [contactosModalTitle, setContactosModalTitle] = useState("Auditoría de Seguimientos (Periodo)");
   const [prospectosModalOpen, setProspectosModalOpen] = useState(false);
   const [prospectosList, setProspectosList] = useState<any[]>([]);
   const [visitasModalOpen, setVisitasModalOpen] = useState(false);
@@ -1336,12 +1337,12 @@ export default function DashboardPage() {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
                     return clienteCot?.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim();
                   }).length,
-                  contactos: contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
-                  contactosHoy: contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')).length,
+                  contactos: contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta').length,
+                  contactosHoy: contactosHoyList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta').length,
                   contactosPeriodoList: contactosPeriodoList,
                   visitas: contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')).length,
                   fallidos: contactosPeriodoList.filter((int: any) => int.tipo === 'No Contesta').length,
-                  clientesAtendidos: new Set(contactosPeriodoList.filter((int: any) => int.tipo !== 'No Contesta').map((int: any) => int.clienteId || int.clienteNombre)).size,
+                  clientesAtendidos: new Set(contactosPeriodoList.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta').map((int: any) => int.clienteId || int.clienteNombre)).size,
                 };
               });
 
@@ -1700,7 +1701,8 @@ export default function DashboardPage() {
                                             className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')) || []);
+                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta') || []);
+                                              setContactosModalTitle("Auditoría de Seguimientos (Periodo)");
                                               setContactosModalOpen(true);
                                             }}
                                           >
@@ -1720,6 +1722,7 @@ export default function DashboardPage() {
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo === 'No Contesta') || []);
+                                              setContactosModalTitle("Detalle de Contactos Sin Comunicación");
                                               setContactosModalOpen(true);
                                             }}
                                           >
@@ -1738,7 +1741,8 @@ export default function DashboardPage() {
                                             className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo !== 'No Contesta') || []);
+                                              setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta') || []);
+                                              setContactosModalTitle("Detalle de Clientes Atendidos");
                                               setContactosModalOpen(true);
                                             }}
                                           >
@@ -2149,7 +2153,7 @@ export default function DashboardPage() {
 
       {/* MODAL DE CIERRES COMERCIALES */}
       <Dialog open={cierresModalOpen} onOpenChange={setCierresModalOpen}>
-        <DialogContent className="max-w-md bg-white">
+        <DialogContent className="max-w-4xl bg-white border border-slate-100 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Trophy className="w-5 h-5 text-emerald-500" />
@@ -2180,11 +2184,11 @@ export default function DashboardPage() {
 
       {/* MODAL DE CONTACTOS / SEGUIMIENTOS */}
       <Dialog open={contactosModalOpen} onOpenChange={setContactosModalOpen}>
-        <DialogContent className="max-w-md bg-white">
+        <DialogContent className="max-w-4xl bg-white border border-slate-100 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Calendar className="w-5 h-5 text-blue-500" />
-              Auditoría de Seguimientos
+              {contactosModalTitle}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3 mt-4 max-h-[60vh] overflow-y-auto pr-2">
@@ -2254,7 +2258,7 @@ export default function DashboardPage() {
 
       {/* MODAL DE VISITAS */}
       <Dialog open={visitasModalOpen} onOpenChange={setVisitasModalOpen}>
-        <DialogContent className="max-w-md bg-white">
+        <DialogContent className="max-w-4xl bg-white border border-slate-100 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-purple-500" />
@@ -2308,7 +2312,7 @@ export default function DashboardPage() {
 
       {/* MODAL DE NUEVOS PROSPECTOS */}
       <Dialog open={prospectosModalOpen} onOpenChange={setProspectosModalOpen}>
-        <DialogContent className="max-w-md bg-white shadow-2xl border border-slate-200 opacity-100">
+        <DialogContent className="max-w-4xl bg-white border border-slate-100 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-500" />

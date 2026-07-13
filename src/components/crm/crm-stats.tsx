@@ -104,6 +104,7 @@ export function CRMStats() {
   const [prospectosList, setProspectosList] = useState<any[]>([]);
   const [contactosModalOpen, setContactosModalOpen] = useState(false);
   const [contactosList, setContactosList] = useState<any[]>([]);
+  const [contactosModalTitle, setContactosModalTitle] = useState("Auditoría de Seguimientos (Periodo)");
   const [ganadosModalOpen, setGanadosModalOpen] = useState(false);
   const [ganadosList, setGanadosList] = useState<any[]>([]);
   const [visitasModalOpen, setVisitasModalOpen] = useState(false);
@@ -837,7 +838,8 @@ export function CRMStats() {
                                   className="bg-emerald-100 text-emerald-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-emerald-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit')) || []);
+                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta') || []);
+                                    setContactosModalTitle("Auditoría de Seguimientos (Periodo)");
                                     setContactosModalOpen(true);
                                   }}
                                 >
@@ -857,6 +859,7 @@ export function CRMStats() {
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo === 'No Contesta') || []);
+                                    setContactosModalTitle("Detalle de Contactos Sin Comunicación");
                                     setContactosModalOpen(true);
                                   }}
                                 >
@@ -875,7 +878,8 @@ export function CRMStats() {
                                   className="bg-blue-100 text-blue-700 border-none px-1.5 py-0 h-5 text-[9px] hover:bg-blue-200 cursor-pointer"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => int.tipo !== 'No Contesta') || []);
+                                    setContactosList(data.contactosPeriodoList?.filter((int: any) => !int.tipo?.toLowerCase().includes('visit') && int.tipo !== 'No Contesta') || []);
+                                    setContactosModalTitle("Detalle de Clientes Atendidos");
                                     setContactosModalOpen(true);
                                   }}
                                 >
@@ -1026,7 +1030,7 @@ export function CRMStats() {
 
       {/* MODAL DE NUEVOS PROSPECTOS */}
       <Dialog open={prospectosModalOpen} onOpenChange={setProspectosModalOpen}>
-        <DialogContent className="max-w-md bg-white shadow-2xl border border-slate-200 opacity-100">
+        <DialogContent className="max-w-4xl bg-white border-border/50 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Users className="w-5 h-5 text-indigo-500" />
@@ -1060,10 +1064,10 @@ export function CRMStats() {
 
       {/* Modal Detalles de Seguimientos/Contactos */}
       <Dialog open={contactosModalOpen} onOpenChange={setContactosModalOpen}>
-        <DialogContent className="max-w-2xl bg-white border-border/50 shadow-2xl rounded-2xl">
+        <DialogContent className="max-w-4xl bg-white border-border/50 shadow-2xl rounded-2xl">
           <DialogHeader className="border-b border-border/50 pb-4 mb-4">
             <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-emerald-600" /> Auditoría de Seguimientos (Periodo)
+              <Calendar className="w-5 h-5 text-emerald-600" /> {contactosModalTitle}
             </DialogTitle>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto space-y-3 pr-2">
@@ -1141,7 +1145,7 @@ export function CRMStats() {
 
       {/* Modal de Órdenes de Servicio / Ganados */}
       <Dialog open={ganadosModalOpen} onOpenChange={setGanadosModalOpen}>
-        <DialogContent className="max-w-md bg-white shadow-2xl border border-slate-200 opacity-100">
+        <DialogContent className="max-w-4xl bg-white border-border/50 shadow-2xl rounded-2xl">
           <DialogHeader>
             <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
               <Award className="w-5 h-5 text-blue-500" />
@@ -1175,7 +1179,7 @@ export function CRMStats() {
 
       {/* Modal de Visitas */}
       <Dialog open={visitasModalOpen} onOpenChange={setVisitasModalOpen}>
-        <DialogContent className="max-w-2xl bg-white border-border/50 shadow-2xl rounded-2xl">
+        <DialogContent className="max-w-4xl bg-white border-border/50 shadow-2xl rounded-2xl">
           <DialogHeader className="border-b border-border/50 pb-4 mb-4">
             <DialogTitle className="text-xl font-black text-slate-800 flex items-center gap-2">
               <MapPin className="w-5 h-5 text-purple-600" /> Historial de Visitas (Periodo)
