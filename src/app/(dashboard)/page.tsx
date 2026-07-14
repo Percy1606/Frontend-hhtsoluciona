@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { KPIStats } from "@/components/dashboard/kpi-stats";
+import { FinanceLandingKPIs } from "@/components/dashboard/finance-landing-kpis";
 import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -1996,6 +1997,8 @@ export default function DashboardPage() {
 
           {/* TAB: FINANZAS */}
           <TabsContent value="finanzas" className="space-y-8 outline-none">
+            
+            <FinanceLandingKPIs startDate={startDate} endDate={endDate} />
             
             {/* Quick KPI Row para Impuestos */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
