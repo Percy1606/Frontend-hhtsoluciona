@@ -62,8 +62,8 @@ export function CashFlowForecast() {
 
   const chartData = data.proyeccion.map(p => ({
     name: `${p.dias}d`,
-    ingresos: p.cobros,
-    egresos: p.pagos,
+    ingresos: p.ingresos,
+    egresos: p.egresos,
     saldo: p.saldoProyectado,
   }));
 
@@ -88,7 +88,7 @@ export function CashFlowForecast() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-emerald-600">
-              {formatCurrency(data.proyeccion[4]?.cobros || 0)}
+              {formatCurrency(data.proyeccion[4]?.ingresos || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Estimado según fechas de cobro</p>
           </CardContent>
@@ -101,7 +101,7 @@ export function CashFlowForecast() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-error">
-              {formatCurrency(data.proyeccion[4]?.pagos || 0)}
+              {formatCurrency(data.proyeccion[4]?.egresos || 0)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">Incluye planillas e impuestos</p>
           </CardContent>
@@ -155,10 +155,10 @@ export function CashFlowForecast() {
                   <TableCell className="font-medium">{p.dias} días</TableCell>
                   <TableCell>{new Date(p.fecha).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right text-emerald-600 font-semibold">
-                    {formatCurrency(p.cobros)}
+                    {formatCurrency(p.ingresos)}
                   </TableCell>
                   <TableCell className="text-right text-error font-semibold">
-                    {formatCurrency(p.pagos)}
+                    {formatCurrency(p.egresos)}
                   </TableCell>
                   <TableCell className="text-right font-bold">
                     {formatCurrency(p.saldoProyectado)}

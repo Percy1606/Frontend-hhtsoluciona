@@ -97,8 +97,8 @@ export interface FacturaCritica {
 export interface ProyeccionFinanciera {
   dias: number;
   fecha: string;
-  cobros: number;
-  pagos: number;
+  ingresos: number;
+  egresos: number;
   saldoProyectado: number;
 }
 

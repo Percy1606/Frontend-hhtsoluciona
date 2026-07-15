@@ -48,7 +48,7 @@ export function ProjectionPanel({ data }: ProjectionPanelProps) {
               <div className="flex items-center gap-1 mt-2">
                 {isNegative ? (
                   <AlertTriangle className="w-3 h-3 text-red-500" />
-                ) : p.cobros > p.pagos ? (
+                ) : p.ingresos > p.egresos ? (
                   <TrendingUp className="w-3 h-3 text-emerald-500" />
                 ) : (
                   <TrendingDown className="w-3 h-3 text-orange-500" />
@@ -57,7 +57,7 @@ export function ProjectionPanel({ data }: ProjectionPanelProps) {
                   "text-[9px] font-bold uppercase",
                   isNegative ? "text-red-500" : "text-slate-400"
                 )}>
-                  {isNegative ? "Riesgo de Liquidez" : p.cobros > p.pagos ? "Superávit" : "Déficit"}
+                  {isNegative ? "Riesgo de Liquidez" : p.ingresos > p.egresos ? "Superávit" : "Déficit"}
                 </span>
               </div>
             </div>
@@ -84,10 +84,10 @@ export function ProjectionPanel({ data }: ProjectionPanelProps) {
                   {new Date(p.fecha).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' })}
                 </TableCell>
                 <TableCell className="text-right font-bold text-emerald-600 text-xs">
-                  {formatCurrency(p.cobros)}
+                  {formatCurrency(p.ingresos)}
                 </TableCell>
                 <TableCell className="text-right font-bold text-red-600 text-xs">
-                  {formatCurrency(p.pagos)}
+                  {formatCurrency(p.egresos)}
                 </TableCell>
                 <TableCell className="text-right">
                   <Badge className={cn(
