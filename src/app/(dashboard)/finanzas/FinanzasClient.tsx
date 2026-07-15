@@ -36,8 +36,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-import { CashFlowForecast } from "@/components/finanzas/cash-flow-forecast";
-import { AgingReport } from "@/components/finanzas/aging-report";
 import { ObligacionesReport } from "@/components/finanzas/obligaciones-report";
 import { ApprovalInbox } from "@/components/finanzas/approval-inbox";
 import {
@@ -219,11 +217,9 @@ export default function FinanzasClient() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-8">
-        <TabsList className="bg-white border border-border p-1 rounded-2xl h-14 w-full md:w-auto flex flex-wrap md:grid md:grid-cols-5 gap-2 shadow-sm">
+        <TabsList className="bg-white border border-border p-1 rounded-2xl h-14 w-full md:w-auto flex flex-wrap md:grid md:grid-cols-3 gap-2 shadow-sm">
           <TabsTrigger value="overview" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Resumen Gerencial</TabsTrigger>
           <TabsTrigger value="approvals" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white flex-1">Aprobaciones</TabsTrigger>
-          <TabsTrigger value="cashflow" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Flujo de Caja Proyectado</TabsTrigger>
-          <TabsTrigger value="aging" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Cartera por Cobrar</TabsTrigger>
           <TabsTrigger value="obligaciones" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-red-500 data-[state=active]:text-white flex-1">Cuentas por Pagar</TabsTrigger>
         </TabsList>
 
@@ -339,14 +335,6 @@ export default function FinanzasClient() {
               </div>
             </div>
           </div>
-        </TabsContent>
-
-        <TabsContent value="cashflow" className="animate-in slide-in-from-left-4 duration-500">
-          <CashFlowForecast />
-        </TabsContent>
-
-        <TabsContent value="aging" className="animate-in slide-in-from-right-4 duration-500">
-          <AgingReport />
         </TabsContent>
 
         <TabsContent value="obligaciones" className="animate-in slide-in-from-bottom-4 duration-500">
