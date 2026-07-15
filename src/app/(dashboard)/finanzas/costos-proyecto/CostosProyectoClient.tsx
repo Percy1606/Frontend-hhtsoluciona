@@ -52,7 +52,7 @@ export default function CostosProyectoClient() {
     async function loadData() {
       try {
         setLoadingInitial(true);
-        const resProyectos: any = await api.get('/finanzas/bandeja-proyectos');
+        const resProyectos: any = await api.get('/finanzas/bandeja-proyectos?todas=true');
         
         const proys = (resProyectos || []).map((p: any) => ({
           ...p,
@@ -67,7 +67,23 @@ export default function CostosProyectoClient() {
             const rent = await api.get(`/finanzas/proyectos/${p.id}/rentabilidad`);
             setProyectos(prev => prev.map(item => {
               if (item.id === p.id) {
-                return { ...item, rentabilidad: rent as any, loading: false };
+                const rentData = rent as any;
+                const mappedRent = {
+                  costoRealAcumulado: rentData.egresos?.costoTotal || 0,
+                  utilidadBruta: rentData.indicadores?.utilidadProyectada || 0,
+                  rentabilidadProyectada: rentData.indicadores?.rentabilidadProyectada || 0,
+                  desglose: {
+                    manoDeObra: rentData.egresos?.manoObra || 0,
+                    materiales: rentData.egresos?.materiales || 0,
+                    combustible: 0,
+                    viaticos: 0,
+                    hospedaje: 0,
+                    subcontratos: 0,
+                    equipos: 0,
+                    otros: rentData.egresos?.gastosDirectos || 0,
+                  }
+                };
+                return { ...item, rentabilidad: mappedRent, loading: false };
               }
               return item;
             }));
