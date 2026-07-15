@@ -86,7 +86,7 @@ export default function EgresosPage() {
   const handleNuevoGastoClick = () => {
     const minLiquidezStr = localStorage.getItem('minLiquidez');
     const minLiquidez = minLiquidezStr ? Number(minLiquidezStr) : 30000;
-    const liquidezTotal = cajas.reduce((acc, c) => acc + Number(c.saldoActual || 0), 0);
+    const liquidezTotal = cajas.reduce((acc, c) => acc + Number(c.saldoDisponible || 0), 0);
 
     if (liquidezTotal < minLiquidez && cajas.length > 0) {
       toast.error(`BLOQUEO DE SEGURIDAD: Límite de caja excedido (Liquidez S/ ${liquidezTotal.toLocaleString('es-PE')} < Mínimo S/ ${minLiquidez.toLocaleString('es-PE')}). Ingresa dinero a caja para realizar compras.`);

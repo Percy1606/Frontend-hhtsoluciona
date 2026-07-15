@@ -52,6 +52,8 @@ export default function CajasPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [limitInputValue, setLimitInputValue] = useState("");
   
   // Selección
   const [selectedCaja, setSelectedCaja] = useState<any>(null);
@@ -81,12 +83,26 @@ export default function CajasPage() {
   }, []);
 
   const handleConfigurar = () => {
-    const newVal = window.prompt("Ingresa el monto mínimo de liquidez requerido (Fondo de Seguridad) para las alertas:", minLiquidez.toString());
-    if (newVal && !isNaN(Number(newVal))) {
-      const val = Number(newVal);
+    setLimitInputValue(minLiquidez.toLocaleString("en-US"));
+    setIsLimitModalOpen(true);
+  };
+
+  const handleSaveLimit = () => {
+    const val = Number(limitInputValue.replace(/,/g, ''));
+    if (!isNaN(val)) {
       setMinLiquidez(val);
       localStorage.setItem('minLiquidez', val.toString());
+      setIsLimitModalOpen(false);
       toast.success("Fondo mínimo actualizado correctamente");
+    }
+  };
+
+  const handleLimitInputChange = (e: any) => {
+    const val = e.target.value.replace(/\D/g, '');
+    if (val) {
+      setLimitInputValue(Number(val).toLocaleString('en-US'));
+    } else {
+      setLimitInputValue('');
     }
   };
 
@@ -312,6 +328,28 @@ export default function CajasPage() {
         entityName={cajaToDelete?.name || ''}
         loading={deleting}
       />
+
+      <Dialog open={isLimitModalOpen} onOpenChange={setIsLimitModalOpen}>
+        <DialogContent className="max-w-sm bg-white border-none shadow-2xl rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-black uppercase tracking-widest text-slate-800">
+              Configurar Límite de Caja
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Monto mínimo de liquidez (S/)</p>
+            <Input 
+              value={limitInputValue}
+              onChange={handleLimitInputChange}
+              placeholder="Ej. 30,000"
+              className="h-12 text-lg font-black tracking-tighter"
+            />
+            <Button onClick={handleSaveLimit} className="w-full h-12 rounded-xl font-black bg-primary hover:bg-primary/90 text-white shadow-lg">
+              Guardar Límite
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
