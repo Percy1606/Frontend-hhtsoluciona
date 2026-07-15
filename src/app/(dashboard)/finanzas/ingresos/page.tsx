@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import {
   Table,
   TableBody,
@@ -24,7 +25,9 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
-  Edit2
+  Edit2,
+  ClipboardList,
+  FilterX
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn, formatDate, formatCurrency } from "@/lib/utils";
@@ -45,6 +48,7 @@ import { PagoHistorial } from "@/components/finanzas/pago-historial";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 import { toast } from "sonner";
 import { ExportButtons } from "@/components/finanzas/export-buttons";
+import { CRMHeader } from "@/components/crm/crm-header";
 
 const financeStatus: Record<string, string> = {
   "PAGADA": "bg-emerald-100 text-emerald-700 border-emerald-200",
@@ -178,88 +182,103 @@ export default function IngresosPage() {
   }
 
   return (
-    <div className="space-y-8 pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-border shadow-sm">
-        <div className="space-y-1">
-          <div className="flex items-center gap-3">
-            <div className="bg-blue-500/10 p-2 rounded-xl">
-              <Receipt className="w-5 h-5 text-blue-600" />
+    <div className="space-y-4">
+      <CRMHeader 
+        title="Ingresos / Facturas" 
+        subtitle="Gestión de comprobantes emitidos y cobranzas." 
+      />
+
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+        {/* Fila 1: Búsqueda y Acciones */}
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+          <div className="flex-1 space-y-2">
+            <div className="flex items-center gap-2">
+                <Search className="w-4 h-4 text-primary" />
+                <label htmlFor="search-input" className="text-[10px] font-black uppercase text-primary tracking-widest ml-1">Búsqueda Global</label>
             </div>
-            <div>
-              <h1 className="text-lg font-black text-primary tracking-tight">Ingresos / Facturas</h1>
-              <p className="text-muted-foreground font-medium text-[10px] mt-0.5">Gestión de comprobantes emitidos y cobranzas.</p>
+            <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input 
+                  id="search-input"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Buscar por factura o cliente..." 
+                  className="pl-11 h-12 border-slate-200 bg-slate-50/50 focus:bg-white transition-all shadow-none font-bold text-sm rounded-xl w-full" 
+                />
             </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <ExportButtons type="facturas" filters={{ search, statusFilter, dateFrom, dateTo }} />
-          <Button 
-            onClick={() => setIsModalOpen(true)}
-            className="h-10 px-6 gap-2 text-xs font-black bg-secondary hover:bg-secondary/90 shadow-lg shadow-secondary/20 rounded-xl"
-          >
-            <Plus className="w-4 h-4" /> Nueva Factura
-          </Button>
-        </div>
-      </div>
+          
+          <div className="flex flex-wrap items-center gap-3 w-full lg:w-auto">
+            <ExportButtons type="facturas" filters={{ search, statusFilter, dateFrom, dateTo }} />
+            
+            <Link href="/crm/cotizaciones?from=finanzas" className="flex-1 sm:flex-none">
+              <Button 
+                variant="outline"
+                className="h-12 w-full gap-2 font-black uppercase text-[10px] border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl px-4"
+              >
+                <ClipboardList className="w-4 h-4 text-blue-500" /> Cotizaciones
+              </Button>
+            </Link>
 
-      <div className="bg-white p-4 rounded-2xl border border-border shadow-sm grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-        <div className="md:col-span-2">
-          <label htmlFor="search-input" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Búsqueda</label>
-          <div className="relative mt-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Button 
+              onClick={() => setIsModalOpen(true)}
+              className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] bg-secondary hover:bg-secondary/90 text-white shadow-lg shadow-secondary/20 rounded-xl px-4"
+            >
+              <Plus className="w-4 h-4" /> Nueva Factura
+            </Button>
+          </div>
+        </div>
+
+        {/* Separador sutil */}
+        <div className="border-t border-slate-100" />
+
+        {/* Fila 2: Filtros */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
+          <div>
+            <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Estado</label>
+            <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "TODOS")}>
+              <SelectTrigger className="h-10 w-full border-slate-200 bg-slate-50 rounded-lg text-xs font-bold text-slate-500 mt-1 shadow-none">
+                <SelectValue placeholder="Estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS" className="font-bold text-xs uppercase text-slate-600">Todos los Estados</SelectItem>
+                <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-blue-600">Pendiente</SelectItem>
+                <SelectItem value="PAGO_PARCIAL" className="font-bold text-xs uppercase text-yellow-600">Pago Parcial</SelectItem>
+                <SelectItem value="PAGADA" className="font-bold text-xs uppercase text-green-600">Pagada</SelectItem>
+                <SelectItem value="VENCIDA" className="font-bold text-xs uppercase text-red-600">Vencida</SelectItem>
+                <SelectItem value="ANULADA" className="font-bold text-xs uppercase text-slate-400">Anulada</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <label htmlFor="date-from" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
             <Input 
-              id="search-input"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar por factura o cliente..." 
-              className="pl-9 h-10 border-slate-200 bg-transparent rounded-lg text-xs font-medium w-full" 
+              id="date-from"
+              type="date" 
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="mt-1 h-10 border-slate-200 bg-slate-50 rounded-lg text-xs font-medium w-full shadow-none" 
             />
           </div>
-        </div>
-        <div>
-          <label className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Estado</label>
-          <Select value={statusFilter} onValueChange={(val) => setStatusFilter(val || "TODOS")}>
-            <SelectTrigger className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1">
-              <SelectValue placeholder="Estado" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="TODOS" className="font-bold text-xs uppercase text-slate-600">Todos los Estados</SelectItem>
-              <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-blue-600">Pendiente</SelectItem>
-              <SelectItem value="PAGO_PARCIAL" className="font-bold text-xs uppercase text-yellow-600">Pago Parcial</SelectItem>
-              <SelectItem value="PAGADA" className="font-bold text-xs uppercase text-green-600">Pagada</SelectItem>
-              <SelectItem value="VENCIDA" className="font-bold text-xs uppercase text-red-600">Vencida</SelectItem>
-              <SelectItem value="ANULADA" className="font-bold text-xs uppercase text-slate-400">Anulada</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div>
-          <label htmlFor="date-from" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Inicio</label>
-          <Input 
-            id="date-from"
-            type="date" 
-            value={dateFrom} 
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
-          />
-        </div>
-        <div>
-          <label htmlFor="date-to" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
-          <Input 
-            id="date-to"
-            type="date" 
-            value={dateTo} 
-            onChange={(e) => setDateTo(e.target.value)}
-            className="h-10 w-full border-slate-200 rounded-lg text-xs font-bold text-slate-500 mt-1"
-          />
-        </div>
-        <div>
-          <Button 
-            variant="outline" 
-            onClick={() => { setDateFrom(""); setDateTo(""); setSearch(""); setStatusFilter("TODOS"); }}
-            className="h-10 w-full px-4 gap-2 text-xs font-bold rounded-lg border-border text-slate-500 hover:text-slate-700"
-          >
-            Limpiar Filtros
-          </Button>
+          <div>
+            <label htmlFor="date-to" className="text-[10px] font-black uppercase text-slate-500 tracking-widest ml-1">Fecha Fin</label>
+            <Input 
+              id="date-to"
+              type="date" 
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="mt-1 h-10 border-slate-200 bg-slate-50 rounded-lg text-xs font-medium w-full shadow-none" 
+            />
+          </div>
+          <div>
+            <Button 
+              variant="outline" 
+              onClick={() => { setDateFrom(""); setDateTo(""); setSearch(""); setStatusFilter("TODOS"); }}
+              className="h-10 w-full px-4 gap-2 text-[10px] uppercase font-black tracking-widest rounded-lg border-slate-200 text-slate-500 hover:text-slate-700 hover:bg-slate-50"
+            >
+              <FilterX className="w-4 h-4" /> Limpiar Filtros
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -406,12 +425,12 @@ export default function IngresosPage() {
               }
 
               return (
-                <TableRow key={inv.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-100 group h-20">
-                  <TableCell className="pl-6 text-[11px] font-bold text-slate-400">
+                <TableRow key={inv.id} className="hover:bg-primary/5 transition-colors group h-20">
+                  <TableCell className="pl-6 text-[11px] font-bold text-slate-400 border-b border-slate-300 border-dashed p-2">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </TableCell>
                   
-                  <TableCell>
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex items-start gap-3">
                       <div className="bg-white border border-slate-200 p-2 rounded-xl shadow-sm">
                         <Receipt className="w-4 h-4 text-slate-600" />
@@ -425,7 +444,7 @@ export default function IngresosPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex flex-col gap-1 max-w-[280px]">
                       {inv.cliente?.empresa && inv.cliente?.empresa !== "none" ? (
                         <p className="font-bold text-xs text-slate-800 truncate" title={inv.cliente.empresa}>
@@ -449,7 +468,7 @@ export default function IngresosPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell>
+                  <TableCell className="border-b border-slate-300 border-dashed p-2">
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center gap-1.5" title="Fecha de Emisión">
                         <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -464,7 +483,7 @@ export default function IngresosPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="text-right">
+                  <TableCell className="text-right border-b border-slate-300 border-dashed p-2">
                     <div className="flex flex-col items-end gap-1">
                       <div className="flex items-center justify-between w-[140px] text-[10px] font-medium">
                         <span className="text-slate-500 uppercase">Total</span>
@@ -485,13 +504,13 @@ export default function IngresosPage() {
                     </div>
                   </TableCell>
 
-                  <TableCell className="text-center">
+                  <TableCell className="text-center border-b border-slate-300 border-dashed p-2">
                     <Badge className={cn("border font-black text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-md", visualBadgeClass)}>
                       {visualStatus.replace('_', ' ')}
                     </Badge>
                   </TableCell>
 
-                  <TableCell className="pr-4">
+                  <TableCell className="pr-4 border-b border-slate-300 border-dashed p-2">
                     <div className="flex items-center justify-end gap-0.5">
                       {inv.estado !== 'PAGADA' && inv.estado !== 'ANULADA' && (
                         <Button 

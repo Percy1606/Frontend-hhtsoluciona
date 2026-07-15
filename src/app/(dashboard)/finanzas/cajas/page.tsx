@@ -20,7 +20,8 @@ import {
   ShieldAlert,
   ArrowRightLeft,
   Activity,
-  Clock
+  Clock,
+  Settings
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,12 +60,13 @@ export default function CajasPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [cajaToDelete, setCajaToDelete] = useState<{id: string, name: string} | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [minLiquidez, setMinLiquidez] = useState(30000);
 
   const fetchCajas = async () => {
-    setLoading(true);
     try {
-      const data = await api.get('/finanzas/cajas');
-      setCajas(Array.isArray(data) ? data : []);
+      setLoading(true);
+      const res = await api.get<any>("/finanzas/cajas");
+      setCajas(Array.isArray(res) ? res : []);
     } catch (error) {
       toast.error("Error al cargar las cajas");
     } finally {
@@ -74,7 +76,19 @@ export default function CajasPage() {
 
   useEffect(() => {
     fetchCajas();
+    const stored = localStorage.getItem('minLiquidez');
+    if (stored) setMinLiquidez(Number(stored));
   }, []);
+
+  const handleConfigurar = () => {
+    const newVal = window.prompt("Ingresa el monto mínimo de liquidez requerido (Fondo de Seguridad) para las alertas:", minLiquidez.toString());
+    if (newVal && !isNaN(Number(newVal))) {
+      const val = Number(newVal);
+      setMinLiquidez(val);
+      localStorage.setItem('minLiquidez', val.toString());
+      toast.success("Fondo mínimo actualizado correctamente");
+    }
+  };
 
   const handleCreateOrUpdate = async (formData: any) => {
     try {
@@ -158,6 +172,13 @@ export default function CajasPage() {
           <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-1">Gestión directa de fondos y cuentas bancarias</p>
         </div>
         <div className="flex items-center gap-3">
+            <Button 
+                variant="outline"
+                onClick={handleConfigurar}
+                className="h-9 px-4 rounded-xl border-amber-200 text-amber-700 hover:bg-amber-50 gap-2 font-black text-[9px] uppercase shadow-sm bg-amber-50/50"
+            >
+                <ShieldAlert className="w-3.5 h-3.5" /> Límite Caja
+            </Button>
             <Button 
                 variant="outline" 
                 onClick={() => setIsTransferModalOpen(true)}

@@ -12,6 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Edit2,
+  Calculator,
   HandCoins,
   ArrowRightLeft,
   CalendarClock,
@@ -29,6 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { cn, formatDate, formatLargeCurrency } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
 import { ModernDialog } from "@/components/ui/modern-dialog";
@@ -80,6 +82,18 @@ export default function EgresosPage() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 12;
+
+  const handleNuevoGastoClick = () => {
+    const minLiquidezStr = localStorage.getItem('minLiquidez');
+    const minLiquidez = minLiquidezStr ? Number(minLiquidezStr) : 30000;
+    const liquidezTotal = cajas.reduce((acc, c) => acc + Number(c.saldoActual || 0), 0);
+
+    if (liquidezTotal < minLiquidez && cajas.length > 0) {
+      toast.error(`BLOQUEO DE SEGURIDAD: Límite de caja excedido (Liquidez S/ ${liquidezTotal.toLocaleString('es-PE')} < Mínimo S/ ${minLiquidez.toLocaleString('es-PE')}). Ingresa dinero a caja para realizar compras.`);
+      return;
+    }
+    setIsModalOpen(true);
+  };
 
   const toggleProject = (id: string) => {
     const next = new Set(expanded);
@@ -339,15 +353,24 @@ export default function EgresosPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto mt-3 md:mt-0">
           <ExportButtons type="gastos" filters={{ search, dateFrom, dateTo }} />
+          
+          <Link href="/finanzas/presupuesto">
+            <Button 
+              className="h-10 px-5 gap-2 text-[10px] uppercase tracking-widest font-black bg-[#001F3F] hover:bg-[#003366] text-white shadow-lg shadow-slate-900/10 rounded-xl transition-all hover:-translate-y-0.5"
+            >
+              <Calculator className="w-4 h-4 text-blue-300" /> Pagos Mensuales
+            </Button>
+          </Link>
+
           <Button 
             variant="outline"
             onClick={() => setIsGastosFijosOpen(true)}
-            className="h-10 px-4 gap-2 text-xs font-black border-slate-200 hover:bg-slate-50 rounded-xl"
+            className="h-10 px-5 gap-2 text-[10px] uppercase tracking-widest font-black border-slate-200 bg-white text-slate-700 hover:bg-slate-50 shadow-sm rounded-xl transition-all"
           >
-            <CalendarClock className="w-4 h-4 text-slate-500" /> Gastos Fijos
+            <CalendarClock className="w-4 h-4 text-slate-400" /> Historial Fijos
           </Button>
           <Button 
-            onClick={() => setIsModalOpen(true)}
+            onClick={handleNuevoGastoClick}
             className="h-10 px-6 gap-2 text-xs font-black bg-error hover:bg-error/90 shadow-lg shadow-error/20 rounded-xl text-white"
           >
             <Plus className="w-4 h-4" /> Nuevo Gasto

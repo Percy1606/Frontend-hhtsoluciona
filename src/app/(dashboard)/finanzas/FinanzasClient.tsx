@@ -15,12 +15,15 @@ import {
   TrendingDown,
   Calendar,
   CheckCircle2,
+  Calculator,
 } from "lucide-react";
 import { cn, formatCurrency } from "@/lib/utils";
+import Link from "next/link";
 import { CashFlowChart } from "@/components/finanzas/cash-flow-chart";
 import { CashStatus } from "@/components/finanzas/cash-status";
 import { ExecutivePanel } from "@/components/finanzas/executive-panel";
 import { ProjectionPanel } from "@/components/finanzas/projection-panel";
+import { AlertsDashboard } from "@/components/finanzas/alerts-dashboard";
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
@@ -35,6 +38,7 @@ import {
 
 import { CashFlowForecast } from "@/components/finanzas/cash-flow-forecast";
 import { AgingReport } from "@/components/finanzas/aging-report";
+import { ObligacionesReport } from "@/components/finanzas/obligaciones-report";
 import { ApprovalInbox } from "@/components/finanzas/approval-inbox";
 import {
   Tabs,
@@ -190,6 +194,10 @@ export default function FinanzasClient() {
           </div>
         </div>
         <div className="flex gap-3 print:hidden">
+          <Link href="/finanzas/impuestos" className="flex items-center h-10 px-3 md:px-4 rounded-xl font-bold text-xs uppercase bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-colors">
+            <Calculator className="w-4 h-4 mr-0 md:mr-2" />
+            <span className="hidden md:inline">Impuestos SUNAT</span>
+          </Link>
           <Button 
             variant="outline" 
             onClick={() => window.open(`/print/finanzas?mes=${selectedMes}&anio=${selectedAnio}`, '_blank')}
@@ -205,13 +213,18 @@ export default function FinanzasClient() {
           </Button>
         </div>
       </div>
+      
+      <div className="mt-8 mb-4">
+        <AlertsDashboard />
+      </div>
 
       <Tabs defaultValue="overview" className="space-y-8">
-        <TabsList className="bg-white border border-border p-1 rounded-2xl h-14 w-full md:w-auto flex flex-wrap md:grid md:grid-cols-4 gap-2 shadow-sm">
+        <TabsList className="bg-white border border-border p-1 rounded-2xl h-14 w-full md:w-auto flex flex-wrap md:grid md:grid-cols-5 gap-2 shadow-sm">
           <TabsTrigger value="overview" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Resumen Gerencial</TabsTrigger>
           <TabsTrigger value="approvals" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-amber-500 data-[state=active]:text-white flex-1">Aprobaciones</TabsTrigger>
           <TabsTrigger value="cashflow" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Flujo de Caja Proyectado</TabsTrigger>
           <TabsTrigger value="aging" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-white flex-1">Cartera por Cobrar</TabsTrigger>
+          <TabsTrigger value="obligaciones" className="rounded-xl font-black text-[10px] uppercase tracking-widest data-[state=active]:bg-red-500 data-[state=active]:text-white flex-1">Cuentas por Pagar</TabsTrigger>
         </TabsList>
 
         <TabsContent value="approvals" className="animate-in zoom-in-95 duration-500">
@@ -334,6 +347,10 @@ export default function FinanzasClient() {
 
         <TabsContent value="aging" className="animate-in slide-in-from-right-4 duration-500">
           <AgingReport />
+        </TabsContent>
+
+        <TabsContent value="obligaciones" className="animate-in slide-in-from-bottom-4 duration-500">
+          <ObligacionesReport />
         </TabsContent>
       </Tabs>
     </div>
