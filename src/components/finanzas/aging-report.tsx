@@ -94,8 +94,8 @@ export function AgingReport() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.detalle.filter(f => f.diasMora > 0).sort((a,b) => b.diasMora - a.diasMora).map((f) => (
-                <TableRow key={f.id} className="hover:bg-red-50/30 transition-colors">
+              {data.detalle.sort((a,b) => b.diasMora - a.diasMora).map((f) => (
+                <TableRow key={f.id} className={f.diasMora > 0 ? "hover:bg-red-50/30 transition-colors" : "hover:bg-slate-50 transition-colors"}>
                   <TableCell className="font-bold">{f.codigo}</TableCell>
                   <TableCell>
                     <div className="font-medium text-primary">{f.cliente}</div>
@@ -111,26 +111,35 @@ export function AgingReport() {
                     {formatCurrency(f.monto)}
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-1 font-bold text-red-600">
-                      <Clock className="w-3 h-3" />
-                      {f.diasMora} días
-                    </div>
+                    {f.diasMora > 0 ? (
+                      <div className="flex items-center gap-1 font-bold text-red-600">
+                        <Clock className="w-3 h-3" />
+                        {f.diasMora} días
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1 font-bold text-emerald-600">
+                        <Clock className="w-3 h-3" />
+                        Al día
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell>
                     {f.diasMora > 60 ? (
                       <Badge variant="destructive" className="animate-pulse">Legal / Crítico</Badge>
                     ) : f.diasMora > 30 ? (
                       <Badge className="bg-orange-500 hover:bg-orange-600 text-white border-none">Seguimiento</Badge>
-                    ) : (
+                    ) : f.diasMora > 0 ? (
                       <Badge variant="secondary">Recordatorio</Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-emerald-600 border-emerald-200">Vigente</Badge>
                     )}
                   </TableCell>
                 </TableRow>
               ))}
-              {data.detalle.filter(f => f.diasMora > 0).length === 0 && (
+              {data.detalle.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                    No hay facturas vencidas en este momento. ✨
+                    No hay facturas pendientes por cobrar en este momento. ✨
                   </TableCell>
                 </TableRow>
               )}
