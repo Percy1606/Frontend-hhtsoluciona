@@ -45,7 +45,7 @@ import { useCRMStore } from "@/store/crm-store";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const gastoStatus: Record<string, { label: string, color: string }> = {
-  "PENDIENTE": { label: "BORRADOR", color: "bg-slate-100 text-slate-600 border-slate-200" },
+  "PENDIENTE": { label: "PENDIENTE", color: "bg-slate-100 text-slate-600 border-slate-200" },
   "SOLICITADO": { label: "POR APROBAR", color: "bg-amber-100 text-amber-700 border-amber-200" },
   "APROBADO": { label: "APROBADO", color: "bg-blue-100 text-blue-700 border-blue-200" },
   "PAGADO": { label: "EJECUTADO", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
@@ -400,7 +400,7 @@ export default function EgresosPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="TODOS" className="font-bold text-xs uppercase text-slate-600">Todos</SelectItem>
-                        <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-slate-500">Pendiente / Borrador</SelectItem>
+                        <SelectItem value="PENDIENTE" className="font-bold text-xs uppercase text-slate-500">Pendiente</SelectItem>
                         <SelectItem value="SOLICITADO" className="font-bold text-xs uppercase text-amber-600">Solicitado</SelectItem>
                         <SelectItem value="APROBADO" className="font-bold text-xs uppercase text-blue-600">Aprobado</SelectItem>
                         <SelectItem value="PAGADO" className="font-bold text-xs uppercase text-green-600">Pagado</SelectItem>
@@ -463,10 +463,15 @@ export default function EgresosPage() {
                           <FolderKanban className={cn("w-5 h-5 transition-colors duration-200", isOpen ? "text-white" : "text-error")} />
                         </div>
                         <div className="min-w-0 flex-1 pr-2">
-                          <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate" title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
-                            {grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || grupo.proyectoCodigo}
-                            {grupo.proyectoCodigo && grupo.proyectoCodigo !== grupo.proyectoNombre ? ` - ${grupo.proyectoCodigo}` : ''}
-                          </h2>
+                          {(() => {
+                            const cleanName = grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || grupo.proyectoCodigo;
+                            const combined = cleanName + (grupo.proyectoCodigo && grupo.proyectoCodigo !== grupo.proyectoNombre ? ` - ${grupo.proyectoCodigo}` : '');
+                            return (
+                              <h2 className={cn("font-black uppercase tracking-tight text-slate-800", combined.length > 42 ? "text-[11px] leading-snug" : "text-sm")} title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
+                                {combined}
+                              </h2>
+                            );
+                          })()}
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate" title={grupo.clienteNombre}>
                             {grupo.clienteNombre}
                           </p>
