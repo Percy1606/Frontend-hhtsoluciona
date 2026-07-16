@@ -625,6 +625,13 @@ export const useLogisticaStore = create<LogisticaState>()(
     }),
     {
       name: 'hht-logistica-store-real',
+      partialize: (state) => ({
+        ...state,
+        insumos: [],
+        ordenes: [],
+        personal: [],
+        movimientos: [],
+      })
     }
   )
 );

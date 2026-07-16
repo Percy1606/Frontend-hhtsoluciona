@@ -1510,6 +1510,12 @@ export const useOperacionesStore = create<OperacionesState>()(
         };
       },
     }),
-    { name: 'hht-operaciones-store' }
+    { 
+      name: 'hht-operaciones-store',
+      partialize: (state) => ({
+        ...state,
+        filtros: { searchQuery: '', estado: '', area: '', prioridad: '', semaforo: '', responsable: '' },
+      })
+    }
   )
 );

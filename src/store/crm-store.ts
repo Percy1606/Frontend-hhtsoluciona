@@ -740,9 +740,19 @@ export const useCRMStore = create<CRMState>()(
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         ...state,
+        quotes: [],
+        clients: [],
         filters: {
-          ...state.filters,
-          searchQuery: ''
+          searchQuery: '',
+          tarifa: '',
+          asignadoA: '',
+          estado: '',
+          etapaComercial: '',
+          prioridad: '',
+          zona: '',
+          tipoCliente: '',
+          clasificacion: '',
+          temperatura: '',
         }
       }),
     }

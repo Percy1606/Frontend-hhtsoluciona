@@ -234,8 +234,8 @@ export default function DocumentacionLogisticaPage() {
                 >
                   <div className="p-4">
                     {/* ── TOP ROW: ICON + INFO + CHEVRON ── */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-start justify-between gap-3 w-full">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div
                           className={cn(
                             "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200",
@@ -251,11 +251,17 @@ export default function DocumentacionLogisticaPage() {
                             )}
                           />
                         </div>
-                        <div className="min-w-0">
-                          <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate max-w-[180px]">
+                        <div className="min-w-0 flex-1 pr-2">
+                          <h2 
+                            className="text-[13px] sm:text-sm font-black uppercase tracking-tight text-slate-800 truncate"
+                            title={proyecto.nombre}
+                          >
                             {proyecto.nombre}
                           </h2>
-                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate max-w-[180px]">
+                          <p 
+                            className="text-[10px] font-bold text-slate-500 mt-0.5 truncate"
+                            title={proyecto.cliente?.empresa || proyecto.cliente?.nombre || "Sin cliente"}
+                          >
                             {proyecto.cliente?.empresa || proyecto.cliente?.nombre || "Sin cliente"}
                           </p>
                           <p className="text-[10px] font-semibold text-slate-400 mt-0.5 font-mono">

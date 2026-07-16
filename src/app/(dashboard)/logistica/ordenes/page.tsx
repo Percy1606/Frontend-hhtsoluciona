@@ -351,17 +351,17 @@ export default function OrdenesCompraPage() {
                 >
                   <div className="p-4">
                     {/* TOP ROW */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-start justify-between gap-3 w-full">
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
                         <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary shadow-md shadow-primary/20" : "bg-primary/5")}>
                           <FolderKanban className={cn("w-5 h-5 transition-colors duration-200", isOpen ? "text-white" : "text-primary")} />
                         </div>
-                        <div className="min-w-0">
-                          <h2 className="text-sm font-black uppercase tracking-tight text-slate-800 truncate max-w-[180px]" title={`${grupo.proyectoCodigo} - ${grupo.proyectoNombre}`}>
+                        <div className="min-w-0 flex-1 pr-2">
+                          <h2 className="text-[13px] sm:text-sm font-black uppercase tracking-tight text-slate-800 truncate" title={`${grupo.proyectoCodigo} - ${grupo.proyectoNombre}`}>
                             {grupo.proyectoCodigo}
                             {grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() ? ` - ${grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim()}` : ''}
                           </h2>
-                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate max-w-[180px]" title={grupo.clienteNombre}>
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate" title={grupo.clienteNombre}>
                             {grupo.clienteNombre}
                           </p>
                         </div>
@@ -415,11 +415,11 @@ export default function OrdenesCompraPage() {
                           </div>
                         </div>
                         
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={oc.proveedor?.razonSocial}>
+                        <div className="flex items-center justify-between mt-1 gap-2">
+                          <span className="font-bold text-[9px] uppercase text-slate-500 truncate flex-1 min-w-0 pr-2" title={oc.proveedor?.razonSocial}>
                             {oc.proveedor?.razonSocial}
                           </span>
-                          <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-1.5", estadoCompraColors[oc.estado])}>
+                          <Badge className={cn("border-none font-black text-[8px] uppercase shadow-none h-4 px-1.5 shrink-0", estadoCompraColors[oc.estado])}>
                             {oc.estado}
                           </Badge>
                         </div>

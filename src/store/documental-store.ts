@@ -503,6 +503,17 @@ export const useDocumentalStore = create<DocumentalState>()(
     }),
     {
       name: 'hht-documental-store',
+      partialize: (state) => ({
+        ...state,
+        filtros: {
+          searchQuery: '',
+          tipo: 'all',
+          subtipo: 'all',
+          estado: 'all',
+          area: 'all',
+          proyectoId: 'all',
+        }
+      })
     }
   )
 );
