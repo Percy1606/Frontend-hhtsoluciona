@@ -10,6 +10,25 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+
+const getEstadoBadge = (estado: string) => {
+  const norm = estado?.toUpperCase();
+  if (norm === "PAGADA" || norm === "PAGADO" || norm === "APROBADO") {
+    return <Badge className="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-200 text-[9px] font-black uppercase">PAGADO</Badge>;
+  }
+  if (norm === "PENDIENTE" || norm === "SOLICITADO") {
+    return <Badge className="bg-amber-50 hover:bg-amber-100 text-amber-700 border-amber-200 text-[9px] font-black uppercase">PENDIENTE</Badge>;
+  }
+  if (norm === "PAGO_PARCIAL") {
+    return <Badge className="bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-200 text-[9px] font-black uppercase">PAGO PARCIAL</Badge>;
+  }
+  if (norm === "VENCIDA" || norm === "RECHAZADO") {
+    return <Badge className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 text-[9px] font-black uppercase">VENCIDO</Badge>;
+  }
+  return <Badge className="bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 text-[9px] font-black uppercase">{estado}</Badge>;
+};
 
 export default function ImpuestosPage() {
   const [loading, setLoading] = useState(true);
@@ -260,6 +279,117 @@ export default function ImpuestosPage() {
                   Descargar Reporte (Proximamente)
                 </Button>
 
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Fila Inferior: Detalles de IGV Ventas y IGV Compras */}
+          <div className="md:col-span-6 mt-2">
+            <Card className="border-slate-200 shadow-sm bg-white">
+              <CardHeader className="pb-3 px-5 pt-5">
+                <CardTitle className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-emerald-600" />
+                  Detalle IGV Ventas (Facturas de Ingresos)
+                </CardTitle>
+                <CardDescription className="text-[10px] font-medium text-slate-500 mt-1">
+                  Listado de facturas de ingresos emitidas en este periodo.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="overflow-x-auto max-h-[350px] overflow-y-auto pr-1">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Factura</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Cliente</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">F. Emisión</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Estado</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2 text-right">IGV</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {!data.detalleFacturas || data.detalleFacturas.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-20 text-center text-slate-400 font-bold italic text-xs">
+                            No hay facturas emitidas este mes.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        data.detalleFacturas.map((f: any) => (
+                          <TableRow key={f.id} className="hover:bg-slate-50 transition-colors">
+                            <TableCell className="p-2 font-black text-[10px] text-slate-700">{f.codigo}</TableCell>
+                            <TableCell className="p-2 font-bold text-[10px] text-slate-600 uppercase max-w-[120px] truncate" title={f.cliente?.empresa}>{f.cliente?.empresa}</TableCell>
+                            <TableCell className="p-2 font-medium text-[10px] text-slate-500">
+                              {new Date(f.fechaEmision).toLocaleDateString("es-PE", { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="p-2">
+                              {getEstadoBadge(f.estado)}
+                            </TableCell>
+                            <TableCell className="p-2 font-black text-[10px] text-slate-800 text-right font-mono">
+                              S/ {Number(f.montoIgv).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="md:col-span-6 mt-2">
+            <Card className="border-slate-200 shadow-sm bg-white">
+              <CardHeader className="pb-3 px-5 pt-5">
+                <CardTitle className="text-sm font-black text-slate-800 flex items-center gap-2">
+                  <TrendingDown className="w-4 h-4 text-rose-600" />
+                  Detalle IGV Compras (Facturas de Gastos)
+                </CardTitle>
+                <CardDescription className="text-[10px] font-medium text-slate-500 mt-1">
+                  Listado de gastos registrados con tipo factura y con IGV aplicado.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="overflow-x-auto max-h-[350px] overflow-y-auto pr-1">
+                  <Table className="min-w-full">
+                    <TableHeader className="bg-slate-50 sticky top-0 z-10">
+                      <TableRow>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Comprobante</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Proveedor / Concepto</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">F. Emisión</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2">Estado</TableHead>
+                        <TableHead className="font-black text-[9px] text-primary uppercase p-2 text-right">IGV</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {!data.detalleGastos || data.detalleGastos.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="h-20 text-center text-slate-400 font-bold italic text-xs">
+                            No hay compras con IGV este mes.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        data.detalleGastos.map((g: any) => (
+                          <TableRow key={g.id} className="hover:bg-slate-50 transition-colors">
+                            <TableCell className="p-2 font-black text-[10px] text-slate-700">{g.codigo || 'S/N'}</TableCell>
+                            <TableCell className="p-2 font-bold text-[10px] text-slate-600 uppercase max-w-[120px] truncate" title={g.proveedor?.razonSocial || g.concepto}>
+                              {g.proveedor?.razonSocial || g.concepto}
+                            </TableCell>
+                            <TableCell className="p-2 font-medium text-[10px] text-slate-500">
+                              {new Date(g.fechaEmision).toLocaleDateString("es-PE", { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </TableCell>
+                            <TableCell className="p-2">
+                              {getEstadoBadge(g.estado)}
+                            </TableCell>
+                            <TableCell className="p-2 font-black text-[10px] text-slate-800 text-right font-mono">
+                              S/ {Number(g.montoIgv || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CardContent>
             </Card>
           </div>
