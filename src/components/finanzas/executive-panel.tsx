@@ -126,7 +126,7 @@ export function ExecutivePanel() {
              <div className="bg-white p-3 rounded-xl border border-orange-200/50">
                 <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Monto por recuperar</p>
                 <p className="text-base font-black text-orange-600">
-                  {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(cartera.porCobrar || 0)}
+                  {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(cartera.porCobrarVencido || 0)}
                 </p>
              </div>
           </CardContent>
