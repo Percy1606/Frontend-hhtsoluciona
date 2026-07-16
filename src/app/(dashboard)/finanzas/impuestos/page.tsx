@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Loader2, TrendingDown, TrendingUp, Calculator, DollarSign, Settings2, DownloadCloud } from "lucide-react";
+import { Loader2, TrendingDown, TrendingUp, Calculator, DollarSign, Settings2, DownloadCloud, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,15 @@ const getEstadoBadge = (estado: string) => {
     return <Badge className="bg-red-50 hover:bg-red-100 text-red-700 border-red-200 text-[9px] font-black uppercase">VENCIDO</Badge>;
   }
   return <Badge className="bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200 text-[9px] font-black uppercase">{estado}</Badge>;
+};
+
+const getNombreMes = (mesNum: string) => {
+  const m = parseInt(mesNum);
+  const meses = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
+  return meses[m - 1] || "";
 };
 
 export default function ImpuestosPage() {
@@ -83,7 +92,9 @@ export default function ImpuestosPage() {
             <Calculator className="w-6 h-6 text-indigo-600" />
             Declaración de Impuestos
           </h1>
-          <p className="text-slate-500 text-sm font-medium mt-1">Cálculo de IGV y Renta automatizado con SUNAT.</p>
+          <p className="text-slate-500 text-sm font-medium mt-1">
+            Cálculo de IGV y Renta automatizado con SUNAT para <span className="text-indigo-600 font-bold uppercase">{getNombreMes(mes)} {anio}</span>.
+          </p>
         </div>
         
         <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
@@ -111,11 +122,26 @@ export default function ImpuestosPage() {
             </SelectContent>
           </Select>
 
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={() => {
+              const d = new Date();
+              setMes((d.getMonth() + 1).toString());
+              setAnio(d.getFullYear().toString());
+              toast.success("Filtros restablecidos al mes actual");
+            }}
+            title="Restablecer filtros al mes actual"
+            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </Button>
+
           <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
             <DialogTrigger className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition-colors">
               <Settings2 className="w-4 h-4 text-slate-600" />
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[425px] bg-white">
               <DialogHeader>
                 <DialogTitle className="font-black text-xl">Configuración de Renta</DialogTitle>
               </DialogHeader>
@@ -134,7 +160,7 @@ export default function ImpuestosPage() {
               </div>
               <div className="flex justify-end gap-3">
                 <Button variant="ghost" onClick={() => setIsConfigOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSaveConfig} disabled={isSavingConfig} className="bg-indigo-600 hover:bg-indigo-700">
+                <Button onClick={handleSaveConfig} disabled={isSavingConfig} className="bg-indigo-600 hover:bg-indigo-700 text-white">
                   {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Guardar Cambios
                 </Button>
