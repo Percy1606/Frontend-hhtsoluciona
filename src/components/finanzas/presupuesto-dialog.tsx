@@ -5,7 +5,8 @@ import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2 } from "lucide-react";
+import { Trash2, Edit2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -37,14 +38,15 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
   const [loading, setLoading] = useState(false);
   const [monto, setMonto] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [tipo, setTipo] = useState<"MATERIALES" | "MANO_OBRA">("MATERIALES");
+  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (open && proyectoId) {
       fetchHistorial();
     } else {
-      setMonto("");
-      setMotivo("");
+      cancelarEdicion();
     }
   }, [open, proyectoId]);
 
@@ -60,7 +62,7 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
     }
   };
 
-  const handleInyectar = async () => {
+  const handleInyectarOrUpdate = async () => {
     if (!monto || isNaN(Number(monto)) || Number(monto) <= 0) {
       toast.error("Ingrese un monto válido.");
       return;
@@ -70,19 +72,29 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
       return;
     }
 
+    const prefijo = tipo === "MATERIALES" ? "[MATERIALES]" : "[MANO_OBRA]";
+    const motivoCompleto = `${prefijo} ${motivo.replace(/^\[(MATERIALES|MANO_OBRA)\]\s*/i, '').trim()}`;
+
     setIsSubmitting(true);
     try {
-      await api.post(`/finanzas/bandeja-proyectos/${proyectoId}/inyeccion-presupuesto`, {
-        monto: Number(monto),
-        motivo: motivo.trim()
-      });
-      toast.success("Presupuesto inyectado correctamente.");
-      setMonto("");
-      setMotivo("");
+      if (editandoId) {
+        await api.patch(`/finanzas/bandeja-proyectos/${proyectoId}/inyecciones-presupuesto/${editandoId}`, {
+          monto: Number(monto),
+          motivo: motivoCompleto
+        });
+        toast.success("Asignación actualizada correctamente.");
+      } else {
+        await api.post(`/finanzas/bandeja-proyectos/${proyectoId}/inyeccion-presupuesto`, {
+          monto: Number(monto),
+          motivo: motivoCompleto
+        });
+        toast.success("Presupuesto inyectado correctamente.");
+      }
+      cancelarEdicion();
       fetchHistorial();
       onSuccess();
     } catch (err: any) {
-      toast.error(err.response?.data?.message || "Error al inyectar presupuesto.");
+      toast.error(err.response?.data?.message || "Error al procesar presupuesto.");
     } finally {
       setIsSubmitting(false);
     }
@@ -94,6 +106,9 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
     try {
       await api.delete(`/finanzas/bandeja-proyectos/${proyectoId}/inyecciones-presupuesto/${inyeccionId}`);
       toast.success("Asignación eliminada correctamente.");
+      if (editandoId === inyeccionId) {
+        cancelarEdicion();
+      }
       fetchHistorial();
       onSuccess();
     } catch (err: any) {
@@ -101,12 +116,34 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
     }
   };
 
+  const iniciarEdicion = (h: Inyeccion) => {
+    setEditandoId(h.id);
+    setMonto(String(h.monto));
+    
+    const isManoObra = h.motivo.startsWith("[MANO_OBRA]");
+    setTipo(isManoObra ? "MANO_OBRA" : "MATERIALES");
+    
+    // Limpiar el prefijo para mostrar solo el texto limpio en el input
+    const limpio = h.motivo.replace(/^\[(MATERIALES|MANO_OBRA)\]\s*/i, '');
+    setMotivo(limpio);
+  };
+
+  const cancelarEdicion = () => {
+    setMonto("");
+    setMotivo("");
+    setTipo("MATERIALES");
+    setEditandoId(null);
+  };
+
   const total = historial.reduce((sum, h) => sum + h.monto, 0);
   const topeGasto = ventaContratada * 0.60;
   const margenLibre = Math.max(0, topeGasto - total);
   
   const nuevoMonto = Number(monto) || 0;
-  const excedeTope = (total + nuevoMonto) > topeGasto;
+  
+  // Si estamos editando, para el cálculo del tope no sumamos el monto anterior del registro
+  const montoAnteriorRegistro = editandoId ? (historial.find(h => h.id === editandoId)?.monto || 0) : 0;
+  const excedeTope = (total - montoAnteriorRegistro + nuevoMonto) > topeGasto;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -147,10 +184,41 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
             </div>
 
             <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-              <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-3">Nueva Asignación</h4>
+              <h4 className="text-[10px] uppercase font-black tracking-widest text-slate-500 mb-3">
+                {editandoId ? "Editar Asignación" : "Nueva Asignación"}
+              </h4>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-600">Monto a Inyectar (S/)</label>
+                  <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Tipo de Presupuesto</label>
+                  <div className="grid grid-cols-2 gap-2 mt-1">
+                    <button
+                      type="button"
+                      onClick={() => setTipo("MATERIALES")}
+                      className={cn(
+                        "h-8 text-[10px] font-black uppercase rounded-lg border transition-all",
+                        tipo === "MATERIALES"
+                          ? "bg-orange-50 border-orange-200 text-orange-700 shadow-sm"
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                      )}
+                    >
+                      Materiales
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTipo("MANO_OBRA")}
+                      className={cn(
+                        "h-8 text-[10px] font-black uppercase rounded-lg border transition-all",
+                        tipo === "MANO_OBRA"
+                          ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
+                          : "bg-white border-slate-200 text-slate-500 hover:bg-slate-100"
+                      )}
+                    >
+                      Mano de Obra
+                    </button>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-600">Monto (S/)</label>
                   <Input 
                     type="number" 
                     placeholder="0.00" 
@@ -166,19 +234,36 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
                   <label className="text-xs font-bold text-slate-600">Motivo / Descripción</label>
                   <Input 
                     type="text" 
-                    placeholder="Ej: Adelanto para materiales de arranque" 
+                    placeholder="Ej: Insumos de arranque" 
                     value={motivo} 
                     onChange={e => setMotivo(e.target.value)} 
                     className="mt-1"
                   />
                 </div>
-                <Button 
-                  className="w-full bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-slate-300 disabled:text-slate-500" 
-                  onClick={handleInyectar}
-                  disabled={isSubmitting || excedeTope || nuevoMonto <= 0}
-                >
-                  {isSubmitting ? 'Procesando...' : 'Asignar Fondos'}
-                </Button>
+                <div className="flex gap-2">
+                  {editandoId && (
+                    <Button
+                      variant="outline"
+                      className="flex-1 h-10 text-[10px] font-black uppercase rounded-xl border-slate-200"
+                      onClick={cancelarEdicion}
+                      type="button"
+                    >
+                      Cancelar
+                    </Button>
+                  )}
+                  <Button 
+                    className={cn(
+                      "flex-1 text-white text-[10px] font-black uppercase h-10 rounded-xl shadow-lg transition-all",
+                      editandoId 
+                        ? "bg-blue-600 hover:bg-blue-700 shadow-blue-500/10" 
+                        : "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-500/10"
+                    )}
+                    onClick={handleInyectarOrUpdate}
+                    disabled={isSubmitting || excedeTope || nuevoMonto <= 0}
+                  >
+                    {isSubmitting ? 'Procesando...' : editandoId ? 'Guardar Cambios' : 'Asignar Fondos'}
+                  </Button>
+                </div>
               </div>
             </div>
           </div>
@@ -189,7 +274,7 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
               <span className="text-xs font-bold text-emerald-600">Total: S/ {total.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
             </div>
             
-            <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
+            <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
               {loading ? (
                 <div className="text-center text-xs text-slate-400 py-4">Cargando...</div>
               ) : historial.length === 0 ? (
@@ -197,25 +282,51 @@ export default function PresupuestoDialog({ open, onOpenChange, proyectoId, codi
                   No hay fondos asignados aún.
                 </div>
               ) : (
-                historial.map(h => (
-                  <div key={h.id} className="p-3 bg-white border border-slate-100 rounded-lg shadow-sm flex gap-3 group hover:border-red-200 transition-colors">
-                    <div className="flex-1">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="font-black text-sm text-slate-800">S/ {h.monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-                        <span className="text-[9px] font-bold text-slate-400">{format(new Date(h.fecha), "dd MMM yyyy HH:mm", { locale: es })}</span>
+                historial.map(h => {
+                  const isManoObra = h.motivo.startsWith("[MANO_OBRA]");
+                  const isMateriales = h.motivo.startsWith("[MATERIALES]");
+                  const limpio = h.motivo.replace(/^\[(MATERIALES|MANO_OBRA)\]\s*/i, '');
+                  const labelTipo = isManoObra ? "Mano de Obra" : isMateriales ? "Adelanto de materiales" : "Asignación General";
+
+                  return (
+                    <div key={h.id} className="p-3 bg-white border border-slate-100 rounded-lg shadow-sm flex gap-3 group hover:border-slate-200 transition-colors">
+                      <div className="flex-1">
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-black text-sm text-slate-800">S/ {h.monto.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
+                          <span className="text-[9px] font-bold text-slate-400">{format(new Date(h.fecha), "dd MMM yyyy HH:mm", { locale: es })}</span>
+                        </div>
+                        <div className="text-[9px] font-black uppercase mb-1">
+                          <span className={cn(
+                            "px-1.5 py-0.5 rounded-sm",
+                            isManoObra ? "bg-blue-50 text-blue-700 border border-blue-100" :
+                            isMateriales ? "bg-orange-50 text-orange-700 border border-orange-100" :
+                            "bg-slate-50 text-slate-600 border border-slate-100"
+                          )}>
+                            {labelTipo}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600">{limpio}</p>
+                        <p className="text-[9px] text-slate-400 mt-1 uppercase">Por: {h.usuario}</p>
                       </div>
-                      <p className="text-xs text-slate-600">{h.motivo}</p>
-                      <p className="text-[9px] text-slate-400 mt-1 uppercase">Por: {h.usuario}</p>
+                      <div className="flex flex-col gap-1 justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => iniciarEdicion(h)}
+                          className="p-1.5 text-blue-500 hover:text-blue-700 hover:bg-blue-50 rounded-md"
+                          title="Editar asignación"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button 
+                          onClick={() => handleEliminar(h.id)}
+                          className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md"
+                          title="Eliminar asignación"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <button 
-                      onClick={() => handleEliminar(h.id)}
-                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md self-center"
-                      title="Eliminar asignación"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
