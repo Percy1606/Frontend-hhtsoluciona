@@ -58,8 +58,8 @@ export default function BandejaFinanzas() {
   const [openPresupuesto, setOpenPresupuesto] = useState(false);
   const [selectedProyecto, setSelectedProyecto] = useState<ProyectoPendiente | null>(null);
   
-  // Expanded Clients State
-  const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
+  // Expanded Client State (Single Accordion Behavior)
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
 
   // Search & Pagination States
   const [searchTerm, setSearchTerm] = useState("");
@@ -92,7 +92,7 @@ export default function BandejaFinanzas() {
   };
 
   const toggleClient = (clientId: string) => {
-    setExpandedClients((prev) => ({ ...prev, [clientId]: !prev[clientId] }));
+    setExpandedClientId((prev) => (prev === clientId ? null : clientId));
   };
 
   if (loading) return <div>Cargando...</div>;
@@ -153,7 +153,7 @@ export default function BandejaFinanzas() {
           </div>
         ) : (
           paginatedClients.map((clientData) => {
-            const isExpanded = expandedClients[clientData.cliente.id];
+            const isExpanded = expandedClientId === clientData.cliente.id;
             
             return (
               <div key={clientData.cliente.id} className="border-b border-slate-200 last:border-0">

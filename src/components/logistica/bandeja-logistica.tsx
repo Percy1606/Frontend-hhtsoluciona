@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle, ChevronDown, ChevronRight, Building2, Wallet } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -50,6 +50,9 @@ interface ProyectoPendienteLogistica {
 export default function BandejaLogistica() {
   const [proyectos, setProyectos] = useState<ProyectoPendienteLogistica[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Expanded Client State (Single Accordion Behavior)
+  const [expandedClientId, setExpandedClientId] = useState<string | null>(null);
 
   // Search & Pagination States
   const [searchTerm, setSearchTerm] = useState("");
@@ -81,6 +84,10 @@ export default function BandejaLogistica() {
     }
   };
 
+  const toggleClient = (clientId: string) => {
+    setExpandedClientId((prev) => (prev === clientId ? null : clientId));
+  };
+
   if (loading) return <div>Cargando...</div>;
 
   if (proyectos.length === 0) {
@@ -91,7 +98,7 @@ export default function BandejaLogistica() {
     );
   }
 
-  // Filter & Pagination logic
+  // Filter & Grouping logic
   const filteredProyectos = proyectos.filter((p) => {
     const searchLower = searchTerm.toLowerCase();
     return (
@@ -101,9 +108,24 @@ export default function BandejaLogistica() {
     );
   });
 
-  const totalPages = Math.ceil(filteredProyectos.length / itemsPerPage);
+  const groupedProyectos = filteredProyectos.reduce((acc, p) => {
+    if (!acc[p.cliente.id]) {
+      acc[p.cliente.id] = {
+        cliente: p.cliente,
+        proyectos: [],
+        totalPptoEgresos: 0,
+      };
+    }
+    acc[p.cliente.id].proyectos.push(p);
+    acc[p.cliente.id].totalPptoEgresos += Number(p.costoPresupuestado || 0);
+    return acc;
+  }, {} as Record<string, { cliente: any; proyectos: ProyectoPendienteLogistica[]; totalPptoEgresos: number }>);
+
+  const clientsList = Object.values(groupedProyectos).sort((a, b) => a.cliente.empresa.localeCompare(b.cliente.empresa));
+
+  const totalPages = Math.ceil(clientsList.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedProyectos = filteredProyectos.slice(startIndex, startIndex + itemsPerPage);
+  const paginatedClients = clientsList.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="bg-white rounded-lg border shadow-sm">
@@ -119,97 +141,144 @@ export default function BandejaLogistica() {
           }}
         />
       </div>
-      <Table className="min-w-full border-separate border-spacing-0">
-        <TableHeader className="bg-slate-50">
-          <TableRow className="border-b border-border/80">
-            <TableHead className="w-[30px] font-black text-primary text-[9px] uppercase text-center p-2">N°</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Proyecto</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Cliente</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">OS / Financiero</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Ppto. Egresos</TableHead>
-            <TableHead className="font-black text-primary text-[9px] uppercase p-2">Estado Logística</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {paginatedProyectos.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="h-32 text-center text-slate-400 font-bold italic text-xs">
-                No hay proyectos que coincidan con la búsqueda.
-              </TableCell>
-            </TableRow>
-          ) : (
-            paginatedProyectos.map((p, index) => {
-              const saldoDisponible = Number(p.costoPresupuestado) || 0;
-              
-              return (
-                <TableRow key={p.id} className="hover:bg-primary/5 transition-colors group">
-                  <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-300 border-dashed p-2">
-                    {startIndex + index + 1}
-                  </TableCell>
-                  <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="font-black text-[11px] text-primary uppercase leading-tight">{p.codigo}</div>
-                    <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
-                      {p.nombre?.replace(/^proyecto:\s*/i, '')}
+
+      <div className="flex flex-col">
+        {paginatedClients.length === 0 ? (
+          <div className="p-8 text-center text-slate-400 font-bold italic text-xs">
+            No hay clientes o proyectos que coincidan con la búsqueda.
+          </div>
+        ) : (
+          paginatedClients.map((clientData) => {
+            const isExpanded = expandedClientId === clientData.cliente.id;
+            
+            return (
+              <div key={clientData.cliente.id} className="border-b border-slate-200 last:border-0">
+                {/* Accordion Client Header */}
+                <div 
+                  className={cn(
+                    "flex items-center justify-between p-4 cursor-pointer transition-colors",
+                    isExpanded ? "bg-slate-50" : "hover:bg-slate-50"
+                  )}
+                  onClick={() => toggleClient(clientData.cliente.id)}
+                >
+                  <div className="flex items-center gap-3 w-1/3">
+                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-100 text-blue-700">
+                      <Building2 className="w-4 h-4" />
                     </div>
-                    <div className="text-[8px] font-black text-slate-400 mt-1 uppercase">
-                      Creado: {format(new Date(p.fechaCreacion), "dd MMM yyyy", { locale: es })}
+                    <div>
+                      <div className="font-black text-xs text-slate-800 uppercase">{clientData.cliente.empresa}</div>
+                      <div className="text-[10px] font-bold text-slate-500">RUC: {clientData.cliente.ruc}</div>
                     </div>
-                  </TableCell>
-                  <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cliente.empresa}</div>
-                    <div className="text-[9px] font-bold text-slate-400 mt-0.5">Cotización: {p.cotizacionOrigen?.codigo}</div>
-                  </TableCell>
-                  <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="flex flex-col gap-1">
-                      {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
-                        <Badge key={os.id} variant="outline" className="w-fit text-[8px] font-black uppercase px-1 py-0 h-4 border-slate-200 bg-slate-50/50">
-                          {os.codigo}
-                        </Badge>
-                      ))}
-                      <div className="flex items-center gap-1 mt-1 text-[9px] text-green-600 font-black uppercase">
-                        <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" /> Compras Autorizadas
+                  </div>
+
+                  <div className="flex flex-1 justify-around items-center">
+                    <div className="text-center">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-1 flex items-center justify-center gap-1">
+                        <Wallet className="w-3 h-3" /> Ppto. Egresos Total
+                      </div>
+                      <div className="font-black text-xs text-orange-600">
+                        S/ {clientData.totalPptoEgresos.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <div className="text-[11px] font-black text-slate-700 font-mono">
-                      S/ {saldoDisponible.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                    </div>
-                  </TableCell>
-                  <TableCell className="border-b border-slate-300 border-dashed p-2">
-                    <Select
-                      value={p.estadoLogistica || ""}
-                      onValueChange={(val) => handleUpdateEstado(p.id, val)}
-                    >
-                      <SelectTrigger className={cn(
-                        "h-8 text-[9px] font-black uppercase rounded-lg shadow-sm border-slate-200 w-[145px]",
-                        (!p.estadoLogistica || p.estadoLogistica === 'PendienteRevision') ? 'text-amber-600 bg-amber-50 border-amber-100' :
-                        p.estadoLogistica === 'EnRevision' ? 'text-blue-600 bg-blue-50 border-blue-100' :
-                        p.estadoLogistica === 'Observado' ? 'text-red-600 bg-red-50 border-red-100' :
-                        'text-green-600 bg-green-50 border-green-100'
-                      )}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white border-slate-200">
-                        <SelectItem value="PendienteRevision" className="font-black text-[9px] uppercase text-amber-600">Pendiente</SelectItem>
-                        <SelectItem value="EnRevision" className="font-black text-[9px] uppercase text-blue-600">En Revisión</SelectItem>
-                        <SelectItem value="Observado" className="font-black text-[9px] uppercase text-red-600">Observado</SelectItem>
-                        <SelectItem value="Aprobado" className="font-black text-[9px] uppercase text-green-600">Aprobado</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                </TableRow>
-              );
-            })
-          )}
-        </TableBody>
-      </Table>
+                  </div>
+
+                  <div className="pl-4">
+                    {isExpanded ? <ChevronDown className="w-5 h-5 text-slate-400" /> : <ChevronRight className="w-5 h-5 text-slate-400" />}
+                  </div>
+                </div>
+
+                {/* Accordion Client Content (Projects Table) */}
+                {isExpanded && (
+                  <div className="bg-slate-50/50 p-4 pt-0 border-t border-slate-100 shadow-inner">
+                    <Table className="min-w-full border-separate border-spacing-0 bg-white rounded-lg border border-slate-200 mt-3 overflow-hidden">
+                      <TableHeader className="bg-slate-100/80">
+                        <TableRow className="border-b border-border/80">
+                          <TableHead className="w-[30px] font-black text-primary text-[9px] uppercase text-center p-2">N°</TableHead>
+                          <TableHead className="font-black text-primary text-[9px] uppercase p-2">Orden / Proyecto</TableHead>
+                          <TableHead className="font-black text-primary text-[9px] uppercase p-2">OS / Financiero</TableHead>
+                          <TableHead className="font-black text-primary text-[9px] uppercase p-2">Ppto. Egresos</TableHead>
+                          <TableHead className="font-black text-primary text-[9px] uppercase p-2">Estado Logística</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {clientData.proyectos.map((p, index) => {
+                          const saldoDisponible = Number(p.costoPresupuestado) || 0;
+                          
+                          return (
+                            <TableRow key={p.id} className="hover:bg-primary/5 transition-colors group">
+                              <TableCell className="text-center font-bold text-[10px] text-slate-400 border-b border-slate-200 border-dashed p-2">
+                                {index + 1}
+                              </TableCell>
+                              <TableCell className="border-b border-slate-200 border-dashed p-2">
+                                <div className="font-black text-[11px] text-primary uppercase leading-tight">
+                                  {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo || p.codigo}
+                                </div>
+                                <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[250px] uppercase truncate" title={p.nombre}>
+                                  {p.nombre?.replace(/^proyecto:\s*/i, '')}
+                                </div>
+                                <div className="flex gap-2 mt-1 text-[8px] font-black text-slate-400 uppercase">
+                                  <span>Proy: {p.codigo}</span>
+                                  <span>•</span>
+                                  <span>Creado: {format(new Date(p.fechaCreacion), "dd/MM/yy", { locale: es })}</span>
+                                </div>
+                              </TableCell>
+                              <TableCell className="border-b border-slate-200 border-dashed p-2">
+                                <div className="flex flex-col gap-1">
+                                  {p.cotizacionOrigen?.ordenesDeServicio?.map(os => (
+                                    <Badge key={os.id} variant="outline" className="w-fit text-[8px] font-black uppercase px-1 py-0 h-4 border-slate-200 bg-slate-50/50">
+                                      {os.codigo}
+                                    </Badge>
+                                  ))}
+                                  <div className="flex items-center gap-1 mt-1 text-[9px] text-green-600 font-black uppercase">
+                                    <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" /> Compras Autorizadas
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="border-b border-slate-200 border-dashed p-2">
+                                <div className="text-[11px] font-black text-slate-700 font-mono">
+                                  S/ {saldoDisponible.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                </div>
+                              </TableCell>
+                              <TableCell className="border-b border-slate-200 border-dashed p-2">
+                                <Select
+                                  value={p.estadoLogistica || ""}
+                                  onValueChange={(val) => handleUpdateEstado(p.id, val)}
+                                >
+                                  <SelectTrigger className={cn(
+                                    "h-8 text-[9px] font-black uppercase rounded-lg shadow-sm border-slate-200 w-[145px]",
+                                    (!p.estadoLogistica || p.estadoLogistica === 'PendienteRevision') ? 'text-amber-600 bg-amber-50 border-amber-100' :
+                                    p.estadoLogistica === 'EnRevision' ? 'text-blue-600 bg-blue-50 border-blue-100' :
+                                    p.estadoLogistica === 'Observado' ? 'text-red-600 bg-red-50 border-red-100' :
+                                    'text-green-600 bg-green-50 border-green-100'
+                                  )}>
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white border-slate-200">
+                                    <SelectItem value="PendienteRevision" className="font-black text-[9px] uppercase text-amber-600">Pendiente</SelectItem>
+                                    <SelectItem value="EnRevision" className="font-black text-[9px] uppercase text-blue-600">En Revisión</SelectItem>
+                                    <SelectItem value="Observado" className="font-black text-[9px] uppercase text-red-600">Observado</SelectItem>
+                                    <SelectItem value="Aprobado" className="font-black text-[9px] uppercase text-green-600">Aprobado</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
 
       {/* Pagination Controls */}
       {totalPages > 1 && (
         <div className="p-4 border-t border-slate-200 flex justify-between items-center">
           <p className="text-xs text-slate-500 font-medium">
-            Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, filteredProyectos.length)} de {filteredProyectos.length} proyectos
+            Mostrando {startIndex + 1} a {Math.min(startIndex + itemsPerPage, clientsList.length)} de {clientsList.length} clientes
           </p>
           <div className="flex gap-2">
             <Button
