@@ -31,6 +31,7 @@ const getEstadoBadge = (estado: string) => {
 };
 
 const getNombreMes = (mesNum: string) => {
+  if (mesNum === "all") return "TODOS";
   const m = parseInt(mesNum);
   const meses = [
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
@@ -93,80 +94,102 @@ export default function ImpuestosPage() {
             Declaración de Impuestos
           </h1>
           <p className="text-slate-500 text-sm font-medium mt-1">
-            Cálculo de IGV y Renta automatizado con SUNAT para <span className="text-indigo-600 font-bold uppercase">{getNombreMes(mes)} {anio}</span>.
+            Cálculo de IGV y Renta automatizado con SUNAT para{" "}
+            {mes === "all" && anio === "all" ? (
+              <span className="text-indigo-600 font-black uppercase">TODAS LAS FECHAS (HISTÓRICO)</span>
+            ) : mes === "all" ? (
+              <span className="text-indigo-600 font-black uppercase">TODOS LOS MESES DE {anio}</span>
+            ) : anio === "all" ? (
+              <span className="text-indigo-600 font-black uppercase">{getNombreMes(mes)} (TODOS LOS AÑOS)</span>
+            ) : (
+              <span className="text-indigo-600 font-bold uppercase">{getNombreMes(mes)} {anio}</span>
+            )}
           </p>
         </div>
         
-        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
-          <Select value={mes} onValueChange={(v) => setMes(v || "1")}>
-            <SelectTrigger className="w-[140px] h-10 border-none bg-slate-50 font-bold focus:ring-0">
-              <SelectValue placeholder="Mes" />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                <SelectItem key={m} value={m.toString()} className="font-bold">
-                  {new Date(2000, m - 1).toLocaleString('es-PE', { month: 'long' }).toUpperCase()}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-end gap-3 bg-white p-3 rounded-2xl shadow-sm border border-slate-200">
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider pl-1">Mes</span>
+            <Select value={mes} onValueChange={(v) => setMes(v || "all")}>
+              <SelectTrigger className="w-[140px] h-10 bg-slate-50 font-bold border-none focus:ring-0">
+                <SelectValue placeholder="Mes" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="font-bold text-indigo-600">VER TODOS</SelectItem>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                  <SelectItem key={m} value={m.toString()} className="font-bold">
+                    {new Date(2000, m - 1).toLocaleString('es-PE', { month: 'long' }).toUpperCase()}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Select value={anio} onValueChange={(v) => setAnio(v || "2026")}>
-            <SelectTrigger className="w-[100px] h-10 border-none bg-slate-50 font-bold focus:ring-0">
-              <SelectValue placeholder="Año" />
-            </SelectTrigger>
-            <SelectContent>
-              {[2024, 2025, 2026, 2027].map(a => (
-                <SelectItem key={a} value={a.toString()} className="font-bold">{a}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider pl-1">Año</span>
+            <Select value={anio} onValueChange={(v) => setAnio(v || "all")}>
+              <SelectTrigger className="w-[100px] h-10 bg-slate-50 font-bold border-none focus:ring-0">
+                <SelectValue placeholder="Año" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all" className="font-bold text-indigo-600">VER TODOS</SelectItem>
+                {[2024, 2025, 2026, 2027].map(a => (
+                  <SelectItem key={a} value={a.toString()} className="font-bold">{a}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => {
-              const d = new Date();
-              setMes((d.getMonth() + 1).toString());
-              setAnio(d.getFullYear().toString());
-              toast.success("Filtros restablecidos al mes actual");
-            }}
-            title="Restablecer filtros al mes actual"
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider pl-1">Histórico</span>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setMes("all");
+                setAnio("all");
+                toast.success("Mostrando todas las fechas (Histórico completo)");
+              }}
+              title="Mostrar todas las fechas sin filtro"
+              className="h-10 px-4 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 hover:text-indigo-800 font-black flex items-center gap-1.5 transition-all text-[11px] uppercase tracking-wider"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Sin Filtro
+            </Button>
+          </div>
 
-          <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
-            <DialogTrigger className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition-colors">
-              <Settings2 className="w-4 h-4 text-slate-600" />
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] bg-white">
-              <DialogHeader>
-                <DialogTitle className="font-black text-xl">Configuración de Renta</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="porcentaje" className="font-bold text-xs uppercase text-slate-500">Porcentaje de Impuesto a la Renta (%)</Label>
-                  <Input
-                    id="porcentaje"
-                    type="number"
-                    step="0.01"
-                    value={newPorcentaje}
-                    onChange={(e) => setNewPorcentaje(e.target.value)}
-                    className="font-bold h-12 text-lg"
-                  />
+          <div className="flex flex-col gap-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider pl-1">Ajustes</span>
+            <Dialog open={isConfigOpen} onOpenChange={setIsConfigOpen}>
+              <DialogTrigger className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white hover:bg-slate-100 transition-colors">
+                <Settings2 className="w-4 h-4 text-slate-600" />
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px] bg-white">
+                <DialogHeader>
+                  <DialogTitle className="font-black text-xl">Configuración de Renta</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="porcentaje" className="font-bold text-xs uppercase text-slate-500">Porcentaje de Impuesto a la Renta (%)</Label>
+                    <Input
+                      id="porcentaje"
+                      type="number"
+                      step="0.01"
+                      value={newPorcentaje}
+                      onChange={(e) => setNewPorcentaje(e.target.value)}
+                      className="font-bold h-12 text-lg"
+                    />
+                  </div>
                 </div>
-              </div>
-              <div className="flex justify-end gap-3">
-                <Button variant="ghost" onClick={() => setIsConfigOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSaveConfig} disabled={isSavingConfig} className="bg-indigo-600 hover:bg-indigo-700 text-white">
-                  {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Guardar Cambios
-                </Button>
-              </div>
-            </DialogContent>
-          </Dialog>
+                <div className="flex justify-end gap-3">
+                  <Button variant="ghost" onClick={() => setIsConfigOpen(false)}>Cancelar</Button>
+                  <Button onClick={handleSaveConfig} disabled={isSavingConfig} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+                    {isSavingConfig ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                    Guardar Cambios
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
       </div>
 
