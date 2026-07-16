@@ -252,20 +252,23 @@ export default function DocumentacionLogisticaPage() {
                           />
                         </div>
                         <div className="min-w-0 flex-1 pr-2">
-                          <h2 
-                            className="text-[13px] sm:text-sm font-black uppercase tracking-tight text-slate-800 truncate"
-                            title={proyecto.nombre}
-                          >
-                            {proyecto.nombre}
-                          </h2>
+                          {(() => {
+                            const cleanName = proyecto.nombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || proyecto.codigo;
+                            const combined = cleanName + (proyecto.codigo && proyecto.codigo !== proyecto.nombre ? ` - ${proyecto.codigo}` : '');
+                            return (
+                              <h2 
+                                className={cn("font-black uppercase tracking-tight text-slate-800 break-words whitespace-normal", combined.length > 42 ? "text-[11px] leading-snug" : "text-[13px] sm:text-sm leading-snug")}
+                                title={combined}
+                              >
+                                {combined}
+                              </h2>
+                            );
+                          })()}
                           <p 
-                            className="text-[10px] font-bold text-slate-500 mt-0.5 truncate"
+                            className="text-[10px] font-bold text-slate-500 mt-0.5 break-words whitespace-normal"
                             title={proyecto.cliente?.empresa || proyecto.cliente?.nombre || "Sin cliente"}
                           >
                             {proyecto.cliente?.empresa || proyecto.cliente?.nombre || "Sin cliente"}
-                          </p>
-                          <p className="text-[10px] font-semibold text-slate-400 mt-0.5 font-mono">
-                            {proyecto.codigo}
                           </p>
                         </div>
                       </div>

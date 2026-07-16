@@ -598,15 +598,18 @@ export default function PersonalPage() {
                   <div className={cn("mt-0.5 p-1 rounded-md shrink-0 transition-all duration-200", isOpen ? "bg-primary shadow-md shadow-primary/20 text-white" : "bg-primary/10 text-primary")}>
                     <HardHat className="w-3 h-3" />
                   </div>
-                  <div className="min-w-0">
-                    <h3 className="font-black text-xs uppercase text-primary leading-tight truncate" title={grupo.proyectoCodigo}>
-                      {grupo.proyectoCodigo}
-                    </h3>
-                    <p className="font-bold text-[10px] text-slate-600 truncate mt-0.5" title={grupo.proyectoNombre}>
-                      {grupo.proyectoNombre}
-                    </p>
+                  <div className="min-w-0 flex-1 pr-2">
+                    {(() => {
+                      const cleanName = grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || grupo.proyectoCodigo;
+                      const combined = cleanName + (grupo.proyectoCodigo && grupo.proyectoCodigo !== grupo.proyectoNombre ? ` - ${grupo.proyectoCodigo}` : '');
+                      return (
+                        <h3 className={cn("font-black uppercase tracking-tight text-primary break-words whitespace-normal", combined.length > 42 ? "text-[11px] leading-snug" : "text-xs leading-snug")} title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
+                          {combined}
+                        </h3>
+                      );
+                    })()}
                     {grupo.clienteNombre && (
-                      <p className="font-black text-[9px] text-blue-600 truncate mt-0.5" title={grupo.clienteNombre}>
+                      <p className="font-bold text-[10px] text-slate-500 break-words whitespace-normal mt-0.5" title={grupo.clienteNombre}>
                         {grupo.clienteNombre}
                       </p>
                     )}

@@ -94,6 +94,7 @@ export default function OrdenesCompraPage() {
   // Estado local para paginación estable
   const [currentPage, setCurrentPage] = useState(1);
   const [isOrdenModalOpen, setIsOrdenModalOpen] = useState(false);
+  const [prefilledProyectoId, setPrefilledProyectoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
   const [dateFrom, setDateFrom] = useState("");
@@ -357,17 +358,37 @@ export default function OrdenesCompraPage() {
                           <FolderKanban className={cn("w-5 h-5 transition-colors duration-200", isOpen ? "text-white" : "text-primary")} />
                         </div>
                         <div className="min-w-0 flex-1 pr-2">
-                          <h2 className="text-[13px] sm:text-sm font-black uppercase tracking-tight text-slate-800 truncate" title={`${grupo.proyectoCodigo} - ${grupo.proyectoNombre}`}>
-                            {grupo.proyectoCodigo}
-                            {grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() ? ` - ${grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim()}` : ''}
-                          </h2>
-                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 truncate" title={grupo.clienteNombre}>
+                          {(() => {
+                            const cleanName = grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || grupo.proyectoCodigo;
+                            const combined = cleanName + (grupo.proyectoCodigo && grupo.proyectoCodigo !== grupo.proyectoNombre ? ` - ${grupo.proyectoCodigo}` : '');
+                            return (
+                              <h2 className={cn("font-black uppercase tracking-tight text-slate-800 break-words whitespace-normal", combined.length > 42 ? "text-[11px] leading-snug" : "text-[13px] sm:text-sm leading-snug")} title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
+                                {combined}
+                              </h2>
+                            );
+                          })()}
+                          <p className="text-[10px] font-bold text-slate-500 mt-0.5 break-words whitespace-normal" title={grupo.clienteNombre}>
                             {grupo.clienteNombre}
                           </p>
                         </div>
                       </div>
-                      <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary/10 text-primary" : "text-slate-300")}>
-                        {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrefilledProyectoId(grupo.proyectoId);
+                            setEditingOrden(null);
+                            setIsOrdenModalOpen(true);
+                          }}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-sm border border-transparent hover:border-emerald-100"
+                          title="Nueva Orden para este Proyecto"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                        <div className={cn("w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200", isOpen ? "bg-primary/10 text-primary" : "text-slate-300")}>
+                          {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        </div>
                       </div>
                     </div>
 
@@ -476,8 +497,10 @@ export default function OrdenesCompraPage() {
         onClose={() => {
             setIsOrdenModalOpen(false);
             setEditingOrden(null);
+            setPrefilledProyectoId(null);
         }} 
         initialData={editingOrden}
+        defaultProyectoId={prefilledProyectoId || undefined}
       />
       
       <GenericSecureDeleteModal

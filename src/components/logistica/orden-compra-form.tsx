@@ -79,9 +79,10 @@ interface OrdenCompraFormProps {
   isOpen: boolean;
   onClose: () => void;
   initialData?: any;
+  defaultProyectoId?: string;
 }
 
-export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFormProps) {
+export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoId }: OrdenCompraFormProps) {
   const { createOrden, updateOrden, proveedores, insumos, loading: storeLoading, totalOrdenes } = useLogisticaStore();
   const { proyectos } = useOperacionesStore();
   const globalQuotes = useCRMStore(state => state.quotes);
@@ -137,7 +138,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
     defaultValues: {
       codigo: "",
       proveedorId: "",
-      proyectoId: "none",
+      proyectoId: defaultProyectoId || "none",
       condicionPago: "CONTADO",
       fechaEntrega: "",
       estado: "PENDIENTE",
@@ -172,7 +173,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData }: OrdenCompraFor
         form.reset({
           codigo: `OC-${String((totalOrdenes || 0) + 1).padStart(3, '0')}`,
           proveedorId: "",
-          proyectoId: "none",
+          proyectoId: defaultProyectoId || "none",
           estado: "PENDIENTE",
           condicionPago: "CONTADO",
           fechaEntrega: "",
