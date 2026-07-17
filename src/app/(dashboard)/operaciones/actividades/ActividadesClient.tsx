@@ -33,6 +33,7 @@ import {
   RefreshCw,
   Layers,
   ArrowRight,
+  ListTodo,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -404,12 +405,12 @@ export default function ActividadesClient() {
         <div>
           <div className="flex items-center gap-2.5">
             <div className="bg-primary/10 p-1.5 rounded-md">
-              <ClipboardList className="w-4 h-4 text-primary" />
+              <ListTodo className="w-4 h-4 text-primary" />
             </div>
-            <h1 className="text-base font-bold text-primary tracking-tight">Gestión de Actividades</h1>
+            <h1 className="text-base font-bold text-primary tracking-tight">Gestión de Actividades / Tareas</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-medium uppercase tracking-wide">
-            Vista jerárquica: proyecto → actividades
+            Vista jerárquica: proyecto → actividades / tareas
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto mt-2 md:mt-0">
@@ -455,7 +456,7 @@ export default function ActividadesClient() {
             className="h-8 gap-1.5 font-semibold uppercase text-[9px] tracking-wide bg-primary hover:bg-primary/90 shadow-sm shadow-primary/20 rounded-md px-4"
             onClick={() => handleNewActivity()}
           >
-            <Plus className="w-3 h-3" /> Nueva Actividad
+            <Plus className="w-3 h-3" /> Nueva Actividad / Tarea
           </Button>
         </div>
       </div>
@@ -463,7 +464,7 @@ export default function ActividadesClient() {
       {/* Stats globales (compactados) */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatsCard 
-          label="Total" value={stats.total} icon={<ClipboardList className="w-4 h-4" />} 
+          label="Total" value={stats.total} icon={<ListTodo className="w-4 h-4" />} 
           containerBg="bg-primary/5" iconBg="bg-primary/10" iconColor="text-primary" titleColor="text-primary/70" textColor="text-primary" 
         />
         <StatsCard 
@@ -486,7 +487,7 @@ export default function ActividadesClient() {
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
             <Input
-              placeholder="Buscar actividad, proyecto o código..."
+              placeholder="Buscar actividad/tarea, proyecto o código..."
               className="pl-9 h-8 border-slate-200 text-xs font-medium focus:bg-white shadow-none rounded-md"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
