@@ -624,8 +624,22 @@ export default function DashboardPage() {
   }, [gastos, startDate, endDate]);
 
   const { igvVentas, igvCompras } = useMemo(() => {
-    const ventas = filteredFacturas.filter((f: any) => f.estado !== 'ANULADA').reduce((acc: number, f: any) => acc + (Number(f.montoTotal || 0) / 1.18) * 0.18, 0);
-    const compras = filteredGastos.filter((g: any) => g.estado !== 'ANULADA' && g.estado !== 'RECHAZADO' && g.tipoDocumento === 'FACTURA').reduce((acc: number, g: any) => acc + (Number(g.montoTotal || 0) / 1.18) * 0.18, 0);
+    const ventas = filteredFacturas.filter((f: any) => f.estado !== 'ANULADA').reduce((acc: number, f: any) => {
+      let igv = Number(f.montoIgv || 0);
+      if (igv === 0 && Number(f.montoTotal) > 0) {
+        const sub = Math.round((Number(f.montoTotal) / 1.18) * 100) / 100;
+        igv = Math.round((Number(f.montoTotal) - sub) * 100) / 100;
+      }
+      return acc + igv;
+    }, 0);
+    const compras = filteredGastos.filter((g: any) => g.estado !== 'ANULADO' && g.estado !== 'RECHAZADO' && (g.tipoComprobante === 'FACTURA' || g.tipoDocumento === 'FACTURA') && (g.aplicaImpuestos === true || g.aplicaImpuestos === 1 || Number(g.montoIgv) > 0)).reduce((acc: number, g: any) => {
+      let igv = Number(g.montoIgv || 0);
+      if (igv === 0 && Number(g.montoTotal) > 0) {
+        const sub = Math.round((Number(g.montoTotal) / 1.18) * 100) / 100;
+        igv = Math.round((Number(g.montoTotal) - sub) * 100) / 100;
+      }
+      return acc + igv;
+    }, 0);
     return { igvVentas: ventas, igvCompras: compras };
   }, [filteredFacturas, filteredGastos]);
 

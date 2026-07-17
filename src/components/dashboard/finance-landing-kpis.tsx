@@ -66,7 +66,8 @@ export function FinanceLandingKPIs({ startDate, endDate }: FinanceLandingKPIsPro
     return new Intl.NumberFormat('es-PE', { 
       style: 'currency', 
       currency,
-      maximumFractionDigits: 0 
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2 
     }).format(val);
   };
 
