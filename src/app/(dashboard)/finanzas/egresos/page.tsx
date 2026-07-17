@@ -485,11 +485,11 @@ export default function EgresosPage() {
                     <div className="flex items-center gap-2 mt-3 flex-wrap">
                       <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Ejecutado/Aprobado">
                         <CheckCircle2 className="w-3 h-3 text-green-500" />
-                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalAprobado || 0).toFixed(2)}</span>
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalAprobado || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </span>
                       <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Total Pendiente">
                         <Clock className="w-3 h-3 text-orange-400" />
-                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalPendiente || 0).toFixed(2)}</span>
+                        <span className="text-[9px] font-bold text-slate-600">S/ {Number(grupo.totalPendiente || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                       </span>
                       <span className="flex items-center gap-1 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-200" title="Cant. Gastos">
                         <TrendingDown className="w-3 h-3 text-slate-400" />
@@ -566,7 +566,7 @@ export default function EgresosPage() {
                                 </span>
                             )}
                           </div>
-                          <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toFixed(2)}</span>
+                          <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                         </div>
                       </div>
                     ))}

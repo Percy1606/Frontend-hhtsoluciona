@@ -195,7 +195,9 @@ export function FinanceLandingKPIs({ startDate, endDate }: FinanceLandingKPIsPro
               <div className="flex justify-between items-center text-[10px]">
                 <div>
                   <span className="font-bold text-slate-500 uppercase block">Utilidad Facturada:</span>
-                  <span className="text-[8px] text-slate-400 font-medium lowercase italic leading-none">(monto facturado - gastos totales)</span>
+                  <span className="text-[8px] text-slate-400 font-bold lowercase leading-none">
+                    ({formatCurrency(kpis.totalFacturadoPeriodo ?? 0)} - {formatCurrency(kpis.totalGastosPeriodo ?? 0)})
+                  </span>
                 </div>
                 <span className={cn(
                   "font-black text-sm",
@@ -209,7 +211,9 @@ export function FinanceLandingKPIs({ startDate, endDate }: FinanceLandingKPIsPro
               <div className="flex justify-between items-center text-[10px] pt-1">
                 <div>
                   <span className="font-bold text-slate-500 uppercase block">Utilidad Recaudada:</span>
-                  <span className="text-[8px] text-slate-400 font-medium lowercase italic leading-none">(cobrado real - pagado real)</span>
+                  <span className="text-[8px] text-slate-400 font-bold lowercase leading-none">
+                    ({formatCurrency(kpis.totalInflowsPeriodo ?? 0)} - {formatCurrency(kpis.totalOutflowsPeriodo ?? 0)})
+                  </span>
                 </div>
                 <span className={cn(
                   "font-black text-sm",
