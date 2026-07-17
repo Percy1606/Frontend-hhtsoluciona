@@ -620,7 +620,7 @@ export default function ProyectosPage() {
                 <TableRow>
                   <TableHead className="font-black text-primary uppercase text-[10px] py-3 pl-6 w-[50px]">Item</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] py-3">Orden de Servicio</TableHead>
-                  <TableHead className="font-black text-primary uppercase text-[10px]">Cliente / Nombre</TableHead>
+                  <TableHead className="font-black text-primary uppercase text-[10px]">Proyecto / Cliente</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-center">Líder</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-center">Avance</TableHead>
                   <TableHead className="font-black text-primary uppercase text-[10px] text-right">Estado</TableHead>
@@ -632,14 +632,17 @@ export default function ProyectosPage() {
                   <TableRow key={proyecto.id} className="hover:bg-slate-50/50 transition-colors group">
                     <TableCell className="font-bold text-xs text-slate-400 pl-6">{index + 1}</TableCell>
                     <TableCell className="font-black text-[13px] text-primary">{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-[320px] whitespace-normal break-words">
                       <div className="flex flex-col">
-                        <span className="text-[11px] font-black uppercase text-slate-700 mb-0.5">
-                            {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
-                        </span>
-                        <p className="font-black text-[10px] text-slate-500 transition-colors uppercase truncate max-w-[280px]">
+                        <button 
+                          onClick={() => handleOpenDetail(proyecto)} 
+                          className="text-left font-black text-xs text-slate-800 uppercase leading-snug hover:text-primary hover:underline whitespace-normal break-words"
+                        >
                           {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
-                        </p>
+                        </button>
+                        <span className="text-[9.5px] font-bold text-slate-400 uppercase mt-0.5">
+                          {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                        </span>
                       </div>
                     </TableCell>
                     <TableCell>
