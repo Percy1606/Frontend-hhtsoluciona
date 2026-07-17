@@ -191,14 +191,31 @@ export function FinanceLandingKPIs({ startDate, endDate }: FinanceLandingKPIsPro
             </h3>
 
             <div className="space-y-4">
-              {/* Utilidad */}
+              {/* Utilidad Facturada (Devengada) */}
               <div className="flex justify-between items-center text-[10px]">
-                <span className="font-bold text-slate-500 uppercase">Utilidad del Periodo:</span>
+                <div>
+                  <span className="font-bold text-slate-500 uppercase block">Utilidad Facturada:</span>
+                  <span className="text-[8px] text-slate-400 font-medium lowercase italic leading-none">(monto facturado - gastos totales)</span>
+                </div>
                 <span className={cn(
                   "font-black text-sm",
-                  kpis.utilidadAcumuladaMes >= 0 ? "text-emerald-600" : "text-rose-600"
+                  kpis.utilidadAcumuladaMes >= 0 ? "text-indigo-600" : "text-rose-600"
                 )}>
                   {formatCurrency(kpis.utilidadAcumuladaMes, "PEN")}
+                </span>
+              </div>
+
+              {/* Utilidad Real (Caja/Recaudada) */}
+              <div className="flex justify-between items-center text-[10px] pt-1">
+                <div>
+                  <span className="font-bold text-slate-500 uppercase block">Utilidad Recaudada:</span>
+                  <span className="text-[8px] text-slate-400 font-medium lowercase italic leading-none">(cobrado real - pagado real)</span>
+                </div>
+                <span className={cn(
+                  "font-black text-sm",
+                  (kpis.utilidadRealMes ?? 0) >= 0 ? "text-emerald-600" : "text-rose-600"
+                )}>
+                  {formatCurrency(kpis.utilidadRealMes ?? 0, "PEN")}
                 </span>
               </div>
 
