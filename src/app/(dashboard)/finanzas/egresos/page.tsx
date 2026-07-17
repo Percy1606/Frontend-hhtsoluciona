@@ -73,6 +73,7 @@ export default function EgresosPage() {
 
   const [editingGasto, setEditingGasto] = useState<Gasto | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Record<string, boolean>>({});
 
   const [cajas, setCajas] = useState<any[]>([]);
   const [approveModalOpen, setApproveModalOpen] = useState(false);
@@ -501,75 +502,195 @@ export default function EgresosPage() {
 
                 {isOpen && (
                   <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
-                    {grupo.gastos.map((g, idx) => (
-                      <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
-                        <div className="flex items-start justify-between mb-1.5">
-                          <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
-                            {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
-                          </span>
-                          <div className="flex gap-1 shrink-0 ml-2">
-                            {g.comprobanteUrl && (
-                                <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Adjunto">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
-                                        <ExternalLink className="w-3 h-3" />
-                                    </Button>
-                                </a>
-                            )}
-                            {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
-                                <Button variant="ghost" size="icon" onClick={() => openApproveModal(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
-                                    <CheckCircle className="w-3 h-3" />
-                                </Button>
-                            )}
-                            {(g.estado !== 'APROBADO' && g.estado !== 'PAGADO') && (
-                              <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
-                                <Edit2 className="w-3 h-3" />
-                              </Button>
-                            )}
-                            <Button variant="ghost" size="icon" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
-                              <Trash2 className="w-3 h-3" />
-                            </Button>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between mt-1">
-                          <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={g.proveedor?.razonSocial}>
-                            {g.proveedor?.razonSocial || "Sin Proveedor"}
-                          </span>
-                          <div className="flex items-center gap-1">
-                              <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-1.5 py-0",
-                                  g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
-                                  g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
-                                  "text-slate-500 bg-slate-50 border-slate-200"
-                              )}>
-                                  {g.prioridad || 'MEDIA'}
-                              </Badge>
-                              <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-1.5 py-0 rounded", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
-                                {gastoStatus[g.estado]?.label || g.estado}
-                              </Badge>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/60">
-                          <div className="flex flex-col gap-0.5">
-                            <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1.5">
-                                <Calendar className="w-3 h-3" />
-                                {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                    {grupo.proyectoId !== 'unassigned' ? (
+                      grupo.gastos.map((g, idx) => (
+                        <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
+                          <div className="flex items-start justify-between mb-1.5">
+                            <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
+                              {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
                             </span>
-                            {g.fechaProgramadaPago && (
-                                <span className="text-[9px] text-amber-600 font-bold flex items-center gap-1.5">
-                                    <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
-                                </span>
-                            )}
-                            {g.fechaPago && (
-                                <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1.5">
-                                    <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
-                                </span>
-                            )}
+                            <div className="flex gap-1 shrink-0 ml-2">
+                              {g.comprobanteUrl && (
+                                  <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Adjunto">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
+                                          <ExternalLink className="w-3 h-3" />
+                                      </Button>
+                                  </a>
+                              )}
+                              {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
+                                  <Button variant="ghost" size="icon" onClick={() => openApproveModal(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
+                                      <CheckCircle className="w-3 h-3" />
+                                  </Button>
+                              )}
+                              {(g.estado !== 'APROBADO' && g.estado !== 'PAGADO') && (
+                                <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                                  <Edit2 className="w-3 h-3" />
+                                </Button>
+                              )}
+                              <Button variant="ghost" size="icon" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
                           </div>
-                          <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          
+                          <div className="flex items-center justify-between mt-1">
+                            <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={g.proveedor?.razonSocial}>
+                              {g.proveedor?.razonSocial || "Sin Proveedor"}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-1.5 py-0",
+                                    g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
+                                    g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
+                                    "text-slate-500 bg-slate-50 border-slate-200"
+                                )}>
+                                    {g.prioridad || 'MEDIA'}
+                                </Badge>
+                                <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-1.5 py-0 rounded", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
+                                  {gastoStatus[g.estado]?.label || g.estado}
+                                </Badge>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/60">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1.5">
+                                  <Calendar className="w-3 h-3" />
+                                  {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                              </span>
+                              {g.fechaProgramadaPago && (
+                                  <span className="text-[9px] text-amber-600 font-bold flex items-center gap-1.5">
+                                      <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
+                                  </span>
+                              )}
+                              {g.fechaPago && (
+                                  <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1.5">
+                                      <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
+                                  </span>
+                              )}
+                            </div>
+                            <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      (() => {
+                        const groupedByMonth = grupo.gastos.reduce((acc: any, g) => {
+                          const date = g.fechaEmision ? new Date(g.fechaEmision) : new Date();
+                          const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+                          const label = date.toLocaleString('es-PE', { month: 'long', year: 'numeric' }).toUpperCase();
+                          if (!acc[key]) {
+                            acc[key] = { label, key, gastos: [], total: 0 };
+                          }
+                          acc[key].gastos.push(g);
+                          if (g.estado === 'PAGADO' || g.estado === 'APROBADO') {
+                            acc[key].total += Number(g.montoTotal || 0);
+                          }
+                          return acc;
+                        }, {});
+
+                        const monthGroups: any[] = Object.values(groupedByMonth).sort((a: any, b: any) => b.key.localeCompare(a.key));
+
+                        return monthGroups.map((monthGroup, mIdx) => {
+                          const isMonthOpen = expandedMonths[monthGroup.key] !== undefined 
+                            ? expandedMonths[monthGroup.key] 
+                            : (mIdx === 0);
+
+                          return (
+                            <div key={monthGroup.key} className="border-b border-slate-200 last:border-b-0">
+                              <button 
+                                onClick={() => setExpandedMonths(prev => ({
+                                  ...prev,
+                                  [monthGroup.key]: !isMonthOpen
+                                }))}
+                                className="w-full bg-slate-200/70 hover:bg-slate-200 px-4 py-2 flex justify-between items-center text-[9px] font-black text-slate-700 uppercase tracking-wider sticky top-0 z-10 border-b border-slate-300/30 transition-colors"
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  {isMonthOpen ? <ChevronDown className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
+                                  📅 {monthGroup.label}
+                                </span>
+                                <span className="text-emerald-700 bg-emerald-50/80 px-2 py-0.5 rounded border border-emerald-200/80 font-black">
+                                  Aprobado/Pagado: S/ {monthGroup.total.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                </span>
+                              </button>
+                              
+                              {isMonthOpen && (
+                                <div>
+                                  {monthGroup.gastos.map((g: any, idx: number) => (
+                                    <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < monthGroup.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
+                                      <div className="flex items-start justify-between mb-1.5">
+                                        <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
+                                          {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
+                                        </span>
+                                        <div className="flex gap-1 shrink-0 ml-2">
+                                          {g.comprobanteUrl && (
+                                              <a href={g.comprobanteUrl} target="_blank" rel="noreferrer" title="Ver Adjunto">
+                                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded">
+                                                      <ExternalLink className="w-3 h-3" />
+                                                  </Button>
+                                              </a>
+                                          )}
+                                          {g.estado === 'SOLICITADO' && (user?.rol === 'ADMIN' || user?.modulos?.includes('finanzas')) && (
+                                              <Button variant="ghost" size="icon" onClick={() => openApproveModal(g.id)} className="h-6 w-6 text-slate-400 hover:text-amber-500 hover:bg-amber-50 rounded" title="Aprobar Gasto">
+                                                  <CheckCircle className="w-3 h-3" />
+                                              </Button>
+                                          )}
+                                          {(g.estado !== 'APROBADO' && g.estado !== 'PAGADO') && (
+                                            <Button variant="ghost" size="icon" onClick={() => { setEditingGasto(g); setIsModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-primary hover:bg-primary/10 rounded">
+                                              <Edit2 className="w-3 h-3" />
+                                            </Button>
+                                          )}
+                                          <Button variant="ghost" size="icon" onClick={() => { setGastoToDelete({ id: g.id, name: `${g.codigo || 'S/N'} - ${g.concepto}` }); setDeleteModalOpen(true); }} className="h-6 w-6 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded">
+                                            <Trash2 className="w-3 h-3" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex items-center justify-between mt-1">
+                                        <span className="font-bold text-[9px] uppercase text-slate-500 truncate max-w-[140px]" title={g.proveedor?.razonSocial}>
+                                          {g.proveedor?.razonSocial || "Sin Proveedor"}
+                                        </span>
+                                        <div className="flex items-center gap-1">
+                                            <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter border px-1.5 py-0",
+                                                g.prioridad === 'CRITICA' ? "text-red-600 bg-red-50 border-red-200" :
+                                                g.prioridad === 'ALTA' ? "text-orange-600 bg-orange-50 border-orange-200" :
+                                                "text-slate-500 bg-slate-50 border-slate-200"
+                                            )}>
+                                                {g.prioridad || 'MEDIA'}
+                                            </Badge>
+                                            <Badge className={cn("border font-black text-[8px] uppercase tracking-wider px-1.5 py-0 rounded", gastoStatus[g.estado]?.color || "bg-slate-100 text-slate-600 border-slate-200")}>
+                                              {gastoStatus[g.estado]?.label || g.estado}
+                                            </Badge>
+                                        </div>
+                                      </div>
+
+                                      <div className="flex items-center justify-between mt-2 pt-2 border-t border-slate-100/60">
+                                        <div className="flex flex-col gap-0.5">
+                                          <span className="text-[9px] text-slate-400 font-bold flex items-center gap-1.5">
+                                              <Calendar className="w-3 h-3" />
+                                              {g.fechaEmision ? formatDate(g.fechaEmision) : '-'}
+                                          </span>
+                                          {g.fechaProgramadaPago && (
+                                              <span className="text-[9px] text-amber-600 font-bold flex items-center gap-1.5">
+                                                  <CalendarClock className="w-3 h-3 text-amber-500" /> Prog: {formatDate(g.fechaProgramadaPago)}
+                                              </span>
+                                          )}
+                                          {g.fechaPago && (
+                                              <span className="text-[9px] text-emerald-600 font-bold flex items-center gap-1.5">
+                                                  <CalendarCheck className="w-3 h-3 text-emerald-500" /> Pag: {formatDate(g.fechaPago)}
+                                              </span>
+                                          )}
+                                        </div>
+                                        <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        });
+                      })()
+                    )}
                   </div>
                 )}
               </div>
