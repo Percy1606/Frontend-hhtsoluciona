@@ -642,26 +642,28 @@ export default function ProyectosPage() {
                 {proyectosFiltrados.map((proyecto, index) => (
                   <TableRow key={proyecto.id} className="hover:bg-slate-50/50 transition-colors group">
                     <TableCell className="font-bold text-xs text-slate-400 pl-6">{index + 1}</TableCell>
-                    <TableCell className="font-black text-[13px] text-primary">{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</TableCell>
+                    <TableCell className="font-black text-[13px] text-primary">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</span>
+                        {Number((proyecto as any).ventaContratada || 0) === 0 ? (
+                          <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded shrink-0">
+                            PREVENTA
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded shrink-0">
+                            OFICIAL
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="max-w-[320px] whitespace-normal break-words">
                       <div className="flex flex-col">
-                        <div className="flex flex-wrap items-center gap-1.5">
-                          <button 
-                            onClick={() => handleOpenDetail(proyecto)} 
-                            className="text-left font-black text-xs text-slate-800 uppercase leading-snug hover:text-primary hover:underline whitespace-normal break-words"
-                          >
-                            {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
-                          </button>
-                          {Number((proyecto as any).ventaContratada || 0) === 0 ? (
-                            <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded">
-                              PREVENTA
-                            </Badge>
-                          ) : (
-                            <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded">
-                              OFICIAL
-                            </Badge>
-                          )}
-                        </div>
+                        <button 
+                          onClick={() => handleOpenDetail(proyecto)} 
+                          className="text-left font-black text-xs text-slate-800 uppercase leading-snug hover:text-primary hover:underline whitespace-normal break-words"
+                        >
+                          {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
+                        </button>
                         <span className="text-[9.5px] font-bold text-slate-400 uppercase mt-0.5">
                           {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                         </span>
