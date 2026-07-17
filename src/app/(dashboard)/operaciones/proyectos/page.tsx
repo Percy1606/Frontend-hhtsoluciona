@@ -569,9 +569,20 @@ export default function ProyectosPage() {
                 </div>
                 
                 <div className="pr-[80px] flex flex-col">
-                  <span className="text-[10px] font-black uppercase text-slate-400 mb-0.5">
-                    {(proyecto as any).cliente?.empresa || (proyecto as any).cliente?.nombre || allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
-                  </span>
+                  <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                    <span className="text-[10px] font-black uppercase text-slate-400">
+                      {(proyecto as any).cliente?.empresa || (proyecto as any).cliente?.nombre || allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
+                    </span>
+                    {Number((proyecto as any).ventaContratada || 0) === 0 ? (
+                      <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[7px] font-black uppercase h-3.5 px-1 shadow-none rounded">
+                        PREVENTA
+                      </Badge>
+                    ) : (
+                      <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[7px] font-black uppercase h-3.5 px-1 shadow-none rounded">
+                        OFICIAL
+                      </Badge>
+                    )}
+                  </div>
                   <button onClick={() => handleOpenDetail(proyecto)} className="text-left font-black text-sm text-primary uppercase leading-tight max-w-full hover:underline">
                     {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
                   </button>
@@ -634,12 +645,23 @@ export default function ProyectosPage() {
                     <TableCell className="font-black text-[13px] text-primary">{(proyecto as any).ordenesDeServicio?.[0]?.codigo || proyecto.codigo}</TableCell>
                     <TableCell className="max-w-[320px] whitespace-normal break-words">
                       <div className="flex flex-col">
-                        <button 
-                          onClick={() => handleOpenDetail(proyecto)} 
-                          className="text-left font-black text-xs text-slate-800 uppercase leading-snug hover:text-primary hover:underline whitespace-normal break-words"
-                        >
-                          {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button 
+                            onClick={() => handleOpenDetail(proyecto)} 
+                            className="text-left font-black text-xs text-slate-800 uppercase leading-snug hover:text-primary hover:underline whitespace-normal break-words"
+                          >
+                            {proyecto.nombre?.replace(/^proyecto:\s*/i, '')}
+                          </button>
+                          {Number((proyecto as any).ventaContratada || 0) === 0 ? (
+                            <Badge className="bg-amber-50 text-amber-700 border border-amber-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded">
+                              PREVENTA
+                            </Badge>
+                          ) : (
+                            <Badge className="bg-blue-50 text-blue-700 border border-blue-200 text-[8px] font-black uppercase h-4 px-1.5 shadow-none rounded">
+                              OFICIAL
+                            </Badge>
+                          )}
+                        </div>
                         <span className="text-[9.5px] font-bold text-slate-400 uppercase mt-0.5">
                           {allClients.find(c => c.id === proyecto.clientId)?.empresa || "Cliente Externo"}
                         </span>
