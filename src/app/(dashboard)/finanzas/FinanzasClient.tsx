@@ -378,7 +378,7 @@ function StatsCard({ label, value, icon, color, percentage, isUp, description }:
             "font-black text-primary tracking-tighter truncate",
             value >= 1000000 ? "text-base" : "text-lg"
           )}>
-            {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(value)}
+            {formatCurrency(value)}
           </p>
         </div>
         {description && <p className="text-[9px] font-medium text-slate-400 mt-1 italic leading-tight">{description}</p>}

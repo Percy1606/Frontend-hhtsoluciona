@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 export function ExecutivePanel() {
   const [data, setData] = useState<any>(null);
@@ -54,7 +54,7 @@ export function ExecutivePanel() {
                   </div>
                   <div className="text-right">
                     <p className="text-[11px] font-black text-slate-700">
-                      {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(p.utilidad || 0)}
+                      {formatCurrency(p.utilidad || 0)}
                     </p>
                     <p className={cn(
                       "text-[9px] font-black uppercase",
@@ -99,13 +99,13 @@ export function ExecutivePanel() {
                 <div>
                    <p className="text-[9px] font-black text-slate-400 uppercase">Caja Disponible</p>
                    <p className="text-[11px] font-black text-green-600">
-                     {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(resumenCaja.disponible || 0)}
+                     {formatCurrency(resumenCaja.disponible || 0)}
                    </p>
                 </div>
                 <div>
                    <p className="text-[9px] font-black text-slate-400 uppercase">Pasivo Pendiente</p>
                    <p className="text-[11px] font-black text-red-600">
-                     {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(cartera.porPagar || 0)}
+                     {formatCurrency(cartera.porPagar || 0)}
                    </p>
                 </div>
              </div>
@@ -126,7 +126,7 @@ export function ExecutivePanel() {
              <div className="bg-white p-3 rounded-xl border border-orange-200/50">
                 <p className="text-[9px] font-bold text-slate-500 uppercase mb-1">Monto por recuperar</p>
                 <p className="text-base font-black text-orange-600">
-                  {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(cartera.porCobrarVencido || 0)}
+                  {formatCurrency(cartera.porCobrarVencido || 0)}
                 </p>
              </div>
           </CardContent>

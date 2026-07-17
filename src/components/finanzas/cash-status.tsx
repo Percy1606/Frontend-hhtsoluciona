@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ModernDialog } from "@/components/ui/modern-dialog";
 import { toast } from "sonner";
-import { cn, formatDate } from "@/lib/utils";
+import { cn, formatDate, formatCurrency } from "@/lib/utils";
 import { api } from "@/lib/api";
 
 export function CashStatus() {
@@ -123,7 +123,7 @@ export function CashStatus() {
                <div>
                   <p className="text-[9px] font-bold text-slate-400 uppercase">Saldo Real Total</p>
                   <p className="text-lg font-black tracking-tight">
-                    {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(caja.saldoReal || 0)}
+                    {formatCurrency(caja.saldoReal || 0)}
                   </p>
                </div>
                <div className="text-right">
@@ -171,9 +171,9 @@ export function CashStatus() {
                    >
                      <Lock className="w-3.5 h-3.5" />
                    </Button>
-                   <span className="text-orange-600 ml-1 font-black">
-                     {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(caja.saldoComprometido || 0)}
-                   </span>
+                    <span className="text-orange-600 ml-1 font-black">
+                      {formatCurrency(caja.saldoComprometido || 0)}
+                    </span>
                 </div>
               </div>
               <Progress 
@@ -192,7 +192,7 @@ export function CashStatus() {
                     <CheckCircle2 className="w-3 h-3 text-green-500" /> Disponible
                   </p>
                   <p className="text-sm font-black text-slate-800">
-                    {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(caja.saldoDisponible || 0)}
+                    {formatCurrency(caja.saldoDisponible || 0)}
                   </p>
                </div>
                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
