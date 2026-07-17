@@ -181,8 +181,8 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                             {tipoVisual.label}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="max-w-[280px] align-top pt-4">
-                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug break-all">{cleanConcepto(t.concepto)}</p>
+                                    <TableCell className="max-w-[200px] md:max-w-[320px] align-top pt-4 whitespace-normal break-words">
+                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug whitespace-normal break-words">{cleanConcepto(t.concepto)}</p>
                                         {!isSameAsPrev && t.referenciaTipo && (
                                             <div className="mt-1.5 flex flex-wrap gap-1">
                                                 <Badge variant="secondary" className="text-[8px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200">
