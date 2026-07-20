@@ -1050,9 +1050,16 @@ export function CRMStats() {
                         : 'Sin Fecha'}
                     </p>
                   </div>
-                  <Badge className="bg-indigo-100 text-indigo-700 border-none text-[9px] uppercase">
-                    {c.etapaComercial || 'PROSPECTO'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-indigo-100 text-indigo-700 border-none text-[9px] uppercase">
+                      {c.etapaComercial || 'PROSPECTO'}
+                    </Badge>
+                    {c.tarifa && (
+                      <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                        {c.tarifa.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
@@ -1108,6 +1115,11 @@ export function CRMStats() {
                               <Badge variant="outline" className="text-[10px] bg-white text-emerald-700 border-emerald-200 shrink-0">
                                 {interaccion.tipo || 'Interacción'}
                               </Badge>
+                              {interaccion.clienteTarifa && (
+                                <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase shrink-0">
+                                  {interaccion.clienteTarifa.toUpperCase()}
+                                </Badge>
+                              )}
                               <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md shrink-0">
                                 {formattedDate}
                               </span>
@@ -1165,9 +1177,16 @@ export function CRMStats() {
                         : 'Sin Fecha'}
                     </p>
                   </div>
-                  <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] uppercase">
-                    {c.etapaComercial || 'GANADO'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] uppercase">
+                      {c.etapaComercial || 'GANADO'}
+                    </Badge>
+                    {c.tarifa && (
+                      <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                        {c.tarifa.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
@@ -1213,6 +1232,11 @@ export function CRMStats() {
                         <Badge variant="outline" className="text-[10px] bg-white text-purple-700 border-purple-200">
                           {interaccion.accion?.toLowerCase().includes('técnica') || interaccion.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (interaccion.tipo || 'VISITA')}
                         </Badge>
+                        {interaccion.clienteTarifa && (
+                          <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                            {interaccion.clienteTarifa.toUpperCase()}
+                          </Badge>
+                        )}
                         <span className="text-[10px] font-medium text-slate-400 bg-slate-100 px-2 rounded-md">
                           {formattedDate}
                         </span>

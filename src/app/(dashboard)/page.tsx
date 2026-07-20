@@ -2189,7 +2189,14 @@ export default function DashboardPage() {
                         : 'Sin Fecha'}
                     </p>
                   </div>
-                  <Badge className="bg-emerald-100 text-emerald-700 border-none text-[9px]">GANADO</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-100 text-emerald-700 border-none text-[9px]">GANADO</Badge>
+                    {c.tarifa && (
+                      <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                        {c.tarifa.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
@@ -2234,9 +2241,16 @@ export default function DashboardPage() {
                             {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                           </p>
                         </div>
-                        <Badge className={cn("border-none text-[9px] uppercase shrink-0 ml-2", colorClass)}>
-                          {tipo}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0 ml-2">
+                          <Badge className={cn("border-none text-[9px] uppercase", colorClass)}>
+                            {tipo}
+                          </Badge>
+                          {int.clienteTarifa && (
+                            <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                              {int.clienteTarifa.toUpperCase()}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       {(() => {
                         const obsText = int.comentario || int.notas || int.observaciones || '';
@@ -2301,9 +2315,16 @@ export default function DashboardPage() {
                             {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
                           </p>
                         </div>
-                        <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] uppercase shrink-0">
-                          {int.accion?.toLowerCase().includes('técnica') || int.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (int.tipo || 'VISITA')}
-                        </Badge>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge className="bg-purple-100 text-purple-700 border-none text-[9px] uppercase">
+                            {int.accion?.toLowerCase().includes('técnica') || int.accion?.toLowerCase().includes('tecnica') ? 'VISITA TÉCNICA' : (int.tipo || 'VISITA')}
+                          </Badge>
+                          {int.clienteTarifa && (
+                            <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                              {int.clienteTarifa.toUpperCase()}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                       {cleanObs && (
                       <div className="mt-2 text-xs text-slate-600 whitespace-pre-wrap">
@@ -2349,9 +2370,16 @@ export default function DashboardPage() {
                         : 'Sin Fecha'}
                     </p>
                   </div>
-                  <Badge className="bg-indigo-100 text-indigo-700 border-none text-[9px] uppercase">
-                    {c.etapaComercial || 'PROSPECTO'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-indigo-100 text-indigo-700 border-none text-[9px] uppercase">
+                      {c.etapaComercial || 'PROSPECTO'}
+                    </Badge>
+                    {c.tarifa && (
+                      <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
+                        {c.tarifa.toUpperCase()}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               ))
             ) : (
