@@ -2182,7 +2182,7 @@ export default function DashboardPage() {
               cierresList.map((c: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
                   <div>
-                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre}{c.tarifa ? ` ${c.tarifa.toLowerCase()}` : ''}</p>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre}</p>
                     <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5">
                       {c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt
                         ? new Date(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' }) 
@@ -2235,7 +2235,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-bold text-slate-800 truncate">{int.clienteNombre || 'Sin Nombre'}{int.clienteTarifa ? ` ${int.clienteTarifa.toLowerCase()}` : ''}</p>
+                          <p className="text-sm font-bold text-slate-800 truncate">{int.clienteNombre || 'Sin Nombre'}</p>
                           <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
@@ -2309,7 +2309,7 @@ export default function DashboardPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <div>
-                          <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}{int.clienteTarifa ? ` ${int.clienteTarifa.toLowerCase()}` : ''}</p>
+                          <p className="text-sm font-bold text-slate-800">{int.clienteNombre || 'Sin Nombre'}</p>
                           <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             {int.fecha || int.createdAt ? new Date(int.fecha || int.createdAt).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Sin Fecha'}
@@ -2362,7 +2362,7 @@ export default function DashboardPage() {
               prospectosList.map((c: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
                   <div>
-                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}{c.tarifa ? ` ${c.tarifa.toLowerCase()}` : ''}</p>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}</p>
                     <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {c.fechaCreacion || c.createdAt

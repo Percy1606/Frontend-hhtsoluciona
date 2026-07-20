@@ -1042,7 +1042,7 @@ export function CRMStats() {
               prospectosList.map((c: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
                   <div>
-                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}{c.tarifa ? ` ${c.tarifa.toLowerCase()}` : ''}</p>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}</p>
                     <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {c.fechaCreacion || c.createdAt
@@ -1100,7 +1100,7 @@ export function CRMStats() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-bold text-slate-800 text-sm truncate">
-                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}{interaccion.clienteTarifa ? ` ${interaccion.clienteTarifa.toLowerCase()}` : ''}
+                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
                       {(() => {
                         const obsText = interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.';
@@ -1169,7 +1169,7 @@ export function CRMStats() {
               ganadosList.map((c: any, i: number) => (
                 <div key={i} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl">
                   <div>
-                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}{c.tarifa ? ` ${c.tarifa.toLowerCase()}` : ''}</p>
+                    <p className="text-sm font-bold text-slate-800">{c.empresa || c.nombre || 'Sin Nombre'}</p>
                     <p className="text-[10px] text-slate-500 font-medium uppercase mt-0.5 flex items-center gap-1">
                       <Clock className="w-3 h-3" />
                       {c.fechaActualizacion || c.updatedAt
@@ -1223,7 +1223,7 @@ export function CRMStats() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-800 text-sm">
-                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}{interaccion.clienteTarifa ? ` ${interaccion.clienteTarifa.toLowerCase()}` : ''}
+                        {interaccion.clienteNombre || 'Sin Empresa/Nombre'}
                       </p>
                       <p className="text-xs text-slate-600 mt-1 whitespace-pre-wrap">
                         {interaccion.comentario || interaccion.notas || interaccion.observaciones || 'Sin comentarios registrados.'}
