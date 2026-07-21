@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 interface FinanceLandingKPIsProps {
   startDate: Date | null;
@@ -89,9 +90,14 @@ export function FinanceLandingKPIs({ startDate, endDate }: FinanceLandingKPIsPro
         {loading ? (
           <Loader2 className="w-4 h-4 text-primary animate-spin" />
         ) : (
-          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black text-[8px] uppercase tracking-wider px-2.5 py-0.5">
-            Filtrado Activo
-          </Badge>
+          <div className="flex gap-2 items-center">
+            <Link href="/finanzas/presupuesto" className="flex items-center h-6 px-3 rounded-md font-bold text-[9px] uppercase bg-slate-800 hover:bg-slate-900 text-white shadow-sm transition-colors cursor-pointer">
+              Ppto. Operativo
+            </Link>
+            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-100 font-black text-[8px] uppercase tracking-wider px-2.5 py-0.5">
+              Filtrado Activo
+            </Badge>
+          </div>
         )}
       </CardHeader>
       

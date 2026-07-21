@@ -33,6 +33,7 @@ interface GastoFijo {
 
 export default function PresupuestoClient() {
   const [gastos, setGastos] = useState<GastoFijo[]>([]);
+  const [realStats, setRealStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,10 +45,14 @@ export default function PresupuestoClient() {
 
   const fetchData = async () => {
     try {
-      const data = await api.get('/finanzas/gastos-fijos');
+      const [gastosData, statsData] = await Promise.all([
+        api.get('/finanzas/gastos-fijos'),
+        api.get('/finanzas/gastos-operativos-stats')
+      ]);
       // Sort by diaMes ascending
-      const sorted = (data || []).sort((a: GastoFijo, b: GastoFijo) => a.diaMes - b.diaMes);
+      const sorted = (gastosData || []).sort((a: GastoFijo, b: GastoFijo) => a.diaMes - b.diaMes);
       setGastos(sorted);
+      setRealStats(statsData);
     } catch (error) {
       console.error(error);
       toast.error("Error al cargar el presupuesto");
@@ -138,46 +143,104 @@ export default function PresupuestoClient() {
     );
   }
 
+  // KPI Values
+  const realPlanilla = realStats?.planilla || 0;
+  const difPlanilla = totalPlanilla - realPlanilla;
+  const isPlanillaOver = difPlanilla < 0;
+
+  const realAdministrativo = realStats?.administrativo || 0;
+  const difAdministrativo = totalAdministrativo - realAdministrativo;
+  const isAdministrativoOver = difAdministrativo < 0;
+
+  const realServicios = realStats?.servicios || 0;
+  const difServicios = totalServicios - realServicios;
+  const isServiciosOver = difServicios < 0;
+
   return (
     <div className="space-y-6 pb-24">
       <CRMHeader 
         title="Presupuesto Operativo" 
-        subtitle="Control de gastos fijos mensuales, planillas y obligaciones de la empresa." 
+        subtitle="Control de gastos fijos mensuales, planillas y obligaciones de la empresa. Presupuesto vs Real." 
       />
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-[#001F3F] text-white p-4 rounded-xl border border-blue-900 shadow-md">
           <div className="flex justify-between items-center mb-2">
-            <div className="font-black text-[9px] uppercase tracking-widest text-blue-200">Total Fijo Mensual</div>
+            <div className="font-black text-[9px] uppercase tracking-widest text-blue-200">Presupuesto Fijo Mensual</div>
             <Settings2 className="w-3 h-3 text-blue-300 min-w-3 min-h-3" />
           </div>
-          <div className="text-xl font-black truncate" title={formatCurrency(totalMensual)}>{formatCurrency(totalMensual)}</div>
+          <div className="text-xl font-black truncate text-emerald-400" title={formatCurrency(totalMensual)}>{formatCurrency(totalMensual)}</div>
           <div className="text-[10px] font-bold text-blue-300 mt-1">{activeGastos.length} obligaciones activas</div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className={cn("p-4 rounded-xl border shadow-sm transition-colors", isPlanillaOver ? "bg-red-50 border-red-200" : "bg-white border-slate-200")}>
           <div className="flex justify-between items-center mb-2">
             <div className="font-black text-[9px] uppercase tracking-widest text-slate-500">Planilla & Personal</div>
-            <Users className="w-3 h-3 text-purple-500 min-w-3 min-h-3" />
+            <Users className={cn("w-3 h-3 min-w-3 min-h-3", isPlanillaOver ? "text-red-500" : "text-purple-500")} />
           </div>
-          <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalPlanilla)}>{formatCurrency(totalPlanilla)}</div>
+          <div className="flex items-baseline justify-between">
+            <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalPlanilla)}>{formatCurrency(totalPlanilla)}</div>
+            <div className="text-[10px] font-bold text-slate-400">Meta</div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-[10px] font-bold">
+              <span className="text-slate-500">Gasto Real:</span>
+              <span className={isPlanillaOver ? "text-red-600" : "text-slate-700"}>{formatCurrency(realPlanilla)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] font-black">
+              <span className="text-slate-500">Diferencia:</span>
+              <span className={isPlanillaOver ? "text-red-600" : "text-emerald-600"}>
+                {isPlanillaOver ? "-" : "+"}{formatCurrency(Math.abs(difPlanilla))}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className={cn("p-4 rounded-xl border shadow-sm transition-colors", isAdministrativoOver ? "bg-red-50 border-red-200" : "bg-white border-slate-200")}>
           <div className="flex justify-between items-center mb-2">
             <div className="font-black text-[9px] uppercase tracking-widest text-slate-500">Administrativos</div>
-            <Briefcase className="w-3 h-3 text-blue-500 min-w-3 min-h-3" />
+            <Briefcase className={cn("w-3 h-3 min-w-3 min-h-3", isAdministrativoOver ? "text-red-500" : "text-blue-500")} />
           </div>
-          <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalAdministrativo)}>{formatCurrency(totalAdministrativo)}</div>
+          <div className="flex items-baseline justify-between">
+            <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalAdministrativo)}>{formatCurrency(totalAdministrativo)}</div>
+            <div className="text-[10px] font-bold text-slate-400">Meta</div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-[10px] font-bold">
+              <span className="text-slate-500">Gasto Real:</span>
+              <span className={isAdministrativoOver ? "text-red-600" : "text-slate-700"}>{formatCurrency(realAdministrativo)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] font-black">
+              <span className="text-slate-500">Diferencia:</span>
+              <span className={isAdministrativoOver ? "text-red-600" : "text-emerald-600"}>
+                {isAdministrativoOver ? "-" : "+"}{formatCurrency(Math.abs(difAdministrativo))}
+              </span>
+            </div>
+          </div>
         </div>
 
-        <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className={cn("p-4 rounded-xl border shadow-sm transition-colors", isServiciosOver ? "bg-red-50 border-red-200" : "bg-white border-slate-200")}>
           <div className="flex justify-between items-center mb-2">
             <div className="font-black text-[9px] uppercase tracking-widest text-slate-500">Servicios & Alquiler</div>
-            <Bolt className="w-3 h-3 text-amber-500 min-w-3 min-h-3" />
+            <Bolt className={cn("w-3 h-3 min-w-3 min-h-3", isServiciosOver ? "text-red-500" : "text-amber-500")} />
           </div>
-          <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalServicios)}>{formatCurrency(totalServicios)}</div>
+          <div className="flex items-baseline justify-between">
+            <div className="text-lg font-black text-slate-800 truncate" title={formatCurrency(totalServicios)}>{formatCurrency(totalServicios)}</div>
+            <div className="text-[10px] font-bold text-slate-400">Meta</div>
+          </div>
+          <div className="mt-2 space-y-1">
+            <div className="flex justify-between text-[10px] font-bold">
+              <span className="text-slate-500">Gasto Real:</span>
+              <span className={isServiciosOver ? "text-red-600" : "text-slate-700"}>{formatCurrency(realServicios)}</span>
+            </div>
+            <div className="flex justify-between text-[10px] font-black">
+              <span className="text-slate-500">Diferencia:</span>
+              <span className={isServiciosOver ? "text-red-600" : "text-emerald-600"}>
+                {isServiciosOver ? "-" : "+"}{formatCurrency(Math.abs(difServicios))}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 

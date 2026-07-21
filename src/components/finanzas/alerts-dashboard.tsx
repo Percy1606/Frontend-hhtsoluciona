@@ -32,68 +32,96 @@ export function AlertsDashboard() {
       try {
         setLoading(true);
         // Fetch data
-        const [facturas, gastos, cajas, proyectos] = await Promise.all([
-          api.get<Factura[]>("/finanzas/facturas").catch(() => []),
-          api.get<Gasto[]>("/finanzas/gastos").catch(() => []),
-          api.get<any[]>("/finanzas/cajas").catch(() => []),
-          api.get<any[]>("/operaciones/proyectos").catch(() => []),
+        const [facturasRaw, gastosRaw, cajasRaw, proyectosRaw] = await Promise.all([
+          api.get<any>("/finanzas/facturas").catch(() => []),
+          api.get<any>("/finanzas/gastos?limit=1000").catch(() => []),
+          api.get<any>("/finanzas/cajas").catch(() => []),
+          api.get<any>("/operaciones/proyectos").catch(() => []),
         ]);
+
+        const facturas: any[] = Array.isArray(facturasRaw) ? facturasRaw : (facturasRaw?.data || []);
+        const gastos: any[] = Array.isArray(gastosRaw) ? gastosRaw : (gastosRaw?.data || []);
+        const cajas: any[] = Array.isArray(cajasRaw) ? cajasRaw : (cajasRaw?.data || []);
+        const proyectos: any[] = Array.isArray(proyectosRaw) ? proyectosRaw : (proyectosRaw?.data || []);
 
         const newAlerts: Alert[] = [];
         const today = new Date().getTime();
 
         // 1. Facturas Vencidas (> 30 days)
+        let facturasCriticasCount = 0;
+        let facturasCriticasMonto = 0;
+
         facturas.forEach((f) => {
           if (f.estado !== "PAGADA" && f.fechaVencimiento) {
             const vencimiento = new Date(f.fechaVencimiento).getTime();
             const diffDays = Math.floor((today - vencimiento) / (1000 * 60 * 60 * 24));
             
             if (diffDays > 30) {
-              newAlerts.push({
-                id: `fac-${f.id}`,
-                type: "CRITICAL",
-                title: `Factura muy vencida: ${f.codigo}`,
-                description: `El cliente ${(f as any).cliente?.nombre || 'Desconocido'} tiene más de 30 días de atraso.`,
-                value: formatCurrency(Number(f.montoTotal)),
-                icon: FileWarning,
-                actionText: "Ver Facturas",
-                actionLink: "/finanzas/ingresos",
-              });
+              facturasCriticasCount++;
+              facturasCriticasMonto += Number(f.saldoPendiente !== undefined ? f.saldoPendiente : f.montoTotal);
             }
           }
         });
 
+        if (facturasCriticasCount > 0) {
+          newAlerts.push({
+            id: `fac-criticas`,
+            type: "CRITICAL",
+            title: `${facturasCriticasCount} Facturas muy vencidas (>30 días)`,
+            description: `Cuentas por cobrar con un alto nivel de atraso que requieren atención.`,
+            value: formatCurrency(facturasCriticasMonto),
+            icon: FileWarning,
+            actionText: "Ver Facturas",
+            actionLink: "/finanzas/ingresos",
+          });
+        }
+
         // 2. Gastos por vencer (next 3 days) or already vencidos
+        let gastosVencidosCount = 0;
+        let gastosVencidosMonto = 0;
+        let gastosProximosCount = 0;
+        let gastosProximosMonto = 0;
+
         gastos.forEach((g) => {
-          if (g.estado !== "PAGADO" && g.estado !== "ANULADO" && g.fechaEmision) { // assuming fechaEmision as due date for some
-            const due = new Date(g.fechaEmision).getTime(); // Should ideally be fechaVencimiento
+          if (g.estado !== "PAGADO" && g.estado !== "ANULADO" && g.fechaEmision) { 
+            const due = new Date(g.fechaEmision).getTime(); // Idealmente fechaVencimiento
             const diffDays = Math.floor((due - today) / (1000 * 60 * 60 * 24));
             
             if (diffDays < 0) {
-              newAlerts.push({
-                id: `gas-${g.id}`,
-                type: "CRITICAL",
-                title: `Pago vencido: ${g.codigo || g.concepto}`,
-                description: `Tienes una obligación de pago vencida con ${(g as any).proveedor?.razonSocial || 'proveedor'}.`,
-                value: formatCurrency(Number(g.montoTotal)),
-                icon: TrendingDown,
-                actionText: "Ver Egresos",
-                actionLink: "/finanzas/egresos",
-              });
+              gastosVencidosCount++;
+              gastosVencidosMonto += Number(g.saldoPendiente !== undefined ? g.saldoPendiente : g.montoTotal);
             } else if (diffDays <= 3) {
-              newAlerts.push({
-                id: `gas-warn-${g.id}`,
-                type: "WARNING",
-                title: `Pago próximo a vencer: ${g.codigo || g.concepto}`,
-                description: `Vence en ${diffDays} días.`,
-                value: formatCurrency(Number(g.montoTotal)),
-                icon: TrendingDown,
-                actionText: "Ver Egresos",
-                actionLink: "/finanzas/egresos",
-              });
+              gastosProximosCount++;
+              gastosProximosMonto += Number(g.saldoPendiente !== undefined ? g.saldoPendiente : g.montoTotal);
             }
           }
         });
+
+        if (gastosVencidosCount > 0) {
+          newAlerts.push({
+            id: `gas-vencidos`,
+            type: "CRITICAL",
+            title: `${gastosVencidosCount} Obligaciones vencidas`,
+            description: `Tienes pagos a proveedores o servicios que ya superaron su fecha límite.`,
+            value: formatCurrency(gastosVencidosMonto),
+            icon: TrendingDown,
+            actionText: "Ver Egresos",
+            actionLink: "/finanzas/egresos",
+          });
+        }
+
+        if (gastosProximosCount > 0) {
+          newAlerts.push({
+            id: `gas-proximos`,
+            type: "WARNING",
+            title: `${gastosProximosCount} Obligaciones por vencer`,
+            description: `Pagos próximos a vencer en los siguientes 3 días.`,
+            value: formatCurrency(gastosProximosMonto),
+            icon: TrendingDown,
+            actionText: "Ver Egresos",
+            actionLink: "/finanzas/egresos",
+          });
+        }
 
         // 3. Liquidez General Crítica (Fondo Mínimo variable)
         const liquidezTotal = cajas.reduce((acc, c) => acc + Number(c.saldoActual || 0), 0);

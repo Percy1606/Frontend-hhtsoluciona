@@ -65,6 +65,7 @@ const ANIOS = ["2024", "2025", "2026", "2027"];
 export default function FinanzasClient() {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [cashFlow, setCashFlow] = useState<any[]>([]);
+  const [forecast, setForecast] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   const [selectedMes, setSelectedMes] = useState<string>("all");
@@ -85,13 +86,15 @@ export default function FinanzasClient() {
       
       const queryString = queryParams.toString() ? `?${queryParams.toString()}` : "";
 
-      const [statsRes, cashFlowRes] = await Promise.all([
+      const [statsRes, cashFlowRes, forecastRes] = await Promise.all([
         api.get<FinanceStats>(`/finanzas/dashboard-stats${queryString}`),
-        api.get<any[]>(`/finanzas/cash-flow${queryString}`)
+        api.get<any[]>(`/finanzas/cash-flow${queryString}`),
+        api.get<any>('/finanzas/forecast')
       ]);
       setStats(statsRes);
       // Backend returns 12 months, we can filter or use as is
       setCashFlow(cashFlowRes);
+      setForecast(forecastRes);
     } catch (e) {
       console.error("Error fetching finance reports", e);
     } finally {
@@ -281,6 +284,18 @@ export default function FinanzasClient() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
+              
+              {/* PANEL DE PROYECCIÓN */}
+              <div className="bg-white p-6 md:p-8 rounded-3xl border border-border shadow-sm">
+                <div className="mb-6">
+                  <h3 className="font-black text-primary uppercase tracking-tighter flex items-center gap-2 text-xl">
+                    Proyección de Liquidez a 90 días
+                  </h3>
+                  <p className="text-muted-foreground text-sm font-medium">Previsión basada en facturas por cobrar y obligaciones por pagar pendientes.</p>
+                </div>
+                {forecast && <ProjectionPanel data={forecast.proyeccion} />}
+              </div>
+
               <div className="bg-white p-8 rounded-3xl border border-border shadow-sm">
                 <div className="flex items-center justify-between mb-8">
                   <div>
