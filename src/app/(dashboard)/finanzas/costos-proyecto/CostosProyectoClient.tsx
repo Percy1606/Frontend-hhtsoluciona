@@ -47,6 +47,12 @@ export default function CostosProyectoClient() {
   const [filterEstado, setFilterEstado] = useState('');
   const [filterCompras, setFilterCompras] = useState('');
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterRentabilidad, filterEstado, filterCompras]);
 
   useEffect(() => {
     async function loadData() {
@@ -155,6 +161,7 @@ export default function CostosProyectoClient() {
     setFilterRentabilidad('');
     setFilterEstado('');
     setFilterCompras('');
+    setCurrentPage(1);
   };
 
   const groupedProyectos = filteredProyectos.reduce((acc, p) => {
@@ -178,6 +185,10 @@ export default function CostosProyectoClient() {
   }, {} as Record<string, { cliente: any; proyectos: ProyectoData[]; totalVenta: number; totalCostoPresupuestado: number; totalCostoReal: number; totalUtilidadBruta: number }>);
 
   const clientsList = Object.values(groupedProyectos).sort((a, b) => a.cliente.empresa.localeCompare(b.cliente.empresa));
+
+  const totalPages = Math.ceil(clientsList.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentClients = clientsList.slice(startIndex, startIndex + itemsPerPage);
 
   return (
     <div className="space-y-4 max-w-[1400px] mx-auto">
@@ -258,18 +269,17 @@ export default function CostosProyectoClient() {
 
       <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
         <div className="flex flex-col">
-          {clientsList.length === 0 ? (
+          {currentClients.length === 0 ? (
             <div className="p-8 text-center text-slate-500 font-medium">
               No hay proyectos que coincidan con la búsqueda.
             </div>
           ) : (
-            clientsList.map((clientData) => {
+            currentClients.map((clientData) => {
               const isExpanded = expandedClients[clientData.cliente.id];
               const rentabilidadTotalPorcentaje = clientData.totalVenta > 0 ? (clientData.totalUtilidadBruta / clientData.totalVenta) * 100 : 0;
               
               return (
                 <div key={clientData.cliente.id} className="border-b border-slate-200 last:border-0">
-                  {/* Header del Cliente */}
                   <div 
                     className={cn(
                       "flex items-center justify-between p-4 cursor-pointer transition-colors",
@@ -344,7 +354,6 @@ export default function CostosProyectoClient() {
                     </div>
                   </div>
 
-                  {/* Tabla de Proyectos (Acordeón) */}
                   {isExpanded && (
                     <div className="bg-slate-50/80 p-4 border-t border-slate-100 shadow-inner">
                       <div className="rounded-xl border border-slate-200 overflow-hidden bg-white">
