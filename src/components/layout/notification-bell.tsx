@@ -77,7 +77,11 @@ export function NotificationBell() {
   }, [fetchNotifications, fetchUnreadCount, setupSSE, token]);
 
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => {
+      if (open && unreadCount > 0) {
+        markAllAsRead();
+      }
+    }}>
       <DropdownMenuTrigger className="relative p-2.5 text-muted-foreground hover:bg-muted rounded-full transition-colors outline-none group">
         <Bell className={cn(
           "w-6 h-6 group-hover:text-primary transition-colors",

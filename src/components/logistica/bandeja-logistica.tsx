@@ -180,6 +180,14 @@ export default function BandejaLogistica() {
                         S/ {clientData.totalPptoEgresos.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                       </div>
                     </div>
+                    <div className="text-center">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase mb-1">
+                        Servicios
+                      </div>
+                      <div className="font-black text-sm text-blue-600">
+                        {clientData.proyectos.length}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="pl-4">
