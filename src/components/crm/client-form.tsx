@@ -147,7 +147,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
-                            <SelectValue placeholder="MT2/MT3/MT4" />
+                            <SelectValue placeholder="MT / BT" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
@@ -155,6 +155,11 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="MT2">MT2</SelectItem>
                           <SelectItem value="MT3">MT3</SelectItem>
                           <SelectItem value="MT4">MT4</SelectItem>
+                          <SelectItem value="BT2">BT2</SelectItem>
+                          <SelectItem value="BT3">BT3</SelectItem>
+                          <SelectItem value="BT4">BT4</SelectItem>
+                          <SelectItem value="BT5B">BT5B</SelectItem>
+                          <SelectItem value="BT5BR">BT5BR</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>

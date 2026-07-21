@@ -181,10 +181,16 @@ export default function CarteraPage() {
                         <SelectValue placeholder="SELECCIONAR TARIFA" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
+                        <SelectItem value="todas" className="font-black text-[10px] uppercase text-slate-400">TODAS LAS TARIFAS</SelectItem>
                         <SelectItem value="MT1" className="font-black text-[10px] uppercase">MT1</SelectItem>
                         <SelectItem value="MT2" className="font-black text-[10px] uppercase">MT2</SelectItem>
                         <SelectItem value="MT3" className="font-black text-[10px] uppercase">MT3</SelectItem>
                         <SelectItem value="MT4" className="font-black text-[10px] uppercase">MT4</SelectItem>
+                        <SelectItem value="BT2" className="font-black text-[10px] uppercase">BT2</SelectItem>
+                        <SelectItem value="BT3" className="font-black text-[10px] uppercase">BT3</SelectItem>
+                        <SelectItem value="BT4" className="font-black text-[10px] uppercase">BT4</SelectItem>
+                        <SelectItem value="BT5B" className="font-black text-[10px] uppercase">BT5B</SelectItem>
+                        <SelectItem value="BT5BR" className="font-black text-[10px] uppercase">BT5BR</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
