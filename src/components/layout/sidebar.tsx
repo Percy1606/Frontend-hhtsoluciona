@@ -39,7 +39,8 @@ import {
   FileText,
   UserPlus,
   Calculator,
-  PieChart
+  PieChart,
+  Library
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";

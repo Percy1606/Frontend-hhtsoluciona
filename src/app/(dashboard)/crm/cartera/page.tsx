@@ -16,9 +16,9 @@ import {
   X,
   Filter,
   FilterX,
-  ChevronLeft,
   ChevronRight,
-  Target
+  Target,
+  Library
 } from "lucide-react";
 import { useCRMStore } from "@/store/crm-store";
 import { 
@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import Link from "next/link";
 
 export default function CarteraPage() {
   const {
@@ -146,6 +147,14 @@ export default function CarteraPage() {
             >
               <Download className="w-4 h-4" /> Exportar Base
             </Button>
+            <Link href="/crm/biblioteca">
+              <Button 
+                variant="outline"
+                className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] border-accent text-accent hover:bg-accent hover:text-white rounded-xl px-4 transition-all"
+              >
+                <Library className="w-4 h-4" /> Biblioteca
+              </Button>
+            </Link>
             <Button 
               className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl px-4"
               onClick={() => setIsAddModalOpen(true)}
