@@ -44,11 +44,11 @@ export function Combobox({
       <PopoverTrigger
         className={cn(
           buttonVariants({ variant: "outline" }),
-          "w-full justify-between font-medium h-9 px-3",
+          "w-full justify-between font-medium min-h-[2.5rem] h-auto py-2 px-3",
           className
         )}
       >
-        <span className="truncate">
+        <span className="text-left text-xs whitespace-normal break-words leading-tight line-clamp-2">
           {value
             ? options.find((option) => option.value === value)?.label
             : placeholder}
@@ -76,10 +76,10 @@ export function Combobox({
                   <div className="flex items-center justify-center w-4">
                     {value === option.value && <Check className="h-3.5 w-3.5 text-primary stroke-[3px]" />}
                   </div>
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-slate-700 text-sm truncate">{option.label}</span>
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <span className="font-bold text-slate-700 text-xs whitespace-normal break-words leading-tight">{option.label}</span>
                     {option.subLabel && (
-                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight truncate">{option.subLabel}</span>
+                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight whitespace-normal break-words mt-0.5">{option.subLabel}</span>
                     )}
                   </div>
                 </CommandItem>

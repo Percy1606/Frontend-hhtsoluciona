@@ -131,8 +131,8 @@ export default function PersonalPage() {
       const clientName = (p as any).cliente?.razonSocial || (p as any).cliente?.empresa || (p as any).clienteNombre || '';
       return {
         value: p.id,
-        label: `${p.codigo} - ${p.nombre}${clientName ? ` - ${clientName}` : ''}`,
-        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${p.codigo}`
+        label: `${p.codigo} - ${p.nombre}`,
+        subLabel: clientName ? clientName : `CÓDIGO: ${p.codigo}`
       };
     });
 
@@ -141,8 +141,8 @@ export default function PersonalPage() {
       const clientName = (proyectoEditando as any).cliente?.razonSocial || (proyectoEditando as any).cliente?.empresa || (proyectoEditando as any).clienteNombre || '';
       filtrados.unshift({
         value: proyectoEditando.id,
-        label: `${proyectoEditando.codigo} - ${proyectoEditando.nombre}${clientName ? ` - ${clientName}` : ''}`,
-        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${proyectoEditando.codigo}`
+        label: `${proyectoEditando.codigo} - ${proyectoEditando.nombre}`,
+        subLabel: clientName ? clientName : `CÓDIGO: ${proyectoEditando.codigo}`
       });
     }
 

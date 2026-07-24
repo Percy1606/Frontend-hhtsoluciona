@@ -30,6 +30,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 
 interface Resource {
   id: string;
@@ -56,9 +57,13 @@ export default function BibliotecaPage() {
   const [categoryFilter, setCategoryFilter] = useState("todos");
   const [folderFilter, setFolderFilter] = useState("todos");
   
-  // Modal states
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [isSendingWhatsApp, setIsSendingWhatsApp] = useState(false);
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -72,6 +77,10 @@ export default function BibliotecaPage() {
   const [selectedClientForShare, setSelectedClientForShare] = useState<any>(null);
   const [customPhone, setCustomPhone] = useState("");
   const [customMessage, setCustomMessage] = useState("");
+  const [abortId, setAbortId] = useState<string | null>(null);
+  const [confirmCancelOpen, setConfirmCancelOpen] = useState(false);
+  const [cancelSuccessOpen, setCancelSuccessOpen] = useState(false);
+  const [successCompany, setSuccessCompany] = useState("");
   
   const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -87,9 +96,11 @@ export default function BibliotecaPage() {
     folderId: ""
   });
 
+  const user = useAuthStore(state => state.user);
+
   useEffect(() => {
     if (shareResource) {
-      setCustomMessage(`Estimado(a),\n\nPor medio del presente le compartimos el siguiente recurso: *${shareResource.title}*\n\nPuede visualizarlo ingresando al siguiente enlace:\n${shareResource.driveWebViewLink}\n\nQuedamos a su entera disposición ante cualquier consulta.`);
+      setCustomMessage(`Estimado(a),\n\nPor medio del presente le compartimos el siguiente recurso: *${shareResource.title}*\n\nQuedamos a su entera disposición ante cualquier consulta.`);
       setCustomPhone("");
       setSelectedClientForShare(null);
       setClientSearch("");
@@ -102,7 +113,78 @@ export default function BibliotecaPage() {
     setCustomPhone(phone);
     
     const greeting = c.contacto ? `Estimado(a) ${c.contacto}, representante de ${c.empresa}` : `Estimados señores de ${c.empresa}`;
-    setCustomMessage(`${greeting},\n\nPor medio del presente le compartimos el siguiente recurso: *${shareResource?.title}*\n\nPuede visualizarlo ingresando al siguiente enlace:\n${shareResource?.driveWebViewLink}\n\nQuedamos a su entera disposición ante cualquier consulta.`);
+    setCustomMessage(`${greeting},\n\nPor medio del presente le compartimos el siguiente recurso: *${shareResource?.title}*\n\nQuedamos a su entera disposición ante cualquier consulta.`);
+  };
+
+  const checkWhatsAppStatus = async () => {
+    try {
+      if (!user?.id) return;
+      const res = await api.get(`/whatsapp/status?userId=${user.id}`);
+      if (res && res.qrCodeDataUrl) {
+        setQrDataUrl(res.qrCodeDataUrl);
+        setQrModalOpen(true);
+      } else if (res && !res.isReady) {
+        alert("WhatsApp se está iniciando... espere un momento e intente de nuevo.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleSendWhatsApp = async () => {
+    if (!shareResource || !user?.id) return;
+    const phone = customPhone.replace(/\D/g, '');
+    if (!phone) return alert("Ingresa un número válido para enviar el mensaje.");
+
+    const currentAbortId = Math.random().toString(36).substring(7);
+    setAbortId(currentAbortId);
+    setIsSendingWhatsApp(true);
+    try {
+      const res = await api.post('/whatsapp/send-video', {
+        userId: user.id,
+        phone,
+        message: customMessage,
+        resourceId: shareResource.id,
+        abortId: currentAbortId
+      });
+      if (res && res.success === false) {
+        // Was aborted
+        return;
+      }
+      setSuccessMessage(customPhone);
+      setSuccessCompany(selectedClientForShare ? selectedClientForShare.empresa : "Contacto Directo");
+      setSuccessModalOpen(true);
+      setShareResource(null);
+    } catch (error: any) {
+      console.error(error);
+      if (error?.message?.includes('503') || error?.message?.includes('not ready')) {
+        await checkWhatsAppStatus();
+      } else {
+        alert(error?.message || "Hubo un error al enviar el video por WhatsApp.");
+      }
+    } finally {
+      setIsSendingWhatsApp(false);
+      setAbortId(null);
+    }
+  };
+
+  const handleCancelWhatsApp = () => {
+    if (isSendingWhatsApp && abortId) {
+      setConfirmCancelOpen(true);
+    } else {
+      setShareResource(null);
+    }
+  };
+
+  const confirmAbort = () => {
+    if (abortId) {
+      api.post('/whatsapp/cancel-video', { abortId }).catch(console.error);
+    }
+    setConfirmCancelOpen(false);
+    setShareResource(null);
+    setIsSendingWhatsApp(false);
+    setAbortId(null);
+    setCancelSuccessOpen(true);
   };
 
   const fetchResources = async () => {
@@ -370,11 +452,11 @@ export default function BibliotecaPage() {
                 </p>
                 
                 {res.mimeType?.startsWith("video/") && (
-                  <div className="mt-4 rounded-xl overflow-hidden bg-black aspect-video relative">
+                  <div className="mt-4 rounded-xl overflow-hidden bg-slate-900 aspect-video relative shadow-inner">
                     <video 
                       src={api.getFileUrl(`/commercial-library/stream/${res.id}`)}
                       controls
-                      preload="none"
+                      preload="metadata"
                       className="absolute inset-0 w-full h-full object-contain"
                     />
                   </div>
@@ -796,20 +878,156 @@ export default function BibliotecaPage() {
                 />
               </div>
 
-              <Button 
-                className="w-full h-14 gap-3 font-black uppercase text-sm bg-[#25D366] hover:bg-[#1ebd5a] text-white rounded-xl shadow-xl shadow-[#25D366]/20 transition-all disabled:opacity-50 disabled:shadow-none hover:-translate-y-0.5"
-                disabled={!customPhone || !customMessage}
-                onClick={() => {
-                  const phone = customPhone.replace(/\D/g, '');
-                  if (!phone) return alert("Ingresa un número válido para enviar el mensaje.");
-                  window.open(`https://wa.me/${phone}?text=${encodeURIComponent(customMessage)}`, '_blank');
-                  setShareResource(null);
-                }}
-              >
-                Enviar por WhatsApp
-              </Button>
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline"
+                  className="flex-1 h-14 font-black uppercase text-xs border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl transition-all"
+                  onClick={handleCancelWhatsApp}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-[2] h-14 gap-2 font-black uppercase text-xs bg-[#25D366] hover:bg-[#1ebd5a] text-white rounded-xl shadow-xl shadow-[#25D366]/20 transition-all disabled:opacity-80 disabled:cursor-not-allowed hover:-translate-y-0.5"
+                  disabled={!customPhone || !customMessage || isSendingWhatsApp}
+                  onClick={handleSendWhatsApp}
+                >
+                  {isSendingWhatsApp ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+                      <span>Procesando...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ExternalLink className="w-5 h-5 shrink-0" />
+                      <span>Enviar por WhatsApp</span>
+                    </>
+                  )}
+                </Button>
+              </div>
             </div>
 
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Success Modal */}
+      <Dialog open={successModalOpen} onOpenChange={setSuccessModalOpen}>
+        <DialogContent className="max-w-sm bg-white rounded-2xl border-none shadow-2xl p-8 text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-800 text-center uppercase text-emerald-600">
+              ¡Envío Exitoso!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mt-2">
+              <ExternalLink className="w-8 h-8 text-emerald-500" />
+            </div>
+            <p className="text-sm text-slate-600 font-medium">
+              El recurso se envió correctamente a:
+            </p>
+            <div className="bg-emerald-50/50 rounded-xl p-4 border border-emerald-100">
+              <p className="text-lg font-bold text-emerald-800 uppercase line-clamp-1 mb-1">
+                {successCompany}
+              </p>
+              <p className="text-sm font-black text-slate-700 tracking-widest flex items-center justify-center gap-2">
+                📱 {successMessage}
+              </p>
+            </div>
+            <Button 
+              className="w-full h-12 mt-4 rounded-xl font-black uppercase bg-emerald-500 hover:bg-emerald-600 shadow-lg shadow-emerald-500/30"
+              onClick={() => setSuccessModalOpen(false)}
+            >
+              Aceptar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirm Cancel Modal */}
+      <Dialog open={confirmCancelOpen} onOpenChange={setConfirmCancelOpen}>
+        <DialogContent className="max-w-sm bg-white rounded-2xl border-none shadow-2xl p-8 text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-800 text-center uppercase">
+              ¿Cancelar Envío?
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 font-medium mt-2">
+              ¿Estás seguro que deseas detener el envío de este video?
+            </p>
+            <div className="flex gap-3 pt-4 border-t border-slate-100">
+              <Button 
+                variant="outline" 
+                className="flex-1 h-11 rounded-xl font-bold border-slate-200 text-slate-600 hover:bg-slate-50"
+                onClick={() => setConfirmCancelOpen(false)}
+              >
+                No, continuar
+              </Button>
+              <Button 
+                variant="destructive"
+                className="flex-1 h-11 rounded-xl font-black uppercase text-xs bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/20"
+                onClick={confirmAbort}
+              >
+                Sí, abortar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Cancel Success Modal */}
+      <Dialog open={cancelSuccessOpen} onOpenChange={setCancelSuccessOpen}>
+        <DialogContent className="max-w-sm bg-white rounded-2xl border-none shadow-2xl p-8 text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-800 text-center uppercase text-slate-600">
+              Envío Cancelado
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mt-2">
+              <Trash2 className="w-8 h-8 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 font-medium">
+              El envío del video fue abortado exitosamente. No se mandó ningún mensaje al cliente.
+            </p>
+            <Button 
+              className="w-full h-12 mt-4 rounded-xl font-black uppercase bg-slate-800 hover:bg-slate-900 shadow-lg"
+              onClick={() => setCancelSuccessOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* QR Modal */}
+      <Dialog open={qrModalOpen} onOpenChange={setQrModalOpen}>
+        <DialogContent className="max-w-sm bg-white rounded-2xl border-none shadow-2xl p-8 text-center">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-black text-slate-800 text-center uppercase">Vincular WhatsApp</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-500 font-medium">
+              Escanea este código QR desde la opción "Dispositivos vinculados" en tu WhatsApp para conectar el sistema.
+            </p>
+            {qrDataUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={qrDataUrl} alt="QR Code" className="mx-auto w-64 h-64 border border-slate-100 rounded-xl" />
+            ) : (
+              <div className="w-64 h-64 mx-auto bg-slate-100 rounded-xl flex items-center justify-center animate-pulse">
+                <span className="text-slate-400 font-medium text-sm">Generando QR...</span>
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full h-11 rounded-xl font-bold"
+              onClick={() => {
+                setQrModalOpen(false);
+                checkWhatsAppStatus();
+              }}
+            >
+              Ya lo escaneé / Refrescar
+            </Button>
           </div>
         </DialogContent>
       </Dialog>

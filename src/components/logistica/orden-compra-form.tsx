@@ -109,8 +109,11 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
       }
     }
     
-    let cleanName = p.nombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim();
-    return `${p.codigo}${cleanName ? ` - ${cleanName}` : ''}${clientName ? ` (${clientName})` : ''}`;
+    let cleanName = p.nombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || p.codigo;
+    return {
+      label: `${p.codigo} - ${cleanName}`,
+      subLabel: clientName || `CÓDIGO: ${p.codigo}`
+    };
   };
 
   const user = useAuthStore(state => state.user);
@@ -458,15 +461,15 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
-                                                "w-full justify-between h-10 border-slate-200 font-bold text-xs rounded-xl text-primary",
+                                                "w-full justify-between min-h-[2.5rem] h-auto py-2 border-slate-200 font-bold text-xs rounded-xl text-primary",
                                                 (!field.value || field.value === "none") && "text-muted-foreground"
                                             )}
                                         >
-                                            <span className="truncate flex-1 text-left">
+                                            <span className="text-left text-xs whitespace-normal break-words leading-tight line-clamp-2">
                                             {field.value && field.value !== "none"
                                                 ? (() => {
                                                     const p = proyectos.find((p) => p.id === field.value);
-                                                    return p ? getProjectLabel(p) : "Para Stock General";
+                                                    return p ? getProjectLabel(p).label : "Para Stock General";
                                                     })()
                                                 : "Para Stock General"}
                                             </span>
@@ -491,25 +494,35 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                             <Check className={cn("mr-2 h-4 w-4 text-primary", field.value === "none" || !field.value ? "opacity-100" : "opacity-0")} />
                                             Para Stock General (Sin Proyecto)
                                         </CommandItem>
-                                        {proyectos.map((p) => (
-                                        <CommandItem
-                                            value={`${p.codigo} ${p.nombre}`}
-                                            key={p.id}
-                                            onSelect={() => {
-                                            form.setValue("proyectoId", p.id);
-                                            setOpenProyecto(false);
-                                            }}
-                                            className="font-bold text-xs cursor-pointer uppercase"
-                                        >
-                                            <Check
-                                            className={cn(
-                                                "mr-2 h-4 w-4 text-primary",
-                                                p.id === field.value ? "opacity-100" : "opacity-0"
-                                            )}
-                                            />
-                                            {getProjectLabel(p)}
-                                        </CommandItem>
-                                        ))}
+                                        {proyectos.map((p) => {
+                                          const { label, subLabel } = getProjectLabel(p);
+                                          return (
+                                            <CommandItem
+                                                value={`${label} ${subLabel}`}
+                                                key={p.id}
+                                                onSelect={() => {
+                                                form.setValue("proyectoId", p.id);
+                                                setOpenProyecto(false);
+                                                }}
+                                                className="flex items-center gap-2 px-2 py-1.5 cursor-pointer"
+                                            >
+                                                <div className="flex items-center justify-center w-4">
+                                                    <Check
+                                                    className={cn(
+                                                        "h-3.5 w-3.5 text-primary stroke-[3px]",
+                                                        p.id === field.value ? "opacity-100" : "opacity-0"
+                                                    )}
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col min-w-0 flex-1">
+                                                    <span className="font-bold text-slate-700 text-xs whitespace-normal break-words leading-tight">{label}</span>
+                                                    {subLabel && (
+                                                        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-tight whitespace-normal break-words mt-0.5">{subLabel}</span>
+                                                    )}
+                                                </div>
+                                            </CommandItem>
+                                          );
+                                        })}
                                     </CommandGroup>
                                     </CommandList>
                                 </Command>

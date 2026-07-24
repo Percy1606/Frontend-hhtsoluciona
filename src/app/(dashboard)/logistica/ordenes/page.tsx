@@ -345,10 +345,12 @@ export default function OrdenesCompraPage() {
               return (
               <div key={grupo.proyectoId} className={cn("bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-200 hover:shadow-lg hover:border-slate-300", isOpen && "row-span-2")}>
                 {/* Cabecera del Proyecto */}
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   onClick={() => toggleProject(grupo.proyectoId)}
-                  className="w-full text-left transition-colors duration-150"
+                  onKeyDown={(e) => e.key === 'Enter' && toggleProject(grupo.proyectoId)}
+                  className="w-full text-left transition-colors duration-150 cursor-pointer"
                 >
                   <div className="p-4">
                     {/* TOP ROW */}
@@ -381,7 +383,7 @@ export default function OrdenesCompraPage() {
                             setEditingOrden(null);
                             setIsOrdenModalOpen(true);
                           }}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-sm border border-transparent hover:border-emerald-100"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 transition-all duration-200 bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 hover:shadow-sm border border-transparent hover:border-emerald-100 relative z-10"
                           title="Nueva Orden para este Proyecto"
                         >
                           <Plus className="w-3.5 h-3.5" />
@@ -408,7 +410,7 @@ export default function OrdenesCompraPage() {
                       </span>
                     </div>
                   </div>
-                </button>
+                </div>
 
                 {/* Lista de Órdenes */}
                 {isOpen && (

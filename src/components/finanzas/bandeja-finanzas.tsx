@@ -234,7 +234,7 @@ export default function BandejaFinanzas() {
                                 <div className="font-black text-[11px] text-primary uppercase leading-tight">
                                   {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo || p.codigo}
                                 </div>
-                                <div className="text-[9px] font-bold text-slate-500 mt-0.5 max-w-[200px] uppercase truncate" title={p.nombre}>
+                                <div className="text-[9px] font-bold text-slate-500 mt-0.5 uppercase whitespace-normal break-words leading-tight" title={p.nombre}>
                                   {p.nombre?.replace(/^proyecto:\s*/i, '')}
                                 </div>
                                 {(!hasOrder && p.ventaContratada === 0) && (
