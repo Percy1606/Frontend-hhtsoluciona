@@ -379,7 +379,8 @@ export function CRMStats() {
     const prospectosHoy = clients.filter((c: any) => {
       const creador = getRealCreator(c);
       if (!creador?.toLowerCase().includes(seller.name.toLowerCase().trim())) return false;
-      return c.fechaCreacion?.startsWith(getPeruDateString());
+      const d = parseSafeDate(c.fechaCreacion || (c as any).createdAt);
+      return d ? getPeruDateString(d) === getPeruDateString() : false;
     }).length;
 
     const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')).length;

@@ -393,8 +393,16 @@ export default function DashboardPage() {
       return true;
     };
 
+    let totalLeads = 0;
+    clients.forEach((c: any) => {
+      const date = parseSafeDate(c.fechaCreacion);
+      if (startDate && date && date < startDate) return;
+      if (endDate && date && date > endDate) return;
+      totalLeads++;
+    });
+
     return {
-      totalLeads: filteredClients.length,
+      totalLeads: totalLeads,
       ganados: clients.filter((c: any) => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length,
       perdidos: clients.filter((c: any) => c.etapaComercial === 'Perdido' && isInRange(c.fechaActualizacion || c.updatedAt || c.fechaCreacion || c.createdAt)).length,
       enNegociacion: filteredClients.filter((c: any) => ['Negociación', 'Cotización Enviada', 'Seguimiento'].includes(c.etapaComercial)).length,
@@ -1328,7 +1336,8 @@ export default function DashboardPage() {
                     const isVisit = int.tipo?.toLowerCase().includes('visit');
                     
                     if (belongsToSeller && (hasText || isVisit)) {
-                      if ((int.fecha || int.createdAt)?.startsWith(hoyStr)) {
+                      const d = parseSafeDate(int.fecha || int.createdAt);
+                      if (d && getPeruDateString(d) === hoyStr) {
                         acc.push({ ...int, clienteNombre: c.empresa || c.nombre, esLegacy: false });
                       }
                     }
@@ -1346,7 +1355,8 @@ export default function DashboardPage() {
                   prospectosPeriodo: clients.filter((c: any) => {
                      const creador = getRealCreator(c);
                      if (!creador?.toLowerCase().includes(seller.name.toLowerCase().trim())) return false;
-                     return c.fechaCreacion?.startsWith(getPeruDateString());
+                     const d = parseSafeDate(c.fechaCreacion || c.createdAt);
+                     return d ? getPeruDateString(d) === getPeruDateString() : false;
                   }).length,
                   cotizaciones: filteredQuotes.filter((q: any) => {
                     const clienteCot = clients.find((c: any) => c.id === q.clientId);
