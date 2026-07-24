@@ -16,7 +16,9 @@ import {
   ExternalLink,
   Trash2,
   FolderOpen,
-  Eye
+  Eye,
+  Edit,
+  RefreshCw
 } from "lucide-react";
 import {
   Dialog,
@@ -42,6 +44,7 @@ interface Resource {
   mimeType: string;
   fileName: string;
   createdAt: string;
+  folderId?: string;
 }
 
 export default function BibliotecaPage() {
@@ -51,6 +54,7 @@ export default function BibliotecaPage() {
   const [search, setSearch] = useState("");
   const [clientSearch, setClientSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("todos");
+  const [folderFilter, setFolderFilter] = useState("todos");
   
   // Modal states
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
@@ -71,6 +75,17 @@ export default function BibliotecaPage() {
   
   const [resourceToDelete, setResourceToDelete] = useState<Resource | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [resourceToEdit, setResourceToEdit] = useState<Resource | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    title: "",
+    description: "",
+    clientOrService: "",
+    category: "foto",
+    folderId: ""
+  });
 
   useEffect(() => {
     if (shareResource) {
@@ -182,12 +197,52 @@ export default function BibliotecaPage() {
     }
   };
 
+  const handleEditClick = (res: Resource) => {
+    setResourceToEdit(res);
+    setEditFormData({
+      title: res.title,
+      description: res.description,
+      clientOrService: res.clientOrService,
+      category: res.category || "general",
+      folderId: res.folderId || ""
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resourceToEdit) return;
+    try {
+      await api.put(`/commercial-library/${resourceToEdit.id}`, editFormData);
+      setIsEditModalOpen(false);
+      fetchResources();
+    } catch (e) {
+      console.error(e);
+      alert("Error al editar");
+    }
+  };
+
+  const handleSyncDrive = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await api.post('/commercial-library/sync', {});
+      alert(`Sincronización completa. Archivos nuevos agregados: ${res.added}`);
+      fetchResources();
+    } catch(e) {
+      console.error(e);
+      alert("Error al sincronizar con Drive");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const filteredResources = resources.filter(r => {
     const matchSearch = r.title.toLowerCase().includes(search.toLowerCase()) || 
                         r.clientOrService.toLowerCase().includes(search.toLowerCase()) ||
                         r.description.toLowerCase().includes(search.toLowerCase());
     const matchCat = categoryFilter === "todos" || r.category === categoryFilter;
-    return matchSearch && matchCat;
+    const matchFolder = folderFilter === "todos" || r.folderId === folderFilter || (folderFilter === "root" && (!r.folderId || r.folderId === '12ZUJiugv84BpM-I1pMWQfu9bldqrPU67' || r.folderId === 'root'));
+    return matchSearch && matchCat && matchFolder;
   });
 
   const filteredClients = clients.filter(c => 
@@ -243,12 +298,39 @@ export default function BibliotecaPage() {
           </Select>
         </div>
 
-        <Button 
-          className="h-12 w-full lg:w-auto px-6 font-black uppercase text-[11px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl flex gap-2"
-          onClick={() => setIsUploadModalOpen(true)}
-        >
-          <Plus className="w-4 h-4" /> Subir Evidencia
-        </Button>
+        <div className="flex-1 w-full space-y-2">
+          <Label className="text-[10px] font-black uppercase text-slate-400 tracking-widest ml-1">Filtro por Carpeta</Label>
+          <Select value={folderFilter} onValueChange={(val) => setFolderFilter(val || "todos")}>
+            <SelectTrigger className="h-12 border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm text-[11px]">
+              <SelectValue placeholder="Carpeta" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos" className="font-black text-[10px] uppercase">Todas las carpetas</SelectItem>
+              <SelectItem value="root" className="font-black text-[10px] uppercase">Raíz (Principal)</SelectItem>
+              {driveFolders.map(folder => (
+                <SelectItem key={folder.id} value={folder.id} className="font-black text-[10px] uppercase text-slate-600">{folder.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex gap-3 w-full lg:w-auto">
+          <Button 
+            variant="outline"
+            className="h-12 flex-1 lg:flex-none px-6 font-black uppercase text-[11px] border-slate-200 text-slate-600 hover:bg-slate-50 shadow-sm rounded-xl flex gap-2"
+            onClick={handleSyncDrive}
+            disabled={isSyncing}
+          >
+            <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} /> Sincronizar Drive
+          </Button>
+
+          <Button 
+            className="h-12 flex-1 lg:flex-none px-6 font-black uppercase text-[11px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl flex gap-2"
+            onClick={() => setIsUploadModalOpen(true)}
+          >
+            <Plus className="w-4 h-4" /> Subir Evidencia
+          </Button>
+        </div>
       </div>
 
       {/* Grid de Recursos */}
@@ -322,6 +404,15 @@ export default function BibliotecaPage() {
 
               <div className="border-t border-slate-100 p-4 bg-slate-50/50 flex justify-between items-center">
                 <div className="flex gap-2">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="text-slate-400 hover:text-blue-500 hover:bg-blue-50 transition-colors"
+                    onClick={() => handleEditClick(res)}
+                    title="Editar recurso"
+                  >
+                    <Edit className="w-4 h-4" />
+                  </Button>
                   <Button 
                     variant="ghost" 
                     size="icon" 
@@ -496,6 +587,105 @@ export default function BibliotecaPage() {
                 className="h-11 px-8 rounded-xl font-black uppercase text-xs bg-accent hover:bg-accent/90 shadow-lg shadow-accent/30"
               >
                 {uploading ? "Subiendo a Drive..." : "Guardar Recurso"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden border-none shadow-2xl rounded-2xl">
+          <DialogHeader className="p-6 bg-primary text-white">
+            <DialogTitle className="text-2xl font-black uppercase flex items-center gap-3">
+              <Edit className="w-6 h-6 text-accent" />
+              Editar Recurso
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="p-6 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-500">Título del Recurso</Label>
+                <Input 
+                  required
+                  placeholder="Ej: Mantenimiento Preventivo Subestación"
+                  className="h-11 rounded-xl"
+                  value={editFormData.title}
+                  onChange={e => setEditFormData({...editFormData, title: e.target.value})}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-500">Categoría</Label>
+                <Select value={editFormData.category} onValueChange={v => setEditFormData({...editFormData, category: v || "foto"})}>
+                  <SelectTrigger className="h-11 rounded-xl font-medium">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="foto">Fotografía</SelectItem>
+                    <SelectItem value="video">Video</SelectItem>
+                    <SelectItem value="brochure">Brochure</SelectItem>
+                    <SelectItem value="documento">Documento / Informe</SelectItem>
+                    <SelectItem value="general">General</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-500">Carpeta en Drive</Label>
+              <Select value={editFormData.folderId || "root"} onValueChange={(v) => setEditFormData({...editFormData, folderId: v === "root" || !v ? "" : v})}>
+                <SelectTrigger className="h-11 rounded-xl font-medium">
+                  <SelectValue placeholder="Raíz (Principal)">
+                    {editFormData.folderId 
+                      ? driveFolders.find(f => f.id === editFormData.folderId)?.name || "Raíz (Principal)"
+                      : "Raíz (Principal)"}
+                  </SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="root">Raíz (Principal)</SelectItem>
+                  {driveFolders.map(folder => (
+                    <SelectItem key={folder.id} value={folder.id}>{folder.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-500">Cliente o Tipo de Servicio Relacionado</Label>
+              <Input 
+                required
+                placeholder="Ej: Minera Las Bambas / Cambio de Celdas"
+                className="h-11 rounded-xl"
+                value={editFormData.clientOrService}
+                onChange={e => setEditFormData({...editFormData, clientOrService: e.target.value})}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-500">Descripción / Contexto para el cliente</Label>
+              <Textarea 
+                required
+                placeholder="Describe brevemente de qué trata este recurso..."
+                className="min-h-[100px] rounded-xl resize-none"
+                value={editFormData.description}
+                onChange={e => setEditFormData({...editFormData, description: e.target.value})}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={() => setIsEditModalOpen(false)}
+                className="h-11 px-6 rounded-xl font-bold"
+              >
+                Cancelar
+              </Button>
+              <Button 
+                type="submit" 
+                className="h-11 px-8 rounded-xl font-black uppercase text-xs bg-accent hover:bg-accent/90 shadow-lg shadow-accent/30"
+              >
+                Guardar Cambios
               </Button>
             </div>
           </form>
