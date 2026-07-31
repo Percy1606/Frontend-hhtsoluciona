@@ -85,7 +85,7 @@ export default function InventarioPage() {
 
   // Sincronización Maestra: La página y los filtros mandan sobre la carga
   useEffect(() => {
-    fetchInsumos(currentPage, 20, searchTerm, filterCategory, filterStock);
+    fetchInsumos(currentPage, 50, searchTerm, filterCategory, filterStock);
   }, [fetchInsumos, currentPage, searchTerm, filterCategory, filterStock]);
 
   const handlePageChange = (newPage: number) => {

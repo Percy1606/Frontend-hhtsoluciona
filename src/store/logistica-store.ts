@@ -220,7 +220,7 @@ export const useLogisticaStore = create<LogisticaState>()(
       loading: false,
       error: null,
 
-      fetchInsumos: async (page = 1, limit = 20, search = "", categoria = "all", stockStatus = "all") => {
+      fetchInsumos: async (page = 1, limit = 500, search = "", categoria = "all", stockStatus = "all") => {
         set({ loading: true, error: null });
         try {
           const queryParams = new URLSearchParams({
