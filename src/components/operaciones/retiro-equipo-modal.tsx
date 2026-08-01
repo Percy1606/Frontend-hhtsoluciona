@@ -111,7 +111,6 @@ export function RetiroEquipoModal() {
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      {/* @ts-expect-error asChild type is wrong */}
       <DialogTrigger asChild>
         <Button
           variant="outline"

@@ -107,14 +107,14 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     };
 
     eventSource.onerror = (err) => {
-      console.error("[SSE] Error en conexión. Estado:", eventSource.readyState);
       set({ sseConnected: false });
       
-      // No cerramos inmediatamente para permitir que el navegador intente reconectar automáticamente
-      // si el error fue temporal (ej: micro-corte de red).
-      // Si el estado es CLOSED (2), el navegador NO reconectará automáticamente, así que ahí sí cerramos.
+      // Si el estado es CONNECTING (0), el navegador está reconectando automáticamente en segundo plano.
+      if (eventSource.readyState === EventSource.CONNECTING) {
+        return;
+      }
+
       if (eventSource.readyState === EventSource.CLOSED) {
-        console.log("[SSE] Conexión cerrada permanentemente por el servidor o error fatal.");
         eventSource.close();
       }
     };

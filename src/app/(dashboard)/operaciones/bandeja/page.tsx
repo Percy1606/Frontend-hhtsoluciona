@@ -21,7 +21,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { ClipboardList, Calendar, User, Clock, CheckCircle2, FileText, Printer, FilterX, Search, Info, ChevronLeft, ChevronRight, RotateCw, Trash2, Camera, Upload, Download, X } from "lucide-react";
+import { ClipboardList, Calendar, User, Clock, CheckCircle2, FileText, Printer, FilterX, Search, Info, ChevronLeft, ChevronRight, RotateCw, Trash2, Camera, Upload, Download, X, Coins, Receipt, Plus, Pencil, Trash, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { Input } from "@/components/ui/input";
@@ -67,6 +67,230 @@ export default function BandejaTecnicaPage() {
   const [isAttachmentsOpen, setIsAttachmentsOpen] = useState(false);
   const [selectedFichaForAttachments, setSelectedFichaForAttachments] = useState<any>(null);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+
+  // Gestión Dinámica de Costos por Visita Técnica
+  const [isCostsModalOpen, setIsCostsModalOpen] = useState(false);
+  const [selectedFichaForCosts, setSelectedFichaForCosts] = useState<any>(null);
+  const [gastosItems, setGastosItems] = useState<any[]>([]);
+  
+  // Estado para el ítem individual en edición/creación
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [itemConcepto, setItemConcepto] = useState<string>("");
+  const [itemCategoria, setItemCategoria] = useState<string>("Movilidad");
+  const [itemMonto, setItemMonto] = useState<string>("");
+  const [itemObservacion, setItemObservacion] = useState<string>("");
+  const [savingCosts, setSavingCosts] = useState(false);
+
+  // Estado para comprobante/boleta adjunta al ítem
+  const [uploadingItemProof, setUploadingItemProof] = useState(false);
+  const [itemComprobanteUrl, setItemComprobanteUrl] = useState<string>("");
+  const [itemComprobanteNombre, setItemComprobanteNombre] = useState<string>("");
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+
+  // Estado para Eliminación Segura del ítem con Clave de Admin
+  const [isDeleteItemModalOpen, setIsDeleteItemModalOpen] = useState(false);
+  const [itemToDelete, setItemToDelete] = useState<any>(null);
+  const [isDeletingItem, setIsDeletingItem] = useState(false);
+
+  const handleOpenCostsModal = (ficha: any) => {
+    setSelectedFichaForCosts(ficha);
+    setEditingItemId(null);
+    setItemConcepto("");
+    setItemCategoria("Movilidad");
+    setItemMonto("");
+    setItemObservacion("");
+    setItemComprobanteUrl("");
+    setItemComprobanteNombre("");
+
+    // Cargar los ítems guardados previamente en datosTecnicos.gastosDetalle
+    const datosTec: any = ficha.datosTecnicos || {};
+    let savedItems: any[] = [];
+    if (Array.isArray(datosTec.gastosDetalle) && datosTec.gastosDetalle.length > 0) {
+      savedItems = datosTec.gastosDetalle;
+    } else {
+      // Reconstruir ítems por defecto si existen costos tradicionales previos
+      if (Number(ficha.costoMovilidad || 0) > 0) {
+        savedItems.push({
+          id: 'mov-init',
+          concepto: 'Movilidad y Traslado',
+          categoria: 'Movilidad',
+          monto: Number(ficha.costoMovilidad),
+          observacion: 'Registro anterior'
+        });
+      }
+      if (Number(ficha.costoViaticos || 0) > 0) {
+        savedItems.push({
+          id: 'viat-init',
+          concepto: 'Viáticos y Alimentación',
+          categoria: 'Viáticos',
+          monto: Number(ficha.costoViaticos),
+          observacion: 'Registro anterior'
+        });
+      }
+      if (Number(ficha.costoOtros || 0) > 0) {
+        savedItems.push({
+          id: 'otr-init',
+          concepto: 'Otros Gastos de Inspección',
+          categoria: 'Otros',
+          monto: Number(ficha.costoOtros),
+          observacion: ficha.observacionesCostos || 'Registro anterior'
+        });
+      }
+    }
+
+    setGastosItems(savedItems);
+    setIsCostsModalOpen(true);
+  };
+
+  const handleUploadItemProof = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingItemProof(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post('/operaciones/fichas-tecnicas/upload', formData);
+      setItemComprobanteUrl(res.url);
+      setItemComprobanteNombre(file.name);
+      toast.success("Comprobante Subido", { description: `Adjunto: ${file.name}` });
+    } catch (error: any) {
+      toast.error("Error al subir comprobante", { description: error.message || "No se pudo guardar la foto." });
+    } finally {
+      setUploadingItemProof(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleAddOrUpdateItem = () => {
+    if (!itemConcepto.trim()) {
+      toast.error("Campo Requerido", { description: "Por favor escribe el concepto o detalle del gasto." });
+      return;
+    }
+    const montoNum = parseFloat(itemMonto);
+    if (isNaN(montoNum) || montoNum <= 0) {
+      toast.error("Monto Inválido", { description: "Por favor ingresa un monto válido mayor a 0." });
+      return;
+    }
+
+    if (editingItemId) {
+      // Actualizar ítem existente
+      setGastosItems(prev => prev.map(item => item.id === editingItemId ? {
+        ...item,
+        concepto: itemConcepto.trim(),
+        categoria: itemCategoria,
+        monto: montoNum,
+        observacion: itemObservacion.trim(),
+        comprobanteUrl: itemComprobanteUrl || "",
+        comprobanteNombre: itemComprobanteNombre || ""
+      } : item));
+      toast.success("Ítem Actualizado", { description: `Se modificó "${itemConcepto}".` });
+      setEditingItemId(null);
+    } else {
+      // Agregar nuevo ítem
+      const newItem = {
+        id: `gasto-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+        concepto: itemConcepto.trim(),
+        categoria: itemCategoria,
+        monto: montoNum,
+        observacion: itemObservacion.trim(),
+        comprobanteUrl: itemComprobanteUrl || "",
+        comprobanteNombre: itemComprobanteNombre || ""
+      };
+      setGastosItems(prev => [...prev, newItem]);
+      toast.success("Ítem Agregado", { description: `Se registró S/ ${montoNum.toFixed(2)} por ${itemConcepto}.` });
+    }
+
+    // Resetear campos del formulario individual
+    setItemConcepto("");
+    setItemMonto("");
+    setItemObservacion("");
+    setItemComprobanteUrl("");
+    setItemComprobanteNombre("");
+  };
+
+  const handleEditItem = (item: any) => {
+    setEditingItemId(item.id);
+    setItemConcepto(item.concepto || "");
+    setItemCategoria(item.categoria || "Movilidad");
+    setItemMonto(String(item.monto || 0));
+    setItemObservacion(item.observacion || "");
+    setItemComprobanteUrl(item.comprobanteUrl || "");
+    setItemComprobanteNombre(item.comprobanteNombre || "");
+  };
+
+  const handleRequestDeleteItem = (item: any) => {
+    setItemToDelete(item);
+    setIsDeleteItemModalOpen(true);
+  };
+
+  const handleConfirmDeleteItem = async (password: string) => {
+    if (!itemToDelete) return;
+    setIsDeletingItem(true);
+    try {
+      await api.post('/auth/verify-password', { password });
+      setGastosItems(prev => prev.filter(i => i.id !== itemToDelete.id));
+      if (editingItemId === itemToDelete.id) {
+        setEditingItemId(null);
+        setItemConcepto("");
+        setItemMonto("");
+        setItemObservacion("");
+        setItemComprobanteUrl("");
+        setItemComprobanteNombre("");
+      }
+      toast.success("Ítem Eliminado", { description: `El gasto "${itemToDelete.concepto}" fue eliminado.` });
+      setIsDeleteItemModalOpen(false);
+      setItemToDelete(null);
+    } catch (error: any) {
+      toast.error("Acceso Denegado", { description: error.response?.data?.message || error.message || "Contraseña de administrador incorrecta." });
+      throw error;
+    } finally {
+      setIsDeletingItem(false);
+    }
+  };
+
+  const handleSaveCosts = async () => {
+    if (!selectedFichaForCosts) return;
+    setSavingCosts(true);
+    try {
+      // Calcular totales por categoría
+      const movTotal = gastosItems.filter(i => i.categoria === 'Movilidad').reduce((acc, i) => acc + (Number(i.monto) || 0), 0);
+      const viatTotal = gastosItems.filter(i => i.categoria === 'Viáticos').reduce((acc, i) => acc + (Number(i.monto) || 0), 0);
+      const otrTotal = gastosItems.filter(i => i.categoria !== 'Movilidad' && i.categoria !== 'Viáticos').reduce((acc, i) => acc + (Number(i.monto) || 0), 0);
+      const totalGeneral = movTotal + viatTotal + otrTotal;
+
+      const currentDatosTec = selectedFichaForCosts.datosTecnicos || {};
+      const updatedDatosTec = {
+        ...currentDatosTec,
+        gastosDetalle: gastosItems
+      };
+
+      const resumenConceptos = gastosItems.map(i => `${i.concepto} (S/ ${Number(i.monto).toFixed(2)})`).join(', ');
+
+      const payload = {
+        costoMovilidad: movTotal,
+        costoViaticos: viatTotal,
+        costoOtros: otrTotal,
+        costoTotal: totalGeneral,
+        observacionesCostos: resumenConceptos || "Sin detalle de gastos",
+        datosTecnicos: updatedDatosTec
+      };
+
+      await api.put(`/operaciones/fichas-tecnicas/${selectedFichaForCosts.id}`, payload);
+
+      toast.success("Gastos de Visita Guardados", {
+        description: `Se guardó el desglose completo (${gastosItems.length} ítems, Total: S/ ${totalGeneral.toFixed(2)}).`
+      });
+      setIsCostsModalOpen(false);
+      handleRefresh();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error al guardar costos", { description: error.message || "No se pudo actualizar." });
+    } finally {
+      setSavingCosts(false);
+    }
+  };
 
   const handleUploadAttachment = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -364,6 +588,22 @@ export default function BandejaTecnicaPage() {
                       )}>
                         {ficha.estado}
                       </Badge>
+                      {Number(ficha.costoTotal || 0) > 0 ? (
+                        <Badge variant="outline" className={cn(
+                          "font-black text-[9px] uppercase px-2.5 h-5.5 border rounded-lg flex items-center gap-1 shadow-none",
+                          ficha.gastosImputados 
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                            : "bg-amber-50 text-amber-800 border-amber-200"
+                        )}>
+                          <Coins className="w-3 h-3 text-amber-600" />
+                          S/ {Number(ficha.costoTotal).toFixed(2)}
+                          {ficha.gastosImputados ? " (Imputado)" : " (Pre-venta)"}
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="font-bold text-[9px] uppercase text-slate-400 border-slate-200 bg-slate-50/80 h-5.5">
+                          S/ 0.00 Costos
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
@@ -483,6 +723,15 @@ export default function BandejaTecnicaPage() {
                       title="Gestionar fotos/archivos"
                     >
                       <Camera className="w-4.5 h-4.5" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-amber-600 hover:bg-white rounded-lg transition-all" 
+                      onClick={() => handleOpenCostsModal(ficha)} 
+                      title="Registrar / Editar Costos de Visita"
+                    >
+                      <Coins className="w-4.5 h-4.5" />
                     </Button>
                     {user?.rol === 'ADMIN' && (
                       <Button 
@@ -697,6 +946,343 @@ export default function BandejaTecnicaPage() {
               type="button"
               className="bg-slate-800 hover:bg-slate-900 text-white font-black uppercase text-[10px] h-9 px-4 rounded-xl"
               onClick={() => setIsAttachmentsOpen(false)}
+            >
+              Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Desglose Dinámico de Costos por Visita Técnica */}
+      <Dialog open={isCostsModalOpen} onOpenChange={setIsCostsModalOpen}>
+        <DialogContent className="max-w-xl w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
+          <DialogHeader className="p-5 bg-[#001529] text-white shrink-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
+              <Coins className="w-5 h-5 text-amber-400" />
+              Desglose de Gastos de Visita Técnica
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+            {/* Header info del cliente */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+              <div>
+                <h4 className="text-sm font-black text-slate-800 uppercase truncate">
+                  {selectedFichaForCosts?.cliente?.empresa}
+                </h4>
+                <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                  Visita del {selectedFichaForCosts?.fechaVisita ? format(new Date(selectedFichaForCosts.fechaVisita), "dd/MM/yyyy") : "---"}
+                </p>
+              </div>
+
+              <div className="bg-slate-900 text-white px-4 py-2 rounded-xl text-right">
+                <span className="text-[9px] font-black text-amber-400 uppercase tracking-widest block leading-none">TOTAL ACUMULADO</span>
+                <span className="text-lg font-black leading-none mt-1 inline-block">
+                  S/ {gastosItems.reduce((acc, i) => acc + (Number(i.monto) || 0), 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {selectedFichaForCosts?.gastosImputados && (
+              <Alert className="bg-emerald-50 border-emerald-200 rounded-xl p-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                <AlertTitle className="text-emerald-800 font-black text-[10px] uppercase">Gastos Imputados a Proyecto</AlertTitle>
+                <AlertDescription className="text-emerald-700 text-[10px] font-medium leading-tight">
+                  Esta visita ya fue transferida como gasto real al Proyecto operativo al ganar la cotización.
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Formulario para agregar / editar un ítem */}
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200/60 pb-2">
+                <span className="text-[10px] font-black uppercase text-primary tracking-wider flex items-center gap-1.5">
+                  <Receipt className="w-3.5 h-3.5" />
+                  {editingItemId ? "Editar Ítem de Gasto" : "Agregar Nuevo Ítem de Gasto"}
+                </span>
+                {editingItemId && (
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => { setEditingItemId(null); setItemConcepto(""); setItemMonto(""); setItemObservacion(""); setItemComprobanteUrl(""); setItemComprobanteNombre(""); }}
+                    className="h-6 text-[9px] font-bold uppercase text-slate-400 hover:text-slate-700 px-2"
+                  >
+                    Cancelar Edición
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div className="md:col-span-2 space-y-1">
+                  <Label className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Concepto / Detalle del Gasto *</Label>
+                  <Input 
+                    placeholder="Ej: Pasaje taxi ida y vuelta, Almuerzo..."
+                    value={itemConcepto}
+                    onChange={(e) => setItemConcepto(e.target.value)}
+                    className="h-8 border-slate-200 font-bold text-[10px] placeholder:text-[9px] rounded-lg bg-white uppercase placeholder:text-slate-300"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Categoría *</Label>
+                  <select 
+                    value={itemCategoria}
+                    onChange={(e) => setItemCategoria(e.target.value)}
+                    className="w-full h-8 border border-slate-200 bg-white font-bold text-[10px] rounded-lg px-2 uppercase text-slate-700 focus:ring-1 focus:ring-primary outline-none"
+                  >
+                    <option value="Movilidad">Movilidad / Pasajes</option>
+                    <option value="Viáticos">Viáticos / Comida</option>
+                    <option value="Insumos">Materiales / Insumos</option>
+                    <option value="Otros">Otros Gastos</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Monto (S/) *</Label>
+                  <Input 
+                    type="number"
+                    min="0"
+                    step="0.50"
+                    placeholder="0.00"
+                    value={itemMonto}
+                    onChange={(e) => setItemMonto(e.target.value)}
+                    className="h-8 border-slate-200 font-bold text-[10px] placeholder:text-[9px] rounded-lg bg-white"
+                  />
+                </div>
+
+                <div className="md:col-span-2 space-y-1">
+                  <Label className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Notas / Comprobante (Opcional)</Label>
+                  <Input 
+                    placeholder="Ej: Boleta B001-1234, consumo de grifo..."
+                    value={itemObservacion}
+                    onChange={(e) => setItemObservacion(e.target.value)}
+                    className="h-8 border-slate-200 font-bold text-[10px] placeholder:text-[9px] rounded-lg bg-white uppercase placeholder:text-slate-300"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <Label className="text-[8px] font-black uppercase text-slate-500 tracking-wider">Foto / Boleta / Factura</Label>
+                  <div className="flex items-center gap-1.5">
+                    <Label
+                      htmlFor="item-proof-upload"
+                      className={cn(
+                        "flex items-center justify-center gap-1 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg h-8 px-2.5 cursor-pointer text-[8px] font-black uppercase text-slate-600 transition-all whitespace-nowrap shrink-0",
+                        uploadingItemProof && "opacity-50 pointer-events-none"
+                      )}
+                    >
+                      <Camera className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span className="whitespace-nowrap">
+                        {uploadingItemProof ? "Subiendo..." : "Seleccionar Archivo"}
+                      </span>
+                    </Label>
+                    <input
+                      id="item-proof-upload"
+                      type="file"
+                      className="hidden"
+                      onChange={handleUploadItemProof}
+                      disabled={uploadingItemProof}
+                      accept="image/*,application/pdf"
+                    />
+
+                    {itemComprobanteUrl && (
+                      <div className="flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg px-2 h-8 min-w-0 max-w-[160px] shrink-0">
+                        <FileText className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        <span className="text-[8px] font-black uppercase truncate flex-1" title={itemComprobanteNombre || "Archivo Adjunto"}>
+                          {itemComprobanteNombre || "Adjunto"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setPreviewImageUrl(api.getFileUrl(itemComprobanteUrl))}
+                          className="text-emerald-700 hover:text-emerald-900 p-0.5 rounded shrink-0"
+                          title="Ver archivo grande"
+                        >
+                          <Eye className="w-3 h-3" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setItemComprobanteUrl(""); setItemComprobanteNombre(""); }}
+                          className="text-red-500 hover:text-red-700 p-0.5 rounded shrink-0"
+                          title="Remover archivo"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-0.5">
+                <Button
+                  type="button"
+                  onClick={handleAddOrUpdateItem}
+                  className={cn(
+                    "font-black uppercase text-[9px] h-8 px-4 rounded-lg shadow-sm gap-1.5 transition-all",
+                    editingItemId ? "bg-amber-600 hover:bg-amber-700 text-white" : "bg-primary hover:bg-primary/90 text-white"
+                  )}
+                >
+                  {editingItemId ? <Pencil className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                  {editingItemId ? "Guardar Cambios del Ítem" : "Agregar Ítem a la Lista"}
+                </Button>
+              </div>
+            </div>
+
+            {/* Listado de Ítems Agregados */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                  Ítems Registrados ({gastosItems.length})
+                </span>
+                {gastosItems.length > 0 && (
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">
+                    Movilidad: S/ {gastosItems.filter(i => i.categoria === 'Movilidad').reduce((a, b) => a + Number(b.monto || 0), 0).toFixed(2)} | 
+                    Viáticos: S/ {gastosItems.filter(i => i.categoria === 'Viáticos').reduce((a, b) => a + Number(b.monto || 0), 0).toFixed(2)}
+                  </span>
+                )}
+              </div>
+
+              {gastosItems.length === 0 ? (
+                <div className="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                  <Coins className="w-8 h-8 text-slate-300 mx-auto mb-1.5" />
+                  <p className="text-[11px] font-bold text-slate-400 uppercase">No hay gastos registrados en esta visita.</p>
+                  <p className="text-[9px] font-medium text-slate-400 uppercase mt-0.5">Agrega los detalles usando el formulario superior.</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+                  {gastosItems.map((item, idx) => (
+                    <div 
+                      key={item.id || idx}
+                      className={cn(
+                        "p-3 rounded-xl border flex items-center justify-between gap-3 transition-all",
+                        editingItemId === item.id ? "bg-amber-50 border-amber-300 ring-2 ring-amber-200" : "bg-white border-slate-200 hover:border-slate-300"
+                      )}
+                    >
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <Badge variant="outline" className={cn(
+                          "font-black text-[8px] uppercase px-2 h-5 shrink-0 border rounded-md",
+                          item.categoria === 'Movilidad' && "bg-blue-50 text-blue-700 border-blue-200",
+                          item.categoria === 'Viáticos' && "bg-purple-50 text-purple-700 border-purple-200",
+                          item.categoria === 'Insumos' && "bg-emerald-50 text-emerald-700 border-emerald-200",
+                          item.categoria === 'Otros' && "bg-amber-50 text-amber-700 border-amber-200"
+                        )}>
+                          {item.categoria || 'Otros'}
+                        </Badge>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-black text-slate-800 uppercase block truncate">{item.concepto}</span>
+                            {item.comprobanteUrl && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewImageUrl(api.getFileUrl(item.comprobanteUrl))}
+                                className="flex items-center gap-1 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 rounded-md px-1.5 py-0.5 text-[8px] font-black uppercase transition-all shrink-0 cursor-pointer"
+                                title="Ver foto o comprobante"
+                              >
+                                <FileText className="w-3 h-3 text-emerald-600" /> Ver Archivo
+                              </button>
+                            )}
+                          </div>
+                          {item.observacion && (
+                            <span className="text-[9px] font-bold text-slate-400 uppercase block truncate">{item.observacion}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 shrink-0">
+                        <span className="text-xs font-black text-primary">
+                          S/ {Number(item.monto || 0).toFixed(2)}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg"
+                            onClick={() => handleEditItem(item)}
+                            title="Editar ítem"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            onClick={() => handleRequestDeleteItem(item)}
+                            title="Eliminar ítem (Requiere clave Admin)"
+                          >
+                            <Trash className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="font-black uppercase text-[10px] h-9 px-4 rounded-xl border-slate-200"
+              onClick={() => setIsCostsModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={savingCosts}
+              className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] h-9 px-6 rounded-xl shadow-md"
+              onClick={handleSaveCosts}
+            >
+              {savingCosts ? "Guardando Desglose..." : "Guardar Todos los Gastos"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal de Eliminación Segura de Ítem de Gasto con Clave Admin */}
+      <GenericSecureDeleteModal
+        isOpen={isDeleteItemModalOpen}
+        onClose={() => { setIsDeleteItemModalOpen(false); setItemToDelete(null); }}
+        onConfirm={handleConfirmDeleteItem}
+        entityName={itemToDelete ? `Ítem de Gasto: "${itemToDelete.concepto}" (S/ ${Number(itemToDelete.monto || 0).toFixed(2)})` : "Ítem de Gasto"}
+        loading={isDeletingItem}
+      />
+
+      {/* Modal Lightbox de Previsualización de Imagen / Comprobante */}
+      <Dialog open={!!previewImageUrl} onOpenChange={() => setPreviewImageUrl(null)}>
+        <DialogContent className="max-w-2xl p-0 border-none bg-slate-950 overflow-hidden rounded-2xl shadow-2xl">
+          <DialogHeader className="p-4 bg-slate-900 text-white flex flex-row items-center justify-between">
+            <DialogTitle className="text-xs font-black uppercase text-amber-400 flex items-center gap-2">
+              <Camera className="w-4 h-4" /> Comprobante / Foto Adjunta
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4 flex items-center justify-center bg-slate-900/50 min-h-[300px] max-h-[75vh] overflow-auto">
+            {previewImageUrl && (
+              <img 
+                src={previewImageUrl} 
+                alt="Comprobante de Gasto" 
+                className="max-w-full max-h-[65vh] object-contain rounded-xl shadow-2xl border border-slate-800"
+              />
+            )}
+          </div>
+          <div className="p-3 bg-slate-900 border-t border-slate-800 flex justify-between items-center px-4">
+            <a 
+              href={previewImageUrl || '#'} 
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-[10px] font-black uppercase text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1.5"
+            >
+              <FileText className="w-3.5 h-3.5" /> Abrir en pestaña nueva
+            </a>
+            <Button 
+              type="button" 
+              variant="secondary" 
+              onClick={() => setPreviewImageUrl(null)}
+              className="h-8 text-[10px] font-black uppercase rounded-lg px-4 bg-slate-800 text-white hover:bg-slate-700"
             >
               Cerrar
             </Button>
