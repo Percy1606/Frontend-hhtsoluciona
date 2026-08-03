@@ -65,6 +65,11 @@ export interface TareaEstrategica {
   subtareas: Subtarea[];
 }
 
+export interface ObsEntry {
+  texto: string;
+  fecha: string;
+}
+
 export function AgendaDiaria({ 
   clients, 
   currentAdvisor = 'Valentina', 
@@ -91,8 +96,8 @@ export function AgendaDiaria({
   const [obsVisibleLimit, setObsVisibleLimit] = useState(10);
   const [searchObsQuery, setSearchObsQuery] = useState('');
 
-  // Mapa local para visibilidad instantánea de observaciones recién agregadas
-  const [localExtraObs, setLocalExtraObs] = useState<{ [clientId: string]: string[] }>({});
+  // Mapa local para visibilidad instantánea de observaciones recién agregadas (con fecha)
+  const [localExtraObs, setLocalExtraObs] = useState<{ [clientId: string]: ObsEntry[] }>({});
 
   // Formulario desplegable para AGREGAR OBSERVACIÓN A CLIENTE YA REGISTRADO DE LA BD
   const [showAddFidelizadoModal, setShowAddFidelizadoModal] = useState(false);
@@ -105,6 +110,21 @@ export function AgendaDiaria({
 
   // Lista local de tareas estratégicas iniciada completamente LIMPIA ([])
   const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
+
+  // HELPER PARA IDENTIFICAR SOLO CLIENTES GANADOS / FIDELIZADOS
+  const isWonClient = (c: Client) => {
+    const estadoStr = (c.estado || '').toLowerCase();
+    const etapaStr = (c.etapaComercial || '').toLowerCase();
+    const tipoStr = (c.tipoCliente || '').toLowerCase();
+
+    return (
+      c.esClienteReal ||
+      estadoStr.includes('ganad') ||
+      estadoStr.includes('cliente') ||
+      etapaStr.includes('ganad') ||
+      tipoStr === 'cliente'
+    );
+  };
 
   // HELPER PARA DETECTAR FECHA EXPIRADA / VENCIDA EN ROJO
   const checkIsExpiredDate = (fechaStr: string, estado: EstadoTareaEstricto) => {
@@ -155,7 +175,7 @@ export function AgendaDiaria({
     if (onAdvisorChange) onAdvisorChange(adv);
   };
 
-  // AGREGAR OBSERVACIÓN RÁPIDA DENTRO DE LA TARJETA DEL CLIENTE
+  // AGREGAR OBSERVACIÓN RÁPIDA DENTRO DE LA TARJETA DEL CLIENTE (CON FECHA Y HORA)
   const handleAddNuevaObs = async (clientId: string) => {
     const text = (nuevaObsText[clientId] || '').trim();
     if (!text) {
@@ -163,9 +183,12 @@ export function AgendaDiaria({
       return;
     }
 
+    const now = new Date();
+    const fechaFormatted = `${now.toLocaleDateString('es-PE')} ${now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+
     setLocalExtraObs(prev => ({
       ...prev,
-      [clientId]: [...(prev[clientId] || []), text]
+      [clientId]: [...(prev[clientId] || []), { texto: text, fecha: fechaFormatted }]
     }));
 
     try {
@@ -177,15 +200,15 @@ export function AgendaDiaria({
       });
     } catch (err) {}
 
-    toast.success('¡Observación agregada y visible en pantalla!');
+    toast.success('¡Observación agregada con fecha y hora!');
     setNuevaObsText(prev => ({ ...prev, [clientId]: '' }));
   };
 
-  // AGREGAR OBSERVACIÓN A CLIENTE YA REGISTRADO DE LA BD
+  // AGREGAR OBSERVACIÓN A CLIENTE GANADO DE LA BD (CON FECHA Y HORA)
   const handleAddObsToExistingDBClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClientIdDB) {
-      toast.error('Por favor selecciona un cliente registrado de la base de datos.');
+      toast.error('Por favor selecciona un cliente ganado registrado de la base de datos.');
       return;
     }
     if (!fidelizadoObsText.trim()) {
@@ -195,10 +218,12 @@ export function AgendaDiaria({
 
     const clientMatch = clients.find(c => String(c.id) === String(selectedClientIdDB));
     const text = fidelizadoObsText.trim();
+    const now = new Date();
+    const fechaFormatted = `${now.toLocaleDateString('es-PE')} ${now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
 
     setLocalExtraObs(prev => ({
       ...prev,
-      [selectedClientIdDB]: [...(prev[selectedClientIdDB] || []), text]
+      [selectedClientIdDB]: [...(prev[selectedClientIdDB] || []), { texto: text, fecha: fechaFormatted }]
     }));
 
     setExpandedClient(selectedClientIdDB);
@@ -212,7 +237,7 @@ export function AgendaDiaria({
       });
     } catch (err) {}
 
-    toast.success(`¡Observación agregada a "${clientMatch?.empresa || 'Cliente'}"!`);
+    toast.success(`¡Observación registrada con fecha para "${clientMatch?.empresa || 'Cliente Ganado'}"!`);
 
     setFidelizadoObsText('');
     setSelectedClientIdDB('');
@@ -345,11 +370,12 @@ export function AgendaDiaria({
     setNuevaSubtareaText(prev => ({ ...prev, [tareaId]: '' }));
   };
 
-  // Filtrado de Clientes ya registrados en la BD para el Selector de Fidelización
+  // Filtrado de Clientes GANADOS de la BD para el Selector de Fidelización
   const registeredClientsListDB = useMemo(() => {
-    if (!searchDBClientQuery.trim()) return clients.slice(0, 40);
+    const wonClients = clients.filter(isWonClient);
+    if (!searchDBClientQuery.trim()) return wonClients.slice(0, 40);
     const q = searchDBClientQuery.toLowerCase();
-    return clients.filter(c => 
+    return wonClients.filter(c => 
       c.empresa?.toLowerCase().includes(q) || 
       c.ruc?.includes(q) || 
       c.contacto?.toLowerCase().includes(q)
@@ -367,9 +393,10 @@ export function AgendaDiaria({
     ).slice(0, 50);
   }, [clients, searchTaskClientDBQuery]);
 
-  // Clientes Fidelizados Filtrados de la BD
+  // SOLO CLIENTES GANADOS / FIDELIZADOS
   const clientesFidelizados = useMemo(() => {
     let list = clients.filter(c => {
+      if (!isWonClient(c)) return false;
       if (selectedAdvisor && selectedAdvisor !== 'TODOS' && c.asignadoA !== selectedAdvisor && c.creadoPor !== selectedAdvisor) {
         return false;
       }
@@ -444,7 +471,7 @@ export function AgendaDiaria({
   };
 
   return (
-    <div className="space-y-6 font-sans text-slate-900">
+    <div className="space-y-6 text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
       {/* BARRA DE BUSQUEDA Y FILTROS EXACTO A CRM/CARTERA */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
@@ -485,7 +512,7 @@ export function AgendaDiaria({
               onChange={(e) => handleAdvisorSelect(e.target.value)}
               className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3.5 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
             >
-              <option value="TODOS">👥 Todo el Equipo Comercial</option>
+              <option value="TODOS">Todo el Equipo Comercial</option>
               <optgroup label="Unidad 1 - Nuevos Negocios">
                 <option value="Ariana">Ariana (Prospección)</option>
                 <option value="Brenda">Brenda (Prospección Exclusiva)</option>
@@ -506,9 +533,9 @@ export function AgendaDiaria({
               onChange={(e) => setDateFilterType(e.target.value)}
               className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3.5 py-2 font-medium focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs"
             >
-              <option value="all">📅 Todo el Historial</option>
-              <option value="today">📅 Hoy ({new Date().toLocaleDateString('es-PE')})</option>
-              <option value="custom">📅 Rango Personalizado</option>
+              <option value="all">Todo el Historial</option>
+              <option value="today">Hoy ({new Date().toLocaleDateString('es-PE')})</option>
+              <option value="custom">Rango Personalizado</option>
             </select>
 
             {/* Botón Principal "+ Crear Nueva Tarea" Estilo Cartera */}
@@ -576,7 +603,7 @@ export function AgendaDiaria({
                         isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'hover:bg-emerald-50 text-slate-700'
                       }`}
                     >
-                      <span>🏢 {c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                      <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
                       <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
                     </div>
                   );
@@ -823,10 +850,10 @@ export function AgendaDiaria({
                         </div>
 
                         <p className="text-xs font-semibold text-slate-800">
-                          📌 Actividad Inmediata: <span className="font-normal text-slate-600">{tarea.actividadInmediata}</span>
+                          Actividad Inmediata: <span className="font-normal text-slate-600">{tarea.actividadInmediata}</span>
                         </p>
                         <p className="text-xs font-semibold text-indigo-700">
-                          ➡️ Próximo Paso: <span className="font-normal text-slate-600">{tarea.proximoPaso}</span>
+                          Próximo Paso: <span className="font-normal text-slate-600">{tarea.proximoPaso}</span>
                         </p>
 
                         {/* FECHA COMPROMISO (ROJO SI EXPIRADA) */}
@@ -920,7 +947,7 @@ export function AgendaDiaria({
                               )}
                             </button>
                             <span className="font-mono font-semibold text-slate-700 shrink-0 text-[10px] bg-slate-200 px-2 py-0.5 rounded-md">
-                              📅 {sub.fecha}
+                              {sub.fecha}
                             </span>
                             <p className={`text-slate-700 font-normal leading-relaxed ${sub.completada ? 'line-through text-slate-400' : ''}`}>
                               {sub.texto}
@@ -980,16 +1007,16 @@ export function AgendaDiaria({
         )}
       </div>
 
-      {/* SECCIÓN 2: CLIENTES FIDELIZADOS (ESTILO CARTERA DE CLIENTES) */}
+      {/* SECCIÓN 2: CLIENTES GANADOS Y FIDELIZADOS (CON FECHAS EN OBSERVACIONES) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
           <div>
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
               <HeartHandshake className="w-4 h-4 text-emerald-600" />
-              Seguimiento a Clientes Fidelizados Registrados (Obs 1 a Obs 10)
+              Seguimiento a Clientes Ganados y Fidelizados ({clientesFidelizados.length} Cuentas Ganadas)
             </h3>
             <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Conectado a la Base de Datos ({clientesFidelizados.length} cuentas) • Registra Observaciones 1-10
+              Exclusivo para clientes en estado Ganado / Cartera Fidelizada — Observaciones con Fecha
             </p>
           </div>
 
@@ -998,7 +1025,7 @@ export function AgendaDiaria({
               <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
               <input
                 type="text"
-                placeholder="Buscar cliente fidelizado (ej: IPESA, IMP)..."
+                placeholder="Buscar cliente ganado (ej: IPESA, IMP)..."
                 className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 font-normal focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 lg:w-64"
                 value={searchObsQuery}
                 onChange={(e) => setSearchObsQuery(e.target.value)}
@@ -1010,7 +1037,7 @@ export function AgendaDiaria({
               className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-3.5 py-1.5 shadow-xs shrink-0 gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
-              {showAddFidelizadoModal ? 'Cerrar' : '+ Seleccionar Cliente BD'}
+              {showAddFidelizadoModal ? 'Cerrar' : '+ Seleccionar Cliente Ganado'}
             </Button>
           </div>
         </div>
@@ -1048,7 +1075,7 @@ export function AgendaDiaria({
                             isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'hover:bg-emerald-50 text-slate-700'
                           }`}
                         >
-                          <span>🏢 {c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                          <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
                           <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
                         </div>
                       );
@@ -1089,95 +1116,122 @@ export function AgendaDiaria({
           </form>
         )}
 
-        {/* LISTA DE CLIENTES FIDELIZADOS */}
+        {/* LISTA DE CLIENTES GANADOS CON OBSERVACIONES Y FECHAS */}
         <div className="space-y-3">
-          {clientesFidelizados.slice(0, obsVisibleLimit).map((c, idx) => {
-            const interacciones = c.historialInteracciones || (c as any).interacciones || [];
-            const isExpanded = expandedClient === c.id;
+          {clientesFidelizados.length === 0 ? (
+            <div className="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-2xl">
+              <HeartHandshake className="w-8 h-8 text-emerald-500 mx-auto mb-2 opacity-80" />
+              <p className="text-sm font-semibold text-slate-700">No hay clientes en estado "Ganado" para este filtro de asesor.</p>
+              <p className="text-xs text-slate-500 mt-1">Los clientes deben estar marcados como Ganados en la Cartera para aparecer en este apartado.</p>
+            </div>
+          ) : (
+            clientesFidelizados.slice(0, obsVisibleLimit).map((c, idx) => {
+              const interacciones = c.historialInteracciones || (c as any).interacciones || [];
+              const isExpanded = expandedClient === c.id;
 
-            const obsList: string[] = [];
-            if (c.observaciones) obsList.push(c.observaciones);
-            interacciones.forEach((i: any) => {
-              const obs = i.observaciones || i.comentario || i.notas;
-              if (obs && !obsList.includes(obs)) {
-                obsList.push(obs);
+              const obsList: ObsEntry[] = [];
+
+              if (c.observaciones) {
+                const dateFromClient = c.ultimoContacto || c.fechaCreacion || new Date().toLocaleDateString('es-PE');
+                obsList.push({ texto: c.observaciones, fecha: dateFromClient });
               }
-            });
 
-            const extraLocal = localExtraObs[c.id] || [];
-            extraLocal.forEach(obs => {
-              if (!obsList.includes(obs)) {
-                obsList.push(obs);
-              }
-            });
+              interacciones.forEach((i: any) => {
+                const obs = i.observaciones || i.comentario || i.notas;
+                if (obs && !obsList.some(o => o.texto === obs)) {
+                  const dateFromInt = i.fecha ? new Date(i.fecha).toLocaleDateString('es-PE') : new Date().toLocaleDateString('es-PE');
+                  obsList.push({ texto: obs, fecha: dateFromInt });
+                }
+              });
 
-            return (
-              <div key={c.id} className="bg-slate-50/60 border border-slate-200 rounded-xl p-4 shadow-xs hover:border-emerald-200 transition-all">
-                <div 
-                  className="flex items-center justify-between cursor-pointer"
-                  onClick={() => setExpandedClient(isExpanded ? null : c.id)}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-6 h-6 rounded-full bg-emerald-50 font-semibold text-emerald-700 text-xs flex items-center justify-center border border-emerald-100">
-                      {idx + 1}
-                    </span>
-                    <div>
-                      <h4 className="text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors">{c.empresa}</h4>
-                      <p className="text-xs text-slate-500 font-normal flex items-center gap-2 mt-0.5">
-                        <span className="px-2 py-0.5 rounded bg-slate-200/80 text-slate-700 font-mono text-[10px] uppercase font-semibold">{c.tarifa || 'MT3'}</span>
-                        <span>• Asesor: <strong className="text-slate-700 font-semibold">{c.asignadoA}</strong></span>
-                        <span className="text-emerald-600 font-semibold">• {obsList.length} Observación(es)</span>
-                      </p>
+              const extraLocal = localExtraObs[c.id] || [];
+              extraLocal.forEach(obsObj => {
+                if (!obsList.some(o => o.texto === obsObj.texto)) {
+                  obsList.push(obsObj);
+                }
+              });
+
+              return (
+                <div key={c.id} className="bg-slate-50/60 border border-slate-200 rounded-xl p-4 shadow-xs hover:border-emerald-200 transition-all">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer"
+                    onClick={() => setExpandedClient(isExpanded ? null : c.id)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="w-6 h-6 rounded-full bg-emerald-50 font-semibold text-emerald-700 text-xs flex items-center justify-center border border-emerald-100">
+                        {idx + 1}
+                      </span>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors">{c.empresa}</h4>
+                          <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] font-semibold">
+                            Cliente Ganado
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-slate-500 font-normal flex items-center gap-2 mt-0.5">
+                          <span className="px-2 py-0.5 rounded bg-slate-200/80 text-slate-700 font-mono text-[10px] uppercase font-semibold">{c.tarifa || 'MT3'}</span>
+                          <span>• Asesor: <strong className="text-slate-700 font-semibold">{c.asignadoA}</strong></span>
+                          <span className="text-emerald-600 font-semibold">• {obsList.length} Observación(es) con fecha</span>
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-emerald-600 font-semibold hidden sm:inline">
-                      {isExpanded ? 'Ocultar' : 'Ver / Agregar Observaciones'}
-                    </span>
-                    {isExpanded ? <ChevronUp className="w-4 h-4 text-emerald-600" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                  </div>
-                </div>
-
-                {isExpanded && (
-                  <div className="mt-4 pt-3 border-t border-slate-200/80 space-y-3">
                     <div className="flex items-center gap-2">
-                      <input
-                        type="text"
-                        placeholder="Escribe aquí la nueva observación (ej: ENVIAR COTIZACIÓN DE CORRECTIVOS)..."
-                        className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        value={nuevaObsText[c.id] || ''}
-                        onChange={(e) => setNuevaObsText({ ...nuevaObsText, [c.id]: e.target.value })}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleAddNuevaObs(c.id);
-                        }}
-                      />
-                      <Button
-                        onClick={() => handleAddNuevaObs(c.id)}
-                        className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-3.5 py-2 shadow-xs shrink-0"
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Agregar Observación
-                      </Button>
-                    </div>
-
-                    <div className="space-y-2 pt-1">
-                      {obsList.length === 0 ? (
-                        <p className="text-xs text-slate-400 italic">Sin observaciones registradas aún.</p>
-                      ) : (
-                        obsList.slice(0, 10).map((obsText, obsIdx) => (
-                          <div key={obsIdx} className="flex items-start gap-2 text-xs bg-white p-2.5 rounded-lg border border-slate-200/80">
-                            <span className="font-semibold text-emerald-700 shrink-0 uppercase text-[10px] bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">
-                              OBSERVACIÓN {obsIdx + 1}
-                            </span>
-                            <span className="text-slate-700 font-normal">{obsText}</span>
-                          </div>
-                        ))
-                      )}
+                      <span className="text-xs text-emerald-600 font-semibold hidden sm:inline">
+                        {isExpanded ? 'Ocultar' : 'Ver / Agregar Observaciones'}
+                      </span>
+                      {isExpanded ? <ChevronUp className="w-4 h-4 text-emerald-600" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                     </div>
                   </div>
-                )}
-              </div>
-            );
-          })}
+
+                  {isExpanded && (
+                    <div className="mt-4 pt-3 border-t border-slate-200/80 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder="Escribe aquí la nueva observación (ej: ENVIAR COTIZACIÓN DE CORRECTIVOS)..."
+                          className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          value={nuevaObsText[c.id] || ''}
+                          onChange={(e) => setNuevaObsText({ ...nuevaObsText, [c.id]: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleAddNuevaObs(c.id);
+                          }}
+                        />
+                        <Button
+                          onClick={() => handleAddNuevaObs(c.id)}
+                          className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-3.5 py-2 shadow-xs shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5 mr-1" /> Agregar Observación
+                        </Button>
+                      </div>
+
+                      <div className="space-y-2 pt-1">
+                        {obsList.length === 0 ? (
+                          <p className="text-xs text-slate-400 italic">Sin observaciones registradas aún.</p>
+                        ) : (
+                          obsList.slice(0, 10).map((obsItem, obsIdx) => (
+                            <div key={obsIdx} className="flex items-start gap-2.5 text-xs bg-white p-3 rounded-xl border border-slate-200/80">
+                              <span className="font-semibold text-emerald-800 shrink-0 uppercase text-[10px] bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-100 flex items-center gap-1">
+                                <CalendarIcon className="w-3 h-3 text-emerald-600" />
+                                {obsItem.fecha}
+                              </span>
+                              <div className="flex-1">
+                                <span className="font-semibold text-slate-800 text-[11px] block mb-0.5">
+                                  OBSERVACIÓN {obsIdx + 1}:
+                                </span>
+                                <p className="text-slate-700 font-normal leading-relaxed">
+                                  {obsItem.texto}
+                                </p>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
 
           {clientesFidelizados.length > obsVisibleLimit && (
             <Button
@@ -1185,7 +1239,7 @@ export function AgendaDiaria({
               onClick={() => setObsVisibleLimit(prev => prev + 10)}
               className="w-full py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center justify-center gap-2 transition-all shadow-xs mt-2"
             >
-              Cargar 10 clientes fidelizados más ({clientesFidelizados.length - obsVisibleLimit} restantes) <ChevronRight className="w-4 h-4" />
+              Cargar 10 clientes ganados más ({clientesFidelizados.length - obsVisibleLimit} restantes) <ChevronRight className="w-4 h-4" />
             </Button>
           )}
         </div>
