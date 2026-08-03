@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import { cn, getPeruDateString } from "@/lib/utils";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
+import { UnidadesGerenciales } from "./unidades-gerenciales";
+import { AgendaDiaria } from "./agenda-diaria";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
@@ -36,7 +38,8 @@ import {
   FilterX,
   BarChart3,
   PieChart as PieChartIcon,
-  Clock
+  Clock,
+  Zap
 } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -439,142 +442,145 @@ export function CRMStats() {
 
   return (
     <div className="space-y-6">
-      {/* FILTRO REFINADO */}
+      {/* FILTRO REFINADO Y CABECERA DE INDICADORES */}
       <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
-          <div className="flex-1 space-y-2">
-            <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Filtrar Indicadores por Asesor Comercial</Label>
-            <div className="flex items-center gap-4">
-              <Select value={selectedSeller} onValueChange={(val) => setSelectedSeller(val || "EQUIPO COMPLETO")}>
-                <SelectTrigger className="w-full md:w-[350px] h-12 text-sm font-medium text-slate-700 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors">
-                  <SelectValue placeholder="EQUIPO COMPLETO" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
-                  <SelectItem value="EQUIPO COMPLETO" className="text-slate-500 font-medium text-sm">Todo el Equipo Comercial</SelectItem>
-                  <SelectItem value="Angie">ANGIE</SelectItem>
-                  <SelectItem value="Valentina">VALENTINA</SelectItem>
-                  <SelectItem value="Ariana">ARIANA</SelectItem>
-                  <SelectItem value="Brenda">BRENDA</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="flex flex-col md:flex-row items-end gap-4">
-            <div className="space-y-2">
-              <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1 flex items-center gap-2">
-                <Calendar className="w-3 h-3 text-slate-400" />
-                Período de Análisis
-              </Label>
-              <Select value={dateRangeType} onValueChange={(val) => setDateRangeType(val || "all")}>
-                <SelectTrigger className="w-[180px] h-12 text-sm font-medium border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors text-slate-700">
-                  <SelectValue placeholder="Seleccionar Período">
-                    {dateRangeType === "all" && "Todo el Historial"}
-                    {dateRangeType === "today" && "Hoy"}
-                    {dateRangeType === "yesterday" && "Ayer"}
-                    {dateRangeType === "week" && "Esta Semana"}
-                    {dateRangeType === "month" && "Este Mes"}
-                    {dateRangeType === "30days" && "Últimos 30 Días"}
-                    {dateRangeType === "year" && "Este Año"}
-                    {dateRangeType === "custom" && "Rango Personalizado"}
-                  </SelectValue>
-                </SelectTrigger>
-                <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
-                  <SelectItem value="all">Todo el Historial</SelectItem>
-                  <SelectItem value="today">Hoy</SelectItem>
-                  <SelectItem value="yesterday">Ayer</SelectItem>
-                  <SelectItem value="week">Esta Semana</SelectItem>
-                  <SelectItem value="month">Este Mes</SelectItem>
-                  <SelectItem value="30days">Últimos 30 Días</SelectItem>
-                  <SelectItem value="year">Este Año</SelectItem>
-                  <SelectItem value="custom">Rango Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {dateRangeType === "custom" && (
-              <div className="flex items-center gap-2 animate-in fade-in duration-300">
-                <input
-                  type="date"
-                  className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
-                  value={customStartDate}
-                  onChange={(e) => setCustomStartDate(e.target.value)}
-                />
-                <span className="text-slate-400 font-bold">-</span>
-                <input
-                  type="date"
-                  className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
-                  value={customEndDate}
-                  onChange={(e) => setCustomEndDate(e.target.value)}
-                />
+            <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+              <div className="flex-1 space-y-2">
+                <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1">Filtrar Indicadores por Asesor Comercial</Label>
+                <div className="flex items-center gap-4">
+                  <Select value={selectedSeller} onValueChange={(val) => setSelectedSeller(val || "EQUIPO COMPLETO")}>
+                    <SelectTrigger className="w-full md:w-[350px] h-12 text-sm font-medium text-slate-700 border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors">
+                      <SelectValue placeholder="EQUIPO COMPLETO" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
+                      <SelectItem value="EQUIPO COMPLETO" className="text-slate-500 font-medium text-sm">Todo el Equipo Comercial</SelectItem>
+                      <SelectItem value="Angie">ANGIE</SelectItem>
+                      <SelectItem value="Valentina">VALENTINA</SelectItem>
+                      <SelectItem value="Ariana">ARIANA</SelectItem>
+                      <SelectItem value="Brenda">BRENDA</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-            )}
 
-            {(dateRangeType !== "all" || selectedSeller !== "EQUIPO COMPLETO") && (
-              <Button 
-                variant="ghost" 
-                onClick={() => { setDateRangeType("all"); setSelectedSeller("EQUIPO COMPLETO"); }}
-                className="h-12 text-slate-500 font-semibold uppercase text-[11px] hover:bg-slate-100 hover:text-slate-700 gap-2 px-4 rounded-xl transition-colors"
-              >
-                <FilterX className="w-4 h-4" /> Limpiar Filtros
-              </Button>
-            )}
+              <div className="flex flex-col md:flex-row items-end gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-semibold uppercase text-slate-500 tracking-wider ml-1 flex items-center gap-2">
+                    <Calendar className="w-3 h-3 text-slate-400" />
+                    Período de Análisis
+                  </Label>
+                  <Select value={dateRangeType} onValueChange={(val) => setDateRangeType(val || "all")}>
+                    <SelectTrigger className="w-[180px] h-12 text-sm font-medium border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-xl shadow-sm transition-colors text-slate-700">
+                      <SelectValue placeholder="Seleccionar Período">
+                        {dateRangeType === "all" && "Todo el Historial"}
+                        {dateRangeType === "today" && "Hoy"}
+                        {dateRangeType === "yesterday" && "Ayer"}
+                        {dateRangeType === "week" && "Esta Semana"}
+                        {dateRangeType === "month" && "Este Mes"}
+                        {dateRangeType === "30days" && "Últimos 30 Días"}
+                        {dateRangeType === "year" && "Este Año"}
+                        {dateRangeType === "custom" && "Rango Personalizado"}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
+                      <SelectItem value="all">Todo el Historial</SelectItem>
+                      <SelectItem value="today">Hoy</SelectItem>
+                      <SelectItem value="yesterday">Ayer</SelectItem>
+                      <SelectItem value="week">Esta Semana</SelectItem>
+                      <SelectItem value="month">Este Mes</SelectItem>
+                      <SelectItem value="30days">Últimos 30 Días</SelectItem>
+                      <SelectItem value="year">Este Año</SelectItem>
+                      <SelectItem value="custom">Rango Personalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {dateRangeType === "custom" && (
+                  <div className="flex items-center gap-2 animate-in fade-in duration-300">
+                    <input
+                      type="date"
+                      className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                    />
+                    <span className="text-slate-400 font-bold">-</span>
+                    <input
+                      type="date"
+                      className="h-12 px-3 border border-slate-200 bg-slate-50/50 hover:bg-slate-100/50 focus:bg-white rounded-lg text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary text-slate-700"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                    />
+                  </div>
+                )}
+
+                {(dateRangeType !== "all" || selectedSeller !== "EQUIPO COMPLETO") && (
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { setDateRangeType("all"); setSelectedSeller("EQUIPO COMPLETO"); }}
+                    className="h-12 text-slate-500 font-semibold uppercase text-[11px] hover:bg-slate-100 hover:text-slate-700 gap-2 px-4 rounded-xl transition-colors"
+                  >
+                    <FilterX className="w-4 h-4" /> Limpiar Filtros
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 bg-accent/5 px-4 py-2 rounded-xl border border-accent/10 w-fit">
+                <TrendingUp className="w-4 h-4 text-accent" />
+                <span className="text-[10px] font-black text-accent uppercase tracking-tighter">Analítica en Tiempo Real</span>
+            </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 bg-accent/5 px-4 py-2 rounded-xl border border-accent/10 w-fit">
-            <TrendingUp className="w-4 h-4 text-accent" />
-            <span className="text-[10px] font-black text-accent uppercase tracking-tighter">Analítica en Tiempo Real</span>
-        </div>
-      </div>
+          {/* Grid de Metricas Clave */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <StatsCard 
+              label="Total Cartera" 
+              value={totalCartera} 
+              subLabel="Prospectos Asignados"
+              icon={<Users className="w-5 h-5" />} 
+              color="text-primary" 
+              bgColor="bg-primary/5" 
+            />
+            
+            <StatsCard 
+              label="Nuevos Prospectos" 
+              value={nuevosProspectos} 
+              subLabel="Captados en periodo"
+              icon={<Target className="w-5 h-5" />} 
+              color="text-orange-600" 
+              bgColor="bg-orange-50" 
+            />
 
-      {/* Grid de Metricas */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <StatsCard 
-          label="Total Cartera" 
-          value={totalCartera} 
-          subLabel="Prospectos Asignados"
-          icon={<Users className="w-5 h-5" />} 
-          color="text-primary" 
-          bgColor="bg-primary/5" 
-        />
-        
-        <StatsCard 
-          label="Nuevos Prospectos" 
-          value={nuevosProspectos} 
-          subLabel="Captados en periodo"
-          icon={<Target className="w-5 h-5" />} 
-          color="text-orange-600" 
-          bgColor="bg-orange-50" 
-        />
+            <StatsCard 
+              label="Visitas" 
+              value={visitasRealizadas} 
+              subLabel="Reuniones concretadas"
+              icon={<MapPin className="w-5 h-5" />} 
+              color="text-purple-600" 
+              bgColor="bg-purple-50" 
+            />
 
-        <StatsCard 
-          label="Visitas" 
-          value={visitasRealizadas} 
-          subLabel="Reuniones concretadas"
-          icon={<MapPin className="w-5 h-5" />} 
-          color="text-purple-600" 
-          bgColor="bg-purple-50" 
-        />
+            <StatsCard 
+              label="Contactos / Seg." 
+              value={seguimientosRealizados} 
+              subLabel="Gestiones realizadas"
+              icon={<Calendar className="w-5 h-5" />} 
+              color="text-emerald-600" 
+              bgColor="bg-emerald-50" 
+            />
 
-        <StatsCard 
-          label="Contactos / Seg." 
-          value={seguimientosRealizados} 
-          subLabel="Gestiones realizadas"
-          icon={<Calendar className="w-5 h-5" />} 
-          color="text-emerald-600" 
-          bgColor="bg-emerald-50" 
-        />
+            <StatsCard 
+              label="Órdenes de Servicio" 
+              value={cerradosGanados} 
+              subLabel={`Efectividad: ${ratioCierre}`}
+              icon={<Award className="w-5 h-5" />} 
+              color="text-blue-600" 
+              bgColor="bg-blue-50" 
+            />
+          </div>
 
-        <StatsCard 
-          label="Órdenes de Servicio" 
-          value={cerradosGanados} 
-          subLabel={`Efectividad: ${ratioCierre}`}
-          icon={<Award className="w-5 h-5" />} 
-          color="text-blue-600" 
-          bgColor="bg-blue-50" 
-        />
-      </div>
+      {/* CENTRO DE CONTROL DE UNIDADES COMERCIALES GERENCIALES (<1 MIN) */}
+      <UnidadesGerenciales clients={filteredClients} />
 
       {/* Dashboard Content with Tabs to avoid clutter */}
       <Tabs defaultValue="comercial" className="space-y-6">

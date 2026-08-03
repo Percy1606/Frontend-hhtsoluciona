@@ -70,6 +70,7 @@ const menuItems = [
       { icon: FolderKanban, label: "Proyectos", href: "/operaciones/proyectos" },
       { icon: ListTodo, label: "Actividades / Tareas", href: "/operaciones/actividades" },
       { icon: Zap, label: "Hoja de Ruta", href: "/operaciones/workflow" },
+      { icon: Calendar, label: "Agenda Diaria", href: "/crm/agenda" },
       { icon: Clock, label: "Timeline", href: "/operaciones/timeline" },
       { icon: CheckSquare, label: "Validaciones", href: "/operaciones/validaciones" },
       { icon: AlertTriangle, label: "Alertas", href: "/operaciones/alertas" },

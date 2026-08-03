@@ -30,6 +30,7 @@ export type Client = {
   linkedin?: string;
   cartera?: string;
   asignadoA: string;
+  creadoPor?: string;
   diaTrabajo?: string;
   estado: string; // Keep for Excel compatibility
   prioridad: "Baja" | "Media" | "Alta" | "Crítica";

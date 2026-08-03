@@ -6,6 +6,7 @@ import { es } from "date-fns/locale";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/store/auth-store";
 import { NotificationBell } from "./notification-bell";
+import { AgendaDiariaDialog } from "../crm/agenda-diaria-dialog";
 import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
@@ -34,7 +35,7 @@ export function Header() {
         <SidebarTrigger className="-ml-3 hover:bg-slate-100 size-9 [&>svg]:size-5" />
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-3">
         {/* Botón Global de Hoja de Ruta */}
         <button
           onClick={() => router.push("/operaciones/workflow")}
@@ -43,6 +44,16 @@ export function Header() {
         >
           <Zap className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
           <span>Hoja de Ruta</span>
+        </button>
+
+        {/* Botón Global de Agenda Diaria al costado de Hoja de Ruta */}
+        <button
+          onClick={() => router.push("/crm/agenda")}
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 font-bold text-[10px] uppercase rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+          title="Ver Agenda Diaria Comercial"
+        >
+          <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
+          <span>Agenda Diaria</span>
         </button>
 
         <div className="text-right hidden sm:block">
