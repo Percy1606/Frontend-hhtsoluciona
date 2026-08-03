@@ -52,6 +52,7 @@ export default function PipelinePage() {
                 <SelectItem value="Angie" className="font-black uppercase text-[10px]">ANGIE</SelectItem>
                 <SelectItem value="Valentina" className="font-black uppercase text-[10px]">VALENTINA</SelectItem>
                 <SelectItem value="Ariana" className="font-black uppercase text-[10px]">ARIANA</SelectItem>
+                <SelectItem value="Brenda" className="font-black uppercase text-[10px]">BRENDA</SelectItem>
 
               </SelectContent>
             </Select>

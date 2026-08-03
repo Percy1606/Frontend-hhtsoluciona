@@ -118,7 +118,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     mapped.direccion = getRowValue(["Direccion", "Direccion Fiscal", "Planta", "Ubicacion"]) || "";
     
     const tarifaRaw = getRowValue(["Tarifa", "Tarifa Electrica", "Tipo Tarifa"]) || "";
-    mapped.tarifa = String(tarifaRaw).includes("MT4") ? "MT4" : "MT3";
+    mapped.tarifa = String(tarifaRaw).trim() || "MT3";
 
     mapped.telefono = String(getRowValue(["Telefono", "Celular", "Telf", "Movil", "Contacto Telefono"]) || "");
     mapped.contacto = getRowValue(["Contacto", "Nombre Contacto", "Representante", "Atencion"]) || "";

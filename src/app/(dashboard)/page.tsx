@@ -251,6 +251,7 @@ export default function DashboardPage() {
     { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
     { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
+    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },
   ];
 
   const today = new Date();
@@ -1471,13 +1472,13 @@ export default function DashboardPage() {
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {chartData.map((data, idx) => {
                         const isValentina = data.name.toLowerCase() === 'valentina';
-                        const isAriana = data.name.toLowerCase() === 'ariana';
+                        const isBrenda = data.name.toLowerCase() === 'brenda';
                         const meta = 15; 
                         
                         let avance = 0;
                         let labelTipo = "";
                         
-                        if (isAriana) {
+                        if (isBrenda) {
                           avance = data.prospectos;
                           labelTipo = "Nuevos Prospectos";
                         } else if (isValentina) {
@@ -1644,11 +1645,11 @@ export default function DashboardPage() {
                               const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
                               
                               const isValentina = seller.name.toLowerCase() === 'valentina';
-                              const isAriana = seller.name.toLowerCase() === 'ariana';
+                              const isBrenda = seller.name.toLowerCase() === 'brenda';
                               
                               const meta = 15;
                               let progreso = 0;
-                              if (isAriana) {
+                              if (isBrenda) {
                                 progreso = data.prospectos;
                               } else if (isValentina) {
                                 progreso = data.contactos + data.visitas;
@@ -1698,7 +1699,7 @@ export default function DashboardPage() {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-purple-600">
-                                    {isAriana ? '-' : (
+                                    {isBrenda ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
                                         {data.visitas}
                                         {data.visitas > 0 && (
@@ -1718,7 +1719,7 @@ export default function DashboardPage() {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-emerald-600">
-                                    {isAriana ? '-' : (
+                                    {isBrenda ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
                                         {data.contactos}
                                         {data.contactos > 0 && (
@@ -1738,7 +1739,7 @@ export default function DashboardPage() {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-red-500">
-                                    {isAriana ? '-' : (
+                                    {isBrenda ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
                                         {data.fallidos}
                                         {data.fallidos > 0 && (
@@ -1758,7 +1759,7 @@ export default function DashboardPage() {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-blue-600">
-                                    {isAriana ? '-' : (
+                                    {isBrenda ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
                                         {data.clientesAtendidos}
                                         {data.clientesAtendidos > 0 && (
@@ -1778,7 +1779,7 @@ export default function DashboardPage() {
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
-                                    {isAriana ? '-' : (
+                                    {isBrenda ? '-' : (
                                       <div className="flex items-center justify-center gap-1">
                                         {ganadosEnPeriodo}
                                         {ganadosEnPeriodo > 0 && (

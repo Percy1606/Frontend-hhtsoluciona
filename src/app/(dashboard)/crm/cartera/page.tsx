@@ -200,6 +200,7 @@ export default function CarteraPage() {
                         <SelectItem value="BT4" className="font-black text-[10px] uppercase">BT4</SelectItem>
                         <SelectItem value="BT5B" className="font-black text-[10px] uppercase">BT5B</SelectItem>
                         <SelectItem value="BT5BR" className="font-black text-[10px] uppercase">BT5BR</SelectItem>
+                        <SelectItem value="BT5A50" className="font-black text-[10px] uppercase">BT5A50</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
@@ -238,6 +239,7 @@ export default function CarteraPage() {
                         <SelectItem value="Angie" className="font-black text-[10px] uppercase">ANGIE</SelectItem>
                         <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
                         <SelectItem value="Ariana" className="font-black text-[10px] uppercase">ARIANA</SelectItem>
+                        <SelectItem value="Brenda" className="font-black text-[10px] uppercase">BRENDA</SelectItem>
 
                     </SelectContent>
                 </Select>

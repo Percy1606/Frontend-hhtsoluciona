@@ -53,7 +53,7 @@ export type EtapaComercial =
 
 export type Temperatura = 'Frío' | 'Tibio' | 'Caliente' | 'Muy Caliente';
 
-export type Tarifa = 'MT3' | 'MT4';
+export type Tarifa = 'MT1' | 'MT2' | 'MT3' | 'MT4' | 'BT2' | 'BT3' | 'BT4' | 'BT5B' | 'BT5BR' | 'BT5A50' | string;
 
 // ============================================
 // RESPONSABLE Y PERSONAL

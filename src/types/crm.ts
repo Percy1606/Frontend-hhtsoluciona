@@ -22,7 +22,7 @@ export type Client = {
   empresa: string;
   ruc: string;
   direccion: string;
-  tarifa: "MT2" | "MT3" | "MT4";
+  tarifa: string;
   contacto: string;
   telefono?: string;
   cargo?: string;

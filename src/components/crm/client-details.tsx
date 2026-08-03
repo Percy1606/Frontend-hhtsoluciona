@@ -74,7 +74,7 @@ const stageList = [
   "Negociación", "Orden de Servicio", "Ganado", "Perdido"
 ];
 
-const sellerList = ["Angie", "Valentina", "Ariana"];
+const sellerList = ["Angie", "Valentina", "Ariana", "Brenda"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile, updateClient } = useCRMStore();

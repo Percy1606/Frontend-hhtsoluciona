@@ -160,6 +160,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="BT4">BT4</SelectItem>
                           <SelectItem value="BT5B">BT5B</SelectItem>
                           <SelectItem value="BT5BR">BT5BR</SelectItem>
+                          <SelectItem value="BT5A50">BT5A50</SelectItem>
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -317,6 +318,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Angie">Angie</SelectItem>
                           <SelectItem value="Valentina">Valentina</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
+                          <SelectItem value="Brenda">Brenda</SelectItem>
 
                         </SelectContent>
                       </Select>

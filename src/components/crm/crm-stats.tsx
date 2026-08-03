@@ -290,6 +290,7 @@ export function CRMStats() {
     { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
     { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
+    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },
   ];
 
   const sellerComparisonData = sellers.map(seller => {
@@ -388,11 +389,11 @@ export function CRMStats() {
     const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
     const isValentina = seller.name.toLowerCase() === 'valentina';
-    const isAriana = seller.name.toLowerCase() === 'ariana';
+    const isBrenda = seller.name.toLowerCase() === 'brenda';
     
     const meta = 15;
     let progreso = 0;
-    if (isAriana) {
+    if (isBrenda) {
       progreso = prospectosCount;
     } else if (isValentina) {
       progreso = contactosCount + visitasCount;
@@ -652,11 +653,12 @@ export function CRMStats() {
                 <div className="space-y-4">
                   {sellerComparisonData.map((data: any) => {
                     const isValentina = data.name.toLowerCase() === 'valentina';
+                    const isBrenda = data.name.toLowerCase() === 'brenda';
                     
-                    const metricValue = isValentina ? data.contactos : data.prospectos;
+                    const metricValue = isValentina ? data.contactos : (isBrenda ? data.prospectos : data.prospectos + data.contactos);
                     const meta = 15;
                     const percentage = Math.min((metricValue / meta) * 100, 100);
-                    const label = isValentina ? "Seguimientos Realizados" : "Nuevos Prospectos";
+                    const label = isValentina ? "Seguimientos Realizados" : (isBrenda ? "Nuevos Prospectos" : "Actividad Total");
                     
                     return (
                       <div key={data.name} className="space-y-2 p-4 rounded-2xl border border-slate-100 hover:border-primary/20 transition-all group shadow-sm bg-slate-50/30">
@@ -678,7 +680,8 @@ export function CRMStats() {
                               "h-full rounded-full transition-all duration-1000",
                               data.name === "Angie" ? "bg-blue-500" :
                               data.name === "Valentina" ? "bg-violet-500" :
-                              data.name === "Ariana" ? "bg-orange-500" : "bg-teal-500"
+                              data.name === "Ariana" ? "bg-orange-500" :
+                              data.name === "Brenda" ? "bg-emerald-500" : "bg-teal-500"
                             )}
                             style={{ width: `${Math.max(5, percentage)}%` }}
                           />
@@ -704,13 +707,13 @@ export function CRMStats() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {chartData.map((data, idx) => {
                 const isValentina = data.name.toLowerCase() === 'valentina';
-                const isAriana = data.name.toLowerCase() === 'ariana';
+                const isBrenda = data.name.toLowerCase() === 'brenda';
                 const meta = 15;
                 
                 let avance = 0;
                 let labelTipo = "";
                 
-                if (isAriana) {
+                if (isBrenda) {
                   avance = data.prospectos;
                   labelTipo = "Nuevos Prospectos";
                 } else if (isValentina) {
@@ -769,7 +772,7 @@ export function CRMStats() {
                 <tbody className="divide-y divide-slate-50">
                   {chartData.map((data) => {
                     const isValentina = data.name.toLowerCase() === 'valentina';
-                    const isAriana = data.name.toLowerCase() === 'ariana';
+                    const isBrenda = data.name.toLowerCase() === 'brenda';
                     
                     const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
                     const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
@@ -811,7 +814,7 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-purple-600">
-                          {isAriana ? '-' : (
+                          {isBrenda ? '-' : (
                             <div className="flex items-center justify-center gap-1">
                               {data.visitas}
                               {data.visitas > 0 && (
@@ -831,7 +834,7 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-emerald-600">
-                          {isAriana ? '-' : (
+                          {isBrenda ? '-' : (
                             <div className="flex items-center justify-center gap-1">
                               {data.contactos}
                               {data.contactos > 0 && (
@@ -851,7 +854,7 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-red-500">
-                          {isAriana ? '-' : (
+                          {isBrenda ? '-' : (
                             <div className="flex items-center justify-center gap-1">
                               {data.fallidos}
                               {data.fallidos > 0 && (
@@ -871,7 +874,7 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-blue-600">
-                          {isAriana ? '-' : (
+                          {isBrenda ? '-' : (
                             <div className="flex items-center justify-center gap-1">
                               {data.clientesAtendidos}
                               {data.clientesAtendidos > 0 && (
@@ -891,7 +894,7 @@ export function CRMStats() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-center font-black text-blue-600" title={cierresNames}>
-                          {isAriana ? '-' : (
+                          {isBrenda ? '-' : (
                             <div className="flex flex-col items-center">
                               <div className="flex items-center justify-center gap-1">
                                 <span>{data.ganados}</span>
