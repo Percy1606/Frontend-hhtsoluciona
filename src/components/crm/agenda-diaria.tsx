@@ -103,57 +103,8 @@ export function AgendaDiaria({
   // Estado para agregar observación rápida a cliente existente
   const [nuevaObsText, setNuevaObsText] = useState<{ [clientId: string]: string }>({});
 
-  // Lista local de tareas estratégicas inicializadas con ejemplos reales (Sechura y Norandino)
-  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([
-    {
-      id: 'task-sechura',
-      empresa: 'Hielos y Congelados Sechura',
-      etapaProceso: 'Proyecto en ejecución',
-      actividadInmediata: 'Revisar avance del expediente técnico',
-      proximoPaso: 'Coordinar siguiente etapa del proyecto',
-      responsable: 'Steven',
-      fechaCompromiso: '31/06/2026',
-      estado: 'RETRASADA',
-      subtareas: [
-        {
-          id: 'sub-s1',
-          fecha: '31/07/2026',
-          texto: 'SE SOLICITÓ UNA REUNIÓN VIRTUAL PARA LUNES 3 EN LA TARDE CON EL ING ENCARGADO DE PROYECTO YA QUE SE VIENE APLAZANDO LA ENTREGA DEL EXPEDIENTE',
-          completada: true
-        },
-        {
-          id: 'sub-s2',
-          fecha: '03/08/2026',
-          texto: '11:10AM A LA ESPERA DE LAS FACTIBILIDADES. DE NO ENTREGARLAS HAY QUE TRATAR EL TEMA EN LA REUNIÓN DE LA TARDE',
-          completada: false
-        }
-      ]
-    },
-    {
-      id: 'task-norandino',
-      empresa: 'Norandino',
-      etapaProceso: 'Proyecto aprobado',
-      actividadInmediata: 'Coordinar instalación del analizador (2 OC)',
-      proximoPaso: 'Ejecutar instalación',
-      responsable: 'Mario',
-      fechaCompromiso: 'lunes, 3 de agosto de 2026',
-      estado: 'PENDIENTE',
-      subtareas: [
-        {
-          id: 'sub-n1',
-          fecha: '31/07/2026',
-          texto: 'INSTALACIÓN PROGRAMADA PARA EL LUNES 3 Y MIÉRCOLES 5 DE AGOSTO',
-          completada: true
-        },
-        {
-          id: 'sub-n2',
-          fecha: '03/08/2026',
-          texto: 'HOY NO SE VA A INSTALAR EL ANALIZADOR YA QUE MARIO NO ESTÁ DISPONIBLE Y GUILLERMO NO CONOCE MUCHO EL TEMA. SE INSTALARÁ MAÑANA MARTES 04 DE AGOSTO',
-          completada: false
-        }
-      ]
-    }
-  ]);
+  // Lista local de tareas estratégicas iniciada completamente LIMPIA ([])
+  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
 
   // HELPER PARA DETECTAR FECHA EXPIRADA / VENCIDA EN ROJO
   const checkIsExpiredDate = (fechaStr: string, estado: EstadoTareaEstricto) => {
