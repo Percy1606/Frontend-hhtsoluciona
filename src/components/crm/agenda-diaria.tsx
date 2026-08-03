@@ -158,6 +158,8 @@ export function AgendaDiaria({
   const [selectedTaskClientIdDB, setSelectedTaskClientIdDB] = useState('');
   const [taskEmpresaName, setTaskEmpresaName] = useState('');
   const [searchTaskClientDBQuery, setSearchTaskClientDBQuery] = useState('');
+  const [showTaskClientList, setShowTaskClientList] = useState(true);
+  const [showObsClientList, setShowObsClientList] = useState(true);
 
   const [newEtapaProceso, setNewEtapaProceso] = useState('Proyecto en ejecución');
   const [newActividadInmediata, setNewActividadInmediata] = useState('');
@@ -580,35 +582,48 @@ export function AgendaDiaria({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2 space-y-2">
               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
-              <input
-                type="text"
-                placeholder="Buscar cliente en BD por RUC o Nombre (ej: Sechura, Norandino, IPESA)..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                value={searchTaskClientDBQuery}
-                onChange={(e) => setSearchTaskClientDBQuery(e.target.value)}
-              />
 
-              <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
-                {registeredClientsListTaskDB.map(c => {
-                  const isSelected = selectedTaskClientIdDB === c.id;
-                  return (
-                    <div
-                      key={c.id}
-                      onClick={() => {
-                        setSelectedTaskClientIdDB(c.id);
-                        setTaskEmpresaName(c.empresa);
-                        toast.info(`Cliente "${c.empresa}" seleccionado para la tarea`);
-                      }}
-                      className={`p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between ${
-                        isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'hover:bg-emerald-50 text-slate-700'
-                      }`}
-                    >
-                      <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
-                      <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
-                    </div>
-                  );
-                })}
-              </div>
+              {selectedTaskClientIdDB && !showTaskClientList ? (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                  <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
+                    className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                  >
+                    Cambiar
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente en BD por RUC o Nombre (ej: Sechura, Norandino, IPESA)..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={searchTaskClientDBQuery}
+                    onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
+                  />
+
+                  <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
+                    {registeredClientsListTaskDB.map(c => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedTaskClientIdDB(c.id);
+                          setTaskEmpresaName(c.empresa);
+                          setShowTaskClientList(false);
+                          setSearchTaskClientDBQuery('');
+                          toast.info(`Cliente "${c.empresa}" seleccionado`);
+                        }}
+                        className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
+                      >
+                        <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                        <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
 
               <div className="pt-1">
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">O Escribe el Nombre de la Empresa / Cliente *</label>
@@ -1052,35 +1067,47 @@ export function AgendaDiaria({
 
             <div className="space-y-3">
               <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Buscar y Seleccionar Cliente Registrado *</label>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Buscar y Seleccionar Cliente Ganado *</label>
                 <div className="space-y-1.5 mt-1">
-                  <input
-                    type="text"
-                    placeholder="Filtrar por nombre de empresa (ej: IPESA, IMP, Norandino)..."
-                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    value={searchDBClientQuery}
-                    onChange={(e) => setSearchDBClientQuery(e.target.value)}
-                  />
-                  <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
-                    {registeredClientsListDB.map(c => {
-                      const isSelected = selectedClientIdDB === c.id;
-                      return (
-                        <div
-                          key={c.id}
-                          onClick={() => {
-                            setSelectedClientIdDB(c.id);
-                            toast.info(`Cliente "${c.empresa}" seleccionado para observación`);
-                          }}
-                          className={`p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between ${
-                            isSelected ? 'bg-emerald-600 text-white shadow-xs' : 'hover:bg-emerald-50 text-slate-700'
-                          }`}
-                        >
-                          <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
-                          <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  {selectedClientIdDB && !showObsClientList ? (
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                      <span className="text-xs font-semibold text-emerald-800">{clients.find(c => String(c.id) === String(selectedClientIdDB))?.empresa || 'Cliente seleccionado'}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedClientIdDB(''); setShowObsClientList(true); setSearchDBClientQuery(''); }}
+                        className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Filtrar por nombre de empresa ganada (ej: IPESA, IMP, Norandino)..."
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        value={searchDBClientQuery}
+                        onChange={(e) => { setSearchDBClientQuery(e.target.value); setShowObsClientList(true); }}
+                      />
+                      <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
+                        {registeredClientsListDB.map(c => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setSelectedClientIdDB(c.id);
+                              setShowObsClientList(false);
+                              setSearchDBClientQuery('');
+                              toast.info(`Cliente "${c.empresa}" seleccionado`);
+                            }}
+                            className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
+                          >
+                            <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                            <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
 
