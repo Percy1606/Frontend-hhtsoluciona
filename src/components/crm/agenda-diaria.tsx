@@ -1102,7 +1102,7 @@ export function AgendaDiaria({
                             <span className={`w-3 h-3 shrink-0 rounded-full ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} title={`Prioridad: ${tarea.prioridad}`} />
                           )}
                           <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
-                            {tarea.empresa.split(' - ')[0]}
+                            {tarea.empresa}
                           </h4>
                           <div className="flex gap-2 items-center shrink-0">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
