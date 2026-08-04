@@ -33,6 +33,7 @@ import {
 import { Client } from '@/types/crm';
 import { EstadoTareaEstricto } from '@/lib/types/commercial-units';
 import { useCRMStore } from '@/store/crm-store';
+import { api } from '@/lib/api';
 import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -118,15 +119,12 @@ export function AgendaDiaria({
   useEffect(() => {
     const fetchAgenda = async () => {
       try {
-        const res = await fetch('/api/crm/agenda?t=' + new Date().getTime(), { cache: 'no-store' });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data)) {
-            setTareasEstrategicas(data);
-          }
+        const { data } = await api.get('/crm/agenda');
+        if (Array.isArray(data)) {
+          setTareasEstrategicas(data);
         }
       } catch (err) {
-        console.warn('[Agenda] Error cargando tareas globales:', err);
+        console.warn('[Agenda] Error cargando tareas de la BD:', err);
       } finally {
         setIsInitialLoad(false);
       }
@@ -136,17 +134,13 @@ export function AgendaDiaria({
 
   // GUARDAR TAREAS GLOBALES CADA VEZ QUE CAMBIEN
   useEffect(() => {
-    if (isInitialLoad) return; // Evita borrar el archivo en la carga inicial
+    if (isInitialLoad) return; 
 
     const saveAgenda = async () => {
       try {
-        await fetch('/api/crm/agenda', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(tareasEstrategicas)
-        });
+        await api.post('/crm/agenda', tareasEstrategicas);
       } catch (err) {
-        console.warn('[Agenda] Error guardando tareas globales:', err);
+        console.warn('[Agenda] Error guardando tareas en la BD:', err);
       }
     };
     
