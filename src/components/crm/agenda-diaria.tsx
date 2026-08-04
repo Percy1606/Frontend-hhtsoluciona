@@ -118,7 +118,7 @@ export function AgendaDiaria({
   useEffect(() => {
     const fetchAgenda = async () => {
       try {
-        const res = await fetch('/api/crm/agenda');
+        const res = await fetch('/api/crm/agenda?t=' + new Date().getTime(), { cache: 'no-store' });
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data)) {

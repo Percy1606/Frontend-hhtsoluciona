@@ -21,6 +21,7 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    await fs.mkdir(path.join(process.cwd(), 'data'), { recursive: true });
     await fs.writeFile(dataFilePath, JSON.stringify(data, null, 2), 'utf8');
     return NextResponse.json({ success: true });
   } catch (error) {
