@@ -1276,76 +1276,113 @@ export function AgendaDiaria({
                         <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                           Historial de Actividades ({tarea.subtareas.length})
                         </h5>
-                        {[...tarea.subtareas].reverse().map((sub) => (
-                          <div key={sub.id} className="group flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
-                            {editingSubtaskId === sub.id ? (
-                              <div className="flex-1 flex flex-col sm:flex-row items-start gap-2 w-full">
-                                <input
-                                  type="text"
-                                  className="w-full sm:w-28 bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400 mt-1"
-                                  value={editSubtaskFecha}
-                                  onChange={(e) => setEditSubtaskFecha(e.target.value)}
-                                />
-                                <textarea
-                                  className="flex-1 w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 min-h-[60px] resize-y"
-                                  value={editSubtaskText}
-                                  onChange={(e) => setEditSubtaskText(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      handleSaveEditSubtask(tarea.id, sub.id);
-                                    }
-                                  }}
-                                />
-                                <div className="flex items-center gap-1 shrink-0 mt-1">
-                                  <button onClick={() => handleSaveEditSubtask(tarea.id, sub.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md" title="Guardar">
-                                    <Save className="w-4 h-4" />
-                                  </button>
-                                  <button onClick={() => setEditingSubtaskId(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded-md" title="Cancelar">
-                                    <X className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="flex-1 flex items-start gap-2 justify-between">
-                                <div className="flex items-start gap-3">
-                                  <button
-                                    onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
-                                    className={`mt-0.5 transition-colors shrink-0 ${
-                                      sub.completada ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
-                                    }`}
-                                  >
-                                    {sub.completada ? (
-                                      <CheckSquare className="w-4 h-4" />
-                                    ) : (
-                                      <Square className="w-4 h-4" />
-                                    )}
-                                  </button>
-                                  <p className={`text-slate-800 font-medium leading-relaxed flex-1 ${sub.completada ? 'text-slate-500' : ''}`}>
-                                    <span className="font-bold text-slate-900 mr-1">{sub.fecha}:</span>
-                                    {sub.texto}
-                                  </p>
-                                </div>
-                                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <button 
-                                      onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto)} 
-                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                                      title="Editar avance"
-                                    >
-                                      <Edit2 className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button 
-                                      onClick={() => handleDeleteSubtask(tarea.id, sub.id)} 
-                                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                                      title="Eliminar avance"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </div>
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                        <div className="overflow-x-auto rounded-xl border border-slate-200 mt-2">
+                          <table className="w-full text-left text-xs">
+                            <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
+                              <tr>
+                                <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
+                                <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
+                                <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
+                                <th className="px-4 py-3 border-b border-slate-200">¿Se culminó?</th>
+                                <th className="px-4 py-3 border-b border-slate-200 text-center">Acciones</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 bg-white">
+                              {[...tarea.subtareas].reverse().map((sub) => (
+                                <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors group">
+                                  {editingSubtaskId === sub.id ? (
+                                    <>
+                                      <td className="px-3 py-2 align-top">
+                                        <input
+                                          type="text"
+                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
+                                          value={editSubtaskFecha}
+                                          onChange={(e) => setEditSubtaskFecha(e.target.value)}
+                                        />
+                                      </td>
+                                      <td className="px-3 py-2 align-top">
+                                        <textarea
+                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 min-h-[40px] resize-y"
+                                          value={editSubtaskText}
+                                          onChange={(e) => setEditSubtaskText(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                              e.preventDefault();
+                                              handleSaveEditSubtask(tarea.id, sub.id);
+                                            }
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase">
+                                        {tarea.responsable}
+                                      </td>
+                                      <td className="px-4 py-3 align-top"></td>
+                                      <td className="px-3 py-2 align-top text-center">
+                                        <div className="flex flex-col items-center gap-1.5">
+                                          <button onClick={() => handleSaveEditSubtask(tarea.id, sub.id)} className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-md font-medium transition-colors w-full justify-center">
+                                            <Save className="w-3.5 h-3.5" /> Guardar
+                                          </button>
+                                          <button onClick={() => setEditingSubtaskId(null)} className="flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-md font-medium transition-colors w-full justify-center">
+                                            <X className="w-3.5 h-3.5" /> Cancelar
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <td className="px-4 py-3 font-mono font-medium text-slate-700 whitespace-nowrap align-top">
+                                        {sub.fecha}
+                                      </td>
+                                      <td className="px-4 py-3 align-top">
+                                        <p className={`font-medium leading-relaxed ${sub.completada ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'}`}>
+                                          {sub.texto}
+                                        </p>
+                                      </td>
+                                      <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase whitespace-nowrap">
+                                        {tarea.responsable}
+                                      </td>
+                                      <td className="px-4 py-3 align-top whitespace-nowrap">
+                                        <div className="flex items-center gap-2">
+                                          <button
+                                            onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
+                                            className={`transition-colors shrink-0 ${
+                                              sub.completada ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
+                                            }`}
+                                          >
+                                            {sub.completada ? (
+                                              <CheckSquare className="w-5 h-5" />
+                                            ) : (
+                                              <Square className="w-5 h-5" />
+                                            )}
+                                          </button>
+                                          <span className={`font-semibold ${sub.completada ? 'text-emerald-600' : 'text-amber-500'}`}>
+                                            {sub.completada ? 'Sí' : 'En proceso'}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-3 align-top text-center">
+                                        <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <button 
+                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto)} 
+                                            className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
+                                          >
+                                            <Edit2 className="w-3.5 h-3.5" /> Editar
+                                          </button>
+                                          <button 
+                                            onClick={() => handleDeleteSubtask(tarea.id, sub.id)} 
+                                            className="flex items-center gap-1 text-rose-600 hover:text-rose-800 font-medium transition-colors"
+                                          >
+                                            <Trash2 className="w-3.5 h-3.5" /> Eliminar
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </>
+                                  )}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
                       </div>
                     </div>
                   )}
