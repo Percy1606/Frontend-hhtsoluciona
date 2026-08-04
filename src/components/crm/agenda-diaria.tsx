@@ -1336,6 +1336,18 @@ export function AgendaDiaria({
                             ) : (
                               <div className="flex-1 flex items-start gap-2 justify-between">
                                 <div className="flex items-start gap-3">
+                                  <button
+                                    onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
+                                    className={`mt-0.5 transition-colors shrink-0 ${
+                                      sub.completada ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
+                                    }`}
+                                  >
+                                    {sub.completada ? (
+                                      <CheckSquare className="w-4 h-4" />
+                                    ) : (
+                                      <Square className="w-4 h-4" />
+                                    )}
+                                  </button>
                                   <span className="font-mono font-semibold text-slate-700 shrink-0 text-[10px] bg-slate-200 px-2 py-0.5 rounded-md mt-0.5">
                                     {sub.fecha}
                                   </span>
