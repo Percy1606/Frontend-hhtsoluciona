@@ -403,10 +403,7 @@ export function AgendaDiaria({
       toast.error('Por favor selecciona o ingresa el nombre de la Empresa / Cliente.');
       return;
     }
-    if (!newActividadInmediata.trim()) {
-      toast.error('Por favor ingresa la Actividad Inmediata.');
-      return;
-    }
+
 
     const isExp = checkIsExpiredDate(newFechaCompromiso, 'PENDIENTE');
 
@@ -418,7 +415,7 @@ export function AgendaDiaria({
       actividadInmediata: newActividadInmediata.trim(),
       proximoPaso: newProximoPaso.trim() || 'Coordinación comercial',
       responsable: newResponsable,
-      fechaCompromiso: newFechaCompromiso || '31/07/2026',
+      fechaCompromiso: newFechaCompromiso || '',
       estado: isExp ? 'RETRASADA' : 'PENDIENTE',
       subtareas: []
     };
@@ -470,10 +467,7 @@ export function AgendaDiaria({
       toast.error('El nombre de empresa no puede estar vacío.');
       return;
     }
-    if (!editActividadInmediata.trim()) {
-      toast.error('La actividad inmediata no puede estar vacía.');
-      return;
-    }
+
 
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
@@ -482,9 +476,9 @@ export function AgendaDiaria({
           empresa: editEmpresa.trim(),
           etapaProceso: editEtapaProceso.trim() || t.etapaProceso,
           actividadInmediata: editActividadInmediata.trim(),
-          proximoPaso: editProximoPaso.trim() || t.proximoPaso,
+          proximoPaso: editProximoPaso.trim(),
           responsable: editResponsable || t.responsable,
-          fechaCompromiso: editFechaCompromiso || t.fechaCompromiso,
+          fechaCompromiso: editFechaCompromiso,
           estado: editEstado,
         };
       }
