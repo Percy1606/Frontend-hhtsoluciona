@@ -23,7 +23,6 @@ import {
   CheckSquare,
   Square,
   Filter,
-  Trash2,
   Edit2,
   X,
   Save,
