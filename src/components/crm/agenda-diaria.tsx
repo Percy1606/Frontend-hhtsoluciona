@@ -1346,14 +1346,15 @@ export function AgendaDiaria({
                               <option value="Mellani">Mellani</option>
                             </select>
                             <select
-                              className="w-full sm:w-28 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="w-full sm:w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
                               value={nuevaSubtareaPrioridad[tarea.id] || 'MEDIA'}
                               onChange={(e) => setNuevaSubtareaPrioridad({ ...nuevaSubtareaPrioridad, [tarea.id]: e.target.value as any })}
+                              title="Prioridad"
                             >
-                              <option value="ALTA" className="text-rose-600 font-bold">🔴 Alta</option>
-                              <option value="MEDIA_ALTA" className="text-orange-500 font-bold">🟠 Media-Alta</option>
-                              <option value="MEDIA" className="text-yellow-600 font-bold">🟡 Media</option>
-                              <option value="BAJA" className="text-emerald-600 font-bold">🟢 Baja</option>
+                              <option value="ALTA">🔴</option>
+                              <option value="MEDIA_ALTA">🟠</option>
+                              <option value="MEDIA">🟡</option>
+                              <option value="BAJA">🟢</option>
                             </select>
                             <Button
                               onClick={() => handleAddSubtarea(tarea.id)}
@@ -1409,16 +1410,16 @@ export function AgendaDiaria({
                                           }}
                                         />
                                       </td>
-                                      <td className="px-3 py-2 align-top">
+                                      <td className="px-3 py-2 align-top text-center">
                                         <select
-                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-semibold focus:outline-none focus:border-indigo-400"
+                                          className="bg-white border border-indigo-200 rounded-md px-1 py-1.5 text-xs focus:outline-none focus:border-indigo-400"
                                           value={editSubtaskPrioridad}
                                           onChange={(e) => setEditSubtaskPrioridad(e.target.value as any)}
                                         >
-                                          <option value="ALTA" className="text-rose-600 font-bold">🔴 Alta</option>
-                                          <option value="MEDIA_ALTA" className="text-orange-500 font-bold">🟠 Media-Alta</option>
-                                          <option value="MEDIA" className="text-yellow-600 font-bold">🟡 Media</option>
-                                          <option value="BAJA" className="text-emerald-600 font-bold">🟢 Baja</option>
+                                          <option value="ALTA">🔴</option>
+                                          <option value="MEDIA_ALTA">🟠</option>
+                                          <option value="MEDIA">🟡</option>
+                                          <option value="BAJA">🟢</option>
                                         </select>
                                       </td>
                                       <td className="px-3 py-2 align-top">
@@ -1476,18 +1477,12 @@ export function AgendaDiaria({
                                           {sub.texto}
                                         </p>
                                       </td>
-                                      <td className="px-4 py-3 align-top">
-                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
-                                          sub.prioridad === 'ALTA' ? 'bg-rose-50 text-rose-700 border-rose-200' :
-                                          sub.prioridad === 'MEDIA_ALTA' ? 'bg-orange-50 text-orange-700 border-orange-200' :
-                                          sub.prioridad === 'MEDIA' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
-                                          sub.prioridad === 'BAJA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                          'bg-slate-50 text-slate-500 border-slate-200'
-                                        }`}>
-                                          {sub.prioridad === 'ALTA' && '🔴 Alta'}
-                                          {sub.prioridad === 'MEDIA_ALTA' && '🟠 Media-Alta'}
-                                          {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡 Media'}
-                                          {sub.prioridad === 'BAJA' && '🟢 Baja'}
+                                      <td className="px-4 py-3 align-top text-center" title={sub.prioridad || 'MEDIA'}>
+                                        <span className="text-sm">
+                                          {sub.prioridad === 'ALTA' && '🔴'}
+                                          {sub.prioridad === 'MEDIA_ALTA' && '🟠'}
+                                          {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡'}
+                                          {sub.prioridad === 'BAJA' && '🟢'}
                                         </span>
                                       </td>
                                       <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase whitespace-nowrap">
