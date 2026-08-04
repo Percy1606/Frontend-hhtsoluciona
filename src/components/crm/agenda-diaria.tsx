@@ -57,6 +57,7 @@ export interface Subtarea {
   completada?: boolean;
   estadoStr?: 'SI' | 'NO' | 'EN_PROCESO';
   responsable?: string;
+  prioridad?: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA';
 }
 
 export interface TareaEstrategica {
@@ -232,6 +233,7 @@ export function AgendaDiaria({
   const [nuevaSubtareaText, setNuevaSubtareaText] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaFecha, setNuevaSubtareaFecha] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaResponsable, setNuevaSubtareaResponsable] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaSubtareaPrioridad, setNuevaSubtareaPrioridad] = useState<{ [tareaId: string]: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA' }>({});
 
   // Estado para EDITAR tarea existente
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -252,12 +254,14 @@ export function AgendaDiaria({
   const [editSubtaskFecha, setEditSubtaskFecha] = useState('');
   const [editSubtaskText, setEditSubtaskText] = useState('');
   const [editSubtaskResponsable, setEditSubtaskResponsable] = useState('');
+  const [editSubtaskPrioridad, setEditSubtaskPrioridad] = useState<'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA'>('MEDIA');
 
-  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string, currentResponsable: string) => {
+  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string, currentResponsable: string, currentPrioridad?: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA') => {
     setEditingSubtaskId(subtaskId);
     setEditSubtaskFecha(currentFecha);
     setEditSubtaskText(currentText);
     setEditSubtaskResponsable(currentResponsable || 'Steven');
+    setEditSubtaskPrioridad(currentPrioridad || 'MEDIA');
   };
 
   const handleSaveEditSubtask = (tareaId: string, subtaskId: string) => {
@@ -269,7 +273,7 @@ export function AgendaDiaria({
       if (t.id === tareaId) {
         return {
           ...t,
-          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText, responsable: editSubtaskResponsable } : s)
+          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText, responsable: editSubtaskResponsable, prioridad: editSubtaskPrioridad } : s)
         };
       }
       return t;
@@ -584,6 +588,7 @@ export function AgendaDiaria({
   const handleAddSubtarea = (tareaId: string) => {
     const text = (nuevaSubtareaText[tareaId] || '').trim();
     const responsable = nuevaSubtareaResponsable[tareaId] || 'Steven';
+    const prioridad = nuevaSubtareaPrioridad[tareaId] || 'MEDIA';
     // Fecha de subtarea: usa la que escribió el usuario, o la fecha de HOY
     const now = new Date();
     const defaultFecha = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -600,7 +605,7 @@ export function AgendaDiaria({
           ...t,
           subtareas: [
             ...t.subtareas,
-            { id: `sub-${Date.now()}`, fecha, texto: text, completada: false, responsable }
+            { id: `sub-${Date.now()}`, fecha, texto: text, completada: false, responsable, prioridad }
           ]
         };
       }
@@ -610,6 +615,7 @@ export function AgendaDiaria({
     toast.success('¡Subtarea agregada y mostrada en el historial!');
     setNuevaSubtareaText(prev => ({ ...prev, [tareaId]: '' }));
     setNuevaSubtareaResponsable(prev => ({ ...prev, [tareaId]: 'Steven' }));
+    setNuevaSubtareaPrioridad(prev => ({ ...prev, [tareaId]: 'MEDIA' }));
   };
 
   // Filtrado de Clientes GANADOS de la BD para el Selector de Fidelización
@@ -1094,18 +1100,18 @@ export function AgendaDiaria({
                         className="space-y-1.5 cursor-pointer flex-1"
                         onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
                       >
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                        <div className="flex flex-row items-center gap-2">
                           <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
                           {tarea.prioridad && (
                             <span className={`w-3 h-3 shrink-0 rounded-full ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} title={`Prioridad: ${tarea.prioridad}`} />
                           )}
-                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors whitespace-nowrap ${isFinalized ? 'line-through text-slate-400' : ''}`}>
                             {tarea.empresa}
                           </h4>
-                          <div className="flex gap-2 items-center shrink-0">
-                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
+                          <div className="flex gap-2 items-center shrink-0 ml-1">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200 whitespace-nowrap">
                               {tarea.etapaProceso}
                             </span>
                             {getStatusBadge(tarea.estado)}
@@ -1339,6 +1345,16 @@ export function AgendaDiaria({
                               <option value="Angie">Angie</option>
                               <option value="Mellani">Mellani</option>
                             </select>
+                            <select
+                              className="w-full sm:w-28 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              value={nuevaSubtareaPrioridad[tarea.id] || 'MEDIA'}
+                              onChange={(e) => setNuevaSubtareaPrioridad({ ...nuevaSubtareaPrioridad, [tarea.id]: e.target.value as any })}
+                            >
+                              <option value="ALTA" className="text-rose-600 font-bold">🔴 Alta</option>
+                              <option value="MEDIA_ALTA" className="text-orange-500 font-bold">🟠 Media-Alta</option>
+                              <option value="MEDIA" className="text-yellow-600 font-bold">🟡 Media</option>
+                              <option value="BAJA" className="text-emerald-600 font-bold">🟢 Baja</option>
+                            </select>
                             <Button
                               onClick={() => handleAddSubtarea(tarea.id)}
                               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg px-4 py-1.5 shadow-xs shrink-0"
@@ -1360,6 +1376,7 @@ export function AgendaDiaria({
                                 <th className="w-10 px-2 py-3 border-b border-slate-200 text-center"></th>
                                 <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
                                 <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
+                                <th className="px-4 py-3 border-b border-slate-200">Prioridad</th>
                                 <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
                                 <th className="px-4 py-3 border-b border-slate-200">¿Se culminó?</th>
                                 <th className="px-4 py-3 border-b border-slate-200 text-center">Acciones</th>
@@ -1391,6 +1408,18 @@ export function AgendaDiaria({
                                             }
                                           }}
                                         />
+                                      </td>
+                                      <td className="px-3 py-2 align-top">
+                                        <select
+                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-semibold focus:outline-none focus:border-indigo-400"
+                                          value={editSubtaskPrioridad}
+                                          onChange={(e) => setEditSubtaskPrioridad(e.target.value as any)}
+                                        >
+                                          <option value="ALTA" className="text-rose-600 font-bold">🔴 Alta</option>
+                                          <option value="MEDIA_ALTA" className="text-orange-500 font-bold">🟠 Media-Alta</option>
+                                          <option value="MEDIA" className="text-yellow-600 font-bold">🟡 Media</option>
+                                          <option value="BAJA" className="text-emerald-600 font-bold">🟢 Baja</option>
+                                        </select>
                                       </td>
                                       <td className="px-3 py-2 align-top">
                                         <select
@@ -1447,6 +1476,20 @@ export function AgendaDiaria({
                                           {sub.texto}
                                         </p>
                                       </td>
+                                      <td className="px-4 py-3 align-top">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border ${
+                                          sub.prioridad === 'ALTA' ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                          sub.prioridad === 'MEDIA_ALTA' ? 'bg-orange-50 text-orange-700 border-orange-200' :
+                                          sub.prioridad === 'MEDIA' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                          sub.prioridad === 'BAJA' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                          'bg-slate-50 text-slate-500 border-slate-200'
+                                        }`}>
+                                          {sub.prioridad === 'ALTA' && '🔴 Alta'}
+                                          {sub.prioridad === 'MEDIA_ALTA' && '🟠 Media-Alta'}
+                                          {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡 Media'}
+                                          {sub.prioridad === 'BAJA' && '🟢 Baja'}
+                                        </span>
+                                      </td>
                                       <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase whitespace-nowrap">
                                         {sub.responsable || tarea.responsable}
                                       </td>
@@ -1468,7 +1511,7 @@ export function AgendaDiaria({
                                       <td className="px-4 py-3 align-top text-center">
                                         <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button 
-                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto, sub.responsable || tarea.responsable)} 
+                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto, sub.responsable || tarea.responsable, sub.prioridad)} 
                                             className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" /> Editar
