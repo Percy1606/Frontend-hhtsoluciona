@@ -8,9 +8,10 @@ interface CRMHeaderProps {
   title: string;
   subtitle: string;
   icon?: React.ReactNode;
+  actions?: React.ReactNode;
 }
 
-export function CRMHeader({ title, subtitle, icon }: CRMHeaderProps) {
+export function CRMHeader({ title, subtitle, icon, actions }: CRMHeaderProps) {
   const { fetchClients, fetchQuotes, loading } = useCRMStore();
 
   const handleRefresh = async () => {
@@ -28,16 +29,19 @@ export function CRMHeader({ title, subtitle, icon }: CRMHeaderProps) {
         </div>
         <p className="text-[11px] text-muted-foreground mt-1 font-bold uppercase tracking-wide">{subtitle}</p>
       </div>
-      <Button 
-        variant="outline" 
-        size="sm" 
-        onClick={handleRefresh}
-        disabled={loading}
-        className="h-9 gap-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all shadow-sm"
-      >
-        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        {loading ? 'SINCRONIZANDO...' : 'REFRESCAR DATOS'}
-      </Button>
+      <div className="flex items-center gap-2">
+        {actions}
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh}
+          disabled={loading}
+          className="h-9 gap-2 border-slate-200 text-slate-600 font-bold hover:bg-slate-50 transition-all shadow-sm"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+          {loading ? 'SINCRONIZANDO...' : 'REFRESCAR DATOS'}
+        </Button>
+      </div>
     </div>
   );
 }

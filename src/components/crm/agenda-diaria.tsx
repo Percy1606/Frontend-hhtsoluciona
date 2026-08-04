@@ -41,6 +41,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { CRMHeader } from '@/components/crm/crm-header';
 
 interface AgendaDiariaProps {
   clients: Client[];
@@ -93,6 +94,7 @@ export function AgendaDiaria({
 
   const [expandedTareaId, setExpandedTareaId] = useState<string | null>(null);
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
+  const [showFidelizadosModal, setShowFidelizadosModal] = useState(false);
 
   // PAGINACIÓN Y LÍMITE DE REGISTROS PARA MAS DE 100 TAREAS
   const [taskPage, setTaskPage] = useState(1);
@@ -700,6 +702,17 @@ export function AgendaDiaria({
 
   return (
     <div className="space-y-6 text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
+      <CRMHeader 
+        title="Agenda Diaria, Tareas Estratégicas y Fidelización" 
+        subtitle="Panel exclusivo para creación de Tareas, Subtareas por fecha y seguimiento a Clientes Fidelizados."
+        actions={
+          <Button onClick={() => setShowFidelizadosModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-sm h-9 gap-1.5">
+            <HeartHandshake className="w-4 h-4" />
+            Fidelizados ({clientesFidelizados.length})
+          </Button>
+        }
+      />
+
       {/* BARRA DE BUSQUEDA Y FILTROS EXACTO A CRM/CARTERA */}
       <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-3 items-center justify-between">
@@ -1478,18 +1491,27 @@ export function AgendaDiaria({
         )}
       </div>
 
-      {/* SECCIÓN 2: CLIENTES GANADOS Y FIDELIZADOS (CON FECHAS EN OBSERVACIONES) */}
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden p-5 space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 pb-3">
-          <div>
-            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
-              <HeartHandshake className="w-4 h-4 text-emerald-600" />
-              Seguimiento a Clientes Ganados y Fidelizados ({clientesFidelizados.length} Cuentas Ganadas)
-            </h3>
-            <p className="text-xs text-slate-500 font-normal mt-0.5">
-              Exclusivo para clientes en estado Ganado / Cartera Fidelizada — Observaciones con Fecha
-            </p>
-          </div>
+      {/* MODAL SECCIÓN 2: CLIENTES GANADOS Y FIDELIZADOS */}
+      {showFidelizadosModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 p-5 bg-slate-50/80">
+              <div>
+                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  <HeartHandshake className="w-5 h-5 text-indigo-600" />
+                  Seguimiento a Clientes Ganados y Fidelizados ({clientesFidelizados.length} Cuentas Ganadas)
+                </h2>
+                <p className="text-xs text-slate-500 font-normal mt-0.5">
+                  Exclusivo para clientes en estado Ganado / Cartera Fidelizada — Observaciones con Fecha
+                </p>
+              </div>
+              <button onClick={() => setShowFidelizadosModal(false)} className="text-slate-400 hover:bg-slate-200 p-1.5 rounded-lg transition-colors self-start lg:self-auto border border-slate-200 bg-white">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 overflow-y-auto space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3">
 
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -1746,8 +1768,10 @@ export function AgendaDiaria({
               Cargar 10 clientes ganados más ({clientesFidelizados.length - obsVisibleLimit} restantes) <ChevronRight className="w-4 h-4" />
             </Button>
           )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
