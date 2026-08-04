@@ -56,6 +56,7 @@ export interface Subtarea {
   texto: string;
   completada?: boolean;
   estadoStr?: 'SI' | 'NO' | 'EN_PROCESO';
+  responsable?: string;
 }
 
 export interface TareaEstrategica {
@@ -228,6 +229,7 @@ export function AgendaDiaria({
   // Estado local para agregar nueva Subtarea / Avance diario
   const [nuevaSubtareaText, setNuevaSubtareaText] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaFecha, setNuevaSubtareaFecha] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaSubtareaResponsable, setNuevaSubtareaResponsable] = useState<{ [tareaId: string]: string }>({});
 
   // Estado para EDITAR tarea existente
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -573,6 +575,7 @@ export function AgendaDiaria({
   // Crear Subtarea / Avance Diario dentro de una Tarea
   const handleAddSubtarea = (tareaId: string) => {
     const text = (nuevaSubtareaText[tareaId] || '').trim();
+    const responsable = nuevaSubtareaResponsable[tareaId] || 'Steven';
     // Fecha de subtarea: usa la que escribió el usuario, o la fecha de HOY
     const now = new Date();
     const defaultFecha = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
@@ -589,7 +592,7 @@ export function AgendaDiaria({
           ...t,
           subtareas: [
             ...t.subtareas,
-            { id: `sub-${Date.now()}`, fecha, texto: text, completada: false }
+            { id: `sub-${Date.now()}`, fecha, texto: text, completada: false, responsable }
           ]
         };
       }
@@ -598,6 +601,7 @@ export function AgendaDiaria({
 
     toast.success('¡Subtarea agregada y mostrada en el historial!');
     setNuevaSubtareaText(prev => ({ ...prev, [tareaId]: '' }));
+    setNuevaSubtareaResponsable(prev => ({ ...prev, [tareaId]: 'Steven' }));
   };
 
   // Filtrado de Clientes GANADOS de la BD para el Selector de Fidelización
@@ -1092,14 +1096,7 @@ export function AgendaDiaria({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-between lg:justify-end flex-wrap">
-                      <div className="text-left lg:text-right">
-                        <p className="text-xs text-slate-500 font-medium">
-                          Responsable: <strong className="text-slate-900 font-semibold uppercase">{tarea.responsable}</strong>
-                        </p>
-                      </div>
-
-                      <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-2 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-end flex-wrap w-full">                      <div className="flex items-center gap-1.5">
                         {/* Botón EDITAR */}
                         {!isFinalized && (
                           <button
@@ -1288,6 +1285,20 @@ export function AgendaDiaria({
                                 if (e.key === 'Enter') handleAddSubtarea(tarea.id);
                               }}
                             />
+                            <select
+                              className="w-full sm:w-32 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              value={nuevaSubtareaResponsable[tarea.id] || 'Steven'}
+                              onChange={(e) => setNuevaSubtareaResponsable({ ...nuevaSubtareaResponsable, [tarea.id]: e.target.value })}
+                            >
+                              <option value="Steven">Steven</option>
+                              <option value="Mario">Mario</option>
+                              <option value="Javier">Javier</option>
+                              <option value="Valentina">Valentina</option>
+                              <option value="Ariana">Ariana</option>
+                              <option value="Brenda">Brenda</option>
+                              <option value="Angie">Angie</option>
+                              <option value="Mellani">Mellani</option>
+                            </select>
                             <Button
                               onClick={() => handleAddSubtarea(tarea.id)}
                               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg px-4 py-1.5 shadow-xs shrink-0"
@@ -1384,7 +1395,7 @@ export function AgendaDiaria({
                                         </p>
                                       </td>
                                       <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase whitespace-nowrap">
-                                        {tarea.responsable}
+                                        {sub.responsable || tarea.responsable}
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
