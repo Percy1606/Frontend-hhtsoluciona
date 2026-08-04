@@ -23,6 +23,10 @@ import {
   CheckSquare,
   Square,
   Filter,
+  Trash2,
+  Edit2,
+  X,
+  Save,
   MoreHorizontal,
   Eye,
   Edit,
@@ -234,6 +238,49 @@ export function AgendaDiaria({
 
   // Estado para confirmación de eliminación
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+
+  // Estado para editar subtareas
+  const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editSubtaskFecha, setEditSubtaskFecha] = useState('');
+  const [editSubtaskText, setEditSubtaskText] = useState('');
+
+  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string) => {
+    setEditingSubtaskId(subtaskId);
+    setEditSubtaskFecha(currentFecha);
+    setEditSubtaskText(currentText);
+  };
+
+  const handleSaveEditSubtask = (tareaId: string, subtaskId: string) => {
+    if (!editSubtaskText.trim() || !editSubtaskFecha.trim()) {
+      toast.error('La fecha y el texto son obligatorios');
+      return;
+    }
+    setTareasEstrategicas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        return {
+          ...t,
+          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText } : s)
+        };
+      }
+      return t;
+    }));
+    setEditingSubtaskId(null);
+    toast.success('Subtarea actualizada exitosamente');
+  };
+
+  const handleDeleteSubtask = (tareaId: string, subtaskId: string) => {
+    if (!confirm('¿Estás seguro de que deseas eliminar esta subtarea/avance?')) return;
+    setTareasEstrategicas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        return {
+          ...t,
+          subtareas: t.subtareas.filter(s => s.id !== subtaskId)
+        };
+      }
+      return t;
+    }));
+    toast.success('Subtarea eliminada exitosamente');
+  };
 
   const handleAdvisorSelect = (adv: string) => {
     setSelectedAdvisor(adv);
@@ -1258,7 +1305,7 @@ export function AgendaDiaria({
                           Historial de Subtareas ({tarea.subtareas.length})
                         </h5>
                         {tarea.subtareas.map((sub) => (
-                          <div key={sub.id} className="flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
+                          <div key={sub.id} className="group flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
                             <button
                               onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
                               disabled={sub.completada}
@@ -1273,12 +1320,62 @@ export function AgendaDiaria({
                                 <Square className="w-4 h-4 text-slate-400" />
                               )}
                             </button>
-                            <span className="font-mono font-semibold text-slate-700 shrink-0 text-[10px] bg-slate-200 px-2 py-0.5 rounded-md">
-                              {sub.fecha}
-                            </span>
-                            <p className={`text-slate-700 font-normal leading-relaxed ${sub.completada ? 'line-through text-slate-400' : ''}`}>
-                              {sub.texto}
-                            </p>
+                            {editingSubtaskId === sub.id ? (
+                              <div className="flex-1 flex flex-col sm:flex-row items-center gap-2 w-full">
+                                <input
+                                  type="text"
+                                  className="w-full sm:w-28 bg-white border border-indigo-200 rounded-md px-2 py-1 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
+                                  value={editSubtaskFecha}
+                                  onChange={(e) => setEditSubtaskFecha(e.target.value)}
+                                />
+                                <input
+                                  type="text"
+                                  className="flex-1 w-full bg-white border border-indigo-200 rounded-md px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                                  value={editSubtaskText}
+                                  onChange={(e) => setEditSubtaskText(e.target.value)}
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter') handleSaveEditSubtask(tarea.id, sub.id);
+                                  }}
+                                />
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <button onClick={() => handleSaveEditSubtask(tarea.id, sub.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md" title="Guardar">
+                                    <Save className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button onClick={() => setEditingSubtaskId(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded-md" title="Cancelar">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex-1 flex items-start gap-2 justify-between">
+                                <div className="flex items-start gap-3">
+                                  <span className="font-mono font-semibold text-slate-700 shrink-0 text-[10px] bg-slate-200 px-2 py-0.5 rounded-md mt-0.5">
+                                    {sub.fecha}
+                                  </span>
+                                  <p className={`text-slate-700 font-normal leading-relaxed flex-1 ${sub.completada ? 'line-through text-slate-400' : ''}`}>
+                                    {sub.texto}
+                                  </p>
+                                </div>
+                                {!sub.completada && (
+                                  <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <button 
+                                      onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto)} 
+                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
+                                      title="Editar subtarea"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteSubtask(tarea.id, sub.id)} 
+                                      className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
+                                      title="Eliminar subtarea"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
