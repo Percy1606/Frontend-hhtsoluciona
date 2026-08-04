@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -104,12 +104,35 @@ export function AgendaDiaria({
   const [selectedClientIdDB, setSelectedClientIdDB] = useState('');
   const [searchDBClientQuery, setSearchDBClientQuery] = useState('');
   const [fidelizadoObsText, setFidelizadoObsText] = useState('');
+  const [fidelizadoObsFecha, setFidelizadoObsFecha] = useState('');
 
   // Estado para agregar observación rápida a cliente existente
   const [nuevaObsText, setNuevaObsText] = useState<{ [clientId: string]: string }>({});
+  const [nuevaObsFecha, setNuevaObsFecha] = useState<{ [clientId: string]: string }>({});
 
-  // Lista local de tareas estratégicas iniciada completamente LIMPIA ([])
-  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
+  // Lista local de tareas estratégicas — PERSISTIDA EN LOCALSTORAGE
+  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const saved = localStorage.getItem('hht-agenda-tareas-estrategicas');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch (e) {
+      console.warn('[Agenda] Error al recuperar tareas de localStorage:', e);
+    }
+    return [];
+  });
+
+  // PERSISTIR TAREAS EN LOCALSTORAGE CADA VEZ QUE CAMBIEN
+  useEffect(() => {
+    try {
+      localStorage.setItem('hht-agenda-tareas-estrategicas', JSON.stringify(tareasEstrategicas));
+    } catch (e) {
+      console.warn('[Agenda] Error al guardar tareas en localStorage:', e);
+    }
+  }, [tareasEstrategicas]);
 
   // HELPER PARA IDENTIFICAR SOLO CLIENTES GANADOS / FIDELIZADOS
   const isWonClient = (c: Client) => {
@@ -126,12 +149,13 @@ export function AgendaDiaria({
     );
   };
 
-  // HELPER PARA DETECTAR FECHA EXPIRADA / VENCIDA EN ROJO
-  const checkIsExpiredDate = (fechaStr: string, estado: EstadoTareaEstricto) => {
+  // HELPER PARA DETECTAR FECHA EXPIRADA / VENCIDA EN ROJO (USA FECHA DE HOY DINÁMICA)
+  const checkIsExpiredDate = useCallback((fechaStr: string, estado: EstadoTareaEstricto) => {
     if (estado === 'RETRASADA') return true;
+    if (estado === 'FINALIZADA') return false;
     if (!fechaStr) return false;
     
-    if (fechaStr.includes('31/06/2026') || fechaStr.includes('30/06') || fechaStr.includes('vencid')) return true;
+    if (fechaStr.toLowerCase().includes('vencid')) return true;
 
     try {
       let dateObj: Date | null = null;
@@ -145,13 +169,15 @@ export function AgendaDiaria({
       }
 
       if (dateObj && !isNaN(dateObj.getTime())) {
-        const cutoffDate = new Date('2026-08-03T00:00:00');
-        return dateObj < cutoffDate;
+        // Comparar con HOY a las 00:00:00 (inicio del día actual)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        return dateObj < today;
       }
     } catch (err) {}
 
     return false;
-  };
+  }, []);
 
   // Formulario para Crear Nueva Tarea Principal
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
@@ -165,11 +191,31 @@ export function AgendaDiaria({
   const [newActividadInmediata, setNewActividadInmediata] = useState('');
   const [newProximoPaso, setNewProximoPaso] = useState('');
   const [newResponsable, setNewResponsable] = useState('Steven');
-  const [newFechaCompromiso, setNewFechaCompromiso] = useState('31/07/2026');
+  // Fecha compromiso por defecto = HOY dinámico (el usuario puede poner fechas pasadas)
+  const [newFechaCompromiso, setNewFechaCompromiso] = useState(() => {
+    const now = new Date();
+    const dd = String(now.getDate()).padStart(2, '0');
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  });
 
   // Estado local para agregar nueva Subtarea / Avance diario
   const [nuevaSubtareaText, setNuevaSubtareaText] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaFecha, setNuevaSubtareaFecha] = useState<{ [tareaId: string]: string }>({});
+
+  // Estado para EDITAR tarea existente
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [editEmpresa, setEditEmpresa] = useState('');
+  const [editEtapaProceso, setEditEtapaProceso] = useState('');
+  const [editActividadInmediata, setEditActividadInmediata] = useState('');
+  const [editProximoPaso, setEditProximoPaso] = useState('');
+  const [editResponsable, setEditResponsable] = useState('');
+  const [editFechaCompromiso, setEditFechaCompromiso] = useState('');
+  const [editEstado, setEditEstado] = useState<EstadoTareaEstricto>('PENDIENTE');
+
+  // Estado para confirmación de eliminación
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const handleAdvisorSelect = (adv: string) => {
     setSelectedAdvisor(adv);
@@ -177,7 +223,7 @@ export function AgendaDiaria({
     if (onAdvisorChange) onAdvisorChange(adv);
   };
 
-  // AGREGAR OBSERVACIÓN RÁPIDA DENTRO DE LA TARJETA DEL CLIENTE (CON FECHA Y HORA)
+  // AGREGAR OBSERVACIÓN RÁPIDA DENTRO DE LA TARJETA DEL CLIENTE (CON FECHA PERSONALIZABLE)
   const handleAddNuevaObs = async (clientId: string) => {
     const text = (nuevaObsText[clientId] || '').trim();
     if (!text) {
@@ -185,8 +231,20 @@ export function AgendaDiaria({
       return;
     }
 
-    const now = new Date();
-    const fechaFormatted = `${now.toLocaleDateString('es-PE')} ${now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+    // Usar fecha personalizada si el usuario la escribió, o la fecha+hora actual
+    const customFecha = (nuevaObsFecha[clientId] || '').trim();
+    let fechaFormatted: string;
+    if (customFecha) {
+      fechaFormatted = customFecha;
+    } else {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      fechaFormatted = `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+    }
 
     setLocalExtraObs(prev => ({
       ...prev,
@@ -197,13 +255,14 @@ export function AgendaDiaria({
       await addInteraction(clientId, {
         tipo: 'Nota',
         accion: 'Observación Registrada',
-        observaciones: text,
+        observaciones: `[${fechaFormatted}] ${text}`,
         usuario: selectedAdvisor !== 'TODOS' ? selectedAdvisor : 'ADMIN'
       });
     } catch (err) {}
 
-    toast.success('¡Observación agregada con fecha y hora!');
+    toast.success('¡Observación agregada con fecha!');
     setNuevaObsText(prev => ({ ...prev, [clientId]: '' }));
+    setNuevaObsFecha(prev => ({ ...prev, [clientId]: '' }));
   };
 
   // AGREGAR OBSERVACIÓN A CLIENTE GANADO DE LA BD (CON FECHA Y HORA)
@@ -220,8 +279,21 @@ export function AgendaDiaria({
 
     const clientMatch = clients.find(c => String(c.id) === String(selectedClientIdDB));
     const text = fidelizadoObsText.trim();
-    const now = new Date();
-    const fechaFormatted = `${now.toLocaleDateString('es-PE')} ${now.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}`;
+
+    // Usar fecha personalizada si el usuario la escribió, o la fecha+hora actual
+    const customFecha = fidelizadoObsFecha.trim();
+    let fechaFormatted: string;
+    if (customFecha) {
+      fechaFormatted = customFecha;
+    } else {
+      const now = new Date();
+      const dd = String(now.getDate()).padStart(2, '0');
+      const mm = String(now.getMonth() + 1).padStart(2, '0');
+      const yyyy = now.getFullYear();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mi = String(now.getMinutes()).padStart(2, '0');
+      fechaFormatted = `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+    }
 
     setLocalExtraObs(prev => ({
       ...prev,
@@ -234,7 +306,7 @@ export function AgendaDiaria({
       await addInteraction(selectedClientIdDB, {
         tipo: 'Nota',
         accion: 'Observación de Fidelización',
-        observaciones: text,
+        observaciones: `[${fechaFormatted}] ${text}`,
         usuario: selectedAdvisor !== 'TODOS' ? selectedAdvisor : 'ADMIN'
       });
     } catch (err) {}
@@ -242,6 +314,7 @@ export function AgendaDiaria({
     toast.success(`¡Observación registrada con fecha para "${clientMatch?.empresa || 'Cliente Ganado'}"!`);
 
     setFidelizadoObsText('');
+    setFidelizadoObsFecha('');
     setSelectedClientIdDB('');
     setShowAddFidelizadoModal(false);
   };
@@ -297,6 +370,65 @@ export function AgendaDiaria({
     setShowCreateTaskModal(false);
   };
 
+  // ELIMINAR TAREA
+  const handleDeleteTask = (tareaId: string) => {
+    const target = tareasEstrategicas.find(t => t.id === tareaId);
+    setTareasEstrategicas(prev => prev.filter(t => t.id !== tareaId));
+    setConfirmDeleteId(null);
+    if (expandedTareaId === tareaId) setExpandedTareaId(null);
+    if (editingTaskId === tareaId) setEditingTaskId(null);
+    toast.success(`Tarea "${target?.empresa || ''}" eliminada correctamente.`);
+  };
+
+  // INICIAR EDICIÓN DE TAREA
+  const handleStartEdit = (tarea: TareaEstrategica) => {
+    setEditingTaskId(tarea.id);
+    setEditEmpresa(tarea.empresa);
+    setEditEtapaProceso(tarea.etapaProceso);
+    setEditActividadInmediata(tarea.actividadInmediata);
+    setEditProximoPaso(tarea.proximoPaso);
+    setEditResponsable(tarea.responsable);
+    setEditFechaCompromiso(tarea.fechaCompromiso);
+    setEditEstado(tarea.estado);
+    setExpandedTareaId(tarea.id);
+  };
+
+  // GUARDAR EDICIÓN DE TAREA
+  const handleSaveEdit = (tareaId: string) => {
+    if (!editEmpresa.trim()) {
+      toast.error('El nombre de empresa no puede estar vacío.');
+      return;
+    }
+    if (!editActividadInmediata.trim()) {
+      toast.error('La actividad inmediata no puede estar vacía.');
+      return;
+    }
+
+    setTareasEstrategicas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        return {
+          ...t,
+          empresa: editEmpresa.trim(),
+          etapaProceso: editEtapaProceso.trim() || t.etapaProceso,
+          actividadInmediata: editActividadInmediata.trim(),
+          proximoPaso: editProximoPaso.trim() || t.proximoPaso,
+          responsable: editResponsable || t.responsable,
+          fechaCompromiso: editFechaCompromiso || t.fechaCompromiso,
+          estado: editEstado,
+        };
+      }
+      return t;
+    }));
+
+    toast.success(`Tarea "${editEmpresa.trim()}" actualizada correctamente.`);
+    setEditingTaskId(null);
+  };
+
+  // CANCELAR EDICIÓN
+  const handleCancelEdit = () => {
+    setEditingTaskId(null);
+  };
+
   // Toggle Checkbox Completo Tarea Principal (BLOQUEADO SI YA ESTÁ FINALIZADA)
   const toggleTaskCompletion = (tareaId: string) => {
     const target = tareasEstrategicas.find(t => t.id === tareaId);
@@ -348,7 +480,10 @@ export function AgendaDiaria({
   // Crear Subtarea / Avance Diario dentro de una Tarea
   const handleAddSubtarea = (tareaId: string) => {
     const text = (nuevaSubtareaText[tareaId] || '').trim();
-    const fecha = nuevaSubtareaFecha[tareaId] || new Date().toLocaleDateString('es-PE');
+    // Fecha de subtarea: usa la que escribió el usuario, o la fecha de HOY
+    const now = new Date();
+    const defaultFecha = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
+    const fecha = nuevaSubtareaFecha[tareaId] || defaultFecha;
 
     if (!text) {
       toast.error('Escribe el avance o subtarea.');
@@ -888,27 +1023,189 @@ export function AgendaDiaria({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-between lg:justify-end">
+                    <div className="flex items-center gap-2 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-between lg:justify-end flex-wrap">
                       <div className="text-left lg:text-right">
                         <p className="text-xs text-slate-500 font-medium">
                           Responsable: <strong className="text-slate-900 font-semibold uppercase">{tarea.responsable}</strong>
                         </p>
                       </div>
 
-                      <button
-                        onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
-                        className="flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-200 shrink-0 hover:bg-emerald-100 transition-colors"
-                      >
-                        <span>{tarea.subtareas.length} Subtarea(s)</span>
-                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {/* Botón EDITAR */}
+                        {!isFinalized && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleStartEdit(tarea);
+                            }}
+                            className="flex items-center gap-1 text-xs text-indigo-700 font-medium bg-indigo-50 px-2.5 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-100 transition-colors"
+                            title="Editar tarea"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </button>
+                        )}
+
+                        {/* Botón ELIMINAR con confirmación */}
+                        {confirmDeleteId === tarea.id ? (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteTask(tarea.id);
+                              }}
+                              className="flex items-center gap-1 text-xs text-white font-medium bg-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-500 transition-colors"
+                            >
+                              Sí, Eliminar
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmDeleteId(null);
+                              }}
+                              className="flex items-center gap-1 text-xs text-slate-600 font-medium bg-slate-100 px-2.5 py-1.5 rounded-lg hover:bg-slate-200 transition-colors"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setConfirmDeleteId(tarea.id);
+                            }}
+                            className="flex items-center gap-1 text-xs text-rose-700 font-medium bg-rose-50 px-2.5 py-1.5 rounded-lg border border-rose-200 hover:bg-rose-100 transition-colors"
+                            title="Eliminar tarea"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Eliminar</span>
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
+                          className="flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-200 shrink-0 hover:bg-emerald-100 transition-colors"
+                        >
+                          <span>{tarea.subtareas.length} Subtarea(s)</span>
+                          {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                        </button>
+                      </div>
                     </div>
                   </div>
 
                   {/* DESPLIEGUE DE SUBTAREAS */}
                   {isExpanded && (
                     <div className="pt-3 border-t border-slate-100 space-y-4 animate-in fade-in duration-150">
-                      {!isFinalized && (
+
+                      {/* FORMULARIO DE EDICIÓN INLINE */}
+                      {editingTaskId === tarea.id && (
+                        <div className="bg-indigo-50/60 p-4 rounded-xl border border-indigo-200 space-y-3">
+                          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-800 uppercase pb-2 border-b border-indigo-200">
+                            <Edit className="w-4 h-4 text-indigo-600" />
+                            Editando Tarea: {tarea.empresa}
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Empresa *</label>
+                              <input
+                                type="text"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editEmpresa}
+                                onChange={(e) => setEditEmpresa(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
+                              <input
+                                type="text"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editEtapaProceso}
+                                onChange={(e) => setEditEtapaProceso(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
+                              <select
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editResponsable}
+                                onChange={(e) => setEditResponsable(e.target.value)}
+                              >
+                                <option value="Steven">Steven</option>
+                                <option value="Mario">Mario</option>
+                                <option value="Javier">Javier</option>
+                                <option value="Valentina">Valentina</option>
+                                <option value="Ariana">Ariana</option>
+                                <option value="Brenda">Brenda</option>
+                                <option value="Angie">Angie</option>
+                                <option value="Mellani">Mellani</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actividad Inmediata *</label>
+                              <input
+                                type="text"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editActividadInmediata}
+                                onChange={(e) => setEditActividadInmediata(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Próximo Paso</label>
+                              <input
+                                type="text"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editProximoPaso}
+                                onChange={(e) => setEditProximoPaso(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha Compromiso</label>
+                              <input
+                                type="text"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editFechaCompromiso}
+                                onChange={(e) => setEditFechaCompromiso(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Estado</label>
+                              <select
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={editEstado}
+                                onChange={(e) => setEditEstado(e.target.value as EstadoTareaEstricto)}
+                              >
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="EN_PROCESO">En Proceso</option>
+                                <option value="RETRASADA">Retrasada</option>
+                                <option value="FINALIZADA">Finalizada</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2 border-t border-indigo-200">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={handleCancelEdit}
+                              className="rounded-lg text-xs font-medium"
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => handleSaveEdit(tarea.id)}
+                              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium"
+                            >
+                              Guardar Cambios
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {!isFinalized && editingTaskId !== tarea.id && (
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
                           <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
                             + Agregar Subtarea / Avance Diario por Fecha
@@ -918,7 +1215,7 @@ export function AgendaDiaria({
                               type="text"
                               placeholder="Fecha (ej: 03/08/2026)"
                               className="w-full sm:w-36 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800"
-                              value={nuevaSubtareaFecha[tarea.id] || new Date().toLocaleDateString('es-PE')}
+                              value={nuevaSubtareaFecha[tarea.id] || (() => { const n = new Date(); return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`; })()}
                               onChange={(e) => setNuevaSubtareaFecha({ ...nuevaSubtareaFecha, [tarea.id]: e.target.value })}
                             />
                             <input
@@ -1111,16 +1408,29 @@ export function AgendaDiaria({
                 </div>
               </div>
 
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Texto de la Observación *</label>
-                <input
-                  type="text"
-                  placeholder="Ej: PREGUNTAR POR COTIZACIÓN DE CORRECTIVOS / COTIZAR MANTENIMIENTO DE POZOS"
-                  required
-                  className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
-                  value={fidelizadoObsText}
-                  onChange={(e) => setFidelizadoObsText(e.target.value)}
-                />
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-1">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha de la Observación</label>
+                  <input
+                    type="text"
+                    placeholder={(() => { const n = new Date(); return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`; })()}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                    value={fidelizadoObsFecha}
+                    onChange={(e) => setFidelizadoObsFecha(e.target.value)}
+                  />
+                  <span className="text-[10px] text-slate-400 mt-0.5 block">Vacío = fecha y hora actual</span>
+                </div>
+                <div className="sm:col-span-3">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Texto de la Observación *</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: PREGUNTAR POR COTIZACIÓN DE CORRECTIVOS / COTIZAR MANTENIMIENTO DE POZOS"
+                    required
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                    value={fidelizadoObsText}
+                    onChange={(e) => setFidelizadoObsText(e.target.value)}
+                  />
+                </div>
               </div>
             </div>
 
@@ -1212,7 +1522,15 @@ export function AgendaDiaria({
 
                   {isExpanded && (
                     <div className="mt-4 pt-3 border-t border-slate-200/80 space-y-3">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <input
+                          type="text"
+                          placeholder={(() => { const n = new Date(); return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`; })()}
+                          className="w-full sm:w-36 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          value={nuevaObsFecha[c.id] || ''}
+                          onChange={(e) => setNuevaObsFecha({ ...nuevaObsFecha, [c.id]: e.target.value })}
+                          title="Fecha de la observación (vacío = hoy con hora actual)"
+                        />
                         <input
                           type="text"
                           placeholder="Escribe aquí la nueva observación (ej: ENVIAR COTIZACIÓN DE CORRECTIVOS)..."
