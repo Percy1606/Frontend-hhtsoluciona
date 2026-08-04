@@ -1071,23 +1071,9 @@ export function AgendaDiaria({
                           <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
-                          {(() => {
-                            const parts = tarea.empresa.split(' - ');
-                            const cliente = parts[0];
-                            const proyecto = parts.slice(1).join(' - ');
-                            return (
-                              <div className="flex flex-col">
-                                <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
-                                  {cliente}
-                                </h4>
-                                {proyecto && (
-                                  <span className={`text-xs font-medium text-slate-600 mt-0.5 ${isFinalized ? 'line-through text-slate-400' : ''}`}>
-                                    Proyecto: <strong className="text-slate-800">{proyecto}</strong>
-                                  </span>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                            {tarea.empresa.split(' - ')[0]}
+                          </h4>
                           <div className="flex gap-2 items-center">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
                               {tarea.etapaProceso}
@@ -1650,7 +1636,8 @@ export function AgendaDiaria({
               const obsList: ObsEntry[] = [];
 
               if (c.observaciones) {
-                const dateFromClient = c.ultimoContacto || c.fechaCreacion || new Date().toLocaleDateString('es-PE');
+                const rawDate = c.ultimoContacto || c.fechaCreacion;
+                const dateFromClient = rawDate ? new Date(rawDate).toLocaleDateString('es-PE') : new Date().toLocaleDateString('es-PE');
                 obsList.push({ texto: c.observaciones, fecha: dateFromClient });
               }
 
