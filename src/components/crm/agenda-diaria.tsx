@@ -511,26 +511,21 @@ export function AgendaDiaria({
     }));
   };
 
-  // Toggle Checkbox Completo Subtarea (BLOQUEADO SI YA FUE COMPLETADA)
+  // Toggle Checkbox Completo Subtarea
   const toggleSubtaskCompletion = (tareaId: string, subtareaId: string) => {
-    const targetTask = tareasEstrategicas.find(t => t.id === tareaId);
-    const targetSub = targetTask?.subtareas.find(s => s.id === subtareaId);
-
-    if (targetSub?.completada) {
-      toast.warning('🔒 Esta subtarea ya fue realizada y no se puede revertir.', {
-        duration: 4000
-      });
-      return;
-    }
-
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
         return {
           ...t,
           subtareas: t.subtareas.map(s => {
             if (s.id === subtareaId) {
-              toast.success('¡Subtarea marcada como realizada ✅!');
-              return { ...s, completada: true };
+              const newState = !s.completada;
+              if (newState) {
+                toast.success('¡Subtarea marcada como realizada ✅!');
+              } else {
+                toast.success('Subtarea restaurada');
+              }
+              return { ...s, completada: newState };
             }
             return s;
           })
