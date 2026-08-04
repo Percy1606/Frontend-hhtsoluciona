@@ -119,9 +119,9 @@ export function AgendaDiaria({
   useEffect(() => {
     const fetchAgenda = async () => {
       try {
-        const { data } = await api.get('/crm/agenda');
-        if (Array.isArray(data)) {
-          setTareasEstrategicas(data);
+        const response = await api.get('/crm/agenda');
+        if (Array.isArray(response)) {
+          setTareasEstrategicas(response);
         }
       } catch (err) {
         console.warn('[Agenda] Error cargando tareas de la BD:', err);
