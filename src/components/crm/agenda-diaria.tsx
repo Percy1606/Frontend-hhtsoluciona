@@ -70,6 +70,7 @@ export interface TareaEstrategica {
   fechaCompromiso: string;
   estado: EstadoTareaEstricto;
   subtareas: Subtarea[];
+  prioridad?: 'ROJO' | 'ANARANJADO' | 'AMARILLO' | 'VERDE';
 }
 
 export interface ObsEntry {
@@ -217,6 +218,7 @@ export function AgendaDiaria({
   const [newActividadInmediata, setNewActividadInmediata] = useState('');
   const [newProximoPaso, setNewProximoPaso] = useState('');
   const [newResponsable, setNewResponsable] = useState('Steven');
+  const [newPrioridad, setNewPrioridad] = useState<'ROJO' | 'ANARANJADO' | 'AMARILLO' | 'VERDE'>('VERDE');
   // Fecha compromiso por defecto = HOY dinámico (el usuario puede poner fechas pasadas)
   const [newFechaCompromiso, setNewFechaCompromiso] = useState(() => {
     const now = new Date();
@@ -240,6 +242,7 @@ export function AgendaDiaria({
   const [editResponsable, setEditResponsable] = useState('');
   const [editFechaCompromiso, setEditFechaCompromiso] = useState('');
   const [editEstado, setEditEstado] = useState<EstadoTareaEstricto>('PENDIENTE');
+  const [editPrioridad, setEditPrioridad] = useState<'ROJO' | 'ANARANJADO' | 'AMARILLO' | 'VERDE'>('VERDE');
 
   // Estado para confirmación de eliminación
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -423,6 +426,7 @@ export function AgendaDiaria({
       responsable: newResponsable,
       fechaCompromiso: newFechaCompromiso || '',
       estado: isExp ? 'RETRASADA' : 'PENDIENTE',
+      prioridad: newPrioridad,
       subtareas: []
     };
 
@@ -464,6 +468,7 @@ export function AgendaDiaria({
     setEditResponsable(tarea.responsable);
     setEditFechaCompromiso(tarea.fechaCompromiso);
     setEditEstado(tarea.estado);
+    setEditPrioridad(tarea.prioridad || 'VERDE');
     setExpandedTareaId(tarea.id);
   };
 
@@ -486,6 +491,7 @@ export function AgendaDiaria({
           responsable: editResponsable || t.responsable,
           fechaCompromiso: editFechaCompromiso,
           estado: editEstado,
+          prioridad: editPrioridad,
         };
       }
       return t;
@@ -911,6 +917,21 @@ export function AgendaDiaria({
               </div>
 
               <div>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
+                <div className="flex gap-2 mt-2">
+                  {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
+                    <button 
+                      type="button" 
+                      key={p} 
+                      onClick={() => setNewPrioridad(p)}
+                      className={`w-6 h-6 rounded-full border-2 transition-all ${newPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
+                      title={p}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
                 <input
                   type="text"
@@ -1077,7 +1098,10 @@ export function AgendaDiaria({
                           <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
-                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors truncate ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                          {tarea.prioridad && (
+                            <span className={`w-3 h-3 shrink-0 rounded-full ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} title={`Prioridad: ${tarea.prioridad}`} />
+                          )}
+                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
                             {tarea.empresa.split(' - ')[0]}
                           </h4>
                           <div className="flex gap-2 items-center shrink-0">
@@ -1242,6 +1266,20 @@ export function AgendaDiaria({
                                 <option value="RETRASADA">Retrasada</option>
                                 <option value="FINALIZADA">Finalizada</option>
                               </select>
+                            </div>
+                            <div>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
+                              <div className="flex gap-2 mt-2">
+                                {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
+                                  <button 
+                                    type="button" 
+                                    key={p} 
+                                    onClick={() => setEditPrioridad(p)}
+                                    className={`w-6 h-6 rounded-full border-2 transition-all ${editPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
+                                    title={p}
+                                  />
+                                ))}
+                              </div>
                             </div>
                           </div>
                           <div className="flex justify-end gap-2 pt-2 border-t border-indigo-200">
