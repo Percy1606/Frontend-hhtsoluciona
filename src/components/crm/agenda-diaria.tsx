@@ -54,6 +54,7 @@ export interface Subtarea {
   fecha: string;
   texto: string;
   completada?: boolean;
+  estadoStr?: 'SI' | 'NO' | 'EN_PROCESO';
 }
 
 export interface TareaEstrategica {
@@ -531,7 +532,7 @@ export function AgendaDiaria({
               } else {
                 toast.success('Actividad restaurada');
               }
-              return { ...s, completada: newState };
+              return { ...s, completada: newState, estadoStr: newState ? 'SI' : 'NO' };
             }
             return s;
           })
@@ -539,6 +540,38 @@ export function AgendaDiaria({
       }
       return t;
     }));
+  };
+
+  const handleSubtaskEstadoChange = (tareaId: string, subtareaId: string, newEstado: 'SI' | 'NO' | 'EN_PROCESO') => {
+    setTareasEstrategicas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        return {
+          ...t,
+          subtareas: t.subtareas.map(s => {
+            if (s.id === subtareaId) {
+              return { 
+                ...s, 
+                estadoStr: newEstado,
+                completada: newEstado === 'SI' ? true : (newEstado === 'NO' ? false : s.completada)
+              };
+            }
+            return s;
+          })
+        };
+      }
+      return t;
+    }));
+  };
+
+  const isSubtaskPastDue = (fechaStr: string) => {
+    const parts = fechaStr.split('/');
+    if (parts.length === 3) {
+      const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return d < today;
+    }
+    return false;
   };
 
   // Crear Subtarea / Avance Diario dentro de una Tarea
@@ -1280,6 +1313,7 @@ export function AgendaDiaria({
                           <table className="w-full text-left text-xs">
                             <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
                               <tr>
+                                <th className="w-10 px-2 py-3 border-b border-slate-200 text-center"></th>
                                 <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
                                 <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
                                 <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
@@ -1292,6 +1326,7 @@ export function AgendaDiaria({
                                 <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors group">
                                   {editingSubtaskId === sub.id ? (
                                     <>
+                                      <td className="px-2 py-2 align-top text-center"></td>
                                       <td className="px-3 py-2 align-top">
                                         <input
                                           type="text"
@@ -1330,8 +1365,25 @@ export function AgendaDiaria({
                                     </>
                                   ) : (
                                     <>
+                                      <td className="px-2 py-3 align-top text-center">
+                                        <button
+                                          onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
+                                          className={`transition-colors shrink-0 ${
+                                            sub.completada ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
+                                          }`}
+                                        >
+                                          {sub.completada ? (
+                                            <CheckSquare className="w-5 h-5" />
+                                          ) : (
+                                            <Square className="w-5 h-5" />
+                                          )}
+                                        </button>
+                                      </td>
                                       <td className="px-4 py-3 font-mono font-medium text-slate-700 whitespace-nowrap align-top">
-                                        {sub.fecha}
+                                        <div className="flex items-center gap-1.5">
+                                          <CalendarIcon className={`w-4 h-4 ${!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-500' : 'text-emerald-500'}`} />
+                                          <span className={!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-600 font-bold' : ''}>{sub.fecha}</span>
+                                        </div>
                                       </td>
                                       <td className="px-4 py-3 align-top">
                                         <p className={`font-medium leading-relaxed ${sub.completada ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'}`}>
@@ -1342,23 +1394,19 @@ export function AgendaDiaria({
                                         {tarea.responsable}
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
-                                        <div className="flex items-center gap-2">
-                                          <button
-                                            onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
-                                            className={`transition-colors shrink-0 ${
-                                              sub.completada ? 'text-emerald-600' : 'text-slate-400 hover:text-emerald-600'
-                                            }`}
-                                          >
-                                            {sub.completada ? (
-                                              <CheckSquare className="w-5 h-5" />
-                                            ) : (
-                                              <Square className="w-5 h-5" />
-                                            )}
-                                          </button>
-                                          <span className={`font-semibold ${sub.completada ? 'text-emerald-600' : 'text-amber-500'}`}>
-                                            {sub.completada ? 'Sí' : 'En proceso'}
-                                          </span>
-                                        </div>
+                                        <select
+                                          value={sub.estadoStr || (sub.completada ? 'SI' : 'EN_PROCESO')}
+                                          onChange={(e) => handleSubtaskEstadoChange(tarea.id, sub.id, e.target.value as 'SI' | 'NO' | 'EN_PROCESO')}
+                                          className={`bg-white border rounded px-2 py-1 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer ${
+                                            (sub.estadoStr === 'SI' || sub.completada) ? 'border-emerald-200 text-emerald-700' : 
+                                            sub.estadoStr === 'NO' ? 'border-rose-200 text-rose-700' : 
+                                            'border-amber-200 text-amber-600'
+                                          }`}
+                                        >
+                                          <option value="SI">Sí</option>
+                                          <option value="EN_PROCESO">En proceso</option>
+                                          <option value="NO">No</option>
+                                        </select>
                                       </td>
                                       <td className="px-4 py-3 align-top text-center">
                                         <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
