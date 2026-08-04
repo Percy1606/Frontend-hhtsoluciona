@@ -1061,13 +1061,29 @@ export function AgendaDiaria({
                           <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
-                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
-                            {tarea.empresa}
-                          </h4>
-                          <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
-                            {tarea.etapaProceso}
-                          </span>
-                          {getStatusBadge(tarea.estado)}
+                          {(() => {
+                            const parts = tarea.empresa.split(' - ');
+                            const cliente = parts[0];
+                            const proyecto = parts.slice(1).join(' - ');
+                            return (
+                              <div className="flex flex-col">
+                                <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                                  {cliente}
+                                </h4>
+                                {proyecto && (
+                                  <span className={`text-xs font-medium text-slate-600 mt-0.5 ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                                    Proyecto: <strong className="text-slate-800">{proyecto}</strong>
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          <div className="flex gap-2 items-center">
+                            <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
+                              {tarea.etapaProceso}
+                            </span>
+                            {getStatusBadge(tarea.estado)}
+                          </div>
                         </div>
 
                         <p className="text-xs font-semibold text-slate-800">
@@ -1313,7 +1329,7 @@ export function AgendaDiaria({
                         <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
                           Historial de Actividades ({tarea.subtareas.length})
                         </h5>
-                        {tarea.subtareas.map((sub) => (
+                        {[...tarea.subtareas].reverse().map((sub) => (
                           <div key={sub.id} className="group flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
                             {editingSubtaskId === sub.id ? (
                               <div className="flex-1 flex flex-col sm:flex-row items-start gap-2 w-full">
