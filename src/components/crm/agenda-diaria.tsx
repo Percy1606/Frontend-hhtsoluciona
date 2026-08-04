@@ -888,27 +888,15 @@ export function AgendaDiaria({
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actividad Inmediata *</label>
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
               <input
                 type="text"
-                placeholder="Ej: Revisar avance del expediente técnico"
-                required
+                placeholder="Ej: A la espera de respuesta del cliente..."
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
                 value={newActividadInmediata}
                 onChange={(e) => setNewActividadInmediata(e.target.value)}
-              />
-            </div>
-
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Próximo Paso</label>
-              <input
-                type="text"
-                placeholder="Ej: Coordinar siguiente etapa del proyecto"
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
-                value={newProximoPaso}
-                onChange={(e) => setNewProximoPaso(e.target.value)}
               />
             </div>
           </div>
@@ -1086,12 +1074,11 @@ export function AgendaDiaria({
                           </div>
                         </div>
 
-                        <p className="text-xs font-semibold text-slate-800">
-                          Actividad Inmediata: <span className="font-normal text-slate-600">{tarea.actividadInmediata}</span>
-                        </p>
-                        <p className="text-xs font-semibold text-indigo-700">
-                          Próximo Paso: <span className="font-normal text-slate-600">{tarea.proximoPaso}</span>
-                        </p>
+                        {tarea.actividadInmediata && tarea.actividadInmediata.trim() !== '' && (
+                          <p className="text-xs font-semibold text-slate-800">
+                            Observación: <span className="font-normal text-slate-600">{tarea.actividadInmediata}</span>
+                          </p>
+                        )}
 
                         {/* FECHA COMPROMISO (ROJO SI EXPIRADA) */}
                         <div className="flex items-center gap-2 pt-0.5">
@@ -1228,23 +1215,14 @@ export function AgendaDiaria({
                               </select>
                             </div>
                           </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actividad Inmediata *</label>
+                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
                               <input
                                 type="text"
                                 className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 value={editActividadInmediata}
                                 onChange={(e) => setEditActividadInmediata(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Próximo Paso</label>
-                              <input
-                                type="text"
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editProximoPaso}
-                                onChange={(e) => setEditProximoPaso(e.target.value)}
                               />
                             </div>
                             <div>
