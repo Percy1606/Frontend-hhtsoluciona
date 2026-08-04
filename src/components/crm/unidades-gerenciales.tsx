@@ -47,7 +47,7 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
 
       const montoGanado = list
         .filter(c => c.etapaComercial === 'Ganado' || c.etapaComercial === 'Orden de Servicio')
-        .reduce((acc, curr) => acc + (curr.montoEstimado || 0), 0);
+        .reduce((acc, curr) => acc + (Number(curr.montoEstimado) || 0), 0);
 
       const totalProspeccion = prospectos + enSeguimiento + cotPendientes + fidelizados + perdidos;
       const conversionProspectoACliente = totalProspeccion > 0 ? ((fidelizados / totalProspeccion) * 100).toFixed(1) : '0.0';
@@ -86,7 +86,7 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
       const ganados = advClients.filter(c => c.etapaComercial === 'Ganado' || c.etapaComercial === 'Orden de Servicio').length;
       const montoTotal = advClients
         .filter(c => c.etapaComercial === 'Ganado' || c.etapaComercial === 'Orden de Servicio')
-        .reduce((acc, curr) => acc + (curr.montoEstimado || 0), 0);
+        .reduce((acc, curr) => acc + (Number(curr.montoEstimado) || 0), 0);
 
       const metaMensual = advInfo.unit === 'UNIDAD_1' ? 15000 : 25000;
       const cumplimiento = metaMensual > 0 ? Math.min(100, Number(((montoTotal / metaMensual) * 100).toFixed(1))) : 0;
@@ -169,11 +169,11 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
         </div>
 
         {/* Resumen Gerencial Rápido de 4 Tarjetas Blancas Elegantes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {/* Card Unidad 1 */}
-          <div className="p-5 rounded-2xl bg-emerald-50/50 border border-emerald-100 hover:border-emerald-300 transition-all shadow-sm">
-            <div className="flex items-center justify-between text-emerald-700 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest">Unidad 1 - Nuevos Negocios</span>
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-50 to-white/60 backdrop-blur-md border border-emerald-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
+            <div className="flex items-center justify-between text-emerald-700 mb-4">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-100/50 px-3 py-1.5 rounded-full">Nuevos Negocios</span>
               <Target className="w-4 h-4 text-emerald-600" />
             </div>
             <div className="text-3xl font-black text-slate-800">{metrics.u1.total} <span className="text-xs font-bold text-slate-500">clientes</span></div>
@@ -185,9 +185,9 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
           </div>
 
           {/* Card Unidad 2 */}
-          <div className="p-5 rounded-2xl bg-blue-50/50 border border-blue-100 hover:border-blue-300 transition-all shadow-sm">
-            <div className="flex items-center justify-between text-blue-700 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest">Unidad 2 - Estratégicos</span>
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white/60 backdrop-blur-md border border-blue-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
+            <div className="flex items-center justify-between text-blue-700 mb-4">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100/50 px-3 py-1.5 rounded-full">Estratégicos</span>
               <Building2 className="w-4 h-4 text-blue-600" />
             </div>
             <div className="text-3xl font-black text-slate-800">{metrics.u2.total} <span className="text-xs font-bold text-slate-500">cuentas</span></div>
@@ -199,9 +199,9 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
           </div>
 
           {/* Card Alerta Clientes Sin Movimiento */}
-          <div className="p-5 rounded-2xl bg-rose-50/50 border border-rose-100 hover:border-rose-300 transition-all shadow-sm">
-            <div className="flex items-center justify-between text-rose-700 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest">Alerta: Sin Movimiento (&gt;7d)</span>
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-50 to-white/60 backdrop-blur-md border border-rose-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
+            <div className="flex items-center justify-between text-rose-700 mb-4">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-rose-100/50 px-3 py-1.5 rounded-full">Sin Movimiento (&gt;7d)</span>
               <AlertTriangle className="w-4 h-4 text-rose-600" />
             </div>
             <div className="text-3xl font-black text-rose-700">
@@ -214,9 +214,9 @@ export function UnidadesGerenciales({ clients }: UnidadesGerencialesProps) {
           </div>
 
           {/* Card Ventas Ganadas Consolidadas */}
-          <div className="p-5 rounded-2xl bg-amber-50/50 border border-amber-100 hover:border-amber-300 transition-all shadow-sm">
-            <div className="flex items-center justify-between text-amber-700 mb-2">
-              <span className="text-[10px] font-black uppercase tracking-widest">Ventas & Cierres Obtenidos</span>
+          <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50 to-white/60 backdrop-blur-md border border-amber-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
+            <div className="flex items-center justify-between text-amber-700 mb-4">
+              <span className="text-[10px] font-black uppercase tracking-widest bg-amber-100/50 px-3 py-1.5 rounded-full">Ventas & Cierres</span>
               <DollarSign className="w-4 h-4 text-amber-600" />
             </div>
             <div className="text-2xl font-black text-slate-800">
