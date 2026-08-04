@@ -203,7 +203,7 @@ export function AgendaDiaria({
   // Formulario para Crear Nueva Tarea Principal
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [selectedTaskClientIdDB, setSelectedTaskClientIdDB] = useState('');
-  const [taskEmpresaName, setTaskEmpresaName] = useState('');
+  const [taskProyectoName, setTaskProyectoName] = useState('');
   const [searchTaskClientDBQuery, setSearchTaskClientDBQuery] = useState('');
   const [showTaskClientList, setShowTaskClientList] = useState(true);
   const [showObsClientList, setShowObsClientList] = useState(true);
@@ -238,7 +238,7 @@ export function AgendaDiaria({
   // Estado para confirmación de eliminación
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
-  // Estado para editar subtareas
+  // Estado para editar actividades
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editSubtaskFecha, setEditSubtaskFecha] = useState('');
   const [editSubtaskText, setEditSubtaskText] = useState('');
@@ -264,11 +264,11 @@ export function AgendaDiaria({
       return t;
     }));
     setEditingSubtaskId(null);
-    toast.success('Subtarea actualizada exitosamente');
+    toast.success('Actividad actualizada exitosamente');
   };
 
   const handleDeleteSubtask = (tareaId: string, subtaskId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar esta subtarea/avance?')) return;
+    if (!confirm('¿Estás seguro de que deseas eliminar esta actividad/avance?')) return;
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
         return {
@@ -278,7 +278,7 @@ export function AgendaDiaria({
       }
       return t;
     }));
-    toast.success('Subtarea eliminada exitosamente');
+    toast.success('Actividad eliminada exitosamente');
   };
 
   const handleAdvisorSelect = (adv: string) => {
@@ -393,6 +393,10 @@ export function AgendaDiaria({
       if (match) empresaFinal = match.empresa;
     }
 
+    if (taskProyectoName.trim()) {
+      empresaFinal = `${empresaFinal} - ${taskProyectoName.trim()}`;
+    }
+
     if (!empresaFinal) {
       toast.error('Por favor selecciona o ingresa el nombre de la Empresa / Cliente.');
       return;
@@ -429,6 +433,7 @@ export function AgendaDiaria({
 
     setSelectedTaskClientIdDB('');
     setTaskEmpresaName('');
+    setTaskProyectoName('');
     setNewActividadInmediata('');
     setNewProximoPaso('');
     setShowCreateTaskModal(false);
@@ -521,9 +526,9 @@ export function AgendaDiaria({
             if (s.id === subtareaId) {
               const newState = !s.completada;
               if (newState) {
-                toast.success('¡Subtarea marcada como realizada ✅!');
+                toast.success('¡Actividad marcada como realizada ✅!');
               } else {
-                toast.success('Subtarea restaurada');
+                toast.success('Actividad restaurada');
               }
               return { ...s, completada: newState };
             }
@@ -823,10 +828,19 @@ export function AgendaDiaria({
                 <input
                   type="text"
                   placeholder="Ej: Hielos y Congelados Sechura"
-                  required
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   value={taskEmpresaName}
                   onChange={(e) => setTaskEmpresaName(e.target.value)}
+                />
+              </div>
+              <div className="pt-1">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Nombre del Proyecto (Opcional)</label>
+                <input
+                  type="text"
+                  placeholder="Ej: Instalación de Sistema Frigorífico"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  value={taskProyectoName}
+                  onChange={(e) => setTaskProyectoName(e.target.value)}
                 />
               </div>
             </div>
@@ -984,13 +998,13 @@ export function AgendaDiaria({
         </button>
       </div>
 
-      {/* SECCIÓN 1: CONTENEDOR DE TAREAS ESTRATÉGICAS Y SUBTAREAS (EXACTO TIPOGRAFÍA CARTERA) */}
+      {/* SECCIÓN 1: CONTENEDOR DE TAREAS ESTRATÉGICAS Y ACTIVIDADES (EXACTO TIPOGRAFÍA CARTERA) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
             <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-emerald-600" />
-              Tablero de Tareas Asignadas y Subtareas
+              Tablero de Tareas Asignadas y Actividades
             </h3>
             <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[11px] font-semibold">
               {filteredTareasEstrategicas.length} tareas totales
@@ -1142,7 +1156,7 @@ export function AgendaDiaria({
                           onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
                           className="flex items-center gap-1 text-xs text-emerald-700 font-semibold bg-emerald-50 px-3.5 py-1.5 rounded-xl border border-emerald-200 shrink-0 hover:bg-emerald-100 transition-colors"
                         >
-                          <span>{tarea.subtareas.length} Subtarea(s)</span>
+                          <span>{tarea.subtareas.length} Actividad(es)</span>
                           {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                         </button>
                       </div>
@@ -1264,7 +1278,7 @@ export function AgendaDiaria({
                       {!isFinalized && editingTaskId !== tarea.id && (
                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
                           <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                            + Agregar Subtarea / Avance Diario por Fecha
+                            + Agregar Actividad / Avance Diario
                           </label>
                           <div className="flex flex-col sm:flex-row items-center gap-2">
                             <input
@@ -1276,7 +1290,7 @@ export function AgendaDiaria({
                             />
                             <input
                               type="text"
-                              placeholder="Escribe la subtarea / avance (ej: 11:10AM A LA ESPERA DE LAS FACTIBILIDADES...)"
+                              placeholder="Escribe la actividad / avance (ej: 11:10AM A LA ESPERA DE LAS FACTIBILIDADES...)"
                               className="flex-1 w-full bg-white border border-slate-200 rounded-lg px-3.5 py-1.5 text-xs font-normal text-slate-800"
                               value={nuevaSubtareaText[tarea.id] || ''}
                               onChange={(e) => setNuevaSubtareaText({ ...nuevaSubtareaText, [tarea.id]: e.target.value })}
@@ -1288,7 +1302,7 @@ export function AgendaDiaria({
                               onClick={() => handleAddSubtarea(tarea.id)}
                               className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg px-4 py-1.5 shadow-xs shrink-0"
                             >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Agregar Subtarea
+                              <Plus className="w-3.5 h-3.5 mr-1" /> Agregar Actividad
                             </Button>
                           </div>
                         </div>
@@ -1296,7 +1310,7 @@ export function AgendaDiaria({
 
                       <div className="space-y-2">
                         <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                          Historial de Subtareas ({tarea.subtareas.length})
+                          Historial de Actividades ({tarea.subtareas.length})
                         </h5>
                         {tarea.subtareas.map((sub) => (
                           <div key={sub.id} className="group flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
