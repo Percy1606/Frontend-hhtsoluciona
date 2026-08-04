@@ -203,6 +203,7 @@ export function AgendaDiaria({
   // Formulario para Crear Nueva Tarea Principal
   const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
   const [selectedTaskClientIdDB, setSelectedTaskClientIdDB] = useState('');
+  const [taskEmpresaName, setTaskEmpresaName] = useState('');
   const [taskProyectoName, setTaskProyectoName] = useState('');
   const [searchTaskClientDBQuery, setSearchTaskClientDBQuery] = useState('');
   const [showTaskClientList, setShowTaskClientList] = useState(true);
