@@ -1305,43 +1305,31 @@ export function AgendaDiaria({
                         </h5>
                         {tarea.subtareas.map((sub) => (
                           <div key={sub.id} className="group flex items-start gap-3 text-xs bg-slate-50/90 p-3 rounded-xl border border-slate-200/80">
-                            <button
-                              onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
-                              disabled={sub.completada}
-                              className={`mt-0.5 transition-colors shrink-0 ${
-                                sub.completada ? 'cursor-not-allowed text-emerald-600 opacity-90' : 'text-slate-400 hover:text-emerald-600'
-                              }`}
-                              title={sub.completada ? "Esta subtarea ya fue realizada y no se puede modificar" : "Marcar Subtarea como Realizada"}
-                            >
-                              {sub.completada ? (
-                                <CheckSquare className="w-4 h-4 text-emerald-600" />
-                              ) : (
-                                <Square className="w-4 h-4 text-slate-400" />
-                              )}
-                            </button>
                             {editingSubtaskId === sub.id ? (
-                              <div className="flex-1 flex flex-col sm:flex-row items-center gap-2 w-full">
+                              <div className="flex-1 flex flex-col sm:flex-row items-start gap-2 w-full">
                                 <input
                                   type="text"
-                                  className="w-full sm:w-28 bg-white border border-indigo-200 rounded-md px-2 py-1 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
+                                  className="w-full sm:w-28 bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400 mt-1"
                                   value={editSubtaskFecha}
                                   onChange={(e) => setEditSubtaskFecha(e.target.value)}
                                 />
-                                <input
-                                  type="text"
-                                  className="flex-1 w-full bg-white border border-indigo-200 rounded-md px-2 py-1 text-xs text-slate-700 focus:outline-none focus:border-indigo-400"
+                                <textarea
+                                  className="flex-1 w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 min-h-[60px] resize-y"
                                   value={editSubtaskText}
                                   onChange={(e) => setEditSubtaskText(e.target.value)}
                                   onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleSaveEditSubtask(tarea.id, sub.id);
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleSaveEditSubtask(tarea.id, sub.id);
+                                    }
                                   }}
                                 />
-                                <div className="flex items-center gap-1 shrink-0">
+                                <div className="flex items-center gap-1 shrink-0 mt-1">
                                   <button onClick={() => handleSaveEditSubtask(tarea.id, sub.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded-md" title="Guardar">
-                                    <Save className="w-3.5 h-3.5" />
+                                    <Save className="w-4 h-4" />
                                   </button>
                                   <button onClick={() => setEditingSubtaskId(null)} className="p-1 text-slate-400 hover:bg-slate-200 rounded-md" title="Cancelar">
-                                    <X className="w-3.5 h-3.5" />
+                                    <X className="w-4 h-4" />
                                   </button>
                                 </div>
                               </div>
@@ -1351,28 +1339,26 @@ export function AgendaDiaria({
                                   <span className="font-mono font-semibold text-slate-700 shrink-0 text-[10px] bg-slate-200 px-2 py-0.5 rounded-md mt-0.5">
                                     {sub.fecha}
                                   </span>
-                                  <p className={`text-slate-700 font-normal leading-relaxed flex-1 ${sub.completada ? 'line-through text-slate-400' : ''}`}>
+                                  <p className={`text-slate-700 font-normal leading-relaxed flex-1 ${sub.completada ? 'text-slate-500' : ''}`}>
                                     {sub.texto}
                                   </p>
                                 </div>
-                                {!sub.completada && (
                                   <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                                     <button 
                                       onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto)} 
                                       className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                                      title="Editar subtarea"
+                                      title="Editar avance"
                                     >
                                       <Edit2 className="w-3.5 h-3.5" />
                                     </button>
                                     <button 
                                       onClick={() => handleDeleteSubtask(tarea.id, sub.id)} 
                                       className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors"
-                                      title="Eliminar subtarea"
+                                      title="Eliminar avance"
                                     >
                                       <Trash2 className="w-3.5 h-3.5" />
                                     </button>
                                   </div>
-                                )}
                               </div>
                             )}
                           </div>
