@@ -110,29 +110,53 @@ export function AgendaDiaria({
   const [nuevaObsText, setNuevaObsText] = useState<{ [clientId: string]: string }>({});
   const [nuevaObsFecha, setNuevaObsFecha] = useState<{ [clientId: string]: string }>({});
 
-  // Lista local de tareas estratégicas — PERSISTIDA EN LOCALSTORAGE
-  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>(() => {
-    if (typeof window === 'undefined') return [];
-    try {
-      const saved = localStorage.getItem('hht-agenda-tareas-estrategicas');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (e) {
-      console.warn('[Agenda] Error al recuperar tareas de localStorage:', e);
-    }
-    return [];
-  });
+  // Lista de tareas estratégicas — SINCRONIZADA CON EL SERVIDOR GLOBAL
+  const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // PERSISTIR TAREAS EN LOCALSTORAGE CADA VEZ QUE CAMBIEN
+  // CARGAR TAREAS GLOBALES AL INICIAR
   useEffect(() => {
-    try {
-      localStorage.setItem('hht-agenda-tareas-estrategicas', JSON.stringify(tareasEstrategicas));
-    } catch (e) {
-      console.warn('[Agenda] Error al guardar tareas en localStorage:', e);
-    }
-  }, [tareasEstrategicas]);
+    const fetchAgenda = async () => {
+      try {
+        const res = await fetch('/api/crm/agenda');
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data)) {
+            setTareasEstrategicas(data);
+          }
+        }
+      } catch (err) {
+        console.warn('[Agenda] Error cargando tareas globales:', err);
+      } finally {
+        setIsInitialLoad(false);
+      }
+    };
+    fetchAgenda();
+  }, []);
+
+  // GUARDAR TAREAS GLOBALES CADA VEZ QUE CAMBIEN
+  useEffect(() => {
+    if (isInitialLoad) return; // Evita borrar el archivo en la carga inicial
+
+    const saveAgenda = async () => {
+      try {
+        await fetch('/api/crm/agenda', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tareasEstrategicas)
+        });
+      } catch (err) {
+        console.warn('[Agenda] Error guardando tareas globales:', err);
+      }
+    };
+    
+    // Pequeño debounce para no saturar si editan rápido
+    const timer = setTimeout(() => {
+      saveAgenda();
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [tareasEstrategicas, isInitialLoad]);
 
   // HELPER PARA IDENTIFICAR SOLO CLIENTES GANADOS / FIDELIZADOS
   const isWonClient = (c: Client) => {
@@ -429,20 +453,19 @@ export function AgendaDiaria({
     setEditingTaskId(null);
   };
 
-  // Toggle Checkbox Completo Tarea Principal (BLOQUEADO SI YA ESTÁ FINALIZADA)
+  // Toggle Checkbox Completo Tarea Principal
   const toggleTaskCompletion = (tareaId: string) => {
     const target = tareasEstrategicas.find(t => t.id === tareaId);
-    if (target?.estado === 'FINALIZADA') {
-      toast.warning('🔒 Esta tarea ya ha sido FINALIZADA y no se puede volver a poner como pendiente.', {
-        duration: 4000
-      });
-      return;
-    }
-
+    
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
-        toast.success(`¡Tarea "${t.empresa}" marcada como FINALIZADA ✅! Queda registrada y bloqueada.`);
-        return { ...t, estado: 'FINALIZADA' };
+        if (t.estado === 'FINALIZADA') {
+          toast.success(`¡Tarea "${t.empresa}" restaurada a PENDIENTE!`);
+          return { ...t, estado: 'PENDIENTE' };
+        } else {
+          toast.success(`¡Tarea "${t.empresa}" marcada como FINALIZADA ✅!`);
+          return { ...t, estado: 'FINALIZADA' };
+        }
       }
       return t;
     }));
@@ -960,22 +983,20 @@ export function AgendaDiaria({
                 <div key={tarea.id} className="p-5 hover:bg-slate-50/70 transition-colors space-y-3">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-                      {/* Checkbox Principal (BLOQUEADO SI FINALIZADA) */}
+                      {/* Checkbox Principal */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           toggleTaskCompletion(tarea.id);
                         }}
-                        disabled={isFinalized}
                         className={`mt-1 p-1 transition-colors shrink-0 ${
-                          isFinalized ? 'cursor-not-allowed text-emerald-600 opacity-90' : 'text-slate-400 hover:text-emerald-600'
+                          isFinalized ? 'text-emerald-600 opacity-90' : 'text-slate-400 hover:text-emerald-600'
                         }`}
-                        title={isFinalized ? "Esta tarea ya ha sido finalizada y no se puede modificar" : "Marcar Tarea como Completada"}
+                        title={isFinalized ? "Restaurar tarea a Pendiente" : "Marcar Tarea como Completada"}
                       >
                         {isFinalized ? (
                           <div className="flex items-center gap-1">
                             <CheckSquare className="w-6 h-6 text-emerald-600" />
-                            <Lock className="w-3 h-3 text-emerald-700" />
                           </div>
                         ) : (
                           <Square className="w-6 h-6 text-slate-300" />
