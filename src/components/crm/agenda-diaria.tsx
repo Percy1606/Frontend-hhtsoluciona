@@ -1771,6 +1771,7 @@ export function AgendaDiaria({
             </div>
           </div>
         </div>
+      </div>
       )}
     </div>
   );
