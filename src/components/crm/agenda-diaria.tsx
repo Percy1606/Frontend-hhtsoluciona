@@ -248,11 +248,13 @@ export function AgendaDiaria({
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
   const [editSubtaskFecha, setEditSubtaskFecha] = useState('');
   const [editSubtaskText, setEditSubtaskText] = useState('');
+  const [editSubtaskResponsable, setEditSubtaskResponsable] = useState('');
 
-  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string) => {
+  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string, currentResponsable: string) => {
     setEditingSubtaskId(subtaskId);
     setEditSubtaskFecha(currentFecha);
     setEditSubtaskText(currentText);
+    setEditSubtaskResponsable(currentResponsable || 'Steven');
   };
 
   const handleSaveEditSubtask = (tareaId: string, subtaskId: string) => {
@@ -264,7 +266,7 @@ export function AgendaDiaria({
       if (t.id === tareaId) {
         return {
           ...t,
-          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText } : s)
+          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText, responsable: editSubtaskResponsable } : s)
         };
       }
       return t;
@@ -1071,14 +1073,14 @@ export function AgendaDiaria({
                         className="space-y-1.5 cursor-pointer flex-1"
                         onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
                       >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="w-6 h-6 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                          <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
-                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors ${isFinalized ? 'line-through text-slate-400' : ''}`}>
+                          <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors truncate ${isFinalized ? 'line-through text-slate-400' : ''}`}>
                             {tarea.empresa.split(' - ')[0]}
                           </h4>
-                          <div className="flex gap-2 items-center">
+                          <div className="flex gap-2 items-center shrink-0">
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 text-[10px] font-semibold uppercase border border-slate-200">
                               {tarea.etapaProceso}
                             </span>
@@ -1352,8 +1354,21 @@ export function AgendaDiaria({
                                           }}
                                         />
                                       </td>
-                                      <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase">
-                                        {tarea.responsable}
+                                      <td className="px-3 py-2 align-top">
+                                        <select
+                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-400"
+                                          value={editSubtaskResponsable}
+                                          onChange={(e) => setEditSubtaskResponsable(e.target.value)}
+                                        >
+                                          <option value="Steven">Steven</option>
+                                          <option value="Mario">Mario</option>
+                                          <option value="Javier">Javier</option>
+                                          <option value="Valentina">Valentina</option>
+                                          <option value="Ariana">Ariana</option>
+                                          <option value="Brenda">Brenda</option>
+                                          <option value="Angie">Angie</option>
+                                          <option value="Mellani">Mellani</option>
+                                        </select>
                                       </td>
                                       <td className="px-4 py-3 align-top"></td>
                                       <td className="px-3 py-2 align-top text-center">
@@ -1415,7 +1430,7 @@ export function AgendaDiaria({
                                       <td className="px-4 py-3 align-top text-center">
                                         <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <button 
-                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto)} 
+                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto, sub.responsable || tarea.responsable)} 
                                             className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" /> Editar
