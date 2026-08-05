@@ -50,15 +50,17 @@ import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 
 const columns = [
   { id: "Prospecto", title: "Prospecto", color: "bg-slate-400" },
-  { id: "Contactado", title: "Contactado", color: "bg-cyan-500" },
-  { id: "Llamada Realizada", title: "Llamada Realizada", color: "bg-sky-500" },
-  { id: "Visita Agendada", title: "Visita Agendada", color: "bg-indigo-500" },
-  { id: "Inspección Realizada", title: "Inspección Realizada", color: "bg-amber-500" },
-  { id: "Cotización Enviada", title: "Cotización Enviada", color: "bg-violet-500" },
+  { id: "Contacto Inicial", title: "Contacto Inicial", color: "bg-cyan-500" },
+  { id: "Visita Comercial", title: "Visita Comercial", color: "bg-indigo-500" },
+  { id: "Visita Técnica", title: "Visita Técnica", color: "bg-blue-600" },
   { id: "Seguimiento", title: "Seguimiento", color: "bg-pink-500" },
+  { id: "Cotización", title: "Cotización", color: "bg-violet-500" },
   { id: "Negociación", title: "Negociación", color: "bg-orange-500" },
   { id: "Orden de Servicio", title: "Orden de Servicio", color: "bg-emerald-600" },
-  { id: "Ganado", title: "Ganado", color: "bg-success" },
+  { id: "Servicio Ejecutado", title: "Servicio Ejecutado", color: "bg-teal-500" },
+  { id: "Facturación", title: "Facturación", color: "bg-blue-500" },
+  { id: "Postventa", title: "Postventa", color: "bg-purple-500" },
+  { id: "Ganado / Fidelizado", title: "Ganado / Fidelizado", color: "bg-success" },
   { id: "Perdido", title: "Perdido", color: "bg-error" },
 ];
 
@@ -182,8 +184,8 @@ export function ClientKanban() {
   const moveStage = (e: React.MouseEvent, client: Client, direction: "prev" | "next") => {
     e.stopPropagation();
     
-    if (client.etapaComercial === 'Ganado') {
-      showError("Acción Bloqueada", "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO.");
+    if (client.etapaComercial === 'Ganado / Fidelizado') {
+      showError("Acción Bloqueada", "No se puede cambiar el estado de un cliente que ya ha sido marcado como FIDELIZADO.");
       return;
     }
 
@@ -249,7 +251,7 @@ export function ClientKanban() {
                             <Badge variant="outline" className="text-[8px] font-black tracking-widest uppercase border-primary/20 bg-primary/5 text-primary h-4 px-1">
                                 {client.codigo}
                             </Badge>
-                            {client.etapaComercial === 'Ganado' && <Trophy className="w-3 h-3 text-yellow-500" />}
+                            {client.etapaComercial === 'Ganado / Fidelizado' && <Trophy className="w-3 h-3 text-yellow-500" />}
                           </div>
                           
                           <div className="flex items-center gap-1">

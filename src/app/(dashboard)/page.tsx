@@ -607,7 +607,7 @@ export default function DashboardPage() {
   }, [facturas, gastos]);
 
   const recentWins = useMemo(() => {
-    return [...filteredClients].filter(c => ['Ganado', 'Orden de Servicio', 'Cotización Enviada', 'Cotizacion Enviada', 'Inspección Realizada', 'Inspeccion Realizada'].includes(c.etapaComercial) || c.estado === 'Ganado').slice(0, 1);
+    return [...filteredClients].filter(c => ['Ganado / Fidelizado', 'Orden de Servicio', 'Cotización', 'Servicio Ejecutado', 'Visita Técnica'].includes(c.etapaComercial)).slice(0, 1);
   }, [filteredClients]);
 
   const filteredFacturas = useMemo(() => {

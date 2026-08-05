@@ -255,16 +255,17 @@ export default function CotizacionesInboxPage() {
         
         if (data.estado === "Aprobado") {
             const client = clients.find(c => c.id === selectedQuote.clientId);
-            if (client && client.etapaComercial !== 'Ganado' && client.etapaComercial !== 'Orden de Servicio') {
+            const postClosingStages = ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'];
+            if (client && !postClosingStages.includes(client.etapaComercial as string)) {
                 const { updateClient } = useCRMStore.getState();
                 await updateClient({ 
                     ...client,
-                    etapaComercial: "Ganado",
+                    etapaComercial: "Orden de Servicio",
                     esClienteReal: true 
-                });
+                } as any);
             }
             
-            showSuccess("¡Venta Cerrada!", `La cotización ${selectedQuote.codigo} ha sido aprobada. El cliente ha sido promovido a la etapa "Ganado" y ya es visible en el módulo de Operaciones.`);
+            showSuccess("¡Venta Cerrada!", `La cotización ${selectedQuote.codigo} ha sido aprobada. El cliente ha sido promovido a la etapa "Orden de Servicio" y ya es visible en el módulo de Operaciones.`);
         } else {
             showSuccess("Actualización Exitosa", "La cotización ha sido actualizada con éxito.");
         }

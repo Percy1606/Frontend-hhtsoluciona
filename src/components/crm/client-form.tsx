@@ -278,7 +278,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <Select 
                         onValueChange={field.onChange} 
                         value={field.value}
-                        disabled={client?.etapaComercial === 'Ganado'}
+                        disabled={['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(client?.etapaComercial as string)}
                       >
                         <FormControl>
                           <SelectTrigger className="h-9 text-sm bg-white border-slate-200">

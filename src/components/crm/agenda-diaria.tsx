@@ -98,6 +98,8 @@ export function AgendaDiaria({
   const [expandedTareaId, setExpandedTareaId] = useState<string | null>(null);
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [showFidelizadosModal, setShowFidelizadosModal] = useState(false);
+  const [showAuditoriaModal, setShowAuditoriaModal] = useState(false);
+  const [expandedAuditoriaAsesores, setExpandedAuditoriaAsesores] = useState<Record<string, boolean>>({'Steven': true, 'Javier': true, 'Angie': true, 'Mellani': true});
 
   // PAGINACIÓN Y LÍMITE DE REGISTROS PARA MAS DE 100 TAREAS
   const [taskPage, setTaskPage] = useState(1);
@@ -130,7 +132,12 @@ export function AgendaDiaria({
       try {
         const response = await api.get('/crm/agenda');
         if (Array.isArray(response)) {
-          setTareasEstrategicas(response);
+          // Sanitizar para evitar errores si la base de datos retorna subtareas como null
+          const sanitizedResponse = response.map(t => ({
+            ...t,
+            subtareas: Array.isArray(t.subtareas) ? t.subtareas : []
+          }));
+          setTareasEstrategicas(sanitizedResponse);
         }
       } catch (err) {
         console.warn('[Agenda] Error cargando tareas de la BD:', err);
@@ -513,6 +520,17 @@ export function AgendaDiaria({
   // Toggle Checkbox Completo Tarea Principal
   const toggleTaskCompletion = (tareaId: string) => {
     const target = tareasEstrategicas.find(t => t.id === tareaId);
+    if (!target) return;
+
+    if (target.estado !== 'FINALIZADA') {
+      if (target.prioridad !== 'ROJO') {
+        const hasUnresolvedCriticals = tareasEstrategicas.some(t => t.responsable.toLowerCase() === target.responsable.toLowerCase() && t.prioridad === 'ROJO' && t.estado !== 'FINALIZADA');
+        if (hasUnresolvedCriticals) {
+          toast.error(`⚠️ Bloqueado: ${target.responsable} tiene tareas Críticas pendientes. Resuélvelas primero.`);
+          return;
+        }
+      }
+    }
     
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
@@ -530,6 +548,29 @@ export function AgendaDiaria({
 
   // Toggle Checkbox Completo Subtarea
   const toggleSubtaskCompletion = (tareaId: string, subtareaId: string) => {
+    const tarea = tareasEstrategicas.find(t => t.id === tareaId);
+    if (!tarea) return;
+    const sub = tarea.subtareas.find(s => s.id === subtareaId);
+    if (!sub) return;
+
+    if (!sub.completada) {
+      const responsable = sub.responsable || tarea.responsable;
+      const myPriority = sub.prioridad || 'MEDIA';
+      if (myPriority !== 'ALTA') {
+        const hasUnresolvedCriticals = tareasEstrategicas.some(t => 
+           t.subtareas.some(s => 
+              (s.responsable || t.responsable).toLowerCase() === responsable.toLowerCase() && 
+              s.prioridad === 'ALTA' && 
+              !s.completada
+           )
+        );
+        if (hasUnresolvedCriticals) {
+           toast.error(`⚠️ Bloqueado: ${responsable} tiene Actividades CRÍTICAS pendientes. Resuélvelas primero.`);
+           return;
+        }
+      }
+    }
+    
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
         return {
@@ -724,10 +765,15 @@ export function AgendaDiaria({
         title="Agenda Diaria, Tareas Estratégicas y Fidelización" 
         subtitle="Panel exclusivo para creación de Tareas, Subtareas por fecha y seguimiento a Clientes Fidelizados."
         actions={
-          <Button onClick={() => setShowFidelizadosModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-sm h-9 gap-1.5">
-            <HeartHandshake className="w-4 h-4" />
-            Fidelizados ({clientesFidelizados.length})
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowAuditoriaModal(true)} className="bg-slate-800 hover:bg-slate-700 text-white font-semibold shadow-sm h-9 gap-1.5">
+              <Eye className="w-4 h-4" /> Auditoría ({tareasEstrategicas.length})
+            </Button>
+            <Button onClick={() => setShowFidelizadosModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-sm h-9 gap-1.5">
+              <HeartHandshake className="w-4 h-4" />
+              Fidelizados ({clientesFidelizados.length})
+            </Button>
+          </div>
         }
       />
 
@@ -931,7 +977,7 @@ export function AgendaDiaria({
                       key={p} 
                       onClick={() => setNewPrioridad(p)}
                       className={`w-6 h-6 rounded-full border-2 transition-all ${newPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
-                      title={p}
+                      title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
                     />
                   ))}
                 </div>
@@ -1282,7 +1328,7 @@ export function AgendaDiaria({
                                     key={p} 
                                     onClick={() => setEditPrioridad(p)}
                                     className={`w-6 h-6 rounded-full border-2 transition-all ${editPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
-                                    title={p}
+                                    title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
                                   />
                                 ))}
                               </div>
@@ -1485,8 +1531,28 @@ export function AgendaDiaria({
                                           {sub.prioridad === 'BAJA' && '🟢'}
                                         </span>
                                       </td>
-                                      <td className="px-4 py-3 align-top font-semibold text-slate-600 uppercase whitespace-nowrap">
-                                        {sub.responsable || tarea.responsable}
+                                      <td className="px-4 py-3 align-top whitespace-nowrap">
+                                        <select
+                                          value={sub.responsable || tarea.responsable}
+                                          onChange={(e) => {
+                                             const newRes = e.target.value;
+                                             setTareasEstrategicas(prev => prev.map(t => {
+                                                if (t.id === tarea.id) {
+                                                   return {
+                                                      ...t,
+                                                      subtareas: t.subtareas.map(s => s.id === sub.id ? { ...s, responsable: newRes } : s)
+                                                   };
+                                                }
+                                                return t;
+                                             }));
+                                          }}
+                                          className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                                        >
+                                          <option value="Steven">Steven</option>
+                                          <option value="Javier">Javier</option>
+                                          <option value="Angie">Angie</option>
+                                          <option value="Mellani">Mellani</option>
+                                        </select>
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
@@ -1529,9 +1595,197 @@ export function AgendaDiaria({
                       </div>
                     </div>
                   )}
-                </div>
-              );
-            })
+            
+      
+      {showAuditoriaModal && (
+        <div className="fixed inset-0 z-[100] flex justify-end">
+          {/* Overlay oscuro */}
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowAuditoriaModal(false)}></div>
+          
+          {/* Bandeja lateral (Drawer) */}
+          <div className="relative w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300">
+            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <h3 className="font-black text-slate-800 text-xl flex items-center gap-2">
+                <Eye className="w-6 h-6 text-indigo-600" />
+                Bandeja de Actividades (Auditoría) - {new Date().toLocaleDateString('es-ES')}
+              </h3>
+              <button onClick={() => setShowAuditoriaModal(false)} className="text-slate-400 hover:text-slate-700 bg-white p-2 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+              {['Steven', 'Javier', 'Angie', 'Mellani'].map(asesor => {
+                const actividades = tareasEstrategicas.flatMap(t => 
+                  t.subtareas
+                    .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase())
+                    .map(s => ({ ...s, empresa: t.empresa, tareaId: t.id }))
+                );
+                
+                const hoy = new Date();
+                hoy.setHours(0,0,0,0);
+                const parseDate = (dstr: string) => {
+                  const parts = dstr.split('/');
+                  if(parts.length === 3) return new Date(Number(parts[2]), Number(parts[1])-1, Number(parts[0]));
+                  return hoy;
+                };
+
+                const fuegosPorApagar: typeof actividades = [];
+                const elDiaADia: typeof actividades = [];
+                const especialesEnCurso: typeof actividades = [];
+                
+                actividades.forEach(act => {
+                   const d = parseDate(act.fecha);
+                   const isEspecial = act.prioridad === 'BAJA';
+                   const diffTime = d.getTime() - hoy.getTime(); 
+                   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+                   
+                   if (diffDays < 0) {
+                      if (isEspecial && diffDays >= -2) {
+                          especialesEnCurso.push(act);
+                      } else {
+                          fuegosPorApagar.push(act);
+                      }
+                   } else if (diffDays === 0) {
+                      elDiaADia.push(act);
+                   }
+                });
+                
+                const renderActividad = (act: any, isFuego: boolean) => (
+                  <div key={act.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${act.completada ? 'bg-slate-50 border-slate-200 opacity-60' : isFuego ? 'bg-rose-50 border-rose-300 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
+                    <div className="flex justify-between items-start">
+                      <span className="font-semibold text-slate-800 text-sm">{act.empresa}</span>
+                      <div className="flex flex-col items-end gap-1">
+                        {isFuego && !act.completada && <span className="bg-rose-100 text-rose-700 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase animate-pulse">Expirada</span>}
+                        <div className="flex items-center gap-1 bg-slate-100/80 px-1.5 py-0.5 rounded border border-slate-200" title="Reasignar responsable">
+                          <span className="text-[9px] text-slate-500 font-medium">Resp:</span>
+                          <select
+                            value={act.responsable || 'TODOS'}
+                            onChange={(e) => {
+                               const newRes = e.target.value;
+                               setTareasEstrategicas(prev => prev.map(t => {
+                                  if (t.id === act.tareaId) {
+                                     return {
+                                        ...t,
+                                        subtareas: t.subtareas.map(s => s.id === act.id ? { ...s, responsable: newRes } : s)
+                                     };
+                                  }
+                                  return t;
+                               }));
+                               toast.success(`Actividad reasignada a ${newRes}`);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="bg-transparent text-[9px] font-bold text-slate-700 uppercase focus:outline-none cursor-pointer"
+                          >
+                            <option value="Steven">Steven</option>
+                            <option value="Javier">Javier</option>
+                            <option value="Angie">Angie</option>
+                            <option value="Mellani">Mellani</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-slate-600 text-xs">{act.texto}</p>
+                    <div className="flex justify-between items-center mt-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold uppercase ${act.prioridad === 'ALTA' ? 'text-rose-600' : act.prioridad === 'MEDIA_ALTA' ? 'text-orange-500' : act.prioridad === 'BAJA' ? 'text-emerald-600' : 'text-amber-500'}`}>
+                          {act.prioridad === 'ALTA' ? '🔴 CRÍTICA' : act.prioridad === 'MEDIA_ALTA' ? '🟠 IMPORTANTE' : act.prioridad === 'BAJA' ? '🟢 CASO ESPECIAL' : '🟡 NORMAL'}
+                        </span>
+                        <span className="text-[10px] text-slate-500 font-mono font-medium border-l border-slate-200 pl-2">
+                          📅 {act.fecha}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5 bg-slate-50/50 rounded-md px-1.5 py-1 border border-slate-100" title="Estado de la actividad">
+                        <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-wider">Estado:</span>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); toggleSubtaskCompletion(act.tareaId, act.id); }}
+                          className={`flex items-center gap-1.5 text-[10px] font-bold uppercase transition-colors px-2 py-1 rounded border ${
+                            act.completada 
+                              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 hover:bg-emerald-100' 
+                              : 'bg-white text-slate-500 border-slate-200 hover:bg-slate-50 hover:text-slate-700 shadow-sm'
+                          }`}
+                        >
+                          {act.completada ? <CheckSquare className="w-3.5 h-3.5" /> : <Square className="w-3.5 h-3.5" />}
+                          {act.completada ? 'Finalizada' : 'Marcar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+
+                const isExpanded = expandedAuditoriaAsesores[asesor];
+                
+                return (
+                  <div key={asesor} className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden transition-all duration-300">
+                    <button 
+                      onClick={() => setExpandedAuditoriaAsesores(prev => ({ ...prev, [asesor]: !prev[asesor] }))}
+                      className="w-full bg-slate-800 px-4 py-3 border-b border-slate-700 flex justify-between items-center hover:bg-slate-700 transition-colors cursor-pointer"
+                    >
+                      <h4 className="font-bold text-white text-base flex items-center gap-2">
+                        {isExpanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+                        {asesor}
+                      </h4>
+                      <span className="text-xs bg-slate-600 text-slate-200 px-2 py-1 rounded-md font-semibold flex items-center gap-1.5">
+                        {actividades.length} {actividades.length === 1 ? 'actividad' : 'actividades'}
+                      </span>
+                    </button>
+                    
+                    {isExpanded && (
+                      <div className="p-4 space-y-5 animate-in slide-in-from-top-2 fade-in duration-200">
+                        {actividades.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-6 px-4 text-center bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                            <CheckCircle2 className="w-8 h-8 text-emerald-400 mb-2 opacity-50" />
+                            <p className="text-xs font-semibold text-slate-500">Sin actividades registradas</p>
+                            <p className="text-[10px] text-slate-400 mt-1">Este asesor no tiene tareas pendientes ni asignadas.</p>
+                          </div>
+                        ) : (
+                          <>
+                            {fuegosPorApagar.length > 0 && (
+                              <div className="space-y-2">
+                                <h5 className="text-[11px] font-black text-rose-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-rose-100 pb-1">
+                                  Prioridad Inmediata ({fuegosPorApagar.length})
+                                </h5>
+                                <div className="space-y-2">
+                                  {fuegosPorApagar.map(act => renderActividad(act, true))}
+                                </div>
+                              </div>
+                            )}
+
+                            {elDiaADia.length > 0 && (
+                              <div className="space-y-2">
+                                <h5 className="text-[11px] font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-blue-100 pb-1 mt-4">
+                                  El Día a Día ({elDiaADia.length})
+                                </h5>
+                                <div className="space-y-2">
+                                  {elDiaADia.map(act => renderActividad(act, false))}
+                                </div>
+                              </div>
+                            )}
+
+                            {especialesEnCurso.length > 0 && (
+                              <div className="space-y-2">
+                                <h5 className="text-[11px] font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 pb-1 mt-4">
+                                  Casos Especiales en Curso ({especialesEnCurso.length})
+                                </h5>
+                                <div className="space-y-2">
+                                  {especialesEnCurso.map(act => renderActividad(act, false))}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+})
           )}
         </div>
 
@@ -1843,6 +2097,9 @@ export function AgendaDiaria({
                       </div>
                     </div>
                   )}
+
+      
+
                 </div>
               );
             })

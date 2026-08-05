@@ -47,7 +47,7 @@ export type Client = {
   tipoCliente?: "PROSPECTO" | "CLIENTE" | "CLIENTE_INACTIVO";
   clasificacion?: "MUY_RENTABLE" | "RENTABLE" | "POCO_RENTABLE";
   esClienteReal?: boolean;
-  etapaComercial: "Prospecto" | "Contactado" | "Llamada Realizada" | "Visita Agendada" | "Inspección Realizada" | "Cotización Enviada" | "Seguimiento" | "Negociación" | "Orden de Servicio" | "Ganado" | "Perdido";
+  etapaComercial: "Prospecto" | "Contacto Inicial" | "Visita Comercial" | "Visita Técnica" | "Seguimiento" | "Cotización" | "Negociación" | "Orden de Servicio" | "Servicio Ejecutado" | "Facturación" | "Postventa" | "Ganado / Fidelizado" | "Perdido";
   historialInteracciones?: Interaction[];
   archivosAdjuntos?: AttachedFile[];
   // Technical Report Fields

@@ -7,6 +7,7 @@ export interface CommercialAdvisor {
   unit: 'UNIDAD_1' | 'UNIDAD_2';
   role: string;
   color: string;
+  hideFromTable?: boolean;
 }
 
 export const COMMERCIAL_UNITS = {
@@ -34,7 +35,6 @@ export const ALL_ADVISORS: Record<string, CommercialAdvisor> = {
   Valentina: { name: 'Valentina', unit: 'UNIDAD_1', role: 'Seguimiento & Cierre Nuevos', color: 'bg-indigo-600' },
   Javier: { name: 'Javier', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-blue-600' },
   Angie: { name: 'Angie', unit: 'UNIDAD_2', role: 'Recuperación & Fidelización', color: 'bg-sky-600' },
-  Angi: { name: 'Angi', unit: 'UNIDAD_2', role: 'Recuperación & Fidelización', color: 'bg-sky-600' },
   Mellani: { name: 'Mellani', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-purple-600' },
   Steven: { name: 'Steven', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-amber-600' }
 };

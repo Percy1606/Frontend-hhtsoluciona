@@ -93,7 +93,7 @@ const getCloseDate = (c: any) => {
     const wonInt = interacciones.find((i: any) => 
       i.accion === 'Cotización Ganada' || 
       i.tipo === 'Venta' ||
-      (i.observaciones && i.observaciones.toLowerCase().includes('ha pasado a etapa "ganado"'))
+      (i.observaciones && i.observaciones.toLowerCase().includes('ha pasado a etapa "ganado / fidelizado"'))
     );
     if (wonInt) return wonInt.fecha || wonInt.createdAt;
   }
@@ -209,10 +209,10 @@ export function CRMStats() {
   };
 
   const totalCartera = filteredClients.length;
-  const seguimientosVencidos = filteredClients.filter(c => isFollowUpOverdue(c) && !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
+  const seguimientosVencidos = filteredClients.filter(c => isFollowUpOverdue(c) && !['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado', 'Perdido'].includes(c.etapaComercial)).length;
   
   const cerradosGanados = filteredClients.filter(c => 
-    ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && 
+    ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial) && 
     isInRange(getCloseDate(c))
   ).length;
 
@@ -262,15 +262,17 @@ export function CRMStats() {
   // Data for the Funnel Chart (11 stages)
   const funnelStages = [
     { name: "Prospecto", color: "#94a3b8" },
-    { name: "Contactado", color: "#06b6d4" },
-    { name: "Llamada Realizada", color: "#0ea5e9" },
-    { name: "Visita Agendada", color: "#6366f1" },
-    { name: "Inspección Realizada", color: "#f59e0b" },
-    { name: "Cotización Enviada", color: "#8b5cf6" },
+    { name: "Contacto Inicial", color: "#06b6d4" },
+    { name: "Visita Comercial", color: "#6366f1" },
+    { name: "Visita Técnica", color: "#2563eb" },
     { name: "Seguimiento", color: "#ec4899" },
+    { name: "Cotización", color: "#8b5cf6" },
     { name: "Negociación", color: "#f97316" },
     { name: "Orden de Servicio", color: "#059669" },
-    { name: "Ganado", color: "#22c55e" },
+    { name: "Servicio Ejecutado", color: "#14b8a6" },
+    { name: "Facturaci�n", color: "#3b82f6" },
+    { name: "Postventa", color: "#a855f7" },
+    { name: "Ganado / Fidelizado", color: "#22c55e" },
     { name: "Perdido", color: "#ef4444" }
   ];
 
@@ -298,7 +300,7 @@ export function CRMStats() {
 
   const sellerComparisonData = sellers.map(seller => {
     const sellerClients = clients.filter(c => c.asignadoA?.toLowerCase().trim() === seller.name.toLowerCase().trim());
-    const won = sellerClients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
+    const won = sellerClients.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
     const prospectosCount = clients.filter(c => getRealCreator(c)?.toLowerCase().includes(seller.name.toLowerCase().trim()) && isInRange(c.fechaCreacion || (c as any).createdAt)).length;
     const contactosCount = clients.reduce((acc, c) => {
       const interacciones = c.historialInteracciones || (c as any).interacciones || [];
@@ -389,7 +391,7 @@ export function CRMStats() {
 
     const visitasCount = contactosPeriodoList.filter((int: any) => int.tipo?.toLowerCase().includes('visit') && !int.accion?.toLowerCase().includes('finalizada') && !int.accion?.toLowerCase().includes('culminada')).length;
     
-    const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
+    const ganadosCount = clients.filter((c: any) => c.asignadoA === seller.name && ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial) && isInRange(getCloseDate(c))).length;
 
     const isValentina = seller.name.toLowerCase() === 'valentina';
     const isBrenda = seller.name.toLowerCase() === 'brenda';
@@ -580,7 +582,7 @@ export function CRMStats() {
           </div>
 
       {/* CENTRO DE CONTROL DE UNIDADES COMERCIALES GERENCIALES (<1 MIN) */}
-      <UnidadesGerenciales clients={filteredClients} />
+      <UnidadesGerenciales clients={filteredClients} dateRange={{ startDate, endDate }} />
 
       {/* Dashboard Content with Tabs to avoid clutter */}
       <Tabs defaultValue="comercial" className="space-y-6">
@@ -781,7 +783,7 @@ export function CRMStats() {
                     const isValentina = data.name.toLowerCase() === 'valentina';
                     const isBrenda = data.name.toLowerCase() === 'brenda';
                     
-                    const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
+                    const clientesGanados = clients.filter((c: any) => c.asignadoA?.toLowerCase().trim() === data.name.toLowerCase().trim() && ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial) && isInRange(getCloseDate(c)));
                     const cierresNames = clientesGanados.map((c: any) => c.empresa || c.nombre).join(', ') || 'Sin cierres';
 
                     return (
@@ -1190,7 +1192,7 @@ export function CRMStats() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge className="bg-blue-100 text-blue-700 border-none text-[9px] uppercase">
-                      {c.etapaComercial || 'GANADO'}
+                      {c.etapaComercial || 'GANADO / FIDELIZADO'}
                     </Badge>
                     {c.tarifa && (
                       <Badge className="bg-amber-100 text-amber-800 border-none text-[9px] font-black uppercase">
@@ -1201,7 +1203,7 @@ export function CRMStats() {
                 </div>
               ))
             ) : (
-              <p className="text-sm text-slate-500 text-center py-4">No hay clientes ganados para mostrar.</p>
+              <p className="text-sm text-slate-500 text-center py-4">No hay clientes fidelizados para mostrar.</p>
             )}
           </div>
         </DialogContent>

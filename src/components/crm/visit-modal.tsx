@@ -125,7 +125,7 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
       
       setModernDialog({
         isOpen: true,
-        title: "Visita Agendada",
+        title: "Visita Técnica",
         description: `Se ha programado la inspección para el cliente ${clientName}. El técnico ${tecnico?.nombre} ha sido notificado y la ficha técnica ya está en su bandeja de operaciones.`,
         type: "success"
       });
@@ -352,7 +352,7 @@ export function VisitModal({ clientId, clientName, isOpen, onClose }: VisitModal
               <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex gap-3">
                 <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
                 <p className="text-[10px] text-blue-700 leading-tight font-medium uppercase">
-                  Esta acción creará automáticamente una ficha en la <span className="font-black">Bandeja Técnica</span> y moverá al cliente a la etapa <span className="font-black">"Visita Agendada"</span>.
+                  Esta acción creará automáticamente una ficha en la <span className="font-black">Bandeja Técnica</span> y moverá al cliente a la etapa <span className="font-black">"Visita Técnica"</span>.
                 </p>
               </div>
 

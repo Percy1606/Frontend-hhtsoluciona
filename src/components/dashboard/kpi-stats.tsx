@@ -37,13 +37,13 @@ export function KPIStats({
   const clients = customClients ?? storeClients;
   const proyectos = customProyectos ?? storeProyectos;
 
-  // Clientes: SOLO los que tienen 'Ganado' o 'Orden de Servicio'
-  const totalClientes = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
+  // Clientes: SOLO los que tienen 'Ganado / Fidelizado' o 'Orden de Servicio'
+  const totalClientes = clients.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
 
-  // Prospectos: Aquellos que no son clientes ni perdidos
-  const prospectos = clients.filter(c => !['Ganado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
+  // Prospectos: Todo lo que NO sea Cliente, ni Orden de Servicio, ni Perdido
+  const prospectos = clients.filter(c => !['Ganado / Fidelizado', 'Orden de Servicio', 'Perdido'].includes(c.etapaComercial)).length;
   
-  const ordenesServicio = clients.filter(c => ['Ganado', 'Orden de Servicio'].includes(c.etapaComercial)).length;
+  const ordenesServicio = clients.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
   const proyectosActivos = proyectosActivosCount || (globalKPIs as any)?.proyectosActivos || proyectos.filter(p => p.estado?.includes('Ejecuci') || p.estado?.includes('Planificaci')).length || 0;
   
   const totalFacturado = customTotalFacturado ?? ((globalKPIs as any)?.totalFacturado ?? 0);

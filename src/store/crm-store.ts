@@ -69,7 +69,7 @@ export const calculateClientSemaforo = (client: Client) => {
   const days = getDaysSinceContact(client.ultimoContacto);
   const isOverdue = isFollowUpOverdue(client);
 
-  if (client.etapaComercial === 'Ganado' || client.etapaComercial === 'Orden de Servicio') {
+  if (client.etapaComercial === 'Ganado / Fidelizado' || client.etapaComercial === 'Orden de Servicio') {
     if (isOverdue || days > 120) return 'Rojo';
     if (days > 90) return 'Amarillo';
     return 'Verde';
@@ -224,8 +224,21 @@ export const useCRMStore = create<CRMState>()(
             total = rawData.length;
           }
 
+          const mapEtapa = (etapa: string) => {
+            const map: Record<string, string> = {
+              "Contactado": "Contacto Inicial",
+              "Llamada Realizada": "Contacto Inicial",
+              "Visita Agendada": "Visita Técnica",
+              "Inspección Realizada": "Visita Técnica",
+              "Cotización Enviada": "Cotización",
+              "Ganado": "Ganado / Fidelizado"
+            };
+            return map[etapa] || etapa;
+          };
+
           const parsedClients = rawData.map((c: any) => ({
             ...c,
+            etapaComercial: mapEtapa(c.etapaComercial),
             hallazgosTecnicos: safeJsonParse(c.hallazgosTecnicos),
             solucionesPropuestas: safeJsonParse(c.solucionesPropuestas),
             historialInteracciones: c.interacciones || [],
@@ -638,9 +651,9 @@ export const useCRMStore = create<CRMState>()(
           const client = get().clients.find(c => c.id === id);
           if (!client) return;
 
-          if (client.etapaComercial === 'Ganado' && newStage !== 'Ganado') {
-            toast.error("Acción Bloqueada", { 
-              description: "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO." 
+          if (client.etapaComercial === 'Ganado / Fidelizado' && newStage !== 'Ganado / Fidelizado') {
+            toast.error("Movimiento no permitido", { 
+              description: "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO / FIDELIZADO." 
             });
             return;
           }
@@ -673,11 +686,14 @@ export const useCRMStore = create<CRMState>()(
             probabilidad: safeNumber(data.probabilidad) 
           };
 
-          // Programación automática de fidelización si es GANADO
-          if (newStage === 'Ganado') {
-            const nextDate = new Date();
-            nextDate.setDate(nextDate.getDate() + 30);
-            payload.proximoSeguimiento = nextDate.toISOString();
+          // Programación automática de fidelización si es GANADO / FIDELIZADO
+          if (newStage === 'Ganado / Fidelizado') {
+            await get().scheduleFollowUp(
+              id,
+              format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
+              "Llamada de Fidelización Post-Servicio",
+              "Llamada"
+            );
             payload.accion = "Fidelización Mensual (Post-Venta)";
           }
 
@@ -727,7 +743,7 @@ export const useCRMStore = create<CRMState>()(
           await api.post('/operaciones/fichas-tecnicas', { clienteId: clientId, tecnicoId: tecnicoId, fechaVisita: fecha, observaciones: observaciones, estado: 'PENDIENTE', adjuntos: adjuntos || [] });
           // La Bitácora de CRM se registrará automáticamente desde el backend al crear la ficha técnica.
 
-          await get().changeStage(clientId, 'Visita Agendada');
+          await get().changeStage(clientId, 'Visita Técnica');
           await get().fetchClients(1);
         } catch (error) {
           console.error("Error scheduling technical visit:", error);

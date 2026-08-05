@@ -596,7 +596,7 @@ export const useOperacionesStore = create<OperacionesState>()(
           // 1. Actualizar la ficha con el estado COMPLETADA y los datos técnicos
           // El backend se encargará de: 
           // - Notificar al asesor comercial
-          // - Actualizar la etapa del cliente a "Inspección Realizada"
+          // - Actualizar la etapa del cliente a "Visita Técnica"
           // - Registrar la interacción en la bitácora
           await api.put(`/operaciones/fichas-tecnicas/${id}`, {
             ...data,

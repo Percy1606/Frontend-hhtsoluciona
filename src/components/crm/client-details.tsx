@@ -56,11 +56,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { VisitModal } from "./visit-modal";
 import { api } from "@/lib/api";
 
-// IMPORTACIÓN DE PANELES OPERATIVOS PARA FUSIÓN 360
 import { ActividadesPanel } from "../operaciones/actividades-panel";
 import { TimelinePanel } from "../operaciones/timeline-panel";
 import { FinancePanel } from "../operaciones/finance-panel";
 import { ProyectoDetail } from "../operaciones/proyecto-detail"; // Usaremos sus sub-componentes
+import { ClientTimeline } from "./client-timeline";
 
 interface ClientDetailsProps {
   client: Client | null;
@@ -364,35 +364,19 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                 Bitácora ({client.historialInteracciones?.length || 0})
               </TabsTrigger>
               <TabsTrigger 
+                value="timeline" 
+                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full text-indigo-600 data-[state=active]:text-primary gap-1"
+              >
+                <History className="w-3.5 h-3.5 inline-block" /> Timeline
+              </TabsTrigger>
+              <TabsTrigger 
                 value="files" 
                 className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full"
               >
                 Documentos ({client.archivosAdjuntos?.length || 0})
               </TabsTrigger>
 
-              {/* PESTAÑAS DE FUSIÓN OPERATIVA (SOLO SI HAY PROYECTO) */}
-              {vinculadoProyecto && (
-                <>
-                  <TabsTrigger 
-                    value="actividades" 
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-orange-600 data-[state=active]:text-primary"
-                  >
-                    <ClipboardList className="w-4 h-4" /> Actividades ({vinculadoProyecto.actividades?.length || 0})
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="logistica" 
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-blue-600 data-[state=active]:text-primary"
-                  >
-                    <Package className="w-4 h-4" /> Logística y Costos
-                  </TabsTrigger>
-                  <TabsTrigger 
-                    value="profitability" 
-                    className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full gap-2 text-emerald-600 data-[state=active]:text-primary"
-                  >
-                    <DollarSign className="w-4 h-4" /> Rentabilidad Real
-                  </TabsTrigger>
-                </>
-              )}
+              {/* Pestañas operativas removidas para mantener limpio el CRM */}
               </TabsList>
               </div>
 
@@ -627,6 +611,12 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
               </div>
             </TabsContent>
 
+            <TabsContent value="timeline" className="mt-0 outline-none">
+              <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden">
+                <ClientTimeline client={client} />
+              </div>
+            </TabsContent>
+
             <TabsContent value="files" className="mt-0 space-y-8">
               {/* DOCUMENTOS CONTRACTUALES */}
               <div className="space-y-4">
@@ -779,98 +769,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
               </div>
             </TabsContent>
 
-            {/* CONTENIDO DE FUSIÓN OPERATIVA (SOLO SI HAY PROYECTO) */}
-            {vinculadoProyecto && (
-              <>
-                <TabsContent value="actividades" className="mt-0 space-y-6">
-                   <div className="bg-orange-50/50 p-4 rounded-xl border border-orange-100 flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                            <ClipboardList className="w-5 h-5 text-orange-600" />
-                         </div>
-                         <div>
-                            <h4 className="text-sm font-black uppercase text-primary">Cronograma de Ejecución</h4>
-                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Proyecto: {vinculadoProyecto.codigo} — Avance: {vinculadoProyecto.avanceCalculado}%</p>
-                         </div>
-                      </div>
-                      <Badge className="bg-primary text-white font-black text-[10px] px-3 py-1">{vinculadoProyecto.estado}</Badge>
-                   </div>
-                   <ActividadesPanel proyecto={vinculadoProyecto} />
-                </TabsContent>
-
-                <TabsContent value="logistica" className="mt-0 space-y-6">
-                   {/* Reutilizamos el LogisticaPanel de ProyectoDetail */}
-                   {/* Nota: Necesitamos que ProyectoDetail exporte o tener acceso al componente local */}
-                   <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                         <Package className="w-5 h-5 text-blue-600" />
-                      </div>
-                      <div>
-                         <h4 className="text-sm font-black uppercase text-primary">Control de Insumos y Costos Directos</h4>
-                         <p className="text-[10px] font-bold text-slate-500 uppercase tracking-tight">Reporte real de materiales despachados a la obra.</p>
-                      </div>
-                   </div>
-                   
-                   {/* Inyectamos la lógica de LogisticaPanel directamente para asegurar compatibilidad */}
-                   <div className="space-y-8">
-                      {loadingFinance ? (
-                        <div className="flex flex-col items-center justify-center py-20 gap-3">
-                          <Loader2 className="w-10 h-10 animate-spin text-primary opacity-20" />
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Calculando costos reales...</p>
-                        </div>
-                      ) : financeData ? (
-                        <div className="space-y-8 animate-in fade-in duration-500">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Presupuesto</span>
-                                <p className="text-lg font-black text-primary">S/ {financeData.montoCotizado?.toLocaleString() || '0.00'}</p>
-                             </div>
-                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Inversión Actual</span>
-                                <p className="text-lg font-black text-orange-600">S/ {financeData.egresos?.costoTotal?.toLocaleString() || '0.00'}</p>
-                             </div>
-                             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Utilidad Estimada</span>
-                                <p className={cn("text-lg font-black", (financeData.montoCotizado - financeData.egresos?.costoTotal) > 0 ? "text-emerald-600" : "text-red-600")}>
-                                  S/ {(financeData.montoCotizado - financeData.egresos?.costoTotal)?.toLocaleString() || '0.00'}
-                                </p>
-                             </div>
-                          </div>
-
-                          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
-                            <Table>
-                              <TableHeader className="bg-slate-50/50">
-                                <TableRow>
-                                  <TableHead className="font-black uppercase text-[9px] py-3 pl-4">Material / Insumo</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] text-center">Cantidad</TableHead>
-                                  <TableHead className="font-black uppercase text-[9px] text-right pr-4">Subtotal S/.</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {financeData.historialMateriales?.length > 0 ? (
-                                  financeData.historialMateriales.map((m: any, idx: number) => (
-                                    <TableRow key={idx} className="hover:bg-slate-50/30">
-                                      <TableCell className="py-2.5 pl-4 font-bold text-[10px] uppercase">{m.material}</TableCell>
-                                      <TableCell className="text-center font-bold text-[10px]">{m.cantidad}</TableCell>
-                                      <TableCell className="text-right pr-4 font-black text-[10px] text-primary">S/ {m.costoTotal?.toLocaleString()}</TableCell>
-                                    </TableRow>
-                                  ))
-                                ) : (
-                                  <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold text-slate-300 uppercase italic">Sin movimientos registrados</TableCell></TableRow>
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-                      ) : null}
-                   </div>
-                </TabsContent>
-
-                <TabsContent value="profitability" className="mt-0 space-y-6">
-                   <FinancePanel proyectoId={vinculadoProyecto.id} />
-                </TabsContent>
-              </>
-            )}
+            {/* Contenido operativo removido para el CRM */}
           </div>
         </Tabs>
       </DialogContent>

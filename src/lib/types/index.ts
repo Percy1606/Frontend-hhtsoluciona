@@ -40,15 +40,17 @@ export type TipoInteraccion = 'Llamada' | 'Visita' | 'Reunión' | 'Cotización' 
 
 export type EtapaComercial =
   | 'Prospecto'
-  | 'Contactado'
-  | 'Llamada Realizada'
-  | 'Visita Agendada'
-  | 'Inspección Realizada'
-  | 'Cotización Enviada'
+  | 'Contacto Inicial'
+  | 'Visita Comercial'
+  | 'Visita Técnica'
   | 'Seguimiento'
+  | 'Cotización'
   | 'Negociación'
   | 'Orden de Servicio'
-  | 'Ganado'
+  | 'Servicio Ejecutado'
+  | 'Facturación'
+  | 'Postventa'
+  | 'Ganado / Fidelizado'
   | 'Perdido';
 
 export type Temperatura = 'Frío' | 'Tibio' | 'Caliente' | 'Muy Caliente';
