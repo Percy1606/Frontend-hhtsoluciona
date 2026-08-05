@@ -119,9 +119,12 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
         const d = new Date(c.fechaCreacion);
         const isNewClient = !isNaN(d.getTime()) && d >= UNIT_1_CUTOFF_DATE;
 
+        // Permitir que UNIDAD_1 vea clientes antiguos si ya son ventas cerradas o cotizaciones activas
+        const isWonOrActive = ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado', 'Cotización'].includes(c.etapaComercial);
+
         // Reglas estrictas de unidades
-        if (advInfo.unit === 'UNIDAD_1') return isNewClient;
-        if (advInfo.unit === 'UNIDAD_2') return !isNewClient;
+        if (advInfo.unit === 'UNIDAD_1') return isNewClient || isWonOrActive;
+        if (advInfo.unit === 'UNIDAD_2') return !isNewClient && !isWonOrActive;
         return true;
       });
 
