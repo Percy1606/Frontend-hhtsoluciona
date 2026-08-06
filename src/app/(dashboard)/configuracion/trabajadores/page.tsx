@@ -16,7 +16,19 @@ import {
   Palette,
   ShieldCheck,
   User,
-  AlertTriangle
+  AlertTriangle,
+  Calendar,
+  MapPin,
+  Globe,
+  Heart,
+  Plane,
+  IdCard,
+  FileText,
+  Download,
+  UploadCloud,
+  RefreshCw,
+  CheckCircle2,
+  FileX
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +54,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger
+} from "@/components/ui/tabs";
 import {
   Form,
   FormControl,
@@ -70,8 +88,34 @@ const workerSchema = z.object({
   area: z.string().min(1, "El área es obligatoria"),
   cargo: z.string().min(2, "El cargo es obligatorio"),
   email: z.string().email("Email inválido").optional().or(z.literal("")),
-  telefono: z.string().optional().or(z.literal("")),
+  telefono: z.string().optional().or(z.literal("")).refine(val => !val || /^\d{9}$/.test(val), {
+    message: "El celular debe tener exactamente 9 dígitos",
+  }),
   color: z.string().min(1, "El color es obligatorio"),
+  dni: z.string().optional().or(z.literal("")).refine(val => !val || /^\d{8}$/.test(val), {
+    message: "El DNI debe tener exactamente 8 dígitos",
+  }),
+  fechaNacimiento: z.string().optional().or(z.literal("")).refine(val => {
+    if (!val) return true;
+    const date = new Date(val + "T00:00:00");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return date < today;
+  }, {
+    message: "La fecha de nacimiento debe ser anterior al día de hoy",
+  }),
+  sexo: z.string().optional().or(z.literal("")),
+  estadoCivil: z.string().optional().or(z.literal("")),
+  nacionalidad: z.string().optional().or(z.literal("")),
+  direccion: z.string().optional().or(z.literal("")),
+  distrito: z.string().optional().or(z.literal("")),
+  ciudad: z.string().optional().or(z.literal("")),
+  correoPersonal: z.string().email("Email personal inválido").optional().or(z.literal("")),
+  contactoEmergenciaNombre: z.string().optional().or(z.literal("")),
+  contactoEmergenciaTelefono: z.string().optional().or(z.literal("")).refine(val => !val || /^\d{9}$/.test(val), {
+    message: "El teléfono de emergencia debe tener exactamente 9 dígitos",
+  }),
+  disponibilidadViajes: z.boolean().optional(),
 });
 
 interface Worker {
@@ -83,7 +127,36 @@ interface Worker {
   telefono: string | null;
   color: string;
   activo: boolean;
+  dni: string | null;
+  fechaNacimiento: string | null;
+  sexo: string | null;
+  estadoCivil: string | null;
+  nacionalidad: string | null;
+  direccion: string | null;
+  distrito: string | null;
+  ciudad: string | null;
+  correoPersonal: string | null;
+  contactoEmergenciaNombre: string | null;
+  contactoEmergenciaTelefono: string | null;
+  disponibilidadViajes: boolean | null;
 }
+
+const calcularEdad = (fechaNacimiento: string | null | undefined) => {
+  if (!fechaNacimiento) return "-";
+  try {
+    const hoy = new Date();
+    const cumpleanos = new Date(fechaNacimiento);
+    if (isNaN(cumpleanos.getTime())) return "-";
+    let edad = hoy.getFullYear() - cumpleanos.getFullYear();
+    const mes = hoy.getMonth() - cumpleanos.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < cumpleanos.getDate())) {
+      edad--;
+    }
+    return `${edad} años`;
+  } catch (e) {
+    return "-";
+  }
+};
 
 const areaColors: Record<string, string> = {
   LogisticaYRecursos: "bg-blue-100 text-blue-700 border-blue-200",
@@ -180,62 +253,193 @@ function UserTrabajadorView() {
       )}
 
       {profile && !loading && (
-        <>
-          <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
-            <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex-row flex justify-between items-center">
-              <div className="flex items-center gap-4">
-                <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-sm ${profile.color}`}>
-                  {profile.nombre.charAt(0)}
+        <Tabs defaultValue="perfil" className="space-y-6">
+          <TabsList className="bg-white p-1.5 rounded-2xl border border-slate-100 w-fit flex gap-1 shadow-sm">
+            <TabsTrigger value="perfil" className="rounded-xl px-5 py-2 text-sm font-semibold transition-all data-[state=active]:bg-[#001F3F] data-[state=active]:text-white">
+              <User className="h-4 w-4 mr-2 inline" />
+              Perfil Personal
+            </TabsTrigger>
+            <TabsTrigger value="documentacion" className="rounded-xl px-5 py-2 text-sm font-semibold transition-all data-[state=active]:bg-[#001F3F] data-[state=active]:text-white">
+              <FileText className="h-4 w-4 mr-2 inline" />
+              Documentación
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="perfil" className="m-0 space-y-6">
+            <Card className="border-none shadow-sm rounded-2xl overflow-hidden">
+              <CardHeader className="bg-slate-50/50 border-b border-slate-100 flex-row flex justify-between items-center">
+                <div className="flex items-center gap-4">
+                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-2xl shadow-sm ${profile.color}`}>
+                    {profile.nombre.charAt(0)}
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-800">{profile.nombre}</h2>
+                    <p className="font-medium text-muted-foreground uppercase tracking-tight">{profile.cargo}</p>
+                  </div>
                 </div>
+                <Button onClick={handleOpenModal} className="bg-[#001F3F] hover:bg-[#003087] rounded-xl h-11 px-6 transition-all shadow-md">
+                  <Edit2 className="mr-2 h-5 w-5" />
+                  Editar Perfil
+                </Button>
+              </CardHeader>
+              <CardContent className="p-6 space-y-8">
+                {/* Sección 1: Información Laboral / Profesional */}
                 <div>
-                  <h2 className="text-2xl font-bold text-slate-800">{profile.nombre}</h2>
-                  <p className="font-medium text-muted-foreground uppercase tracking-tight">{profile.cargo}</p>
+                  <h3 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
+                    <Briefcase className="h-5 w-5 text-[#003087]" />
+                    Información Profesional
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Área Operativa</h4>
+                      <Badge className={`${areaColors[profile.area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-semibold`}>
+                        {profile.area.replace(/([A-Z])/g, ' $1').trim()}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Estado</h4>
+                      <Badge 
+                        className={profile.activo 
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50 px-3 py-1 rounded-full flex items-center w-fit gap-1" 
+                          : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-50 px-3 py-1 rounded-full flex items-center w-fit gap-1"
+                        }
+                      >
+                        {profile.activo ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
+                        {profile.activo ? "Activo" : "Baja"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Disponibilidad para viajes</h4>
+                      <Badge className={profile.disponibilidadViajes ? "bg-indigo-50 text-indigo-700 border-indigo-100 px-3 py-1 rounded-full flex items-center w-fit gap-1" : "bg-slate-50 text-slate-600 border-slate-200 px-3 py-1 rounded-full flex items-center w-fit gap-1"}>
+                        <Plane className="h-3.5 w-3.5" />
+                        {profile.disponibilidadViajes ? "Disponible" : "No disponible"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Correo Institucional</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Mail className="h-4 w-4 text-[#003087]" />
+                        {profile.email || "Sin correo"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Celular (Corporativo)</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Phone className="h-4 w-4 text-[#003087]" />
+                        {profile.telefono || "Sin teléfono"}
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <Button onClick={handleOpenModal} className="bg-[#001F3F] hover:bg-[#003087] rounded-xl h-11 px-6 transition-all shadow-md">
-                <Edit2 className="mr-2 h-5 w-5" />
-                Editar Perfil
-              </Button>
-            </CardHeader>
-            <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-slate-500 text-sm">Área Operativa</h4>
-                <Badge className={`${areaColors[profile.area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-medium text-base`}>
-                  {profile.area.replace(/([A-Z])/g, ' $1').trim()}
-                </Badge>
-              </div>
-               <div className="space-y-2">
-                <h4 className="font-semibold text-slate-500 text-sm">Estado</h4>
-                 <Badge 
-                    className={profile.activo 
-                      ? "bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-50 px-3 py-1 rounded-full flex items-center w-fit gap-1 text-base" 
-                      : "bg-rose-50 text-rose-700 border-rose-100 hover:bg-rose-50 px-3 py-1 rounded-full flex items-center w-fit gap-1 text-base"
-                    }
-                  >
-                    {profile.activo ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
-                    {profile.activo ? "Activo" : "Baja"}
-                  </Badge>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-slate-500 text-sm">Correo Institucional</h4>
-                 <div className="flex items-center gap-2 text-slate-700">
-                    <Mail className="h-4 w-4 text-[#003087]" />
-                    {profile.email || "Sin correo"}
+  
+                {/* Sección 2: Información Personal */}
+                <div>
+                  <h3 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
+                    <User className="h-5 w-5 text-[#003087]" />
+                    Información Personal
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">DNI</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <IdCard className="h-4 w-4 text-slate-400" />
+                        {profile.dni || "No registrado"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Fecha de Nacimiento</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Calendar className="h-4 w-4 text-slate-400" />
+                        {profile.fechaNacimiento ? new Date(profile.fechaNacimiento).toLocaleDateString('es-ES') : "No registrado"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Edad</h4>
+                      <div className="text-slate-700 text-sm font-medium">
+                        {calcularEdad(profile.fechaNacimiento)}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Sexo</h4>
+                      <div className="text-slate-700 text-sm">
+                        {profile.sexo || "No registrado"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Estado Civil</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Heart className="h-4 w-4 text-slate-400" />
+                        {profile.estadoCivil || "No registrado"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Nacionalidad</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Globe className="h-4 w-4 text-slate-400" />
+                        {profile.nacionalidad || "No registrado"}
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Correo Personal</h4>
+                      <div className="flex items-center gap-2 text-slate-700 text-sm">
+                        <Mail className="h-4 w-4 text-slate-400" />
+                        {profile.correoPersonal || "No registrado"}
+                      </div>
+                    </div>
                   </div>
-              </div>
-              <div className="space-y-2">
-                <h4 className="font-semibold text-slate-500 text-sm">Teléfono</h4>
-                 <div className="flex items-center gap-2 text-slate-700">
-                    <Phone className="h-4 w-4 text-[#003087]" />
-                    {profile.telefono || "Sin teléfono"}
+                </div>
+  
+                {/* Sección 3: Dirección y Emergencia */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
+                      <MapPin className="h-5 w-5 text-[#003087]" />
+                      Dirección y Residencia
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold text-slate-500">Dirección:</span>
+                        <span className="col-span-2 text-slate-700">{profile.direccion || "No registrado"}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold text-slate-500">Distrito:</span>
+                        <span className="col-span-2 text-slate-700">{profile.distrito || "No registrado"}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold text-slate-500">Ciudad:</span>
+                        <span className="col-span-2 text-slate-700">{profile.ciudad || "No registrado"}</span>
+                      </div>
+                    </div>
                   </div>
-              </div>
-            </CardContent>
-          </Card>
+  
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-800 border-b pb-2 mb-4 flex items-center gap-2">
+                      <Phone className="h-5 w-5 text-rose-500" />
+                      Contacto de Emergencia
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold text-slate-500">Nombre:</span>
+                        <span className="col-span-2 text-slate-700 font-semibold">{profile.contactoEmergenciaNombre || "No registrado"}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <span className="font-semibold text-slate-500">Teléfono:</span>
+                        <span className="col-span-2 text-slate-700">{profile.contactoEmergenciaTelefono || "No registrado"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="documentacion" className="m-0">
+            <TrabajadorDocumentosView workerId={profile.id} />
+          </TabsContent>
           
           {isModalOpen && <TrabajadorModal editingWorker={profile} isOpen={isModalOpen} setIsOpen={setIsModalOpen} onFinished={fetchProfile} />}
 
-        </>
+        </Tabs>
       )}
     </div>
   )
@@ -249,6 +453,8 @@ function AdminTrabajadoresView() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null);
+  const [isDocsModalOpen, setIsDocsModalOpen] = useState(false);
+  const [selectedWorkerForDocs, setSelectedWorkerForDocs] = useState<Worker | null>(null);
 
   const fetchWorkers = useCallback(async () => {
     try {
@@ -270,6 +476,11 @@ function AdminTrabajadoresView() {
   const handleOpenModal = (worker?: Worker) => {
     setEditingWorker(worker || null);
     setIsModalOpen(true);
+  };
+
+  const handleOpenDocsModal = (worker: Worker) => {
+    setSelectedWorkerForDocs(worker);
+    setIsDocsModalOpen(true);
   };
 
   const toggleWorkerStatus = async (worker: Worker) => {
@@ -338,13 +549,17 @@ function AdminTrabajadoresView() {
                     <div key={worker.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
                       <div className="absolute top-4 right-4 flex items-center">
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-xl hover:bg-slate-50 text-slate-500 transition-all outline-none">
-                            <MoreVertical className="h-5 w-5" />
+                          <DropdownMenuTrigger className="h-8 w-8 inline-flex items-center justify-center rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-800 focus:text-slate-800 data-[state=open]:text-slate-800 shadow-sm transition-all outline-none cursor-pointer">
+                            <MoreVertical className="h-5 w-5 text-slate-700" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-100">
+                          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border border-slate-100 bg-white">
                             <DropdownMenuItem className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => handleOpenModal(worker)}>
                               <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Edit2 className="h-4 w-4" /></div>
                               <div className="flex flex-col"><span className="font-semibold text-sm">Editar Perfil</span><span className="text-[10px] text-muted-foreground">Actualizar datos y contacto</span></div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50" onClick={() => handleOpenDocsModal(worker)}>
+                              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><FileText className="h-4 w-4" /></div>
+                              <div className="flex flex-col"><span className="font-semibold text-sm">Ver Documentación</span><span className="text-[10px] text-muted-foreground">Expediente, CV y contratos</span></div>
                             </DropdownMenuItem>
                             <DropdownMenuItem className="group flex items-center gap-3 p-3 rounded-lg cursor-pointer mt-1" onClick={() => toggleWorkerStatus(worker)}>
                               <div className={worker.activo ? "p-2 bg-rose-50 text-rose-600 rounded-lg" : "p-2 bg-emerald-50 text-emerald-600 rounded-lg"}>
@@ -399,8 +614,11 @@ function AdminTrabajadoresView() {
               <TableHeader className="bg-slate-50/30">
                 <TableRow className="hover:bg-transparent border-slate-100">
                   <TableHead className="py-4 px-6">Trabajador</TableHead>
+                  <TableHead>DNI</TableHead>
                   <TableHead>Área Operativa</TableHead>
+                  <TableHead>Edad / F. Nac.</TableHead>
                   <TableHead>Información de Contacto</TableHead>
+                  <TableHead>Disponibilidad</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead className="text-right px-6">Acciones</TableHead>
                 </TableRow>
@@ -408,7 +626,7 @@ function AdminTrabajadoresView() {
               <TableBody>
                 {filteredWorkers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-40 text-center text-muted-foreground">
+                    <TableCell colSpan={8} className="h-40 text-center text-muted-foreground">
                       No se encontró personal registrado.
                     </TableCell>
                   </TableRow>
@@ -426,22 +644,51 @@ function AdminTrabajadoresView() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-sm text-slate-700 font-semibold">
+                        {worker.dni || "-"}
+                      </TableCell>
                       <TableCell>
                         <Badge className={`${areaColors[worker.area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-medium`}>
                           {worker.area.replace(/([A-Z])/g, ' $1').trim()}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-1.5 text-xs">
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Mail className="h-3.5 w-3.5 text-[#003087]" />
-                            {worker.email || "Sin correo"}
-                          </div>
-                          <div className="flex items-center gap-2 text-slate-600">
-                            <Phone className="h-3.5 w-3.5 text-[#003087]" />
-                            {worker.telefono || "Sin teléfono"}
-                          </div>
+                      <TableCell className="text-sm text-slate-700">
+                        <div className="space-y-1">
+                          <p className="font-semibold">{calcularEdad(worker.fechaNacimiento)}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {worker.fechaNacimiento ? new Date(worker.fechaNacimiento).toLocaleDateString('es-ES') : "-"}
+                          </p>
                         </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="space-y-1 text-xs">
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Mail className="h-3.5 w-3.5 text-[#003087]" />
+                            <span>{worker.email || "Sin correo"}</span>
+                          </div>
+                          {worker.correoPersonal && (
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <Mail className="h-3.5 w-3.5 text-slate-400" />
+                              <span>{worker.correoPersonal}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center gap-1.5 text-slate-600">
+                            <Phone className="h-3.5 w-3.5 text-[#003087]" />
+                            <span>{worker.telefono || "Sin celular"}</span>
+                          </div>
+                          {worker.nacionalidad && (
+                            <div className="flex items-center gap-1.5 text-slate-500">
+                              <Globe className="h-3.5 w-3.5 text-slate-400" />
+                              <span>{worker.nacionalidad}</span>
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={worker.disponibilidadViajes ? "bg-indigo-50 text-indigo-700 border-indigo-100 font-medium px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[11px]" : "bg-slate-50 text-slate-600 border-slate-200 font-medium px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[11px]"}>
+                          <Plane className="h-3 w-3" />
+                          {worker.disponibilidadViajes ? "Viajes" : "No"}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge 
@@ -456,10 +703,10 @@ function AdminTrabajadoresView() {
                       </TableCell>
                       <TableCell className="text-right px-6">
                         <DropdownMenu>
-                          <DropdownMenuTrigger className="h-9 w-9 inline-flex items-center justify-center rounded-xl hover:bg-white hover:shadow-sm border border-transparent hover:border-slate-200 text-slate-500 transition-all outline-none cursor-pointer">
-                            <MoreVertical className="h-5 w-5" />
+                          <DropdownMenuTrigger className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 hover:text-slate-800 focus:text-slate-800 data-[state=open]:text-slate-800 shadow-sm transition-all outline-none cursor-pointer">
+                            <MoreVertical className="h-5 w-5 text-slate-700" />
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border-slate-100">
+                          <DropdownMenuContent align="end" className="w-56 p-2 rounded-xl shadow-xl border border-slate-100 bg-white">
                             <DropdownMenuItem 
                               className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors"
                               onClick={() => handleOpenModal(worker)}
@@ -470,6 +717,18 @@ function AdminTrabajadoresView() {
                               <div className="flex flex-col">
                                 <span className="font-semibold text-sm">Editar Perfil</span>
                                 <span className="text-[10px] text-muted-foreground">Actualizar datos y contacto</span>
+                              </div>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              className="flex items-center gap-3 p-3 rounded-lg cursor-pointer hover:bg-slate-50 transition-colors mt-1"
+                              onClick={() => handleOpenDocsModal(worker)}
+                            >
+                              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-sm">Ver Documentación</span>
+                                <span className="text-[10px] text-muted-foreground">Expediente, CV y contratos</span>
                               </div>
                             </DropdownMenuItem>
                             <DropdownMenuItem 
@@ -503,6 +762,13 @@ function AdminTrabajadoresView() {
       </Card>
       
       {isModalOpen && <TrabajadorModal editingWorker={editingWorker} isOpen={isModalOpen} setIsOpen={setIsModalOpen} onFinished={fetchWorkers} />}
+      {isDocsModalOpen && selectedWorkerForDocs && (
+        <TrabajadorDocumentosModal 
+          worker={selectedWorkerForDocs} 
+          isOpen={isDocsModalOpen} 
+          setIsOpen={setIsDocsModalOpen} 
+        />
+      )}
     </div>
   );
 }
@@ -531,6 +797,18 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
         email: editingWorker.email || "",
         telefono: editingWorker.telefono || "",
         color: editingWorker.color,
+        dni: editingWorker.dni || "",
+        fechaNacimiento: editingWorker.fechaNacimiento ? editingWorker.fechaNacimiento.split('T')[0] : "",
+        sexo: editingWorker.sexo || "Masculino",
+        estadoCivil: editingWorker.estadoCivil || "Soltero",
+        nacionalidad: editingWorker.nacionalidad || "Peruana",
+        direccion: editingWorker.direccion || "",
+        distrito: editingWorker.distrito || "",
+        ciudad: editingWorker.ciudad || "",
+        correoPersonal: editingWorker.correoPersonal || "",
+        contactoEmergenciaNombre: editingWorker.contactoEmergenciaNombre || "",
+        contactoEmergenciaTelefono: editingWorker.contactoEmergenciaTelefono || "",
+        disponibilidadViajes: editingWorker.disponibilidadViajes || false,
       });
     } else {
       form.reset({
@@ -540,6 +818,18 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
         email: "",
         telefono: "",
         color: "bg-[#003087]",
+        dni: "",
+        fechaNacimiento: "",
+        sexo: "Masculino",
+        estadoCivil: "Soltero",
+        nacionalidad: "Peruana",
+        direccion: "",
+        distrito: "",
+        ciudad: "",
+        correoPersonal: "",
+        contactoEmergenciaNombre: "",
+        contactoEmergenciaTelefono: "",
+        disponibilidadViajes: false,
       });
     }
   }, [editingWorker, form]);
@@ -548,10 +838,28 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
   const onSubmit = async (values: z.infer<typeof workerSchema>) => {
     try {
       setIsSubmitting(true);
+      const payload = {
+        ...values,
+        email: values.email || null,
+        telefono: values.telefono || null,
+        dni: values.dni || null,
+        fechaNacimiento: values.fechaNacimiento ? new Date(values.fechaNacimiento).toISOString() : null,
+        sexo: values.sexo || null,
+        estadoCivil: values.estadoCivil || null,
+        nacionalidad: values.nacionalidad || null,
+        direccion: values.direccion || null,
+        distrito: values.distrito || null,
+        ciudad: values.ciudad || null,
+        correoPersonal: values.correoPersonal || null,
+        contactoEmergenciaNombre: values.contactoEmergenciaNombre || null,
+        contactoEmergenciaTelefono: values.contactoEmergenciaTelefono || null,
+        disponibilidadViajes: !!values.disponibilidadViajes,
+      };
+      
       if (editingWorker) {
-        await api.patch(`/config/trabajadores/${editingWorker.id}`, values);
+        await api.patch(`/config/trabajadores/${editingWorker.id}`, payload);
       } else {
-        await api.post("/config/trabajadores", values);
+        await api.post("/config/trabajadores", payload);
       }
       setIsOpen(false);
       onFinished(); // Refresh data
@@ -564,113 +872,377 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
-      <DialogContent className="sm:max-w-[550px] rounded-2xl p-0 overflow-hidden border-none shadow-2xl">
-        <DialogHeader className="bg-gradient-to-r from-[#001F3F] to-[#003087] p-6 text-white">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-2xl p-0 overflow-x-hidden border-none shadow-2xl">
+        <DialogHeader className="bg-gradient-to-r from-[#001F3F] to-[#003087] p-6 text-white sticky top-0 z-50">
           <DialogTitle className="text-2xl font-bold flex items-center gap-3">
             {editingWorker ? <Edit2 className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
             {editingWorker ? "Editar Perfil" : "Registrar Trabajador"}
           </DialogTitle>
           <DialogDescription className="text-white/80 text-sm mt-1">
             {editingWorker 
-              ? "Actualice la información profesional y de contacto." 
-              : "Ingrese los datos del nuevo integrante del equipo HH T-SOLUCIONA."}
+              ? "Actualice los detalles personales, profesionales y de contacto." 
+              : "Ingrese la información completa del nuevo integrante del equipo."}
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5 p-6 bg-white">
-            <div className="grid grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="nombre"
-                render={({ field }) => (
-                  <FormItem className="col-span-2">
-                    <FormLabel className="font-bold text-slate-700">Nombre Completo</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Ej. Pedro Sullón" className="pl-10 rounded-xl" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="area"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-slate-700">Área de Trabajo</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 bg-white">
+            
+            {/* SECCIÓN A: INFORMACIÓN PROFESIONAL */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-[#003087] uppercase tracking-wider border-b pb-1">
+                1. Información Profesional
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="nombre"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1 md:col-span-2">
+                      <FormLabel className="font-bold text-slate-700">Nombre Completo</FormLabel>
                       <FormControl>
-                        <SelectTrigger className="rounded-xl w-full">
-                          <SelectValue placeholder="Seleccionar área" />
-                        </SelectTrigger>
+                        <div className="relative">
+                          <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="Ej. Pedro Sullón" className="pl-10 rounded-xl" {...field} />
+                        </div>
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="LogisticaYRecursos">Logística y Recursos</SelectItem>
-                        <SelectItem value="IngenieriaYSupervision">Ingeniería y Supervisión</SelectItem>
-                        <SelectItem value="GestionDocumentaria">Gestión Documentaria</SelectItem>
-                        <SelectItem value="OperacionesDeCampo">Operaciones de Campo</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="cargo"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-slate-700">Cargo / Función</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="Ej. Residente" className="pl-10 rounded-xl" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="area"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Área de Trabajo</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-xl w-full">
+                            <SelectValue placeholder="Seleccionar área" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="LogisticaYRecursos">Logística y Recursos</SelectItem>
+                          <SelectItem value="IngenieriaYSupervision">Ingeniería y Supervisión</SelectItem>
+                          <SelectItem value="GestionDocumentaria">Gestión Documentaria</SelectItem>
+                          <SelectItem value="OperacionesDeCampo">Operaciones de Campo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-slate-700">Correo Institucional</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="correo@hh.com" className="pl-10 rounded-xl" {...field} />
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                <FormField
+                  control={form.control}
+                  name="cargo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Cargo / Función</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="Ej. Residente" className="pl-10 rounded-xl" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <FormField
-                control={form.control}
-                name="telefono"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold text-slate-700">Teléfono</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input placeholder="999 999 999" className="pl-10 rounded-xl" {...field} />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Correo Institucional</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="correo@hh.com" className="pl-10 rounded-xl" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="telefono"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Celular (Corporativo)</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            placeholder="999999999" 
+                            className="pl-10 rounded-xl" 
+                            {...field} 
+                            maxLength={9}
+                            onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* SECCIÓN B: INFORMACIÓN PERSONAL */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-[#003087] uppercase tracking-wider border-b pb-1">
+                2. Información Personal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="dni"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">DNI</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <IdCard className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            placeholder="DNI" 
+                            className="pl-10 rounded-xl" 
+                            {...field} 
+                            maxLength={8}
+                            onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))}
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="fechaNacimiento"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Fecha Nacimiento</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            type="date" 
+                            max={new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().split('T')[0]} 
+                            className="pl-10 rounded-xl" 
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="sexo"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Sexo</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Masculino">Masculino</SelectItem>
+                          <SelectItem value="Femenino">Femenino</SelectItem>
+                          <SelectItem value="Otro">Otro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="estadoCivil"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Estado Civil</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className="rounded-xl">
+                            <SelectValue placeholder="Seleccionar" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="Soltero">Soltero</SelectItem>
+                          <SelectItem value="Casado">Casado</SelectItem>
+                          <SelectItem value="Divorciado">Divorciado</SelectItem>
+                          <SelectItem value="Viudo">Viudo</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="nacionalidad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Nacionalidad</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="Ej. Peruana" className="pl-10 rounded-xl" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="correoPersonal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Correo Personal</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="correo@ejemplo.com" className="pl-10 rounded-xl" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="disponibilidadViajes"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 col-span-1 md:col-span-3">
+                      <FormControl>
+                        <input
+                          type="checkbox"
+                          checked={field.value}
+                          onChange={(e) => field.onChange(e.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-[#003087] focus:ring-[#003087]"
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel className="font-bold text-slate-700">
+                          Disponibilidad para viajes
+                        </FormLabel>
+                        <p className="text-xs text-muted-foreground">
+                          Marque esta casilla si el trabajador tiene disponibilidad para viajar fuera de la ciudad.
+                        </p>
                       </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+
+            {/* SECCIÓN C: UBICACIÓN Y EMERGENCIA */}
+            <div className="space-y-4">
+              <h3 className="text-sm font-bold text-[#003087] uppercase tracking-wider border-b pb-1">
+                3. Ubicación y Emergencia
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="direccion"
+                  render={({ field }) => (
+                    <FormItem className="col-span-1 md:col-span-3">
+                      <FormLabel className="font-bold text-slate-700">Dirección</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input placeholder="Calle, Av, Jr. Nro, Dpto" className="pl-10 rounded-xl" {...field} />
+                        </div>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="distrito"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Distrito</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Distrito" className="rounded-xl" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="ciudad"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold text-slate-700">Ciudad</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Ciudad" className="rounded-xl" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="col-span-1 md:col-span-3 grid grid-cols-1 md:grid-cols-2 gap-4 bg-rose-50/30 p-4 rounded-xl border border-rose-100">
+                  <FormField
+                    control={form.control}
+                    name="contactoEmergenciaNombre"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold text-slate-700">Contacto de Emergencia</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Nombre del contacto" className="rounded-xl" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="contactoEmergenciaTelefono"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold text-slate-700">Teléfono del Contacto</FormLabel>
+                        <FormControl>
+                          <div className="relative">
+                            <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input 
+                              placeholder="Celular o teléfono fijo" 
+                              className="pl-10 rounded-xl" 
+                              {...field} 
+                              maxLength={9}
+                              onChange={(e) => field.onChange(e.target.value.replace(/\D/g, ''))}
+                            />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
             </div>
 
             <FormField
@@ -723,6 +1295,196 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
             </DialogFooter>
           </form>
         </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+interface DocumentItem {
+  key: string;
+  label: string;
+  file: {
+    filename: string;
+    url: string;
+    size: string;
+    uploadedAt: string;
+  } | null;
+}
+
+function TrabajadorDocumentosView({ workerId }: { workerId: string }) {
+  const [documents, setDocuments] = useState<DocumentItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+
+  const fetchDocs = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await api.get(`/config/trabajadores/${workerId}/documentos`);
+      setDocuments(data || []);
+    } catch (e) {
+      console.error("Error fetching documents:", e);
+    } finally {
+      setLoading(false);
+    }
+  }, [workerId]);
+
+  useEffect(() => {
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const handleFileUpload = async (key: string, file: File) => {
+    try {
+      setUploadingKey(key);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      await api.post(`/config/trabajadores/${workerId}/documento/${key}`, formData);
+      fetchDocs();
+    } catch (e) {
+      console.error("Error uploading file:", e);
+    } finally {
+      setUploadingKey(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex h-40 items-center justify-center bg-white rounded-2xl border border-slate-100 shadow-sm">
+        <Loader2 className="h-8 w-8 animate-spin text-[#001F3F]" />
+      </div>
+    );
+  }
+
+  return (
+    <Card className="border-none shadow-sm rounded-2xl overflow-hidden bg-white">
+      <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+        <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+          <FileText className="h-5 w-5 text-[#003087]" />
+          Documentos y Expediente del Trabajador
+        </CardTitle>
+        <CardDescription>
+          Suba y gestione los documentos obligatorios del personal (formatos PDF, imágenes o Word).
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="p-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {documents.map((doc) => {
+            const hasFile = !!doc.file;
+            return (
+              <div 
+                key={doc.key} 
+                className={`p-4 rounded-xl border flex flex-col justify-between gap-3 transition-all ${
+                  hasFile 
+                    ? "bg-emerald-50/30 border-emerald-100 hover:border-emerald-200" 
+                    : "bg-slate-50/50 border-slate-100 hover:border-slate-200"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3">
+                    <div className={`p-2.5 rounded-lg ${hasFile ? "bg-emerald-100 text-emerald-700" : "bg-slate-100 text-slate-500"}`}>
+                      <FileText className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-slate-800 text-sm truncate">{doc.label}</h4>
+                      {hasFile ? (
+                        <div className="text-xs text-slate-600 mt-0.5 space-y-0.5">
+                          <p className="font-mono text-[10px] text-slate-500 truncate max-w-[220px]">
+                            {doc.file?.filename}
+                          </p>
+                          <p>{doc.file?.size} • {new Date(doc.file!.uploadedAt).toLocaleDateString('es-ES')}</p>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                          <FileX className="h-3.5 w-3.5" /> Sin archivo cargado
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  {hasFile && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-800 font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
+                      <CheckCircle2 className="h-3 w-3" /> Cargado
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 mt-2">
+                  {hasFile && (
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="bg-white border-slate-200 rounded-lg text-xs h-8 px-3 hover:bg-slate-50"
+                      onClick={() => window.open(api.getFileUrl(doc.file!.url), '_blank')}
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1 text-[#003087]" />
+                      Descargar
+                    </Button>
+                  )}
+
+                  <div className="relative">
+                    <input
+                      type="file"
+                      id={`file-${doc.key}`}
+                      className="hidden"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.xls,.xlsx"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          handleFileUpload(doc.key, file);
+                        }
+                      }}
+                      disabled={uploadingKey === doc.key}
+                    />
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className={`rounded-lg text-xs h-8 px-3 ${
+                        hasFile ? "bg-white border-slate-200 text-slate-600" : "bg-[#001F3F] text-white hover:bg-[#003087]"
+                      }`}
+                      onClick={() => document.getElementById(`file-${doc.key}`)?.click()}
+                      disabled={uploadingKey === doc.key}
+                    >
+                      {uploadingKey === doc.key ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" />
+                      ) : hasFile ? (
+                        <RefreshCw className="h-3.5 w-3.5 mr-1" />
+                      ) : (
+                        <UploadCloud className="h-3.5 w-3.5 mr-1" />
+                      )}
+                      {hasFile ? "Reemplazar" : "Subir archivo"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+interface DocumentosModalProps {
+  worker: Worker;
+  isOpen: boolean;
+  setIsOpen: (open: boolean) => void;
+}
+
+function TrabajadorDocumentosModal({ worker, isOpen, setIsOpen }: DocumentosModalProps) {
+  return (
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogContent className="sm:max-w-[800px] max-h-[85vh] overflow-y-auto rounded-2xl p-0 border-none shadow-2xl">
+        <DialogHeader className="bg-gradient-to-r from-[#001F3F] to-[#003087] p-6 text-white sticky top-0 z-50">
+          <DialogTitle className="text-2xl font-bold flex items-center gap-3">
+            <FileText className="h-6 w-6" />
+            Expediente: {worker.nombre}
+          </DialogTitle>
+          <DialogDescription className="text-white/80 text-sm mt-1">
+            Gestión de documentos de seguridad, salud y capacitación de {worker.nombre} ({worker.cargo}).
+          </DialogDescription>
+        </DialogHeader>
+        <div className="p-6 bg-slate-50">
+          <TrabajadorDocumentosView workerId={worker.id} />
+        </div>
       </DialogContent>
     </Dialog>
   );
