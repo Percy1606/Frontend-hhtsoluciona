@@ -108,7 +108,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
         if (!name) return false;
         const n = name.trim().toLowerCase();
         const t = target.trim().toLowerCase();
-        if (t === 'angi') return n === 'angi' || n === 'angie';
+        if (t === 'angi') return n === 'angi' || n === 'ANGI';
         return n === t;
       };
 

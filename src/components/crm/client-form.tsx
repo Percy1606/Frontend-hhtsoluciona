@@ -46,7 +46,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       observaciones: client.observaciones || "",
       accion: client.accion || "",
       tarifa: client.tarifa || "MT3",
-      asignadoA: client.asignadoA || "Angie",
+      asignadoA: client.asignadoA || "Angi",
       prioridad: client.prioridad || "Media",
       etapaComercial: client.etapaComercial || "Prospecto",
       tipoCliente: client.tipoCliente || "PROSPECTO",
@@ -63,7 +63,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
       correo: "",
       cartera: "",
       clasificacion: "RENTABLE",
-      asignadoA: "Angie",
+      asignadoA: "Angi",
       diaTrabajo: "Otros",
       estado: "Activo",
       prioridad: "Media",
@@ -315,7 +315,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Angie">Angie</SelectItem>
+                          <SelectItem value="Angi">Angi</SelectItem>
                           <SelectItem value="Valentina">Valentina</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
                           <SelectItem value="Brenda">Brenda</SelectItem>

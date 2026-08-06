@@ -292,7 +292,7 @@ export function CRMStats() {
 
   // Benchmarking Team
   const sellers = [
-    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
+    { name: 'ANGI', color: 'bg-blue-600', role: 'Asesora' },
     { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
     { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },
@@ -456,7 +456,7 @@ export function CRMStats() {
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
                       <SelectItem value="EQUIPO COMPLETO" className="text-slate-500 font-medium text-sm">Todo el Equipo Comercial</SelectItem>
-                      <SelectItem value="Angie">ANGIE</SelectItem>
+                      <SelectItem value="Angi">Angi</SelectItem>
                       <SelectItem value="Valentina">VALENTINA</SelectItem>
                       <SelectItem value="Ariana">ARIANA</SelectItem>
                       <SelectItem value="Brenda">BRENDA</SelectItem>
@@ -687,7 +687,7 @@ export function CRMStats() {
                           <div 
                             className={cn(
                               "h-full rounded-full transition-all duration-1000",
-                              data.name === "Angie" ? "bg-blue-500" :
+                              data.name === "Angi" ? "bg-blue-500" :
                               data.name === "Valentina" ? "bg-violet-500" :
                               data.name === "Ariana" ? "bg-orange-500" :
                               data.name === "Brenda" ? "bg-emerald-500" : "bg-teal-500"

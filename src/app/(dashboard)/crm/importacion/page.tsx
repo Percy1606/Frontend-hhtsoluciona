@@ -35,7 +35,7 @@ export default function ImportacionPage() {
             <div className="space-y-2">
               <h2 className="text-2xl font-black text-primary uppercase tracking-tight">Importar Clientes</h2>
               <p className="text-muted-foreground text-sm font-medium">
-                Sube tus archivos de Excel con el formato de BASE CRM o MT4 ANGIE. 
+                Sube tus archivos de Excel con el formato de BASE CRM o MT4 ANGI. 
                 El sistema mapeará automáticamente los campos comerciales.
               </p>
             </div>

@@ -124,7 +124,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     mapped.contacto = getRowValue(["Contacto", "Nombre Contacto", "Representante", "Atencion"]) || "";
     mapped.cargo = getRowValue(["Cargo", "Cargo Contacto", "Puesto"]) || "";
     mapped.correo = getRowValue(["Correo", "Email", "Correo Electronico", "E-mail"]) || "";
-    mapped.asignadoA = getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angie";
+    mapped.asignadoA = getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angi";
     mapped.diaTrabajo = getRowValue(["Dia de Trabajo", "Dia Trabajo", "Dia Visita", "Dia"]) || "Lunes";
     mapped.estado = getRowValue(["Estado", "Situacion", "Estado Cliente"]) || "Activo";
 
@@ -217,7 +217,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     
     const sampleRowBase = [
       "EMPRESA EJEMPLO S.A.C.", "20123456789", "Av. Industrial 456, Piura", "Zona Industrial", "MT3", "987654321",
-      "Carlos Mendívil", "Gerente Operaciones", "cmendivil@ejemplo.com", "Angie", "Lunes",
+      "Carlos Mendívil", "Gerente Operaciones", "cmendivil@ejemplo.com", "Angi", "Lunes",
       "Prospecto", "Media", "2026-05-20", "2026-06-05",
       "Enviar brochure institucional", "Interesado en mantenimiento eléctrico general.", "Nuevo"
     ];
@@ -233,7 +233,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     XLSX.utils.book_append_sheet(wb, ws, "CRM Plantilla");
-    XLSX.writeFile(wb, `Plantilla_CRM_${fileType === "base" ? "BASE_CRM" : "MT4_ANGIE"}.xlsx`);
+    XLSX.writeFile(wb, `Plantilla_CRM_${fileType === "base" ? "BASE_CRM" : "MT4_ANGI"}.xlsx`);
   };
 
   return (
@@ -273,7 +273,7 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
                     className="flex-1 font-bold text-xs uppercase h-9"
                     onClick={() => setFileType("mt4")}
                   >
-                    MT4 ANGIE Específico
+                    MT4 ANGI Específico
                   </Button>
                 </div>
               </div>

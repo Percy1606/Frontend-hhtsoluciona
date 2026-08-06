@@ -74,7 +74,7 @@ const stageList = [
   "Negociación", "Orden de Servicio", "Ganado", "Perdido"
 ];
 
-const sellerList = ["Angie", "Valentina", "Ariana", "Brenda"];
+const sellerList = ["Angi", "Valentina", "Ariana", "Brenda"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const { reassignSeller, changeStage, addInteraction, attachFile, deleteFile, updateClient } = useCRMStore();
@@ -85,7 +85,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const [intAction, setIntAction] = useState("");
   const [intNextDate, setIntNextDate] = useState("");
   const [intObs, setIntObs] = useState("");
-  const [intUser, setIntUser] = useState("Angie");
+  const [intUser, setIntUser] = useState("Angi");
   const [isAddingInt, setIsAddingInt] = useState(false);
   const [isVisitModalOpen, setIsVisitModalOpen] = useState(false);
   

@@ -248,7 +248,7 @@ export default function DashboardPage() {
 
   // Equipo Comercial
   const sellers = [
-    { name: 'Angie', color: 'bg-blue-600', role: 'Asesora' },
+    { name: 'ANGI', color: 'bg-blue-600', role: 'Asesora' },
     { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
     { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },

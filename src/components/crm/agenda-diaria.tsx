@@ -99,7 +99,7 @@ export function AgendaDiaria({
   const [expandedClient, setExpandedClient] = useState<string | null>(null);
   const [showFidelizadosModal, setShowFidelizadosModal] = useState(false);
   const [showAuditoriaModal, setShowAuditoriaModal] = useState(false);
-  const [expandedAuditoriaAsesores, setExpandedAuditoriaAsesores] = useState<Record<string, boolean>>({'Steven': true, 'Javier': true, 'Angie': true, 'Mellani': true});
+  const [expandedAuditoriaAsesores, setExpandedAuditoriaAsesores] = useState<Record<string, boolean>>({});
 
   // PAGINACIÓN Y LÍMITE DE REGISTROS PARA MAS DE 100 TAREAS
   const [taskPage, setTaskPage] = useState(1);
@@ -827,7 +827,7 @@ export function AgendaDiaria({
                 <option value="Steven">Steven (Estratégico)</option>
                 <option value="Mario">Mario (Instalación & Servicio)</option>
                 <option value="Javier">Javier (Estratégico)</option>
-                <option value="Angie">Angie (Recuperación & Cartera)</option>
+                <option value="Angi">Angi (Recuperación & Cartera)</option>
                 <option value="Mellani">Mellani (Estratégico)</option>
               </optgroup>
             </select>
@@ -964,7 +964,7 @@ export function AgendaDiaria({
                   <option value="Valentina">Valentina</option>
                   <option value="Ariana">Ariana</option>
                   <option value="Brenda">Brenda</option>
-                  <option value="Angie">Angie</option>
+                  <option value="Angi">Angi</option>
                 </select>
               </div>
 
@@ -1280,7 +1280,7 @@ export function AgendaDiaria({
                                 <option value="Valentina">Valentina</option>
                                 <option value="Ariana">Ariana</option>
                                 <option value="Brenda">Brenda</option>
-                                <option value="Angie">Angie</option>
+                                <option value="Angi">Angi</option>
                                 <option value="Mellani">Mellani</option>
                               </select>
                             </div>
@@ -1388,7 +1388,7 @@ export function AgendaDiaria({
                               <option value="Valentina">Valentina</option>
                               <option value="Ariana">Ariana</option>
                               <option value="Brenda">Brenda</option>
-                              <option value="Angie">Angie</option>
+                              <option value="Angi">Angi</option>
                               <option value="Mellani">Mellani</option>
                             </select>
                             <select
@@ -1480,7 +1480,7 @@ export function AgendaDiaria({
                                           <option value="Valentina">Valentina</option>
                                           <option value="Ariana">Ariana</option>
                                           <option value="Brenda">Brenda</option>
-                                          <option value="Angie">Angie</option>
+                                          <option value="Angi">Angi</option>
                                           <option value="Mellani">Mellani</option>
                                         </select>
                                       </td>
@@ -1550,7 +1550,7 @@ export function AgendaDiaria({
                                         >
                                           <option value="Steven">Steven</option>
                                           <option value="Javier">Javier</option>
-                                          <option value="Angie">Angie</option>
+                                          <option value="Angi">Angi</option>
                                           <option value="Mellani">Mellani</option>
                                         </select>
                                       </td>
@@ -1613,12 +1613,42 @@ export function AgendaDiaria({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Selector "¿Quién eres?" */}
+            <div className="px-5 py-3.5 bg-slate-100 border-b border-slate-200/80 flex flex-col gap-2">
+              <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">¿Quién eres? (Auto-desplegar mis tareas)</span>
+              <div className="flex flex-wrap gap-1.5 items-center">
+                {['Steven', 'Javier', 'ANGI', 'Mellani'].map(name => (
+                  <button
+                    key={name}
+                    onClick={() => {
+                      setExpandedAuditoriaAsesores({ [name]: true });
+                    }}
+                    className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm active:scale-95 cursor-pointer"
+                  >
+                    👤 {name}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setExpandedAuditoriaAsesores({})}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-slate-200/80 hover:bg-slate-200 text-slate-600 active:scale-95 cursor-pointer ml-auto"
+                >
+                  Colapsar todo
+                </button>
+                <button
+                  onClick={() => setExpandedAuditoriaAsesores({'Steven': true, 'Javier': true, 'ANGI': true, 'Mellani': true})}
+                  className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-slate-800 hover:bg-slate-700 text-white active:scale-95 cursor-pointer"
+                >
+                  Ver Todo
+                </button>
+              </div>
+            </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
-              {['Steven', 'Javier', 'Angie', 'Mellani'].map(asesor => {
+              {['Steven', 'Javier', 'ANGI', 'Mellani'].map(asesor => {
                 const actividades = tareasEstrategicas.flatMap(t => 
                   t.subtareas
-                    .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase())
+                    .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase() && !s.completada)
                     .map(s => ({ ...s, empresa: t.empresa, tareaId: t.id }))
                 );
                 
@@ -1679,7 +1709,7 @@ export function AgendaDiaria({
                           >
                             <option value="Steven">Steven</option>
                             <option value="Javier">Javier</option>
-                            <option value="Angie">Angie</option>
+                            <option value="Angi">Angi</option>
                             <option value="Mellani">Mellani</option>
                           </select>
                         </div>

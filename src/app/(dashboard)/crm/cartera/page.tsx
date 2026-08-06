@@ -236,7 +236,7 @@ export default function CarteraPage() {
                         <SelectValue placeholder="SELECCIONAR ASESOR" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
-                        <SelectItem value="Angie" className="font-black text-[10px] uppercase">ANGIE</SelectItem>
+                        <SelectItem value="Angi" className="font-black text-[10px] uppercase">Angi</SelectItem>
                         <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
                         <SelectItem value="Ariana" className="font-black text-[10px] uppercase">ARIANA</SelectItem>
                         <SelectItem value="Brenda" className="font-black text-[10px] uppercase">BRENDA</SelectItem>

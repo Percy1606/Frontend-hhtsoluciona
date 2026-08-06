@@ -49,7 +49,7 @@ export default function PipelinePage() {
                 <SelectValue placeholder="SELECCIONAR ASESOR" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 shadow-xl">
-                <SelectItem value="Angie" className="font-black uppercase text-[10px]">ANGIE</SelectItem>
+                <SelectItem value="Angi" className="font-black uppercase text-[10px]">Angi</SelectItem>
                 <SelectItem value="Valentina" className="font-black uppercase text-[10px]">VALENTINA</SelectItem>
                 <SelectItem value="Ariana" className="font-black uppercase text-[10px]">ARIANA</SelectItem>
                 <SelectItem value="Brenda" className="font-black uppercase text-[10px]">BRENDA</SelectItem>
