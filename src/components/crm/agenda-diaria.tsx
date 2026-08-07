@@ -306,6 +306,7 @@ export function AgendaDiaria({
   const handleAdvisorSelect = (adv: string) => {
     setSelectedAdvisor(adv);
     setTaskPage(1);
+    setExpandedTareaId(null);
     if (onAdvisorChange) onAdvisorChange(adv);
   };
 
@@ -1595,8 +1596,56 @@ export function AgendaDiaria({
                       </div>
                     </div>
                   )}
-            
-      
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* PAGINACIÓN ALTA CAPACIDAD TIPO CARTERA (+100 REGISTROS) */}
+        {totalTaskPages > 1 && (
+          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
+            <span className="text-xs font-medium text-slate-500">
+              Página {taskPage} de {totalTaskPages} ({filteredTareasEstrategicas.length} tareas totales)
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                disabled={taskPage === 1}
+                onClick={() => setTaskPage(prev => Math.max(1, prev - 1))}
+                className="rounded-xl text-xs font-medium"
+              >
+                Anterior
+              </Button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalTaskPages) }, (_, i) => {
+                  const pNum = i + 1;
+                  return (
+                    <button
+                      key={pNum}
+                      onClick={() => setTaskPage(pNum)}
+                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
+                        taskPage === pNum ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
+                      }`}
+                    >
+                      {pNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <Button
+                variant="outline"
+                disabled={taskPage === totalTaskPages}
+                onClick={() => setTaskPage(prev => Math.min(totalTaskPages, prev + 1))}
+                className="rounded-xl text-xs font-medium"
+              >
+                Siguiente
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
       {showAuditoriaModal && (
         <div className="fixed inset-0 z-[100] flex justify-end">
           {/* Overlay oscuro */}
@@ -1791,17 +1840,6 @@ export function AgendaDiaria({
                                 </div>
                               </div>
                             )}
-
-                            {especialesEnCurso.length > 0 && (
-                              <div className="space-y-2">
-                                <h5 className="text-[11px] font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-emerald-100 pb-1 mt-4">
-                                  Casos Especiales en Curso ({especialesEnCurso.length})
-                                </h5>
-                                <div className="space-y-2">
-                                  {especialesEnCurso.map(act => renderActividad(act, false))}
-                                </div>
-                              </div>
-                            )}
                           </>
                         )}
                       </div>
@@ -1813,103 +1851,9 @@ export function AgendaDiaria({
           </div>
         </div>
       )}
-    </div>
-  );
-})
-          )}
-        </div>
 
-        {/* PAGINACIÓN ALTA CAPACIDAD TIPO CARTERA (+100 REGISTROS) */}
-        {totalTaskPages > 1 && (
-          <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
-            <span className="text-xs font-medium text-slate-500">
-              Página {taskPage} de {totalTaskPages} ({filteredTareasEstrategicas.length} tareas totales)
-            </span>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                disabled={taskPage === 1}
-                onClick={() => setTaskPage(prev => Math.max(1, prev - 1))}
-                className="rounded-xl text-xs font-medium"
-              >
-                Anterior
-              </Button>
-              <div className="flex items-center gap-1">
-                {Array.from({ length: Math.min(5, totalTaskPages) }, (_, i) => {
-                  const pNum = i + 1;
-                  return (
-                    <button
-                      key={pNum}
-                      onClick={() => setTaskPage(pNum)}
-                      className={`w-7 h-7 rounded-lg text-xs font-semibold transition-all ${
-                        taskPage === pNum ? 'bg-emerald-600 text-white shadow-xs' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-100'
-                      }`}
-                    >
-                      {pNum}
-                    </button>
-                  );
-                })}
-              </div>
-              <Button
-                variant="outline"
-                disabled={taskPage === totalTaskPages}
-                onClick={() => setTaskPage(prev => Math.min(totalTaskPages, prev + 1))}
-                className="rounded-xl text-xs font-medium"
-              >
-                Siguiente
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* MODAL SECCIÓN 2: CLIENTES GANADOS Y FIDELIZADOS */}
-      {showFidelizadosModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl w-full max-w-5xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 border-b border-slate-100 p-5 bg-slate-50/80">
-              <div>
-                <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  <HeartHandshake className="w-5 h-5 text-indigo-600" />
-                  Seguimiento a Clientes Ganados y Fidelizados ({clientesFidelizados.length} Cuentas Ganadas)
-                </h2>
-                <p className="text-xs text-slate-500 font-normal mt-0.5">
-                  Exclusivo para clientes en estado Ganado / Cartera Fidelizada — Observaciones con Fecha
-                </p>
-              </div>
-              <button onClick={() => setShowFidelizadosModal(false)} className="text-slate-400 hover:bg-slate-200 p-1.5 rounded-lg transition-colors self-start lg:self-auto border border-slate-200 bg-white">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="p-5 overflow-y-auto space-y-4">
-              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3">
-
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Buscar cliente ganado (ej: IPESA, IMP)..."
-                className="bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-700 font-normal focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 w-48 lg:w-64"
-                value={searchObsQuery}
-                onChange={(e) => setSearchObsQuery(e.target.value)}
-              />
-            </div>
-
-            <Button
-              onClick={() => setShowAddFidelizadoModal(!showAddFidelizadoModal)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-3.5 py-1.5 shadow-xs shrink-0 gap-1.5"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              {showAddFidelizadoModal ? 'Cerrar' : '+ Seleccionar Cliente Ganado'}
-            </Button>
-          </div>
-        </div>
-
-        {/* FORMULARIO DESPLEGABLE DE OBSERVACIÓN BD */}
-        {showAddFidelizadoModal && (
-          <form onSubmit={handleAddObsToExistingDBClient} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-200">
+      {showAddFidelizadoModal && (
+        <form onSubmit={handleAddObsToExistingDBClient} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 uppercase pb-2 border-b border-slate-200">
               <HeartHandshake className="w-4 h-4 text-emerald-600" />
               Seleccionar Cliente Ya Registrado en la Base de Datos
@@ -2144,11 +2088,7 @@ export function AgendaDiaria({
               Cargar 10 clientes ganados más ({clientesFidelizados.length - obsVisibleLimit} restantes) <ChevronRight className="w-4 h-4" />
             </Button>
           )}
-            </div>
-          </div>
         </div>
-      </div>
-      )}
     </div>
   );
 }
