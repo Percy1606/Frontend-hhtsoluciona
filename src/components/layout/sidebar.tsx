@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -46,6 +46,7 @@ import { cn } from "@/lib/utils";
 import { useSidebar } from "@/components/ui/sidebar";
 import { useAuthStore } from "@/store/auth-store";
 import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
@@ -121,7 +122,21 @@ export function Sidebar() {
   const { state, toggleSidebar, isMobile, openMobile, setOpenMobile } = useSidebar();
   // En móvil usamos openMobile (invertido para mantener la lógica de "collapsed"). En PC usamos state.
   const sidebarCollapsed = isMobile ? !openMobile : state === "collapsed";
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateUser } = useAuthStore();
+
+  useEffect(() => {
+    if (user?.id) {
+      api.get('/auth/me')
+        .then(freshUser => {
+          if (freshUser && freshUser.id) {
+            updateUser(freshUser);
+          }
+        })
+        .catch(err => {
+          console.warn("Error re-sincronizando usuario:", err);
+        });
+    }
+  }, []);
 
   const userModules = user?.modulos || [];
   const isAdmin = user?.rol === "ADMIN";

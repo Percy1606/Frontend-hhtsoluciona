@@ -1667,7 +1667,7 @@ export function AgendaDiaria({
             <div className="px-5 py-3.5 bg-slate-100 border-b border-slate-200/80 flex flex-col gap-2">
               <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">¿Quién eres? (Auto-desplegar mis tareas)</span>
               <div className="flex flex-wrap gap-1.5 items-center">
-                {['Steven', 'Javier', 'ANGI', 'Mellani'].map(name => (
+                {['Steven', 'Javier', 'Angi', 'Mellani'].map(name => (
                   <button
                     key={name}
                     onClick={() => {
@@ -1685,7 +1685,7 @@ export function AgendaDiaria({
                   Colapsar todo
                 </button>
                 <button
-                  onClick={() => setExpandedAuditoriaAsesores({'Steven': true, 'Javier': true, 'ANGI': true, 'Mellani': true})}
+                  onClick={() => setExpandedAuditoriaAsesores({'Steven': true, 'Javier': true, 'Angi': true, 'Mellani': true})}
                   className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-slate-800 hover:bg-slate-700 text-white active:scale-95 cursor-pointer"
                 >
                   Ver Todo
@@ -1694,7 +1694,7 @@ export function AgendaDiaria({
             </div>
             
             <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
-              {['Steven', 'Javier', 'ANGI', 'Mellani'].map(asesor => {
+              {['Steven', 'Javier', 'Angi', 'Mellani'].map(asesor => {
                 const actividades = tareasEstrategicas.flatMap(t => 
                   t.subtareas
                     .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase() && !s.completada)
@@ -1712,6 +1712,7 @@ export function AgendaDiaria({
                 const fuegosPorApagar: typeof actividades = [];
                 const elDiaADia: typeof actividades = [];
                 const especialesEnCurso: typeof actividades = [];
+                const otrasActividades: typeof actividades = [];
                 
                 actividades.forEach(act => {
                    const d = parseDate(act.fecha);
@@ -1727,6 +1728,8 @@ export function AgendaDiaria({
                       }
                    } else if (diffDays === 0) {
                       elDiaADia.push(act);
+                   } else {
+                      otrasActividades.push(act);
                    }
                 });
                 
@@ -1822,7 +1825,7 @@ export function AgendaDiaria({
                             {fuegosPorApagar.length > 0 && (
                               <div className="space-y-2">
                                 <h5 className="text-[11px] font-black text-rose-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-rose-100 pb-1">
-                                  Prioridad Inmediata ({fuegosPorApagar.length})
+                                  Prioridad Inmediata / Expiradas ({fuegosPorApagar.length})
                                 </h5>
                                 <div className="space-y-2">
                                   {fuegosPorApagar.map(act => renderActividad(act, true))}
@@ -1833,10 +1836,21 @@ export function AgendaDiaria({
                             {elDiaADia.length > 0 && (
                               <div className="space-y-2">
                                 <h5 className="text-[11px] font-black text-blue-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-blue-100 pb-1 mt-4">
-                                  El Día a Día ({elDiaADia.length})
+                                  El Día a Día (Hoy) ({elDiaADia.length})
                                 </h5>
                                 <div className="space-y-2">
                                   {elDiaADia.map(act => renderActividad(act, false))}
+                                </div>
+                              </div>
+                            )}
+
+                            {otrasActividades.length > 0 && (
+                              <div className="space-y-2">
+                                <h5 className="text-[11px] font-black text-indigo-600 uppercase tracking-wider flex items-center gap-1.5 border-b border-indigo-100 pb-1 mt-4">
+                                  Programadas / Próximas ({otrasActividades.length})
+                                </h5>
+                                <div className="space-y-2">
+                                  {otrasActividades.map(act => renderActividad(act, false))}
                                 </div>
                               </div>
                             )}

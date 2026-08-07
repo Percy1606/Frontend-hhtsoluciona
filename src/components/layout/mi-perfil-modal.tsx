@@ -19,11 +19,13 @@ import {
   Check,
   Save,
   ChevronDown,
+  FileText,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { TrabajadorDocumentosView } from "@/components/configuracion/trabajador-documentos-view";
 
 interface Worker {
   id: string;
@@ -81,6 +83,7 @@ export function MiPerfilModal({ isOpen, onClose }: MiPerfilModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [activeTab, setActiveTab] = useState<"perfil" | "documentos">("perfil");
 
   // Editable fields (only personal data the user can update themselves)
   const [editTelefono, setEditTelefono] = useState("");
@@ -324,7 +327,38 @@ export function MiPerfilModal({ isOpen, onClose }: MiPerfilModalProps) {
                 </div>
               </div>
 
-              {/* Edit banner */}
+              {/* Tab Selector */}
+              <div className="flex gap-2 p-1 bg-slate-100/80 rounded-xl border border-slate-200/60 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("perfil")}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === "perfil"
+                      ? "bg-[#001F3F] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Perfil Personal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("documentos")}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    activeTab === "documentos"
+                      ? "bg-[#001F3F] text-white shadow-xs"
+                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+                  }`}
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  Documentación y Expediente
+                </button>
+              </div>
+
+              {activeTab === "documentos" ? (
+                <TrabajadorDocumentosView workerId={profile.id} />
+              ) : (
+                <>
               {isEditing && (
                 <div className="flex items-center gap-2 px-4 py-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-semibold text-emerald-700">
                   <Edit2 className="w-3.5 h-3.5" />
@@ -583,6 +617,8 @@ export function MiPerfilModal({ isOpen, onClose }: MiPerfilModalProps) {
                 <Briefcase className="inline w-3 h-3 mr-1 -mt-0.5" />
                 El nombre, área, cargo y estado solo pueden ser modificados por un administrador.
               </p>
+                </>
+              )}
             </>
           )}
         </div>

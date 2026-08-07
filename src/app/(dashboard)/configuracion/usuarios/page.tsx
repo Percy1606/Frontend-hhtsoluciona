@@ -107,7 +107,7 @@ interface Responsable {
 }
 
 export default function UsuariosPage() {
-  const { user: currentUser } = useAuthStore();
+  const { user: currentUser, updateUser } = useAuthStore();
   const isAdmin = currentUser?.rol === "ADMIN";
 
   const [usuarios, setUsuarios] = useState<User[]>([]);
@@ -190,6 +190,9 @@ export default function UsuariosPage() {
       if (editingUser) {
         if (!payload.password) delete payload.password;
         await api.patch(`/config/usuarios/${editingUser.id}`, payload);
+        if (currentUser && editingUser.id === currentUser.id) {
+          updateUser(payload);
+        }
         toast.success("Usuario actualizado correctamente");
       } else {
         await api.post("/config/usuarios", payload);
