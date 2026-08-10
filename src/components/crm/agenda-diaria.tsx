@@ -1544,14 +1544,22 @@ export function AgendaDiaria({
                                           value={editSubtaskResponsable}
                                           onChange={(e) => setEditSubtaskResponsable(e.target.value)}
                                         >
-                                          <option value="Steven">Steven</option>
-                                          <option value="Mario">Mario</option>
-                                          <option value="Javier">Javier</option>
-                                          <option value="Valentina">Valentina</option>
-                                          <option value="Ariana">Ariana</option>
-                                          <option value="Brenda">Brenda</option>
-                                          <option value="Angi">Angi</option>
-                                          <option value="Mellani">Mellani</option>
+                                          {isGeneralAgenda && trabajadoresList.length > 0 ? (
+                                            trabajadoresList.map((w) => (
+                                              <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                            ))
+                                          ) : (
+                                            <>
+                                              <option value="Steven">Steven</option>
+                                              <option value="Mario">Mario</option>
+                                              <option value="Javier">Javier</option>
+                                              <option value="Valentina">Valentina</option>
+                                              <option value="Ariana">Ariana</option>
+                                              <option value="Brenda">Brenda</option>
+                                              <option value="Angi">Angi</option>
+                                              <option value="Mellani">Mellani</option>
+                                            </>
+                                          )}
                                         </select>
                                       </td>
                                       <td className="px-4 py-3 align-top"></td>
