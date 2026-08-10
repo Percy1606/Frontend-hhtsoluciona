@@ -142,11 +142,29 @@ interface Worker {
   disponibilidadViajes: boolean | null;
 }
 
+const formatDateString = (dateStr: string | null | undefined) => {
+  if (!dateStr) return "-";
+  try {
+    const cleanDateStr = dateStr.includes('T') ? dateStr.split('T')[0] : dateStr;
+    const parts = cleanDateStr.split('-');
+    if (parts.length === 3) {
+      const [year, month, day] = parts;
+      return `${day}/${month}/${year}`;
+    }
+    return new Date(dateStr).toLocaleDateString('es-ES', { timeZone: 'UTC' });
+  } catch (e) {
+    return "-";
+  }
+};
+
 const calcularEdad = (fechaNacimiento: string | null | undefined) => {
   if (!fechaNacimiento) return "-";
   try {
     const hoy = new Date();
-    const cumpleanos = new Date(fechaNacimiento);
+    const cleanDateStr = fechaNacimiento.includes('T') ? fechaNacimiento.split('T')[0] : fechaNacimiento;
+    const parts = cleanDateStr.split('-');
+    if (parts.length !== 3) return "-";
+    const cumpleanos = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
     if (isNaN(cumpleanos.getTime())) return "-";
     let edad = hoy.getFullYear() - cumpleanos.getFullYear();
     const mes = hoy.getMonth() - cumpleanos.getMonth();
@@ -157,6 +175,22 @@ const calcularEdad = (fechaNacimiento: string | null | undefined) => {
   } catch (e) {
     return "-";
   }
+};
+
+const parseWorkerCargoAndArea = (rawCargo: string, rawArea: string) => {
+  let displayArea = rawArea;
+  let displayCargo = rawCargo;
+
+  const areaMatch = rawCargo.match(/\[Area:(.*?)\]$/);
+  if (areaMatch && areaMatch[1]) {
+    displayArea = areaMatch[1];
+    displayCargo = rawCargo.replace(/\s*\[Area:.*?\]$/, '').trim();
+  }
+
+  return {
+    cargo: displayCargo,
+    area: displayArea,
+  };
 };
 
 const areaColors: Record<string, string> = {
@@ -283,7 +317,9 @@ function UserTrabajadorView() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-slate-800">{profile.nombre}</h2>
-                    <p className="font-medium text-muted-foreground uppercase tracking-tight">{profile.cargo}</p>
+                    <p className="font-medium text-muted-foreground uppercase tracking-tight">
+                      {parseWorkerCargoAndArea(profile.cargo, profile.area).cargo}
+                    </p>
                   </div>
                 </div>
                 <Button onClick={handleOpenModal} className="bg-[#001F3F] hover:bg-[#003087] rounded-xl h-11 px-6 transition-all shadow-md">
@@ -301,8 +337,8 @@ function UserTrabajadorView() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="space-y-1.5">
                       <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Área Operativa</h4>
-                      <Badge className={`${areaColors[profile.area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-semibold`}>
-                        {profile.area.replace(/([A-Z])/g, ' $1').trim()}
+                      <Badge className={`${areaColors[parseWorkerCargoAndArea(profile.cargo, profile.area).area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-semibold`}>
+                        {parseWorkerCargoAndArea(profile.cargo, profile.area).area.replace(/([A-Z])/g, ' $1').trim()}
                       </Badge>
                     </div>
                     <div className="space-y-1.5">
@@ -359,7 +395,7 @@ function UserTrabajadorView() {
                       <h4 className="font-semibold text-slate-500 text-xs uppercase tracking-wider">Fecha de Nacimiento</h4>
                       <div className="flex items-center gap-2 text-slate-700 text-sm">
                         <Calendar className="h-4 w-4 text-slate-400" />
-                        {profile.fechaNacimiento ? new Date(profile.fechaNacimiento).toLocaleDateString('es-ES') : "No registrado"}
+                        {formatDateString(profile.fechaNacimiento)}
                       </div>
                     </div>
                     <div className="space-y-1.5">
@@ -554,7 +590,9 @@ function AdminTrabajadoresView() {
                 {filteredWorkers.length === 0 ? (
                   <div className="text-center text-muted-foreground p-8">No se encontró personal registrado.</div>
                 ) : (
-                  filteredWorkers.map((worker) => (
+                  filteredWorkers.map((worker) => {
+                    const { cargo: displayCargo, area: displayArea } = parseWorkerCargoAndArea(worker.cargo, worker.area);
+                    return (
                     <div key={worker.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 relative">
                       <div className="absolute top-4 right-4 flex items-center">
                         <DropdownMenu>
@@ -589,14 +627,14 @@ function AdminTrabajadoresView() {
                         </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-slate-800 leading-tight">{worker.nombre}</span>
-                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{worker.cargo}</span>
+                          <span className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{displayCargo}</span>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         <div className="flex flex-col gap-2">
-                          <Badge className={`${areaColors[worker.area] || "bg-slate-100 text-slate-700"} border shadow-none px-2 py-0.5 rounded-md font-medium text-[9px] w-fit uppercase`}>
-                            {worker.area.replace(/([A-Z])/g, ' $1').trim()}
+                          <Badge className={`${areaColors[displayArea] || "bg-slate-100 text-slate-700"} border shadow-none px-2 py-0.5 rounded-md font-medium text-[9px] w-fit uppercase`}>
+                            {displayArea.replace(/([A-Z])/g, ' $1').trim()}
                           </Badge>
                           <Badge className={worker.activo ? "bg-emerald-50 text-emerald-700 border-emerald-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]" : "bg-rose-50 text-rose-700 border-rose-100 px-2 py-0.5 rounded-md flex items-center w-fit gap-1 text-[9px]"}>
                             {worker.activo ? <Check className="h-3 w-3" /> : <X className="h-3 w-3" />}
@@ -613,7 +651,8 @@ function AdminTrabajadoresView() {
                         </div>
                       </div>
                     </div>
-                  ))
+                  );
+                })
                 )}
               </div>
 
@@ -640,7 +679,9 @@ function AdminTrabajadoresView() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredWorkers.map((worker) => (
+                  filteredWorkers.map((worker) => {
+                    const { cargo: displayCargo, area: displayArea } = parseWorkerCargoAndArea(worker.cargo, worker.area);
+                    return (
                     <TableRow key={worker.id} className="group transition-colors hover:bg-slate-50/50 border-slate-300 border-dashed">
                       <TableCell className="py-4 px-6">
                         <div className="flex items-center gap-4">
@@ -649,7 +690,7 @@ function AdminTrabajadoresView() {
                           </div>
                           <div>
                             <p className="font-bold text-slate-800">{worker.nombre}</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{worker.cargo}</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-tight">{displayCargo}</p>
                           </div>
                         </div>
                       </TableCell>
@@ -657,15 +698,15 @@ function AdminTrabajadoresView() {
                         {worker.dni || "-"}
                       </TableCell>
                       <TableCell>
-                        <Badge className={`${areaColors[worker.area] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-medium`}>
-                          {worker.area.replace(/([A-Z])/g, ' $1').trim()}
+                        <Badge className={`${areaColors[displayArea] || "bg-slate-100 text-slate-700"} border shadow-none px-3 py-1 rounded-lg font-medium`}>
+                          {displayArea.replace(/([A-Z])/g, ' $1').trim()}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-sm text-slate-700">
                         <div className="space-y-1">
                           <p className="font-semibold">{calcularEdad(worker.fechaNacimiento)}</p>
                           <p className="text-xs text-muted-foreground">
-                            {worker.fechaNacimiento ? new Date(worker.fechaNacimiento).toLocaleDateString('es-ES') : "-"}
+                            {formatDateString(worker.fechaNacimiento)}
                           </p>
                         </div>
                       </TableCell>
@@ -760,7 +801,8 @@ function AdminTrabajadoresView() {
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))
+                  );
+                })
                 )}
               </TableBody>
             </Table>
@@ -799,10 +841,20 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
 
   useEffect(() => {
     if (editingWorker) {
+      // Extraer sub-área almacenada en el cargo si existe (formato: "Cargo [Area:NombreArea]")
+      let displayArea = editingWorker.area;
+      let displayCargo = editingWorker.cargo;
+
+      const areaMatch = editingWorker.cargo.match(/\[Area:(.*?)\]$/);
+      if (areaMatch && areaMatch[1]) {
+        displayArea = areaMatch[1];
+        displayCargo = editingWorker.cargo.replace(/\s*\[Area:.*?\]$/, '').trim();
+      }
+
       form.reset({
         nombre: editingWorker.nombre,
-        area: editingWorker.area,
-        cargo: editingWorker.cargo,
+        area: displayArea,
+        cargo: displayCargo,
         email: editingWorker.email || "",
         telefono: editingWorker.telefono || "",
         color: editingWorker.color,
@@ -864,14 +916,18 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
       };
 
       const validArea = areaMapping[values.area] || values.area;
+      // Empaquetar la sub-área elegida en el campo cargo de forma transparente: "Cargo [Area:NombreArea]"
+      const cleanCargo = values.cargo.replace(/\s*\[Area:.*?\]$/, '').trim();
+      const savedCargo = `${cleanCargo} [Area:${values.area}]`;
 
       const payload = {
         ...values,
         area: validArea,
+        cargo: savedCargo,
         email: values.email || null,
         telefono: values.telefono || null,
         dni: values.dni || null,
-        fechaNacimiento: values.fechaNacimiento ? new Date(values.fechaNacimiento).toISOString() : null,
+        fechaNacimiento: values.fechaNacimiento ? new Date(`${values.fechaNacimiento}T12:00:00.000Z`).toISOString() : null,
         sexo: values.sexo || null,
         estadoCivil: values.estadoCivil || null,
         nacionalidad: values.nacionalidad || null,
