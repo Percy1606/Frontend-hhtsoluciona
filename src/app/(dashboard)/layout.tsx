@@ -65,7 +65,8 @@ export default function DashboardLayout({
     if (user.rol !== "ADMIN") {
       const moduloActual = pathname.split("/")[1]; 
       
-      if (moduloActual && !(user.modulos || []).includes(moduloActual) && moduloActual !== "") {
+      // Permitir siempre la pantalla universal agenda-trabajadores
+      if (moduloActual && moduloActual !== "agenda-trabajadores" && !(user.modulos || []).includes(moduloActual) && moduloActual !== "") {
         toast.error("No tienes permisos para ver esta pantalla");
         router.push("/");
         return;
