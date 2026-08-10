@@ -847,8 +847,27 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
   const onSubmit = async (values: z.infer<typeof workerSchema>) => {
     try {
       setIsSubmitting(true);
+      
+      // Mapear áreas seleccionadas a una de las 4 áreas válidas requeridas por Prisma en el backend
+      const areaMapping: Record<string, string> = {
+        GerenciaYAdministracion: 'GestionDocumentaria',
+        ComercialYDesarrolloEmpresarial: 'GestionDocumentaria',
+        MarketingYComunicaciones: 'GestionDocumentaria',
+        IngenieriaYProyectos: 'IngenieriaYSupervision',
+        IngenieriaYSupervision: 'IngenieriaYSupervision',
+        OperacionesYServiciosTecnicos: 'OperacionesDeCampo',
+        OperacionesDeCampo: 'OperacionesDeCampo',
+        LogisticaYRecursos: 'LogisticaYRecursos',
+        GestionDocumentaria: 'GestionDocumentaria',
+        ContabilidadYFinanzas: 'GestionDocumentaria',
+        SeguridadYSST: 'OperacionesDeCampo',
+      };
+
+      const validArea = areaMapping[values.area] || values.area;
+
       const payload = {
         ...values,
+        area: validArea,
         email: values.email || null,
         telefono: values.telefono || null,
         dni: values.dni || null,

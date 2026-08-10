@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { User, LogOut, Settings, UserCircle, Zap, BookOpen } from "lucide-react";
+import { User, LogOut, Settings, UserCircle, Zap, BookOpen, Users } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -70,14 +70,24 @@ export function Header() {
             <span>Hoja de Ruta</span>
           </button>
 
-          {/* Botón Global de Agenda Diaria al costado de Hoja de Ruta */}
+          {/* Botón Global de Agenda Gerencial */}
           <button
             onClick={() => router.push("/crm/agenda")}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:border-emerald-300 hover:bg-emerald-100 font-bold text-[10px] uppercase rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
-            title="Ver Agenda Diaria Comercial"
+            title="Ver Agenda Gerencial"
           >
             <BookOpen className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Agenda Diaria</span>
+            <span>Agenda Gerencial</span>
+          </button>
+
+          {/* Botón Global de Agenda Trabajadores */}
+          <button
+            onClick={() => router.push("/agenda-trabajadores")}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 border border-blue-200 hover:border-blue-300 hover:bg-blue-100 font-bold text-[10px] uppercase rounded-xl transition-all shadow-sm active:scale-95 shrink-0"
+            title="Ver Agenda de Trabajadores"
+          >
+            <Users className="w-3.5 h-3.5 text-blue-600" />
+            <span>Agenda Trabajadores</span>
           </button>
 
           <div className="text-right hidden sm:block">

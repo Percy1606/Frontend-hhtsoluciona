@@ -48,6 +48,7 @@ interface AgendaDiariaProps {
   currentAdvisor?: string;
   onAdvisorChange?: (advisor: string) => void;
   onOpenInteractionModal?: (client: Client) => void;
+  isGeneralAgenda?: boolean;
 }
 
 export interface Subtarea {
@@ -83,7 +84,8 @@ export function AgendaDiaria({
   clients, 
   currentAdvisor = 'Valentina', 
   onAdvisorChange,
-  onOpenInteractionModal 
+  onOpenInteractionModal,
+  isGeneralAgenda = false
 }: AgendaDiariaProps) {
   const { addInteraction } = useCRMStore();
   const [selectedAdvisor, setSelectedAdvisor] = useState<string>('TODOS');
@@ -125,12 +127,28 @@ export function AgendaDiaria({
   // Lista de tareas estratégicas — SINCRONIZADA CON EL SERVIDOR GLOBAL
   const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [trabajadoresList, setTrabajadoresList] = useState<{ id: string; nombre: string; area: string }[]>([]);
+
+  const endpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+
+  // CARGAR TRABAJADORES DE CONFIGURACION SI ES AGENDA DE TRABAJADORES
+  useEffect(() => {
+    if (isGeneralAgenda) {
+      api.get('/config/trabajadores')
+        .then(data => {
+          if (Array.isArray(data)) {
+            setTrabajadoresList(data.filter((w: any) => w.activo));
+          }
+        })
+        .catch(err => console.warn('[Agenda] Error al cargar trabajadores:', err));
+    }
+  }, [isGeneralAgenda]);
 
   // CARGAR TAREAS GLOBALES AL INICIAR
   useEffect(() => {
     const fetchAgenda = async () => {
       try {
-        const response = await api.get('/crm/agenda');
+        const response = await api.get(endpoint);
         if (Array.isArray(response)) {
           // Sanitizar para evitar errores si la base de datos retorna subtareas como null
           const sanitizedResponse = response.map(t => ({
@@ -146,7 +164,7 @@ export function AgendaDiaria({
       }
     };
     fetchAgenda();
-  }, []);
+  }, [endpoint]);
 
   // GUARDAR TAREAS GLOBALES CADA VEZ QUE CAMBIEN
   useEffect(() => {
@@ -154,7 +172,7 @@ export function AgendaDiaria({
 
     const saveAgenda = async () => {
       try {
-        await api.post('/crm/agenda', tareasEstrategicas);
+        await api.post(endpoint, tareasEstrategicas);
       } catch (err) {
         console.warn('[Agenda] Error guardando tareas en la BD:', err);
       }
@@ -166,7 +184,7 @@ export function AgendaDiaria({
     }, 500);
     
     return () => clearTimeout(timer);
-  }, [tareasEstrategicas, isInitialLoad]);
+  }, [tareasEstrategicas, isInitialLoad, endpoint]);
 
   // HELPER PARA IDENTIFICAR SOLO CLIENTES GANADOS / FIDELIZADOS
   const isWonClient = (c: Client) => {
@@ -763,17 +781,19 @@ export function AgendaDiaria({
   return (
     <div className="space-y-6 text-slate-900" style={{ fontFamily: "'Inter', sans-serif" }}>
       <CRMHeader 
-        title="Agenda Diaria, Tareas Estratégicas y Fidelización" 
-        subtitle="Panel exclusivo para creación de Tareas, Subtareas por fecha y seguimiento a Clientes Fidelizados."
+        title={isGeneralAgenda ? "Agenda General de Personal y Evaluaciones" : "Agenda Diaria, Tareas Estratégicas y Fidelización"} 
+        subtitle={isGeneralAgenda ? "Panel general para seguimiento, cumplimiento y verificación de tareas de todo el equipo de trabajo." : "Panel exclusivo para creación de Tareas, Subtareas por fecha y seguimiento a Clientes Fidelizados."}
         actions={
           <div className="flex gap-2">
             <Button onClick={() => setShowAuditoriaModal(true)} className="bg-slate-800 hover:bg-slate-700 text-white font-semibold shadow-sm h-9 gap-1.5">
               <Eye className="w-4 h-4" /> Auditoría ({tareasEstrategicas.length})
             </Button>
-            <Button onClick={() => setShowFidelizadosModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-sm h-9 gap-1.5">
-              <HeartHandshake className="w-4 h-4" />
-              Fidelizados ({clientesFidelizados.length})
-            </Button>
+            {!isGeneralAgenda && (
+              <Button onClick={() => setShowFidelizadosModal(true)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold shadow-sm h-9 gap-1.5">
+                <HeartHandshake className="w-4 h-4" />
+                Fidelizados ({clientesFidelizados.length})
+              </Button>
+            )}
           </div>
         }
       />
@@ -818,19 +838,38 @@ export function AgendaDiaria({
               onChange={(e) => handleAdvisorSelect(e.target.value)}
               className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3.5 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
             >
-              <option value="TODOS">Todo el Equipo Comercial</option>
-              <optgroup label="Unidad 1 - Nuevos Negocios">
-                <option value="Ariana">Ariana (Prospección)</option>
-                <option value="Brenda">Brenda (Prospección Exclusiva)</option>
-                <option value="Valentina">Valentina (Seguimiento & Cierre)</option>
-              </optgroup>
-              <optgroup label="Unidad 2 - Clientes Estratégicos">
-                <option value="Steven">Steven (Estratégico)</option>
-                <option value="Mario">Mario (Instalación & Servicio)</option>
-                <option value="Javier">Javier (Estratégico)</option>
-                <option value="Angi">Angi (Recuperación & Cartera)</option>
-                <option value="Mellani">Mellani (Estratégico)</option>
-              </optgroup>
+              <option value="TODOS">{isGeneralAgenda ? "Todos los Trabajadores" : "Todo el Equipo Comercial"}</option>
+              {isGeneralAgenda ? (
+                trabajadoresList.length > 0 ? (
+                  trabajadoresList.map((w) => (
+                    <option key={w.id} value={w.nombre}>
+                      {w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})
+                    </option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Steven">Steven</option>
+                    <option value="Mario">Mario</option>
+                    <option value="Javier">Javier</option>
+                    <option value="Valentina">Valentina</option>
+                  </>
+                )
+              ) : (
+                <>
+                  <optgroup label="Unidad 1 - Nuevos Negocios">
+                    <option value="Ariana">Ariana (Prospección)</option>
+                    <option value="Brenda">Brenda (Prospección Exclusiva)</option>
+                    <option value="Valentina">Valentina (Seguimiento & Cierre)</option>
+                  </optgroup>
+                  <optgroup label="Unidad 2 - Clientes Estratégicos">
+                    <option value="Steven">Steven (Estratégico)</option>
+                    <option value="Mario">Mario (Instalación & Servicio)</option>
+                    <option value="Javier">Javier (Estratégico)</option>
+                    <option value="Angi">Angi (Recuperación & Cartera)</option>
+                    <option value="Mellani">Mellani (Estratégico)</option>
+                  </optgroup>
+                </>
+              )}
             </select>
 
             {/* Selector por Fechas */}
@@ -880,70 +919,78 @@ export function AgendaDiaria({
         <form onSubmit={handleCreateTask} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-200">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 pb-3 border-b border-slate-100">
             <Building2 className="w-5 h-5 text-emerald-600" />
-            Crear y Asignar Nueva Tarea Comercial (Seleccionar Cliente BD o Escribir Nombre)
+            {isGeneralAgenda 
+              ? "Crear y Asignar Tarea de Personal / Evaluación (Escribir Nombre o Título)"
+              : "Crear y Asignar Nueva Tarea Comercial (Seleccionar Cliente BD o Escribir Nombre)"}
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2 space-y-2">
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
-
-              {selectedTaskClientIdDB && !showTaskClientList ? (
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
-                  <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
-                    className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
-                  >
-                    Cambiar
-                  </button>
-                </div>
-              ) : (
+              {!isGeneralAgenda && (
                 <>
-                  <input
-                    type="text"
-                    placeholder="Buscar cliente en BD por RUC o Nombre (ej: Sechura, Norandino, IPESA)..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    value={searchTaskClientDBQuery}
-                    onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
-                  />
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
 
-                  <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
-                    {registeredClientsListTaskDB.map(c => (
-                      <div
-                        key={c.id}
-                        onClick={() => {
-                          setSelectedTaskClientIdDB(c.id);
-                          setTaskEmpresaName(c.empresa);
-                          setShowTaskClientList(false);
-                          setSearchTaskClientDBQuery('');
-                          toast.info(`Cliente "${c.empresa}" seleccionado`);
-                        }}
-                        className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
+                  {selectedTaskClientIdDB && !showTaskClientList ? (
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                      <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
+                        className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
                       >
-                        <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
-                        <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
+                        Cambiar
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <input
+                        type="text"
+                        placeholder="Buscar cliente en BD por RUC o Nombre (ej: Sechura, Norandino, IPESA)..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        value={searchTaskClientDBQuery}
+                        onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
+                      />
+
+                      <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
+                        {registeredClientsListTaskDB.map(c => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setSelectedTaskClientIdDB(c.id);
+                              setTaskEmpresaName(c.empresa);
+                              setShowTaskClientList(false);
+                              setSearchTaskClientDBQuery('');
+                              toast.info(`Cliente "${c.empresa}" seleccionado`);
+                            }}
+                            className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
+                          >
+                            <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                            <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </>
+                  )}
                 </>
               )}
 
               <div className="pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">O Escribe el Nombre de la Empresa / Cliente *</label>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                  {isGeneralAgenda ? "Título de la Tarea / Proyecto / Empresa *" : "O Escribe el Nombre de la Empresa / Cliente *"}
+                </label>
                 <input
                   type="text"
-                  placeholder="Ej: Hielos y Congelados Sechura"
+                  placeholder={isGeneralAgenda ? "Ej: Inspección Técnica de Equipos / Mantenimiento" : "Ej: Hielos y Congelados Sechura"}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   value={taskEmpresaName}
                   onChange={(e) => setTaskEmpresaName(e.target.value)}
                 />
               </div>
               <div className="pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Nombre del Proyecto (Opcional)</label>
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Nombre del Proyecto / Área (Opcional)</label>
                 <input
                   type="text"
-                  placeholder="Ej: Instalación de Sistema Frigorífico"
+                  placeholder={isGeneralAgenda ? "Ej: Área de Operaciones y Servicios Técnicos" : "Ej: Instalación de Sistema Frigorífico"}
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   value={taskProyectoName}
                   onChange={(e) => setTaskProyectoName(e.target.value)}
@@ -959,13 +1006,21 @@ export function AgendaDiaria({
                   value={newResponsable}
                   onChange={(e) => setNewResponsable(e.target.value)}
                 >
-                  <option value="Steven">Steven</option>
-                  <option value="Mario">Mario</option>
-                  <option value="Javier">Javier</option>
-                  <option value="Valentina">Valentina</option>
-                  <option value="Ariana">Ariana</option>
-                  <option value="Brenda">Brenda</option>
-                  <option value="Angi">Angi</option>
+                  {isGeneralAgenda && trabajadoresList.length > 0 ? (
+                    trabajadoresList.map((w) => (
+                      <option key={w.id} value={w.nombre}>{w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})</option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Steven">Steven</option>
+                      <option value="Mario">Mario</option>
+                      <option value="Javier">Javier</option>
+                      <option value="Valentina">Valentina</option>
+                      <option value="Ariana">Ariana</option>
+                      <option value="Brenda">Brenda</option>
+                      <option value="Angi">Angi</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -1380,17 +1435,25 @@ export function AgendaDiaria({
                             />
                             <select
                               className="w-full sm:w-32 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                              value={nuevaSubtareaResponsable[tarea.id] || 'Steven'}
+                              value={nuevaSubtareaResponsable[tarea.id] || (isGeneralAgenda && trabajadoresList[0] ? trabajadoresList[0].nombre : 'Steven')}
                               onChange={(e) => setNuevaSubtareaResponsable({ ...nuevaSubtareaResponsable, [tarea.id]: e.target.value })}
                             >
-                              <option value="Steven">Steven</option>
-                              <option value="Mario">Mario</option>
-                              <option value="Javier">Javier</option>
-                              <option value="Valentina">Valentina</option>
-                              <option value="Ariana">Ariana</option>
-                              <option value="Brenda">Brenda</option>
-                              <option value="Angi">Angi</option>
-                              <option value="Mellani">Mellani</option>
+                              {isGeneralAgenda && trabajadoresList.length > 0 ? (
+                                trabajadoresList.map((w) => (
+                                  <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                ))
+                              ) : (
+                                <>
+                                  <option value="Steven">Steven</option>
+                                  <option value="Mario">Mario</option>
+                                  <option value="Javier">Javier</option>
+                                  <option value="Valentina">Valentina</option>
+                                  <option value="Ariana">Ariana</option>
+                                  <option value="Brenda">Brenda</option>
+                                  <option value="Angi">Angi</option>
+                                  <option value="Mellani">Mellani</option>
+                                </>
+                              )}
                             </select>
                             <select
                               className="w-full sm:w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"

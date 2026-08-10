@@ -37,10 +37,13 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
   React.useEffect(() => {
     const fetchTareas = async () => {
       try {
-        const response = await api.get('/crm/agenda');
-        if (Array.isArray(response)) {
-          setTareas(response);
-        }
+        const [resCrm, resTrabajadores] = await Promise.all([
+          api.get('/crm/agenda').catch(() => []),
+          api.get('/crm/agenda?tipo=trabajadores').catch(() => [])
+        ]);
+        const listCrm = Array.isArray(resCrm) ? resCrm : [];
+        const listTrabajadores = Array.isArray(resTrabajadores) ? resTrabajadores : [];
+        setTareas([...listCrm, ...listTrabajadores]);
       } catch (err) {
         console.warn('Error fetching tareas:', err);
       }
