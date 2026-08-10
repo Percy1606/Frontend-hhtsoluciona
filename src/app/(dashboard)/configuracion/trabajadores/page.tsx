@@ -160,9 +160,17 @@ const calcularEdad = (fechaNacimiento: string | null | undefined) => {
 };
 
 const areaColors: Record<string, string> = {
-  LogisticaYRecursos: "bg-blue-100 text-blue-700 border-blue-200",
-  IngenieriaYSupervision: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  GerenciaYAdministracion: "bg-purple-100 text-purple-700 border-purple-200",
+  ComercialYDesarrolloEmpresarial: "bg-blue-100 text-blue-700 border-blue-200",
+  MarketingYComunicaciones: "bg-pink-100 text-pink-700 border-pink-200",
+  IngenieriaYProyectos: "bg-emerald-100 text-emerald-700 border-emerald-200",
+  OperacionesYServiciosTecnicos: "bg-indigo-100 text-indigo-700 border-indigo-200",
+  LogisticaYRecursos: "bg-cyan-100 text-cyan-700 border-cyan-200",
   GestionDocumentaria: "bg-amber-100 text-amber-700 border-amber-200",
+  ContabilidadYFinanzas: "bg-teal-100 text-teal-700 border-teal-200",
+  SeguridadYSST: "bg-rose-100 text-rose-700 border-rose-200",
+  // Fallbacks for legacy records
+  IngenieriaYSupervision: "bg-emerald-100 text-emerald-700 border-emerald-200",
   OperacionesDeCampo: "bg-purple-100 text-purple-700 border-purple-200",
 };
 
@@ -925,10 +933,15 @@ function TrabajadorModal({ editingWorker, isOpen, setIsOpen, onFinished }: Modal
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                          <SelectItem value="GerenciaYAdministracion">Gerencia y Administración</SelectItem>
+                          <SelectItem value="ComercialYDesarrolloEmpresarial">Comercial y Desarrollo Empresarial</SelectItem>
+                          <SelectItem value="MarketingYComunicaciones">Marketing y Comunicaciones</SelectItem>
+                          <SelectItem value="IngenieriaYProyectos">Ingeniería y Proyectos</SelectItem>
+                          <SelectItem value="OperacionesYServiciosTecnicos">Operaciones y Servicios Técnicos</SelectItem>
                           <SelectItem value="LogisticaYRecursos">Logística y Recursos</SelectItem>
-                          <SelectItem value="IngenieriaYSupervision">Ingeniería y Supervisión</SelectItem>
                           <SelectItem value="GestionDocumentaria">Gestión Documentaria</SelectItem>
-                          <SelectItem value="OperacionesDeCampo">Operaciones de Campo</SelectItem>
+                          <SelectItem value="ContabilidadYFinanzas">Contabilidad y Finanzas</SelectItem>
+                          <SelectItem value="SeguridadYSST">Seguridad y SST</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
