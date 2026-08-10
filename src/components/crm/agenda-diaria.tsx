@@ -137,7 +137,11 @@ export function AgendaDiaria({
       api.get('/config/trabajadores')
         .then(data => {
           if (Array.isArray(data)) {
-            setTrabajadoresList(data.filter((w: any) => w.activo));
+            const activeWorkers = data.filter((w: any) => w.activo);
+            setTrabajadoresList(activeWorkers);
+            if (activeWorkers.length > 0) {
+              setNewResponsable(activeWorkers[0].nombre);
+            }
           }
         })
         .catch(err => console.warn('[Agenda] Error al cargar trabajadores:', err));
@@ -883,14 +887,16 @@ export function AgendaDiaria({
               <option value="custom">Rango Personalizado</option>
             </select>
 
-            {/* Botón Principal "+ Crear Nueva Tarea" Estilo Cartera */}
-            <Button
-              onClick={() => setShowCreateTaskModal(!showCreateTaskModal)}
-              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-4 py-2 shadow-xs gap-2 shrink-0"
-            >
-              <Plus className="w-4 h-4" /> 
-              {showCreateTaskModal ? 'Cerrar Formulario' : '+ Crear Nueva Tarea'}
-            </Button>
+            {/* Botón Principal "+ Crear Nueva Tarea" Estilo Cartera (Solo Gerencial) */}
+            {!isGeneralAgenda && (
+              <Button
+                onClick={() => setShowCreateTaskModal(!showCreateTaskModal)}
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-4 py-2 shadow-xs gap-2 shrink-0"
+              >
+                <Plus className="w-4 h-4" /> 
+                {showCreateTaskModal ? 'Cerrar Formulario' : '+ Crear Nueva Tarea'}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -1726,75 +1732,85 @@ export function AgendaDiaria({
               </button>
             </div>
 
-            {/* Selector "¿Quién eres?" */}
-            <div className="px-5 py-3.5 bg-slate-100 border-b border-slate-200/80 flex flex-col gap-2">
-              <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">¿Quién eres? (Auto-desplegar mis tareas)</span>
-              <div className="flex flex-wrap gap-1.5 items-center">
-                {['Steven', 'Javier', 'Angi', 'Mellani'].map(name => (
-                  <button
-                    key={name}
-                    onClick={() => {
-                      setExpandedAuditoriaAsesores({ [name]: true });
-                    }}
-                    className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm active:scale-95 cursor-pointer"
-                  >
-                    👤 {name}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setExpandedAuditoriaAsesores({})}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-slate-200/80 hover:bg-slate-200 text-slate-600 active:scale-95 cursor-pointer ml-auto"
-                >
-                  Colapsar todo
-                </button>
-                <button
-                  onClick={() => setExpandedAuditoriaAsesores({'Steven': true, 'Javier': true, 'Angi': true, 'Mellani': true})}
-                  className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-slate-800 hover:bg-slate-700 text-white active:scale-95 cursor-pointer"
-                >
-                  Ver Todo
-                </button>
-              </div>
-            </div>
-            
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
-              {['Steven', 'Javier', 'Angi', 'Mellani'].map(asesor => {
-                const actividades = tareasEstrategicas.flatMap(t => 
-                  t.subtareas
-                    .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase() && !s.completada)
-                    .map(s => ({ ...s, empresa: t.empresa, tareaId: t.id }))
-                );
-                
-                const hoy = new Date();
-                hoy.setHours(0,0,0,0);
-                const parseDate = (dstr: string) => {
-                  const parts = dstr.split('/');
-                  if(parts.length === 3) return new Date(Number(parts[2]), Number(parts[1])-1, Number(parts[0]));
-                  return hoy;
-                };
+              {(() => {
+                const auditPersonList = isGeneralAgenda
+                  ? (trabajadoresList.length > 0 ? trabajadoresList.map(w => w.nombre) : ['Pedro', 'Juan', 'Carlos'])
+                  : ['Steven', 'Javier', 'Angi', 'Mellani'];
 
-                const fuegosPorApagar: typeof actividades = [];
-                const elDiaADia: typeof actividades = [];
-                const especialesEnCurso: typeof actividades = [];
-                const otrasActividades: typeof actividades = [];
-                
-                actividades.forEach(act => {
-                   const d = parseDate(act.fecha);
-                   const isEspecial = act.prioridad === 'BAJA';
-                   const diffTime = d.getTime() - hoy.getTime(); 
-                   const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
-                   
-                   if (diffDays < 0) {
-                      if (isEspecial && diffDays >= -2) {
-                          especialesEnCurso.push(act);
-                      } else {
-                          fuegosPorApagar.push(act);
-                      }
-                   } else if (diffDays === 0) {
-                      elDiaADia.push(act);
-                   } else {
-                      otrasActividades.push(act);
-                   }
-                });
+                return (
+                  <>
+                    <div className="px-5 py-3.5 bg-slate-100 border-b border-slate-200/80 flex flex-col gap-2">
+                      <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">¿Quién eres? (Auto-desplegar mis tareas)</span>
+                      <div className="flex flex-wrap gap-1.5 items-center">
+                        {auditPersonList.map(name => (
+                          <button
+                            key={name}
+                            onClick={() => {
+                              setExpandedAuditoriaAsesores({ [name]: true });
+                            }}
+                            className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm active:scale-95 cursor-pointer"
+                          >
+                            👤 {name}
+                          </button>
+                        ))}
+                        <button
+                          onClick={() => setExpandedAuditoriaAsesores({})}
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-all bg-slate-200/80 hover:bg-slate-200 text-slate-600 active:scale-95 cursor-pointer ml-auto"
+                        >
+                          Colapsar todo
+                        </button>
+                        <button
+                          onClick={() => {
+                            const allMap: Record<string, boolean> = {};
+                            auditPersonList.forEach(n => { allMap[n] = true; });
+                            setExpandedAuditoriaAsesores(allMap);
+                          }}
+                          className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-slate-800 hover:bg-slate-700 text-white active:scale-95 cursor-pointer"
+                        >
+                          Ver Todo
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-slate-50/50">
+                      {auditPersonList.map(asesor => {
+                        const actividades = tareasEstrategicas.flatMap(t => 
+                          t.subtareas
+                            .filter(s => (s.responsable || t.responsable).toLowerCase() === asesor.toLowerCase() && !s.completada)
+                            .map(s => ({ ...s, empresa: t.empresa, tareaId: t.id }))
+                        );
+                        
+                        const hoy = new Date();
+                        hoy.setHours(0,0,0,0);
+                        const parseDate = (dstr: string) => {
+                          const parts = dstr.split('/');
+                          if(parts.length === 3) return new Date(Number(parts[2]), Number(parts[1])-1, Number(parts[0]));
+                          return hoy;
+                        };
+
+                        const fuegosPorApagar: typeof actividades = [];
+                        const elDiaADia: typeof actividades = [];
+                        const especialesEnCurso: typeof actividades = [];
+                        const otrasActividades: typeof actividades = [];
+                        
+                        actividades.forEach(act => {
+                           const d = parseDate(act.fecha);
+                           const isEspecial = act.prioridad === 'BAJA';
+                           const diffTime = d.getTime() - hoy.getTime(); 
+                           const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)); 
+                           
+                           if (diffDays < 0) {
+                              if (isEspecial && diffDays >= -2) {
+                                  especialesEnCurso.push(act);
+                              } else {
+                                  fuegosPorApagar.push(act);
+                              }
+                           } else if (diffDays === 0) {
+                              elDiaADia.push(act);
+                           } else {
+                              otrasActividades.push(act);
+                           }
+                        });
                 
                 const renderActividad = (act: any, isFuego: boolean) => (
                   <div key={act.id} className={`p-3 rounded-xl border flex flex-col gap-1 ${act.completada ? 'bg-slate-50 border-slate-200 opacity-60' : isFuego ? 'bg-rose-50 border-rose-300 shadow-sm' : 'bg-white border-slate-200 hover:border-slate-300'}`}>
@@ -1925,11 +1941,17 @@ export function AgendaDiaria({
                 );
               })}
             </div>
-          </div>
+          </>
+        );
+      })()}
         </div>
-      )}
+      </div>
+    )}
 
-      {showAddFidelizadoModal && (
+      {/* APARTADO DE CLIENTES GANADOS Y OBSERVACIONES (EXCLUSIVO CRM COMERCIAL GERENCIAL) */}
+      {!isGeneralAgenda && (
+        <>
+          {showAddFidelizadoModal && (
         <form onSubmit={handleAddObsToExistingDBClient} className="bg-slate-50 border border-slate-200 p-5 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-200">
             <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 uppercase pb-2 border-b border-slate-200">
               <HeartHandshake className="w-4 h-4 text-emerald-600" />
@@ -2166,6 +2188,8 @@ export function AgendaDiaria({
             </Button>
           )}
         </div>
+        </>
+      )}
     </div>
   );
 }
