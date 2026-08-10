@@ -1626,10 +1626,18 @@ export function AgendaDiaria({
                                           }}
                                           className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
                                         >
-                                          <option value="Steven">Steven</option>
-                                          <option value="Javier">Javier</option>
-                                          <option value="Angi">Angi</option>
-                                          <option value="Mellani">Mellani</option>
+                                          {isGeneralAgenda && trabajadoresList.length > 0 ? (
+                                            trabajadoresList.map((w) => (
+                                              <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                            ))
+                                          ) : (
+                                            <>
+                                              <option value="Steven">Steven</option>
+                                              <option value="Javier">Javier</option>
+                                              <option value="Angi">Angi</option>
+                                              <option value="Mellani">Mellani</option>
+                                            </>
+                                          )}
                                         </select>
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
