@@ -108,72 +108,64 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     };
   }, [clients]);
 
-  // Construcción dinámica de colaboradores unificando ALL_ADVISORS + Trabajadores BD + Cartera/Tareas
+  // Normalización estricta de nombres canónicos para evitar duplicados en la lista
+  const normalizeAdvisorKey = (rawName: string): string => {
+    if (!rawName) return '';
+    const clean = rawName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+    if (clean.includes('angi') || clean.includes('angie')) return 'Angi';
+    if (clean.includes('mellani') || clean.includes('melani')) return 'Mellani';
+    if (clean.includes('valentina')) return 'Valentina';
+    if (clean.includes('ariana')) return 'Ariana';
+    if (clean.includes('brenda')) return 'Brenda';
+    if (clean.includes('javier')) return 'Javier';
+    if (clean.includes('steven')) return 'Steven';
+    if (clean.includes('guillermo')) return 'Guillermo';
+    if (clean.includes('diego')) return 'Diego';
+    if (clean.includes('mario') || clean.includes('infante')) return 'Mario Cristofher Infante Pardo';
+
+    return rawName.trim();
+  };
+
+  // Construcción dinámica de colaboradores unificando BD + Cartera/Tareas sin duplicados
   const allDynamicAdvisors = useMemo(() => {
     const map = new Map<string, { name: string; unit: 'UNIDAD_1' | 'UNIDAD_2'; role: string; color: string }>();
 
-    // 1. Agregar predefinidos
-    Object.keys(ALL_ADVISORS).forEach(name => {
-      const info = ALL_ADVISORS[name];
-      map.set(name.toLowerCase(), {
-        name: info.name,
-        unit: info.unit,
-        role: info.role,
-        color: info.color
-      });
-    });
-
-    // 2. Agregar desde BD trabajadores
-    trabajadoresBD.forEach(w => {
-      if (!w.nombre) return;
-      const nameKey = w.nombre.trim().toLowerCase();
-      if (!map.has(nameKey)) {
-        const isU1 = ['ariana', 'brenda', 'valentina'].includes(nameKey);
-        map.set(nameKey, {
-          name: w.nombre.trim(),
-          unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
-          role: w.cargo || w.area || 'Colaborador',
-          color: isU1 ? 'bg-emerald-600' : 'bg-blue-600'
+    const addAdvisor = (rawName: string, defaultRole?: string, defaultUnit?: 'UNIDAD_1' | 'UNIDAD_2') => {
+      if (!rawName || !rawName.trim()) return;
+      const canonicalName = normalizeAdvisorKey(rawName);
+      if (!map.has(canonicalName)) {
+        const isU1 = ['Ariana', 'Brenda', 'Valentina'].includes(canonicalName);
+        const knownInfo = ALL_ADVISORS[canonicalName];
+        map.set(canonicalName, {
+          name: canonicalName,
+          unit: defaultUnit || (knownInfo ? knownInfo.unit : (isU1 ? 'UNIDAD_1' : 'UNIDAD_2')),
+          role: knownInfo ? knownInfo.role : (defaultRole || 'Colaborador'),
+          color: knownInfo ? knownInfo.color : (isU1 ? 'bg-emerald-600' : 'bg-blue-600')
         });
       }
+    };
+
+    // 1. Predefinidos
+    Object.keys(ALL_ADVISORS).forEach(name => addAdvisor(name));
+
+    // 2. BD Trabajadores
+    trabajadoresBD.forEach(w => {
+      if (w.nombre) addAdvisor(w.nombre, w.cargo || w.area);
     });
 
-    // 3. Agregar asignados en clientes si no estaban
+    // 3. Asignados en Clientes
     clients.forEach(c => {
       [c.asignadoA, c.creadoPor].forEach(n => {
-        if (n && n.trim()) {
-          const key = n.trim().toLowerCase();
-          if (!map.has(key)) {
-            const formattedName = n.trim().charAt(0).toUpperCase() + n.trim().slice(1);
-            const isU1 = ['ariana', 'brenda', 'valentina'].includes(key);
-            map.set(key, {
-              name: formattedName,
-              unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
-              role: 'Ejecutivo / Asesor',
-              color: isU1 ? 'bg-emerald-600' : 'bg-indigo-600'
-            });
-          }
-        }
+        if (n) addAdvisor(n, 'Ejecutivo / Asesor');
       });
     });
 
-    // 4. Agregar responsables de tareas si no estaban
+    // 4. Responsables de Tareas
     tareas.forEach(t => {
       const respList = [t.responsable, ...(t.subtareas || []).map((s: any) => s.responsable)];
       respList.forEach(n => {
-        if (n && n.trim()) {
-          const key = n.trim().toLowerCase();
-          if (!map.has(key)) {
-            const formattedName = n.trim().charAt(0).toUpperCase() + n.trim().slice(1);
-            const isU1 = ['ariana', 'brenda', 'valentina'].includes(key);
-            map.set(key, {
-              name: formattedName,
-              unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
-              role: 'Gestor / Operativo',
-              color: 'bg-slate-600'
-            });
-          }
-        }
+        if (n) addAdvisor(n, 'Gestor / Operativo');
       });
     });
 
@@ -187,10 +179,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
       
       const matchName = (name: string | undefined, target: string) => {
         if (!name) return false;
-        const n = name.trim().toLowerCase();
-        const t = target.trim().toLowerCase();
-        if (t === 'angi') return n === 'angi' || n === 'angi';
-        return n === t;
+        return normalizeAdvisorKey(name) === normalizeAdvisorKey(target);
       };
 
       const advClients = clients.filter(c => {
