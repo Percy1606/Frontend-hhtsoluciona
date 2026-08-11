@@ -970,21 +970,24 @@ export function AgendaDiaria({
               {isGeneralAgenda ? (
                 Array.from(
                   new Map(
-                    trabajadoresList.map(w => {
-                      const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                      let displayName = w.nombre.trim();
+                    trabajadoresList
+                      .filter(w => w.activo !== false) // OMITIR TRABAJADORES DADOS DE BAJA
+                      .map(w => {
+                        const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                        let displayName = w.nombre.trim().split(' ')[0];
+                        displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
 
-                      if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
-                      else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
-                      else if (clean.includes('valentina')) displayName = 'Valentina';
-                      else if (clean.includes('ariana')) displayName = 'Ariana';
-                      else if (clean.includes('brenda')) displayName = 'Brenda';
-                      else if (clean.includes('javier')) displayName = 'Javier';
-                      else if (clean.includes('steven')) displayName = 'Steven';
-                      else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario Cristofher Infante Pardo';
+                        if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
+                        else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
+                        else if (clean.includes('valentina')) displayName = 'Valentina';
+                        else if (clean.includes('ariana')) displayName = 'Ariana';
+                        else if (clean.includes('brenda')) displayName = 'Brenda';
+                        else if (clean.includes('javier')) displayName = 'Javier';
+                        else if (clean.includes('steven')) displayName = 'Steven';
+                        else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario';
 
-                      return [displayName, { ...w, nombre: displayName }];
-                    })
+                        return [displayName, { ...w, nombre: displayName }];
+                      })
                   ).values()
                 ).map((w) => (
                   <option key={w.id} value={w.nombre}>
@@ -1138,21 +1141,24 @@ export function AgendaDiaria({
                   {isGeneralAgenda ? (
                     Array.from(
                       new Map(
-                        trabajadoresList.map(w => {
-                          const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                          let displayName = w.nombre.trim();
+                        trabajadoresList
+                          .filter(w => w.activo !== false) // EXCLUIR TRABAJADORES DADOS DE BAJA
+                          .map(w => {
+                            const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                            let displayName = w.nombre.trim().split(' ')[0];
+                            displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
 
-                          if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
-                          else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
-                          else if (clean.includes('valentina')) displayName = 'Valentina';
-                          else if (clean.includes('ariana')) displayName = 'Ariana';
-                          else if (clean.includes('brenda')) displayName = 'Brenda';
-                          else if (clean.includes('javier')) displayName = 'Javier';
-                          else if (clean.includes('steven')) displayName = 'Steven';
-                          else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario Cristofher Infante Pardo';
+                            if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
+                            else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
+                            else if (clean.includes('valentina')) displayName = 'Valentina';
+                            else if (clean.includes('ariana')) displayName = 'Ariana';
+                            else if (clean.includes('brenda')) displayName = 'Brenda';
+                            else if (clean.includes('javier')) displayName = 'Javier';
+                            else if (clean.includes('steven')) displayName = 'Steven';
+                            else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario';
 
-                          return [displayName, { ...w, nombre: displayName }];
-                        })
+                            return [displayName, { ...w, nombre: displayName }];
+                          })
                       ).values()
                     ).map((w) => (
                       <option key={w.id} value={w.nombre}>
@@ -1986,12 +1992,13 @@ export function AgendaDiaria({
                   if (clean.includes('brenda')) return 'Brenda';
                   if (clean.includes('javier')) return 'Javier';
                   if (clean.includes('steven')) return 'Steven';
-                  if (clean.includes('mario') || clean.includes('infante')) return 'Mario Cristofher Infante Pardo';
-                  return s.trim();
+                  if (clean.includes('mario') || clean.includes('infante')) return 'Mario';
+                  const firstName = s.trim().split(' ')[0];
+                  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
                 };
 
                 const auditPersonList = isGeneralAgenda
-                  ? Array.from(new Set(trabajadoresList.map(w => normalizeAuditor(w.nombre))))
+                  ? Array.from(new Set(trabajadoresList.filter(w => w.activo !== false).map(w => normalizeAuditor(w.nombre))))
                   : gerenciaList;
 
                 return (

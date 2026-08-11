@@ -108,7 +108,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     };
   }, [clients]);
 
-  // Normalización estricta de nombres canónicos para evitar duplicados en la lista
+  // Normalización estricta de primer nombre canónico
   const normalizeAdvisorKey = (rawName: string): string => {
     if (!rawName) return '';
     const clean = rawName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -122,12 +122,14 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     if (clean.includes('steven')) return 'Steven';
     if (clean.includes('guillermo')) return 'Guillermo';
     if (clean.includes('diego')) return 'Diego';
-    if (clean.includes('mario') || clean.includes('infante')) return 'Mario Cristofher Infante Pardo';
+    if (clean.includes('mario') || clean.includes('infante')) return 'Mario';
 
-    return rawName.trim();
+    // Si es un nombre compuesto, tomar únicamente la primera palabra (Primer Nombre)
+    const firstName = rawName.trim().split(' ')[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
   };
 
-  // Construcción dinámica de colaboradores unificando BD + Cartera/Tareas sin duplicados
+  // Construcción dinámica de colaboradores unificando BD + Cartera/Tareas sin duplicados y filtrando activos
   const allDynamicAdvisors = useMemo(() => {
     const map = new Map<string, { name: string; unit: 'UNIDAD_1' | 'UNIDAD_2'; role: string; color: string }>();
 
@@ -149,9 +151,11 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     // 1. Predefinidos
     Object.keys(ALL_ADVISORS).forEach(name => addAdvisor(name));
 
-    // 2. BD Trabajadores
+    // 2. BD Trabajadores (Filtrando estrictamente los activos, OMITIR DADOS DE BAJA)
     trabajadoresBD.forEach(w => {
-      if (w.nombre) addAdvisor(w.nombre, w.cargo || w.area);
+      if (w.nombre && (w.activo === true || w.activo === undefined)) {
+        addAdvisor(w.nombre, w.cargo || w.area);
+      }
     });
 
     // 3. Asignados en Clientes
