@@ -131,15 +131,14 @@ export function AgendaDiaria({
 
   const endpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
 
-  // CARGAR TRABAJADORES ACTIVOS DE CONFIGURACIÓN (DISPONIBLES EN AMBAS AGENDAS)
+  // CARGAR TRABAJADORES DE CONFIGURACIÓN DE LA BASE DE DATOS (EN AMBAS AGENDAS)
   useEffect(() => {
     api.get('/config/trabajadores')
       .then(data => {
         if (Array.isArray(data)) {
-          const activeWorkers = data.filter((w: any) => w.activo);
-          setTrabajadoresList(activeWorkers);
-          if (isGeneralAgenda && activeWorkers.length > 0) {
-            setNewResponsable(activeWorkers[0].nombre);
+          setTrabajadoresList(data);
+          if (isGeneralAgenda && data.length > 0) {
+            setNewResponsable(data[0].nombre);
           }
         }
       })
@@ -958,13 +957,11 @@ export function AgendaDiaria({
             >
               <option value="TODOS">{isGeneralAgenda ? "Todos los Trabajadores" : "Todos los Gerenciales"}</option>
               {isGeneralAgenda ? (
-                trabajadoresList
-                  .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                  .map((w) => (
-                    <option key={w.id} value={w.nombre}>
-                      {w.nombre}
-                    </option>
-                  ))
+                trabajadoresList.map((w) => (
+                  <option key={w.id} value={w.nombre}>
+                    {w.nombre} ({w.area || 'Trabajador'})
+                  </option>
+                ))
               ) : (
                 <>
                   <option value="Steven">Steven</option>
@@ -986,16 +983,14 @@ export function AgendaDiaria({
               <option value="custom">Rango Personalizado</option>
             </select>
 
-            {/* Botón Principal "+ Crear Nueva Tarea" Estilo Cartera (Solo Gerencial) */}
-            {!isGeneralAgenda && (
-              <Button
-                onClick={() => setShowCreateTaskModal(!showCreateTaskModal)}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-4 py-2 shadow-xs gap-2 shrink-0"
-              >
-                <Plus className="w-4 h-4" /> 
-                {showCreateTaskModal ? 'Cerrar Formulario' : '+ Crear Nueva Tarea'}
-              </Button>
-            )}
+            {/* Botón Principal "+ Crear Nueva Tarea" Estilo Cartera (Disponible en Ambas Agendas) */}
+            <Button
+              onClick={() => setShowCreateTaskModal(!showCreateTaskModal)}
+              className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl px-4 py-2 shadow-xs gap-2 shrink-0"
+            >
+              <Plus className="w-4 h-4" /> 
+              {showCreateTaskModal ? 'Cerrar Formulario' : '+ Crear Nueva Tarea'}
+            </Button>
           </div>
         </div>
 
@@ -1112,13 +1107,11 @@ export function AgendaDiaria({
                   onChange={(e) => setNewResponsable(e.target.value)}
                 >
                   {isGeneralAgenda ? (
-                    trabajadoresList
-                      .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                      .map((w) => (
-                        <option key={w.id} value={w.nombre}>
-                          {w.nombre}
-                        </option>
-                      ))
+                    trabajadoresList.map((w) => (
+                      <option key={w.id} value={w.nombre}>
+                        {w.nombre} ({w.area || 'Trabajador'})
+                      </option>
+                    ))
                   ) : (
                     <>
                       <option value="Steven">Steven</option>

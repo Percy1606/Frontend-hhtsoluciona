@@ -3,7 +3,6 @@
 import { CRMHeader } from "@/components/crm/crm-header";
 import { useCRMStore } from "@/store/crm-store";
 import { useEffect } from "react";
-import { AgendaDiaria } from "@/components/crm/agenda-diaria";
 import { UnidadesGerenciales } from "@/components/crm/unidades-gerenciales";
 
 export default function SeguimientoPage() {
@@ -16,15 +15,13 @@ export default function SeguimientoPage() {
   return (
     <div className="space-y-6">
       <CRMHeader 
-        title="Seguimiento y Agenda Diaria Comercial" 
-        subtitle="Centro de control diario de actividades, unidades comerciales y recordatorios." 
+        title="Seguimiento y Fidelización Comercial" 
+        subtitle="Centro de control de unidades comerciales, clientes fidelizados y auditoría." 
       />
 
-      {/* CENTRO DE CONTROL Y UNIDADES COMERCIALES GERENCIALES (TEMA BLANCO ELEGANTE) */}
+      {/* CENTRO DE CONTROL Y UNIDADES COMERCIALES GERENCIALES */}
       <UnidadesGerenciales clients={clients} />
-
-      {/* AGENDA DIARIA PERSONALIZADA (4 ESTADOS ESTRICTOS) */}
-      <AgendaDiaria clients={clients} />
     </div>
   );
 }
+

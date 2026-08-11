@@ -30,25 +30,28 @@ interface UnidadesGerencialesProps {
 
 export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesProps) {
   const [selectedUnit, setSelectedUnit] = useState<UnidadComercialType>('TODAS');
-  const [tareas, setTareas] = useState<any[]>([]);
-  const [selectedAdvTasks, setSelectedAdvTasks] = useState<string | null>(null);
-  const [selectedAdvStatus, setSelectedAdvStatus] = useState<string | null>(null);
+  const [trabajadoresBD, setTrabajadoresBD] = useState<any[]>([]);
 
   React.useEffect(() => {
-    const fetchTareas = async () => {
+    const fetchTareasYTrabajadores = async () => {
       try {
-        const [resCrm, resTrabajadores] = await Promise.all([
+        const [resCrm, resTrabajadores, resConfigTrabajadores] = await Promise.all([
           api.get('/crm/agenda').catch(() => []),
-          api.get('/crm/agenda?tipo=trabajadores').catch(() => [])
+          api.get('/crm/agenda?tipo=trabajadores').catch(() => []),
+          api.get('/config/trabajadores').catch(() => [])
         ]);
         const listCrm = Array.isArray(resCrm) ? resCrm : [];
         const listTrabajadores = Array.isArray(resTrabajadores) ? resTrabajadores : [];
         setTareas([...listCrm, ...listTrabajadores]);
+
+        if (Array.isArray(resConfigTrabajadores)) {
+          setTrabajadoresBD(resConfigTrabajadores);
+        }
       } catch (err) {
-        console.warn('Error fetching tareas:', err);
+        console.warn('Error fetching tareas y trabajadores:', err);
       }
     };
-    fetchTareas();
+    fetchTareasYTrabajadores();
   }, []);
 
   // Clasificación y métricas automáticas por Unidad
@@ -60,7 +63,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
 
     const getStats = (list: Client[]) => {
       const prospectos = list.filter(c => c.etapaComercial === 'Prospecto').length;
-      const fidelizados = list.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturaci�n', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
+      const fidelizados = list.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
       const perdidos = list.filter(c => c.etapaComercial === 'Perdido').length;
       const cotPendientes = list.filter(c => c.etapaComercial === 'Cotización').length;
       const enSeguimiento = list.filter(c => c.etapaComercial === 'Seguimiento' || c.etapaComercial === 'Negociación' || c.etapaComercial === 'Contacto Inicial' || c.etapaComercial === 'Visita Técnica' || c.etapaComercial === 'Visita Comercial').length;
@@ -102,16 +105,88 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     };
   }, [clients]);
 
+  // Construcción dinámica de colaboradores unificando ALL_ADVISORS + Trabajadores BD + Cartera/Tareas
+  const allDynamicAdvisors = useMemo(() => {
+    const map = new Map<string, { name: string; unit: 'UNIDAD_1' | 'UNIDAD_2'; role: string; color: string }>();
+
+    // 1. Agregar predefinidos
+    Object.keys(ALL_ADVISORS).forEach(name => {
+      const info = ALL_ADVISORS[name];
+      map.set(name.toLowerCase(), {
+        name: info.name,
+        unit: info.unit,
+        role: info.role,
+        color: info.color
+      });
+    });
+
+    // 2. Agregar desde BD trabajadores
+    trabajadoresBD.forEach(w => {
+      if (!w.nombre) return;
+      const nameKey = w.nombre.trim().toLowerCase();
+      if (!map.has(nameKey)) {
+        const isU1 = ['ariana', 'brenda', 'valentina'].includes(nameKey);
+        map.set(nameKey, {
+          name: w.nombre.trim(),
+          unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
+          role: w.cargo || w.area || 'Colaborador',
+          color: isU1 ? 'bg-emerald-600' : 'bg-blue-600'
+        });
+      }
+    });
+
+    // 3. Agregar asignados en clientes si no estaban
+    clients.forEach(c => {
+      [c.asignadoA, c.creadoPor].forEach(n => {
+        if (n && n.trim()) {
+          const key = n.trim().toLowerCase();
+          if (!map.has(key)) {
+            const formattedName = n.trim().charAt(0).toUpperCase() + n.trim().slice(1);
+            const isU1 = ['ariana', 'brenda', 'valentina'].includes(key);
+            map.set(key, {
+              name: formattedName,
+              unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
+              role: 'Ejecutivo / Asesor',
+              color: isU1 ? 'bg-emerald-600' : 'bg-indigo-600'
+            });
+          }
+        }
+      });
+    });
+
+    // 4. Agregar responsables de tareas si no estaban
+    tareas.forEach(t => {
+      const respList = [t.responsable, ...(t.subtareas || []).map((s: any) => s.responsable)];
+      respList.forEach(n => {
+        if (n && n.trim()) {
+          const key = n.trim().toLowerCase();
+          if (!map.has(key)) {
+            const formattedName = n.trim().charAt(0).toUpperCase() + n.trim().slice(1);
+            const isU1 = ['ariana', 'brenda', 'valentina'].includes(key);
+            map.set(key, {
+              name: formattedName,
+              unit: isU1 ? 'UNIDAD_1' : 'UNIDAD_2',
+              role: 'Gestor / Operativo',
+              color: 'bg-slate-600'
+            });
+          }
+        }
+      });
+    });
+
+    return Array.from(map.values());
+  }, [trabajadoresBD, clients, tareas]);
+
   // Métricas por colaborador
   const advisorStats = useMemo(() => {
-    const list = Object.keys(ALL_ADVISORS).map((advName) => {
-      const advInfo = ALL_ADVISORS[advName];
+    const list = allDynamicAdvisors.map((advInfo) => {
+      const advName = advInfo.name;
       
       const matchName = (name: string | undefined, target: string) => {
         if (!name) return false;
         const n = name.trim().toLowerCase();
         const t = target.trim().toLowerCase();
-        if (t === 'angi') return n === 'angi' || n === 'ANGI';
+        if (t === 'angi') return n === 'angi' || n === 'angi';
         return n === t;
       };
 
@@ -122,10 +197,8 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
         const d = new Date(c.fechaCreacion);
         const isNewClient = !isNaN(d.getTime()) && d >= UNIT_1_CUTOFF_DATE;
 
-        // Permitir que UNIDAD_1 vea clientes antiguos si ya son ventas cerradas o cotizaciones activas
         const isWonOrActive = ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado', 'Cotización'].includes(c.etapaComercial);
 
-        // Reglas estrictas de unidades
         if (advInfo.unit === 'UNIDAD_1') return isNewClient || isWonOrActive;
         if (advInfo.unit === 'UNIDAD_2') return !isNewClient && !isWonOrActive;
         return true;
@@ -170,11 +243,10 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
             else actDate = new Date(f);
          }
 
-         // Filtro por Fecha
          if (dateRange && dateRange.startDate && dateRange.endDate) {
             const taskTime = actDate.getTime();
             if (taskTime < dateRange.startDate.getTime() || taskTime > dateRange.endDate.getTime()) {
-               return; // omitir
+               return;
             }
          }
 
@@ -211,7 +283,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     if (selectedUnit === 'UNIDAD_1') return list.filter(a => a.unit === 'UNIDAD_1');
     if (selectedUnit === 'UNIDAD_2') return list.filter(a => a.unit === 'UNIDAD_2');
     return list;
-  }, [clients, selectedUnit, tareas, dateRange]);
+  }, [allDynamicAdvisors, clients, selectedUnit, tareas, dateRange]);
 
   return (
     <div className="space-y-6 font-sans">
@@ -380,31 +452,27 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
                   </td>
                   <td className="p-3.5 font-medium text-slate-600">{adv.role}</td>
                   <td className="p-3.5 text-center font-black text-slate-800">{adv.carteraCount}</td>
-                  <td className="p-3.5 text-center font-bold text-slate-400">{adv.unit === 'UNIDAD_2' ? '-' : <span className="text-slate-600">{adv.prospectos}</span>}</td>
-                  <td className="p-3.5 text-center font-bold text-slate-400">{adv.unit === 'UNIDAD_2' ? '-' : <span className="text-slate-600">{adv.cotizaciones}</span>}</td>
-                  <td className="p-3.5 text-center font-black text-emerald-600">{adv.unit === 'UNIDAD_2' ? <span className="text-slate-400">-</span> : adv.ganados}</td>
+                  <td className="p-3.5 text-center font-bold text-slate-600">{adv.prospectos}</td>
+                  <td className="p-3.5 text-center font-bold text-slate-600">{adv.cotizaciones}</td>
+                  <td className="p-3.5 text-center font-black text-emerald-600">{adv.ganados}</td>
                   <td className="p-3.5 text-center">
-                    {adv.unit === 'UNIDAD_1' ? (
-                      <span className="font-bold text-slate-400">-</span>
-                    ) : (
-                      <div className="flex items-center justify-center gap-1.5">
-                        <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-600 cursor-pointer hover:opacity-80" title="Pendientes" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('PENDIENTE'); }}>
-                          <Clock className="w-3 h-3 text-slate-400" /> {adv.tareasPendientes}
-                        </div>
-                        <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-blue-600 cursor-pointer hover:opacity-80" title="En Proceso" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('EN_PROCESO'); }}>
-                          <PlayCircle className="w-3 h-3 text-blue-400" /> {adv.tareasEnProceso}
-                        </div>
-                        <div className="flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-600 cursor-pointer hover:opacity-80" title="Finalizadas" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('FINALIZADA'); }}>
-                          <CheckCircle2 className="w-3 h-3 text-emerald-500" /> {adv.tareasFinalizadas}
-                        </div>
-                        <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-600 cursor-pointer hover:opacity-80" title="Retrasadas" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('RETRASADA'); }}>
-                          <AlertCircle className="w-3 h-3 text-rose-500" /> {adv.tareasRetrasadas}
-                        </div>
+                    <div className="flex items-center justify-center gap-1.5">
+                      <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded text-[9px] font-bold text-slate-600 cursor-pointer hover:opacity-80" title="Pendientes" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('PENDIENTE'); }}>
+                        <Clock className="w-3 h-3 text-slate-400" /> {adv.tareasPendientes}
                       </div>
-                    )}
+                      <div className="flex items-center gap-1 bg-blue-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-blue-600 cursor-pointer hover:opacity-80" title="En Proceso" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('EN_PROCESO'); }}>
+                        <PlayCircle className="w-3 h-3 text-blue-400" /> {adv.tareasEnProceso}
+                      </div>
+                      <div className="flex items-center gap-1 bg-emerald-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-emerald-600 cursor-pointer hover:opacity-80" title="Finalizadas" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('FINALIZADA'); }}>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500" /> {adv.tareasFinalizadas}
+                      </div>
+                      <div className="flex items-center gap-1 bg-rose-50 px-1.5 py-0.5 rounded text-[9px] font-bold text-rose-600 cursor-pointer hover:opacity-80" title="Retrasadas" onClick={(e) => { e.stopPropagation(); setSelectedAdvTasks(adv.name); setSelectedAdvStatus('RETRASADA'); }}>
+                        <AlertCircle className="w-3 h-3 text-rose-500" /> {adv.tareasRetrasadas}
+                      </div>
+                    </div>
                   </td>
                   <td className="p-3.5 text-right font-black text-slate-800">
-                    {adv.unit === 'UNIDAD_2' ? <span className="text-slate-400">-</span> : `S/ ${adv.montoTotal.toLocaleString('es-PE', { minimumFractionDigits: 0 })}`}
+                    S/ {adv.montoTotal.toLocaleString('es-PE', { minimumFractionDigits: 0 })}
                   </td>
                   <td className="p-3.5 text-center">
                     {adv.unit === 'UNIDAD_2' ? (
