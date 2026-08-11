@@ -127,7 +127,7 @@ export function AgendaDiaria({
   // Lista de tareas estratégicas — SINCRONIZADA CON EL SERVIDOR GLOBAL
   const [tareasEstrategicas, setTareasEstrategicas] = useState<TareaEstrategica[]>([]);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [trabajadoresList, setTrabajadoresList] = useState<{ id: string; nombre: string; area: string }[]>([]);
+  const [trabajadoresList, setTrabajadoresList] = useState<{ id: string; nombre: string; area: string; activo?: boolean }[]>([]);
 
   const endpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
 
