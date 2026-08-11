@@ -30,6 +30,9 @@ interface UnidadesGerencialesProps {
 
 export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesProps) {
   const [selectedUnit, setSelectedUnit] = useState<UnidadComercialType>('TODAS');
+  const [tareas, setTareas] = useState<any[]>([]);
+  const [selectedAdvTasks, setSelectedAdvTasks] = useState<string | null>(null);
+  const [selectedAdvStatus, setSelectedAdvStatus] = useState<string | null>(null);
   const [trabajadoresBD, setTrabajadoresBD] = useState<any[]>([]);
 
   React.useEffect(() => {
