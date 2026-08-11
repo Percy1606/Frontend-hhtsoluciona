@@ -660,9 +660,6 @@ export function CRMStats() {
             />
           </div>
 
-      {/* CENTRO DE CONTROL DE UNIDADES COMERCIALES GERENCIALES (<1 MIN) */}
-      <UnidadesGerenciales clients={filteredClients} dateRange={{ startDate, endDate }} />
-
       {/* Dashboard Content with Tabs to avoid clutter */}
       <Tabs defaultValue="comercial" className="space-y-6">
         <TabsList className="bg-slate-100 p-1 rounded-xl h-11 border border-slate-200">
