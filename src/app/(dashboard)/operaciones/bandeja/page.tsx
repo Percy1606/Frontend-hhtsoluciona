@@ -37,6 +37,8 @@ import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-
 export default function BandejaTecnicaPage() {
   const { user } = useAuthStore();
   const { 
+    responsables,
+    fetchResponsables,
     fichasTecnicas, 
     totalFichas,
     fichaPage,
@@ -72,6 +74,14 @@ export default function BandejaTecnicaPage() {
   const [isCostsModalOpen, setIsCostsModalOpen] = useState(false);
   const [selectedFichaForCosts, setSelectedFichaForCosts] = useState<any>(null);
   const [gastosItems, setGastosItems] = useState<any[]>([]);
+
+  // Estado para Edición de Visita Técnica
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [fichaToEdit, setFichaToEdit] = useState<any>(null);
+  const [editFechaVisita, setEditFechaVisita] = useState<string>("");
+  const [editObservaciones, setEditObservaciones] = useState<string>("");
+  const [editTecnicoId, setEditTecnicoId] = useState<string>("");
+  const [savingEdit, setSavingEdit] = useState(false);
   
   // Estado para el ítem individual en edición/creación
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -374,7 +384,55 @@ export default function BandejaTecnicaPage() {
   useEffect(() => {
     // Ya no filtramos por técnico automáticamente, mostramos todo
     fetchFichasTecnicas(1, 20, undefined, searchTerm, startDate, endDate);
-  }, [fetchFichasTecnicas, searchTerm, startDate, endDate]);
+    if (!responsables || responsables.length === 0) {
+      fetchResponsables();
+    }
+  }, [fetchFichasTecnicas, fetchResponsables, responsables, searchTerm, startDate, endDate]);
+
+  const handleOpenEditModal = (ficha: any) => {
+    setFichaToEdit(ficha);
+    // Formatear la fecha para la entrada date/datetime
+    const fechaVal = ficha.fechaVisita 
+      ? new Date(ficha.fechaVisita).toISOString().slice(0, 16)
+      : "";
+    setEditFechaVisita(fechaVal);
+    setEditObservaciones(ficha.observaciones || "");
+    setEditTecnicoId(ficha.tecnicoId || ficha.tecnico?.id || "");
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEditVisita = async () => {
+    if (!fichaToEdit) return;
+    setSavingEdit(true);
+    try {
+      const payload: any = {
+        observaciones: editObservaciones,
+      };
+
+      if (editFechaVisita) {
+        payload.fechaVisita = new Date(editFechaVisita).toISOString();
+      }
+
+      if (editTecnicoId) {
+        payload.tecnicoId = editTecnicoId;
+      }
+
+      await api.put(`/operaciones/fichas-tecnicas/${fichaToEdit.id}`, payload);
+      toast.success("Visita Técnica Actualizada", {
+        description: "Se han guardado los cambios correctamente."
+      });
+      setIsEditModalOpen(false);
+      setFichaToEdit(null);
+      handleRefresh();
+    } catch (error: any) {
+      console.error(error);
+      toast.error("Error al actualizar visita", {
+        description: error.message || "No se pudieron guardar los cambios."
+      });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const handlePageChange = (newPage: number) => {
     fetchFichasTecnicas(newPage, 20, undefined, searchTerm, startDate, endDate);
@@ -697,6 +755,7 @@ export default function BandejaTecnicaPage() {
 
                   {/* Acciones del sistema (las hojitas son las importantes) */}
                   <div className="flex bg-slate-100/80 p-1 rounded-xl border border-slate-200 gap-1.5 shadow-inner justify-center w-full">
+                    {/* 
                     <Button 
                       size="icon" 
                       variant="ghost" 
@@ -715,6 +774,7 @@ export default function BandejaTecnicaPage() {
                     >
                       <ClipboardList className="w-4.5 h-4.5" />
                     </Button>
+                    */}
                     <Button 
                       size="icon" 
                       variant="ghost" 
@@ -723,6 +783,15 @@ export default function BandejaTecnicaPage() {
                       title="Gestionar fotos/archivos"
                     >
                       <Camera className="w-4.5 h-4.5" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost" 
+                      className="h-8 w-8 text-[#001529] hover:bg-white rounded-lg transition-all" 
+                      onClick={() => handleOpenEditModal(ficha)} 
+                      title="Editar Visita Técnica"
+                    >
+                      <Pencil className="w-4 h-4" />
                     </Button>
                     <Button 
                       size="icon" 
@@ -1285,6 +1354,90 @@ export default function BandejaTecnicaPage() {
               className="h-8 text-[10px] font-black uppercase rounded-lg px-4 bg-slate-800 text-white hover:bg-slate-700"
             >
               Cerrar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Modal para Editar Visita Técnica */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="max-w-md w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
+          <DialogHeader className="p-6 bg-[#001529] text-white shrink-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
+              <Pencil className="w-5 h-5 text-accent" />
+              Editar Visita Técnica
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="p-6 space-y-5">
+            {fichaToEdit && (
+              <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Cliente / Empresa</span>
+                <p className="text-xs font-black text-primary uppercase">{fichaToEdit.cliente?.empresa}</p>
+                <p className="text-[10px] font-bold text-slate-500 uppercase">RUC: {fichaToEdit.cliente?.ruc || 'N/A'}</p>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-600 tracking-wider">
+                Fecha y Hora de Visita
+              </Label>
+              <Input 
+                type="datetime-local"
+                value={editFechaVisita}
+                onChange={(e) => setEditFechaVisita(e.target.value)}
+                className="h-10 border-slate-200 font-bold text-xs rounded-xl bg-white focus:ring-2 focus:ring-primary/10"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-600 tracking-wider">
+                Técnico Asignado
+              </Label>
+              <select
+                value={editTecnicoId}
+                onChange={(e) => setEditTecnicoId(e.target.value)}
+                className="w-full h-10 border border-slate-200 bg-white font-bold text-xs rounded-xl px-3 uppercase text-slate-700 focus:ring-2 focus:ring-primary/10 outline-none"
+              >
+                <option value="">-- Seleccionar Técnico --</option>
+                {responsables && responsables.map((resp: any) => (
+                  <option key={resp.id} value={resp.id}>
+                    {resp.nombre} ({resp.cargo || 'Técnico'})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[10px] font-black uppercase text-slate-600 tracking-wider">
+                Observaciones de Coordinación / Indicaciones
+              </Label>
+              <textarea 
+                rows={4}
+                placeholder="Escriba aquí las indicaciones o detalles de la visita..."
+                value={editObservaciones}
+                onChange={(e) => setEditObservaciones(e.target.value)}
+                className="w-full p-3 border border-slate-200 rounded-xl font-bold text-xs uppercase bg-white text-slate-700 focus:ring-2 focus:ring-primary/10 outline-none resize-none placeholder:text-slate-300"
+              />
+            </div>
+          </div>
+
+          <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="font-black uppercase text-[10px] h-9 px-4 rounded-xl border-slate-200"
+              onClick={() => setIsEditModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              disabled={savingEdit}
+              className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-[10px] h-9 px-6 rounded-xl shadow-md gap-1.5"
+              onClick={handleSaveEditVisita}
+            >
+              <Pencil className="w-3.5 h-3.5" />
+              {savingEdit ? "Guardando..." : "Guardar Cambios"}
             </Button>
           </div>
         </DialogContent>

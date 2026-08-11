@@ -131,21 +131,19 @@ export function AgendaDiaria({
 
   const endpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
 
-  // CARGAR TRABAJADORES DE CONFIGURACION SI ES AGENDA DE TRABAJADORES
+  // CARGAR TRABAJADORES ACTIVOS DE CONFIGURACIÓN (DISPONIBLES EN AMBAS AGENDAS)
   useEffect(() => {
-    if (isGeneralAgenda) {
-      api.get('/config/trabajadores')
-        .then(data => {
-          if (Array.isArray(data)) {
-            const activeWorkers = data.filter((w: any) => w.activo);
-            setTrabajadoresList(activeWorkers);
-            if (activeWorkers.length > 0) {
-              setNewResponsable(activeWorkers[0].nombre);
-            }
+    api.get('/config/trabajadores')
+      .then(data => {
+        if (Array.isArray(data)) {
+          const activeWorkers = data.filter((w: any) => w.activo);
+          setTrabajadoresList(activeWorkers);
+          if (isGeneralAgenda && activeWorkers.length > 0) {
+            setNewResponsable(activeWorkers[0].nombre);
           }
-        })
-        .catch(err => console.warn('[Agenda] Error al cargar trabajadores:', err));
-    }
+        }
+      })
+      .catch(() => setTrabajadoresList([]));
   }, [isGeneralAgenda]);
 
   // CARGAR TAREAS GLOBALES AL INICIAR
@@ -249,6 +247,8 @@ export function AgendaDiaria({
   const [newProximoPaso, setNewProximoPaso] = useState('');
   const [newResponsable, setNewResponsable] = useState('Steven');
   const [newPrioridad, setNewPrioridad] = useState<'ROJO' | 'ANARANJADO' | 'AMARILLO' | 'VERDE'>('VERDE');
+  const [assignToWorkers, setAssignToWorkers] = useState(false);
+  const [selectedWorkerName, setSelectedWorkerName] = useState('');
   // Fecha compromiso por defecto = HOY dinámico (el usuario puede poner fechas pasadas)
   const [newFechaCompromiso, setNewFechaCompromiso] = useState(() => {
     const now = new Date();
@@ -468,6 +468,36 @@ export function AgendaDiaria({
     setExpandedTareaId(newTask.id);
     setTaskPage(1);
 
+    // Si se activó asignar a la Agenda de Trabajadores
+    if (assignToWorkers && selectedWorkerName) {
+      const workerTask: TareaEstrategica = {
+        id: `task-worker-${Date.now()}`,
+        clienteId: selectedTaskClientIdDB || undefined,
+        empresa: empresaFinal,
+        etapaProceso: newEtapaProceso,
+        actividadInmediata: newActividadInmediata.trim() || 'Asignada desde Gerencia',
+        proximoPaso: newProximoPaso.trim() || 'Ejecución técnica',
+        responsable: selectedWorkerName,
+        fechaCompromiso: newFechaCompromiso || '',
+        estado: isExp ? 'RETRASADA' : 'PENDIENTE',
+        prioridad: newPrioridad,
+        subtareas: []
+      };
+
+      // Guardar en la agenda de trabajadores via backend endpoint /crm/agenda?tipo=trabajadores
+      api.get('/crm/agenda?tipo=trabajadores')
+        .then((existingWorkersTasks: any) => {
+          const currentList = Array.isArray(existingWorkersTasks) ? existingWorkersTasks : [];
+          return api.post('/crm/agenda?tipo=trabajadores', [workerTask, ...currentList]);
+        })
+        .then(() => {
+          toast.success(`Tarea asignada a la Agenda de Trabajadores para ${selectedWorkerName}`);
+        })
+        .catch((err) => {
+          console.warn('Error al guardar tarea en agenda de trabajadores:', err);
+        });
+    }
+
     if (selectedAdvisor !== 'TODOS' && selectedAdvisor.toLowerCase() !== newResponsable.toLowerCase()) {
       setSelectedAdvisor('TODOS');
     }
@@ -479,6 +509,8 @@ export function AgendaDiaria({
     setTaskProyectoName('');
     setNewActividadInmediata('');
     setNewProximoPaso('');
+    setAssignToWorkers(false);
+    setSelectedWorkerName('');
     setShowCreateTaskModal(false);
   };
 
@@ -513,25 +545,56 @@ export function AgendaDiaria({
       return;
     }
 
+    const targetTask = tareasEstrategicas.find(t => t.id === tareaId);
+    const gerenciaList = ['steven', 'angi', 'mellani', 'javier'];
+    const isNewResponsableWorker = !gerenciaList.includes((editResponsable || '').toLowerCase());
 
-    setTareasEstrategicas(prev => prev.map(t => {
-      if (t.id === tareaId) {
-        return {
-          ...t,
-          empresa: editEmpresa.trim(),
-          etapaProceso: editEtapaProceso.trim() || t.etapaProceso,
-          actividadInmediata: editActividadInmediata.trim(),
-          proximoPaso: editProximoPaso.trim(),
-          responsable: editResponsable || t.responsable,
-          fechaCompromiso: editFechaCompromiso,
-          estado: editEstado,
-          prioridad: editPrioridad,
-        };
-      }
-      return t;
-    }));
+    const updatedTask = {
+      ...(targetTask || {}),
+      id: tareaId,
+      empresa: editEmpresa.trim(),
+      etapaProceso: isNewResponsableWorker ? 'TRABAJADORES' : (editEtapaProceso.trim() || targetTask?.etapaProceso || 'GERENCIAL'),
+      actividadInmediata: editActividadInmediata.trim(),
+      proximoPaso: editProximoPaso.trim(),
+      responsable: editResponsable || targetTask?.responsable || 'Steven',
+      fechaCompromiso: editFechaCompromiso,
+      estado: editEstado,
+      prioridad: editPrioridad,
+      subtareas: targetTask?.subtareas || []
+    };
 
-    toast.success(`Tarea "${editEmpresa.trim()}" actualizada correctamente.`);
+    // Verificar si debe cambiar de agenda
+    if ((!isGeneralAgenda && isNewResponsableWorker) || (isGeneralAgenda && !isNewResponsableWorker)) {
+      const targetEndpoint = isNewResponsableWorker ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+      const sourceEndpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+
+      api.get(targetEndpoint)
+        .then((existingList: any) => {
+          const currentTarget = Array.isArray(existingList) ? existingList : [];
+          return api.post(targetEndpoint, [updatedTask, ...currentTarget]);
+        })
+        .then(() => {
+          const updatedOrigin = tareasEstrategicas.filter(t => t.id !== tareaId);
+          setTareasEstrategicas(updatedOrigin);
+          return api.post(sourceEndpoint, updatedOrigin);
+        })
+        .then(() => {
+          toast.success(`Tarea trasladada exitosamente a la ${isNewResponsableWorker ? 'Agenda de Trabajadores' : 'Agenda Gerencial'}`);
+        })
+        .catch(err => {
+          console.warn('Error al mover tarea entre agendas:', err);
+          toast.error('Ocurrió un error al mover la tarea.');
+        });
+    } else {
+      setTareasEstrategicas(prev => prev.map(t => {
+        if (t.id === tareaId) {
+          return updatedTask as TareaEstrategica;
+        }
+        return t;
+      }));
+      toast.success(`Tarea "${editEmpresa.trim()}" actualizada correctamente.`);
+    }
+
     setEditingTaskId(null);
   };
 
@@ -724,20 +787,24 @@ export function AgendaDiaria({
   }, [clients, selectedAdvisor, searchObsQuery]);
 
   // Tareas Estratégicas Filtradas por Responsable, Buscador Global y Fechas (Estilo Cartera)
-  const filteredTareasEstrategicas = useMemo(() => {
+  // Lista de tareas filtradas por persona, búsqueda y fechas (IGNORA filterEstado para que los contadores sean estáticos)
+  const baseFilteredTareas = useMemo(() => {
     return tareasEstrategicas.filter(t => {
-      if (selectedAdvisor && selectedAdvisor !== 'TODOS' && t.responsable.toLowerCase() !== selectedAdvisor.toLowerCase()) {
-        return false;
-      }
-      if (filterEstado !== 'TODAS' && t.estado !== filterEstado) {
-        return false;
+      if (selectedAdvisor && selectedAdvisor !== 'TODOS') {
+        const advLower = selectedAdvisor.toLowerCase();
+        const matchMainResp = (t.responsable || '').toLowerCase() === advLower;
+        const matchSubtaskResp = (t.subtareas || []).some(s => (s.responsable || '').toLowerCase() === advLower);
+        if (!matchMainResp && !matchSubtaskResp) {
+          return false;
+        }
       }
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchEmpresa = t.empresa.toLowerCase().includes(q);
-        const matchAct = t.actividadInmediata.toLowerCase().includes(q);
-        const matchResp = t.responsable.toLowerCase().includes(q);
-        if (!matchEmpresa && !matchAct && !matchResp) return false;
+        const matchEmpresa = (t.empresa || '').toLowerCase().includes(q);
+        const matchAct = (t.actividadInmediata || '').toLowerCase().includes(q);
+        const matchResp = (t.responsable || '').toLowerCase().includes(q);
+        const matchSubtext = (t.subtareas || []).some(s => (s.texto || '').toLowerCase().includes(q) || (s.responsable || '').toLowerCase().includes(q));
+        if (!matchEmpresa && !matchAct && !matchResp && !matchSubtext) return false;
       }
 
       // Filtro por Fechas
@@ -750,7 +817,13 @@ export function AgendaDiaria({
 
       return true;
     });
-  }, [tareasEstrategicas, selectedAdvisor, filterEstado, searchQuery, dateFilterType, customStartDate, customEndDate]);
+  }, [tareasEstrategicas, selectedAdvisor, searchQuery, dateFilterType, customStartDate, customEndDate]);
+
+  // Lista final filtrada incluyendo filterEstado (para las tarjetas inferiores y tabla)
+  const filteredTareasEstrategicas = useMemo(() => {
+    if (filterEstado === 'TODAS') return baseFilteredTareas;
+    return baseFilteredTareas.filter(t => t.estado === filterEstado);
+  }, [baseFilteredTareas, filterEstado]);
 
   // Paginación Tipo Cartera con Soporte para +100 Registros
   const paginatedTareas = useMemo(() => {
@@ -760,14 +833,55 @@ export function AgendaDiaria({
 
   const totalTaskPages = Math.ceil(filteredTareasEstrategicas.length / taskLimit) || 1;
 
+  // Contadores ESTÁTICOS calculados desde baseFilteredTareas (no cambian al hacer clic en Pendiente / En Proceso / Finalizada / Retrasada)
   const counts = useMemo(() => {
+    const allSubtasks = baseFilteredTareas.flatMap(t => t.subtareas || []);
+    
+    let pendiente = 0;
+    let enProceso = 0;
+    let finalizada = 0;
+    let retrasada = 0;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    allSubtasks.forEach(s => {
+      if (s.completada || s.estadoStr === 'SI') {
+        finalizada++;
+      } else {
+        let isExpired = false;
+        if (s.fecha) {
+          const parts = s.fecha.split('/');
+          if (parts.length === 3) {
+            const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+            if (d < today) isExpired = true;
+          }
+        }
+
+        if (isExpired || s.prioridad === 'ALTA') {
+          retrasada++;
+        } else if (s.completada === false && (!s.estadoStr || s.estadoStr === 'NO')) {
+          enProceso++;
+        } else {
+          pendiente++;
+        }
+      }
+    });
+
+    if (allSubtasks.length === 0) {
+      pendiente = baseFilteredTareas.filter(t => t.estado === 'PENDIENTE').length;
+      enProceso = baseFilteredTareas.filter(t => t.estado === 'EN_PROCESO').length;
+      finalizada = baseFilteredTareas.filter(t => t.estado === 'FINALIZADA').length;
+      retrasada = baseFilteredTareas.filter(t => t.estado === 'RETRASADA').length;
+    }
+
     return {
-      PENDIENTE: tareasEstrategicas.filter(t => t.estado === 'PENDIENTE').length,
-      EN_PROCESO: tareasEstrategicas.filter(t => t.estado === 'EN_PROCESO').length,
-      FINALIZADA: tareasEstrategicas.filter(t => t.estado === 'FINALIZADA').length,
-      RETRASADA: tareasEstrategicas.filter(t => t.estado === 'RETRASADA').length
+      PENDIENTE: pendiente,
+      EN_PROCESO: enProceso,
+      FINALIZADA: finalizada,
+      RETRASADA: retrasada
     };
-  }, [tareasEstrategicas]);
+  }, [baseFilteredTareas]);
 
   const getStatusBadge = (st: EstadoTareaEstricto) => {
     switch (st) {
@@ -842,36 +956,21 @@ export function AgendaDiaria({
               onChange={(e) => handleAdvisorSelect(e.target.value)}
               className="bg-slate-50 border border-slate-200 text-slate-700 text-xs rounded-xl px-3.5 py-2 font-medium focus:ring-2 focus:ring-emerald-500 outline-none shadow-xs"
             >
-              <option value="TODOS">{isGeneralAgenda ? "Todos los Trabajadores" : "Todo el Equipo Comercial"}</option>
+              <option value="TODOS">{isGeneralAgenda ? "Todos los Trabajadores" : "Todos los Gerenciales"}</option>
               {isGeneralAgenda ? (
-                trabajadoresList.length > 0 ? (
-                  trabajadoresList.map((w) => (
+                trabajadoresList
+                  .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                  .map((w) => (
                     <option key={w.id} value={w.nombre}>
-                      {w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})
+                      {w.nombre}
                     </option>
                   ))
-                ) : (
-                  <>
-                    <option value="Steven">Steven</option>
-                    <option value="Mario">Mario</option>
-                    <option value="Javier">Javier</option>
-                    <option value="Valentina">Valentina</option>
-                  </>
-                )
               ) : (
                 <>
-                  <optgroup label="Unidad 1 - Nuevos Negocios">
-                    <option value="Ariana">Ariana (Prospección)</option>
-                    <option value="Brenda">Brenda (Prospección Exclusiva)</option>
-                    <option value="Valentina">Valentina (Seguimiento & Cierre)</option>
-                  </optgroup>
-                  <optgroup label="Unidad 2 - Clientes Estratégicos">
-                    <option value="Steven">Steven (Estratégico)</option>
-                    <option value="Mario">Mario (Instalación & Servicio)</option>
-                    <option value="Javier">Javier (Estratégico)</option>
-                    <option value="Angi">Angi (Recuperación & Cartera)</option>
-                    <option value="Mellani">Mellani (Estratégico)</option>
-                  </optgroup>
+                  <option value="Steven">Steven</option>
+                  <option value="Angi">Angi</option>
+                  <option value="Mellani">Mellani</option>
+                  <option value="Javier">Javier</option>
                 </>
               )}
             </select>
@@ -1008,23 +1107,24 @@ export function AgendaDiaria({
               <div>
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable Asignado *</label>
                 <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1 uppercase"
                   value={newResponsable}
                   onChange={(e) => setNewResponsable(e.target.value)}
                 >
-                  {isGeneralAgenda && trabajadoresList.length > 0 ? (
-                    trabajadoresList.map((w) => (
-                      <option key={w.id} value={w.nombre}>{w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})</option>
-                    ))
+                  {isGeneralAgenda ? (
+                    trabajadoresList
+                      .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                      .map((w) => (
+                        <option key={w.id} value={w.nombre}>
+                          {w.nombre}
+                        </option>
+                      ))
                   ) : (
                     <>
                       <option value="Steven">Steven</option>
-                      <option value="Mario">Mario</option>
-                      <option value="Javier">Javier</option>
-                      <option value="Valentina">Valentina</option>
-                      <option value="Ariana">Ariana</option>
-                      <option value="Brenda">Brenda</option>
                       <option value="Angi">Angi</option>
+                      <option value="Mellani">Mellani</option>
+                      <option value="Javier">Javier</option>
                     </>
                   )}
                 </select>
@@ -1068,6 +1168,54 @@ export function AgendaDiaria({
               </div>
             </div>
           </div>
+
+          {!isGeneralAgenda && (
+            <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-100 space-y-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input 
+                  type="checkbox"
+                  checked={assignToWorkers}
+                  onChange={(e) => {
+                    setAssignToWorkers(e.target.checked);
+                    if (e.target.checked && trabajadoresList.length > 0 && !selectedWorkerName) {
+                      setSelectedWorkerName(trabajadoresList[0].nombre);
+                    }
+                  }}
+                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                />
+                <span className="text-xs font-bold text-indigo-900 uppercase">
+                  Asignar también a la Agenda de Trabajadores
+                </span>
+              </label>
+              
+              {assignToWorkers && (
+                <div className="pt-1.5 animate-in fade-in duration-200">
+                  <label className="text-[10px] font-black text-indigo-700 uppercase tracking-wider block mb-1">
+                    Seleccionar Trabajador Destino *
+                  </label>
+                  <select
+                    value={selectedWorkerName}
+                    onChange={(e) => setSelectedWorkerName(e.target.value)}
+                    className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
+                  >
+                    {trabajadoresList.length > 0 ? (
+                      trabajadoresList.map((w) => (
+                        <option key={w.id} value={w.nombre}>
+                          {w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})
+                        </option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="Pedro">Pedro (Campo)</option>
+                        <option value="Juan">Juan (Técnico)</option>
+                        <option value="Carlos">Carlos (Operativo)</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4">
             <div>
@@ -1164,7 +1312,7 @@ export function AgendaDiaria({
             <AlertCircle className="w-4 h-4 text-rose-600" />
           </div>
           <div className="text-2xl font-bold text-rose-700">{counts.RETRASADA}</div>
-          <div className="text-xs text-slate-500 font-normal mt-0.5">Fecha plazo vencida</div>
+          <div className="text-xs text-slate-500 font-normal mt-0.5">Actividades con fecha plazo vencida</div>
         </button>
       </div>
 
@@ -1332,18 +1480,27 @@ export function AgendaDiaria({
                             <div>
                               <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
                               <select
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
                                 value={editResponsable}
                                 onChange={(e) => setEditResponsable(e.target.value)}
                               >
-                                <option value="Steven">Steven</option>
-                                <option value="Mario">Mario</option>
-                                <option value="Javier">Javier</option>
-                                <option value="Valentina">Valentina</option>
-                                <option value="Ariana">Ariana</option>
-                                <option value="Brenda">Brenda</option>
-                                <option value="Angi">Angi</option>
-                                <option value="Mellani">Mellani</option>
+                                <optgroup label="Trabajadores Gerencia">
+                                  <option value="Steven">Steven</option>
+                                  <option value="Angi">Angi</option>
+                                  <option value="Mellani">Mellani</option>
+                                  <option value="Javier">Javier</option>
+                                </optgroup>
+                                {trabajadoresList.length > 0 && (
+                                  <optgroup label="Todos los Trabajadores">
+                                    {trabajadoresList
+                                      .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                      .map((w) => (
+                                        <option key={w.id} value={w.nombre}>
+                                          {w.nombre}
+                                        </option>
+                                      ))}
+                                  </optgroup>
+                                )}
                               </select>
                             </div>
                           </div>
@@ -1441,23 +1598,21 @@ export function AgendaDiaria({
                             />
                             <select
                               className="w-full sm:w-32 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                              value={nuevaSubtareaResponsable[tarea.id] || (isGeneralAgenda && trabajadoresList[0] ? trabajadoresList[0].nombre : 'Steven')}
+                              value={nuevaSubtareaResponsable[tarea.id] || (isGeneralAgenda ? 'Mario' : 'Steven')}
                               onChange={(e) => setNuevaSubtareaResponsable({ ...nuevaSubtareaResponsable, [tarea.id]: e.target.value })}
                             >
-                              {isGeneralAgenda && trabajadoresList.length > 0 ? (
-                                trabajadoresList.map((w) => (
-                                  <option key={w.id} value={w.nombre}>{w.nombre}</option>
-                                ))
+                              {isGeneralAgenda ? (
+                                trabajadoresList
+                                  .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                  .map((w) => (
+                                    <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                  ))
                               ) : (
                                 <>
                                   <option value="Steven">Steven</option>
-                                  <option value="Mario">Mario</option>
-                                  <option value="Javier">Javier</option>
-                                  <option value="Valentina">Valentina</option>
-                                  <option value="Ariana">Ariana</option>
-                                  <option value="Brenda">Brenda</option>
                                   <option value="Angi">Angi</option>
                                   <option value="Mellani">Mellani</option>
+                                  <option value="Javier">Javier</option>
                                 </>
                               )}
                             </select>
@@ -1544,22 +1699,21 @@ export function AgendaDiaria({
                                           value={editSubtaskResponsable}
                                           onChange={(e) => setEditSubtaskResponsable(e.target.value)}
                                         >
-                                          {isGeneralAgenda && trabajadoresList.length > 0 ? (
-                                            trabajadoresList.map((w) => (
-                                              <option key={w.id} value={w.nombre}>{w.nombre}</option>
-                                            ))
-                                          ) : (
-                                            <>
-                                              <option value="Steven">Steven</option>
-                                              <option value="Mario">Mario</option>
-                                              <option value="Javier">Javier</option>
-                                              <option value="Valentina">Valentina</option>
-                                              <option value="Ariana">Ariana</option>
-                                              <option value="Brenda">Brenda</option>
-                                              <option value="Angi">Angi</option>
-                                              <option value="Mellani">Mellani</option>
-                                            </>
-                                          )}
+                                           <optgroup label="Trabajadores Gerencia">
+                                             <option value="Steven">Steven</option>
+                                             <option value="Angi">Angi</option>
+                                             <option value="Mellani">Mellani</option>
+                                             <option value="Javier">Javier</option>
+                                           </optgroup>
+                                           {trabajadoresList.length > 0 && (
+                                             <optgroup label="Todos los Trabajadores">
+                                               {trabajadoresList
+                                                 .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                                 .map((w) => (
+                                                   <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                                 ))}
+                                             </optgroup>
+                                           )}
                                         </select>
                                       </td>
                                       <td className="px-4 py-3 align-top"></td>
@@ -1608,37 +1762,66 @@ export function AgendaDiaria({
                                           {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡'}
                                           {sub.prioridad === 'BAJA' && '🟢'}
                                         </span>
-                                      </td>
-                                      <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
-                                          value={sub.responsable || tarea.responsable}
-                                          onChange={(e) => {
-                                             const newRes = e.target.value;
-                                             setTareasEstrategicas(prev => prev.map(t => {
-                                                if (t.id === tarea.id) {
-                                                   return {
-                                                      ...t,
-                                                      subtareas: t.subtareas.map(s => s.id === sub.id ? { ...s, responsable: newRes } : s)
-                                                   };
-                                                }
-                                                return t;
-                                             }));
-                                          }}
-                                          className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
-                                        >
-                                          {isGeneralAgenda && trabajadoresList.length > 0 ? (
-                                            trabajadoresList.map((w) => (
-                                              <option key={w.id} value={w.nombre}>{w.nombre}</option>
-                                            ))
-                                          ) : (
-                                            <>
-                                              <option value="Steven">Steven</option>
-                                              <option value="Javier">Javier</option>
-                                              <option value="Angi">Angi</option>
-                                              <option value="Mellani">Mellani</option>
-                                            </>
-                                          )}
-                                        </select>
+                                           value={sub.responsable || tarea.responsable}
+                                           onChange={(e) => {
+                                              const newRes = e.target.value;
+                                              const gerenciaList = ['steven', 'angi', 'mellani', 'javier'];
+                                              const isWorkerRes = !gerenciaList.includes(newRes.toLowerCase());
+
+                                              setTareasEstrategicas(prev => prev.map(t => {
+                                                 if (t.id === tarea.id) {
+                                                    const updatedSubtareas = t.subtareas.map(s => s.id === sub.id ? { ...s, responsable: newRes } : s);
+                                                    return {
+                                                       ...t,
+                                                       responsable: newRes,
+                                                       subtareas: updatedSubtareas
+                                                    };
+                                                 }
+                                                 return t;
+                                              }));
+
+                                              // Si estamos en gerencial y se cambió a trabajador, o viceversa, mover entre agendas via backend
+                                              const targetEndpoint = isWorkerRes ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+                                              const sourceEndpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+
+                                              if ((!isGeneralAgenda && isWorkerRes) || (isGeneralAgenda && !isWorkerRes)) {
+                                                const movedTask = { ...tarea, responsable: newRes, etapaProceso: isWorkerRes ? 'TRABAJADORES' : (tarea.etapaProceso === 'TRABAJADORES' ? 'GERENCIAL' : tarea.etapaProceso) };
+                                                
+                                                // 1. Guardar en destino
+                                                api.get(targetEndpoint).then((targetList: any) => {
+                                                  const currentTarget = Array.isArray(targetList) ? targetList : [];
+                                                  return api.post(targetEndpoint, [movedTask, ...currentTarget]);
+                                                }).then(() => {
+                                                  // 2. Filtrar localmente y actualizar backend de origen
+                                                  const updatedOrigin = tareasEstrategicas.filter(t => t.id !== tarea.id);
+                                                  setTareasEstrategicas(updatedOrigin);
+                                                  return api.post(sourceEndpoint, updatedOrigin);
+                                                }).then(() => {
+                                                  toast.success(`Tarea trasladada exitosamente a ${newRes}`);
+                                                }).catch(err => console.warn('Error al mover tarea entre agendas:', err));
+                                              }
+                                           }}
+                                           className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                                         >
+                                           <optgroup label="Trabajadores Gerencia">
+                                             <option value="Steven">Steven</option>
+                                             <option value="Angi">Angi</option>
+                                             <option value="Mellani">Mellani</option>
+                                             <option value="Javier">Javier</option>
+                                           </optgroup>
+                                           {trabajadoresList.length > 0 && (
+                                             <optgroup label="Todos los Trabajadores">
+                                               {trabajadoresList
+                                                 .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                                 .map((w) => (
+                                                   <option key={w.id} value={w.nombre}>
+                                                     {w.nombre}
+                                                   </option>
+                                                 ))}
+                                             </optgroup>
+                                           )}
+                                         </select>
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
@@ -1749,9 +1932,14 @@ export function AgendaDiaria({
             </div>
 
               {(() => {
+                const gerenciaList = ['Steven', 'Angi', 'Mellani', 'Javier'];
+                const restWorkersList = trabajadoresList
+                  .filter(w => !gerenciaList.map(g => g.toLowerCase()).includes(w.nombre.toLowerCase()))
+                  .map(w => w.nombre);
+
                 const auditPersonList = isGeneralAgenda
-                  ? (trabajadoresList.length > 0 ? trabajadoresList.map(w => w.nombre) : ['Pedro', 'Juan', 'Carlos'])
-                  : ['Steven', 'Javier', 'Angi', 'Mellani'];
+                  ? restWorkersList
+                  : gerenciaList;
 
                 return (
                   <>
@@ -1854,10 +2042,20 @@ export function AgendaDiaria({
                             onClick={(e) => e.stopPropagation()}
                             className="bg-transparent text-[9px] font-bold text-slate-700 uppercase focus:outline-none cursor-pointer"
                           >
-                            <option value="Steven">Steven</option>
-                            <option value="Javier">Javier</option>
-                            <option value="Angi">Angi</option>
-                            <option value="Mellani">Mellani</option>
+                            {isGeneralAgenda ? (
+                              trabajadoresList
+                                .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                .map((w) => (
+                                  <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                                ))
+                            ) : (
+                              <>
+                                <option value="Steven">Steven</option>
+                                <option value="Angi">Angi</option>
+                                <option value="Mellani">Mellani</option>
+                                <option value="Javier">Javier</option>
+                              </>
+                            )}
                           </select>
                         </div>
                       </div>

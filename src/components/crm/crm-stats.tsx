@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { cn, getPeruDateString } from "@/lib/utils";
 import { useCRMStore, isFollowUpOverdue } from "@/store/crm-store";
 import { UnidadesGerenciales } from "./unidades-gerenciales";
@@ -442,6 +442,85 @@ export function CRMStats() {
 
 
 
+  // ESTADOS Y EFECTOS PARA CONTROL DE TAREAS (GERENCIA Y TRABAJADORES)
+  const [tareasGerenciales, setTareasGerenciales] = useState<any[]>([]);
+  const [tareasTrabajadores, setTareasTrabajadores] = useState<any[]>([]);
+  const [trabajadoresList, setTrabajadoresList] = useState<any[]>([]);
+  const [loadingTareas, setLoadingTareas] = useState(false);
+
+  useEffect(() => {
+    const fetchAgendasData = async () => {
+      setLoadingTareas(true);
+      try {
+        const [resGerencia, resTrabajadores, resConfigTrabajadores] = await Promise.all([
+          api.get('/crm/agenda'),
+          api.get('/crm/agenda?tipo=trabajadores'),
+          api.get('/config/trabajadores').catch(() => [])
+        ]);
+
+        if (Array.isArray(resGerencia)) setTareasGerenciales(resGerencia);
+        if (Array.isArray(resTrabajadores)) setTareasTrabajadores(resTrabajadores);
+        if (Array.isArray(resConfigTrabajadores)) {
+          setTrabajadoresList(resConfigTrabajadores.filter((w: any) => w.activo));
+        }
+      } catch (err) {
+        console.warn("Error cargando agendas para estadísticas:", err);
+      } finally {
+        setLoadingTareas(false);
+      }
+    };
+
+    fetchAgendasData();
+  }, []);
+
+  // Métricas calculadas para Tareas Gerenciales
+  const gerenciaNombres = ['Steven', 'Angi', 'Mellani', 'Javier'];
+  const metricsGerencia = useMemo(() => {
+    return gerenciaNombres.map(nombre => {
+      const tareasAsesor = tareasGerenciales.filter(t => (t.responsable || '').toLowerCase() === nombre.toLowerCase());
+      const subtareas = tareasAsesor.flatMap(t => t.subtareas || []);
+      const completadas = subtareas.filter(s => s.completada || s.estadoStr === 'SI').length;
+      const total = subtareas.length;
+      const pendientes = total - completadas;
+      const cumplimiento = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+      return {
+        nombre,
+        total,
+        completadas,
+        pendientes,
+        cumplimiento
+      };
+    });
+  }, [tareasGerenciales]);
+
+  // Métricas calculadas para Tareas Trabajadores
+  const metricsTrabajadores = useMemo(() => {
+    const nombresWorkers = trabajadoresList.length > 0 
+      ? trabajadoresList.map(w => w.nombre)
+      : ['Pedro', 'Juan', 'Carlos', 'Luis', 'Técnico Campo'];
+
+    return trabajadoresList.map(w => {
+      const nombre = w.nombre;
+      const areaStr = w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal';
+      const tareasWorker = tareasTrabajadores.filter(t => (t.responsable || '').toLowerCase() === nombre.toLowerCase());
+      const subtareas = tareasWorker.flatMap(t => t.subtareas || []);
+      const completadas = subtareas.filter(s => s.completada || s.estadoStr === 'SI').length;
+      const total = subtareas.length;
+      const pendientes = total - completadas;
+      const cumplimiento = total > 0 ? Math.round((completadas / total) * 100) : 0;
+
+      return {
+        nombre,
+        area: areaStr,
+        total,
+        completadas,
+        pendientes,
+        cumplimiento
+      };
+    });
+  }, [tareasTrabajadores, trabajadoresList]);
+
   return (
     <div className="space-y-6">
       {/* FILTRO REFINADO Y CABECERA DE INDICADORES */}
@@ -590,10 +669,148 @@ export function CRMStats() {
           <TabsTrigger value="comercial" className="rounded-lg font-black text-[10px] uppercase gap-2 px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <BarChart3 className="w-4 h-4" /> Rendimiento Comercial
           </TabsTrigger>
+          <TabsTrigger value="tareas" className="rounded-lg font-black text-[10px] uppercase gap-2 px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+            <Zap className="w-4 h-4 text-amber-500" /> Medición de Tareas (Agendas)
+          </TabsTrigger>
           <TabsTrigger value="cartera" className="rounded-lg font-black text-[10px] uppercase gap-2 px-6 data-[state=active]:bg-white data-[state=active]:shadow-sm">
             <PieChartIcon className="w-4 h-4" /> Análisis de Cartera
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="tareas" className="space-y-6 m-0 outline-none">
+          <Tabs defaultValue="gerencia" className="space-y-4">
+            <TabsList className="bg-white border border-slate-200 p-1 rounded-xl h-10 w-fit">
+              <TabsTrigger value="gerencia" className="rounded-lg font-black text-[10px] uppercase gap-2 px-4">
+                Agenda Gerencial (Asesores)
+              </TabsTrigger>
+              <TabsTrigger value="trabajadores" className="rounded-lg font-black text-[10px] uppercase gap-2 px-4">
+                Agenda Trabajadores (Operaciones / Campo)
+              </TabsTrigger>
+            </TabsList>
+
+            {/* TABLA CUMPLIMIENTO TAREAS GERENCIALES */}
+            <TabsContent value="gerencia" className="space-y-4">
+              <Card className="rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-3.5 px-6">
+                  <CardTitle className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                    <User className="w-4 h-4 text-primary" />
+                    KPIs de Cumplimiento - Agenda Gerencial (Asesores)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100/70 text-slate-600 font-black uppercase tracking-wider text-[9px] border-b border-slate-200">
+                        <tr>
+                          <th className="py-3 px-6">Asesor / Gerencia</th>
+                          <th className="py-3 px-4 text-center">Total Tareas</th>
+                          <th className="py-3 px-4 text-center">Completadas</th>
+                          <th className="py-3 px-4 text-center">Pendientes / Vencidas</th>
+                          <th className="py-3 px-6 text-center">% Cumplimiento</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-bold uppercase text-slate-700">
+                        {metricsGerencia.map((m, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3.5 px-6 font-black text-slate-900 flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-primary/10 text-primary text-[10px] flex items-center justify-center font-black">
+                                {m.nombre[0]}
+                              </span>
+                              {m.nombre}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">{m.total}</td>
+                            <td className="py-3.5 px-4 text-center text-emerald-600 font-black">{m.completadas}</td>
+                            <td className="py-3.5 px-4 text-center text-rose-600 font-black">{m.pendientes}</td>
+                            <td className="py-3.5 px-6 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-24 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                                  <div 
+                                    className={cn(
+                                      "h-full rounded-full transition-all duration-500",
+                                      m.cumplimiento >= 80 ? "bg-emerald-500" : m.cumplimiento >= 50 ? "bg-amber-500" : "bg-rose-500"
+                                    )} 
+                                    style={{ width: `${m.cumplimiento}%` }}
+                                  />
+                                </div>
+                                <span className={cn(
+                                  "font-black text-xs",
+                                  m.cumplimiento >= 80 ? "text-emerald-600" : m.cumplimiento >= 50 ? "text-amber-600" : "text-rose-600"
+                                )}>
+                                  {m.cumplimiento}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* TABLA CUMPLIMIENTO TAREAS TRABAJADORES */}
+            <TabsContent value="trabajadores" className="space-y-4">
+              <Card className="rounded-2xl border border-slate-200 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="bg-slate-50 border-b border-slate-200 py-3.5 px-6">
+                  <CardTitle className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-600" />
+                    KPIs de Cumplimiento - Agenda Trabajadores (Operaciones)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-slate-100/70 text-slate-600 font-black uppercase tracking-wider text-[9px] border-b border-slate-200">
+                        <tr>
+                          <th className="py-3 px-6">Trabajador / Personal</th>
+                          <th className="py-3 px-4 text-center">Total Tareas Asignadas</th>
+                          <th className="py-3 px-4 text-center">Completadas</th>
+                          <th className="py-3 px-4 text-center">Pendientes / Atrasadas</th>
+                          <th className="py-3 px-6 text-center">% Cumplimiento</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-bold uppercase text-slate-700">
+                        {metricsTrabajadores.map((m, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                            <td className="py-3.5 px-6 font-black text-slate-900 flex items-center gap-2">
+                              <span className="w-6 h-6 rounded-full bg-indigo-50 text-indigo-700 text-[10px] flex items-center justify-center font-black border border-indigo-200">
+                                {m.nombre[0]}
+                              </span>
+                              {m.nombre}
+                            </td>
+                            <td className="py-3.5 px-4 text-center">{m.total}</td>
+                            <td className="py-3.5 px-4 text-center text-emerald-600 font-black">{m.completadas}</td>
+                            <td className="py-3.5 px-4 text-center text-rose-600 font-black">{m.pendientes}</td>
+                            <td className="py-3.5 px-6 text-center">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="w-24 bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200">
+                                  <div 
+                                    className={cn(
+                                      "h-full rounded-full transition-all duration-500",
+                                      m.cumplimiento >= 80 ? "bg-emerald-500" : m.cumplimiento >= 50 ? "bg-amber-500" : "bg-rose-500"
+                                    )} 
+                                    style={{ width: `${m.cumplimiento}%` }}
+                                  />
+                                </div>
+                                <span className={cn(
+                                  "font-black text-xs",
+                                  m.cumplimiento >= 80 ? "text-emerald-600" : m.cumplimiento >= 50 ? "text-amber-600" : "text-rose-600"
+                                )}>
+                                  {m.cumplimiento}%
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
 
         <TabsContent value="comercial" className="space-y-6 m-0 outline-none">
           {/* Gráficos de Distribución y Comparativa */}

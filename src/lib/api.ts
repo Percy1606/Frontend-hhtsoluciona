@@ -63,9 +63,14 @@ async function handleResponse(response: Response, endpoint: string) {
 
 export const api = {
   get: async <T = any>(endpoint: string): Promise<T> => {
-    const headers = await getHeaders();
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
-    return handleResponse(response, endpoint);
+    try {
+      const headers = await getHeaders();
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, { headers });
+      return handleResponse(response, endpoint);
+    } catch (err: any) {
+      console.warn(`[API] Error de red o servidor no disponible en GET ${endpoint}:`, err?.message || err);
+      throw err;
+    }
   },
   post: async <T = any>(endpoint: string, data: any): Promise<T> => {
     const headers = await getHeaders();

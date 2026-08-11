@@ -186,7 +186,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         loading: false 
       });
     } catch (error) {
-      console.error("Error fetching notifications:", error);
+      console.warn('[NotificationStore] No se pudo sincronizar notificaciones (servidor reconectando o sin red):', error);
       set({ loading: false });
     }
   },
