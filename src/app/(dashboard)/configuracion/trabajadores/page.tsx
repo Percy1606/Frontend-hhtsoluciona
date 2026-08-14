@@ -218,12 +218,21 @@ const predefinedColors = [
   { name: "Slate", value: "bg-slate-600" },
 ];
 
+// Usuarios con acceso a la vista completa de trabajadores (además de ADMIN)
+const USUARIOS_CON_ACCESO_TRABAJADORES = [
+  'angi', 'angie', 'javier', 'percy',
+];
+
 // Main Component
 export default function TrabajadoresPage() {
   const { user: currentUser } = useAuthStore();
   const isAdmin = currentUser?.rol === "ADMIN";
 
-  if (isAdmin) {
+  // Verificar si el usuario tiene acceso especial por nombre/username
+  const nombreNorm = (currentUser?.nombre || currentUser?.username || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const tieneAccesoAdmin = isAdmin || USUARIOS_CON_ACCESO_TRABAJADORES.some(u => nombreNorm.includes(u));
+
+  if (tieneAccesoAdmin) {
     return <AdminTrabajadoresView />;
   } else {
     return <UserTrabajadorView />;
