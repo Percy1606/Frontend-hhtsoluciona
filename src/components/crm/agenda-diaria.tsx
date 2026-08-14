@@ -1052,67 +1052,63 @@ export function AgendaDiaria({
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 pb-3 border-b border-slate-100">
             <Building2 className="w-5 h-5 text-emerald-600" />
             {isGeneralAgenda 
-              ? "Crear y Asignar Tarea de Personal / Evaluación (Escribir Nombre o Título)"
+              ? "Crear y Asignar Nueva Tarea de Trabajadores (Seleccionar Empresa/Cliente BD o Escribir Nombre)"
               : "Crear y Asignar Nueva Tarea Comercial (Seleccionar Cliente BD o Escribir Nombre)"}
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="sm:col-span-2 space-y-2">
-              {!isGeneralAgenda && (
+              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
+
+              {selectedTaskClientIdDB && !showTaskClientList ? (
+                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                  <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
+                  <button
+                    type="button"
+                    onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
+                    className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                  >
+                    Cambiar
+                  </button>
+                </div>
+              ) : (
                 <>
-                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
+                  <input
+                    type="text"
+                    placeholder="Buscar empresa/cliente en BD por RUC o Nombre (ej: Frío Frías, Costeño, Sechura, Norandino)..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    value={searchTaskClientDBQuery}
+                    onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
+                  />
 
-                  {selectedTaskClientIdDB && !showTaskClientList ? (
-                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
-                      <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
-                      <button
-                        type="button"
-                        onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
-                        className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                  <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
+                    {registeredClientsListTaskDB.map(c => (
+                      <div
+                        key={c.id}
+                        onClick={() => {
+                          setSelectedTaskClientIdDB(c.id);
+                          setTaskEmpresaName(c.empresa);
+                          setShowTaskClientList(false);
+                          setSearchTaskClientDBQuery('');
+                          toast.info(`Empresa "${c.empresa}" seleccionada`);
+                        }}
+                        className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
                       >
-                        Cambiar
-                      </button>
-                    </div>
-                  ) : (
-                    <>
-                      <input
-                        type="text"
-                        placeholder="Buscar cliente en BD por RUC o Nombre (ej: Sechura, Norandino, IPESA)..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                        value={searchTaskClientDBQuery}
-                        onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
-                      />
-
-                      <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
-                        {registeredClientsListTaskDB.map(c => (
-                          <div
-                            key={c.id}
-                            onClick={() => {
-                              setSelectedTaskClientIdDB(c.id);
-                              setTaskEmpresaName(c.empresa);
-                              setShowTaskClientList(false);
-                              setSearchTaskClientDBQuery('');
-                              toast.info(`Cliente "${c.empresa}" seleccionado`);
-                            }}
-                            className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
-                          >
-                            <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
-                            <span className="text-[10px] opacity-80 font-normal">Asesor: {c.asignadoA || 'Valentina'}</span>
-                          </div>
-                        ))}
+                        <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                        <span className="text-[10px] opacity-80 font-normal">{c.asignadoA ? `Asesor: ${c.asignadoA}` : 'Cliente BD'}</span>
                       </div>
-                    </>
-                  )}
+                    ))}
+                  </div>
                 </>
               )}
 
               <div className="pt-1">
                 <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                  {isGeneralAgenda ? "Título de la Tarea / Proyecto / Empresa *" : "O Escribe el Nombre de la Empresa / Cliente *"}
+                  O Escribe el Nombre de la Empresa / Cliente *
                 </label>
                 <input
                   type="text"
-                  placeholder={isGeneralAgenda ? "Ej: Inspección Técnica de Equipos / Mantenimiento" : "Ej: Hielos y Congelados Sechura"}
+                  placeholder="Ej: Hielos y Congelados Sechura"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
                   value={taskEmpresaName}
                   onChange={(e) => setTaskEmpresaName(e.target.value)}
