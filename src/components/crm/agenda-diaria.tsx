@@ -31,10 +31,7 @@ import {
   Edit,
   Trash2,
   Lock,
-  ArrowUpDown,
-  LayoutGrid,
-  History,
-  Globe
+  ArrowUpDown
 } from 'lucide-react';
 import { Client } from '@/types/crm';
 import { EstadoTareaEstricto } from '@/lib/types/commercial-units';
@@ -132,22 +129,6 @@ export function AgendaDiaria({
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [trabajadoresList, setTrabajadoresList] = useState<{ id: string; nombre: string; area: string; activo?: boolean }[]>([]);
 
-  // TAB ACTIVO: 'lista' | 'empresas' | 'historial' | 'general'
-  const [activeTab, setActiveTab] = useState<'lista' | 'empresas' | 'historial' | 'general'>('lista');
-
-  // Estado para vista "General" (todas las tareas, gerenciales + trabajadores)
-  const [generalTareas, setGeneralTareas] = useState<TareaEstrategica[]>([]);
-  const [generalLoaded, setGeneralLoaded] = useState(false);
-  const [generalSearch, setGeneralSearch] = useState('');
-
-  // Estado para historial — filtro de empresa seleccionada
-  const [historialEmpresaFilter, setHistorialEmpresaFilter] = useState('TODAS');
-  const [historialSearchEmpresa, setHistorialSearchEmpresa] = useState('');
-
-  // Estado para "Por Empresa" — empresa expandida
-  const [expandedEmpresa, setExpandedEmpresa] = useState<string | null>(null);
-  const [empresaSearch, setEmpresaSearch] = useState('');
-
   const endpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
 
   // CARGAR TRABAJADORES DE CONFIGURACIÓN DE LA BASE DE DATOS (EN AMBAS AGENDAS)
@@ -205,78 +186,6 @@ export function AgendaDiaria({
     
     return () => clearTimeout(timer);
   }, [tareasEstrategicas, isInitialLoad, endpoint]);
-
-  // CARGAR AGENDA GENERAL (TODAS LAS TAREAS) — lazy, solo cuando se activa el tab
-  useEffect(() => {
-    if (activeTab !== 'general' || generalLoaded) return;
-    api.get('/crm/agenda/general')
-      .then((data: any) => {
-        if (Array.isArray(data)) {
-          setGeneralTareas(data.map((t: any) => ({ ...t, subtareas: Array.isArray(t.subtareas) ? t.subtareas : [] })));
-        }
-        setGeneralLoaded(true);
-      })
-      .catch(() => setGeneralLoaded(true));
-  }, [activeTab, generalLoaded]);
-
-  // AGRUPACIÓN POR EMPRESA — calculada localmente desde las tareas ya cargadas
-  const tareasAgrupadasPorEmpresa = useMemo(() => {
-    const map = new Map<string, {
-      empresa: string;
-      total: number;
-      pendiente: number;
-      enProceso: number;
-      finalizada: number;
-      retrasada: number;
-      tareas: TareaEstrategica[];
-    }>();
-
-    for (const t of tareasEstrategicas) {
-      if (!map.has(t.empresa)) {
-        map.set(t.empresa, { empresa: t.empresa, total: 0, pendiente: 0, enProceso: 0, finalizada: 0, retrasada: 0, tareas: [] });
-      }
-      const g = map.get(t.empresa)!;
-      g.total++;
-      if (t.estado === 'PENDIENTE') g.pendiente++;
-      else if (t.estado === 'EN_PROCESO') g.enProceso++;
-      else if (t.estado === 'FINALIZADA') g.finalizada++;
-      else if (t.estado === 'RETRASADA') g.retrasada++;
-      g.tareas.push(t);
-    }
-
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.retrasada !== a.retrasada) return b.retrasada - a.retrasada;
-      return a.empresa.localeCompare(b.empresa);
-    });
-  }, [tareasEstrategicas]);
-
-  // HISTORIAL — solo FINALIZADAS y RETRASADAS, filtradas por empresa
-  const tareasHistorial = useMemo(() => {
-    let lista = tareasEstrategicas.filter(t => t.estado === 'FINALIZADA' || t.estado === 'RETRASADA');
-    if (historialEmpresaFilter !== 'TODAS') {
-      lista = lista.filter(t => t.empresa === historialEmpresaFilter);
-    }
-    return lista;
-  }, [tareasEstrategicas, historialEmpresaFilter]);
-
-  // Lista de empresas únicas para el selector del historial
-  const empresasUnicas = useMemo(() => {
-    return Array.from(new Set(tareasEstrategicas.map(t => t.empresa))).sort();
-  }, [tareasEstrategicas]);
-
-  // Tareas de la vista General filtradas
-  const generalTareasFiltradas = useMemo(() => {
-    if (!generalSearch.trim()) return generalTareas;
-    const q = generalSearch.toLowerCase();
-    return generalTareas.filter(t =>
-      (t.empresa || '').toLowerCase().includes(q) ||
-      (t.responsable || '').toLowerCase().includes(q) ||
-      (t.actividadInmediata || '').toLowerCase().includes(q) ||
-      (t.estado || '').toLowerCase().includes(q)
-    );
-  }, [generalTareas, generalSearch]);
-
-
 
   // HELPER PARA IDENTIFICAR SOLO CLIENTES GANADOS / FIDELIZADOS
   const isWonClient = (c: Client) => {
@@ -1082,7 +991,7 @@ export function AgendaDiaria({
                   ).values()
                 ).map((w) => (
                   <option key={w.id} value={w.nombre}>
-                    {w.nombre} ({w.area || 'Trabajador'})
+                    {w.nombre}
                   </option>
                 ))
               ) : (
@@ -1253,7 +1162,7 @@ export function AgendaDiaria({
                       ).values()
                     ).map((w) => (
                       <option key={w.id} value={w.nombre}>
-                        {w.nombre} ({w.area || 'Trabajador'})
+                        {w.nombre}
                       </option>
                     ))
                   ) : (
@@ -1338,14 +1247,14 @@ export function AgendaDiaria({
                     {trabajadoresList.length > 0 ? (
                       trabajadoresList.map((w) => (
                         <option key={w.id} value={w.nombre}>
-                          {w.nombre} ({w.area ? w.area.replace(/([A-Z])/g, ' $1').trim() : 'Personal'})
+                          {w.nombre}
                         </option>
                       ))
                     ) : (
                       <>
-                        <option value="Pedro">Pedro (Campo)</option>
-                        <option value="Juan">Juan (Técnico)</option>
-                        <option value="Carlos">Carlos (Operativo)</option>
+                        <option value="Pedro">Pedro</option>
+                        <option value="Juan">Juan</option>
+                        <option value="Carlos">Carlos</option>
                       </>
                     )}
                   </select>
@@ -1453,41 +1362,7 @@ export function AgendaDiaria({
         </button>
       </div>
 
-      {/* ─── BARRA DE TABS ─────────────────────────────────────────── */}
-      <div className="flex items-center gap-1 bg-slate-100/80 p-1 rounded-2xl border border-slate-200 shadow-xs w-full overflow-x-auto">
-        {[
-          { key: 'lista',     label: 'Lista de Tareas', icon: <ListChecks className="w-3.5 h-3.5" /> },
-          { key: 'empresas',  label: 'Por Empresa/Cliente', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-          { key: 'historial', label: 'Historial', icon: <History className="w-3.5 h-3.5" /> },
-          { key: 'general',   label: 'Vista General', icon: <Globe className="w-3.5 h-3.5" /> },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key as any)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
-              activeTab === tab.key
-                ? 'bg-white text-slate-900 shadow-sm border border-slate-200'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-white/60'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-            {tab.key === 'empresas' && (
-              <span className="ml-1 bg-emerald-100 text-emerald-700 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {tareasAgrupadasPorEmpresa.length}
-              </span>
-            )}
-            {tab.key === 'historial' && tareasHistorial.length > 0 && (
-              <span className="ml-1 bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded-full">
-                {tareasHistorial.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* ─── TAB: LISTA DE TAREAS (existente) ─────────────────────── */}
-      {activeTab === 'lista' && (
+      {/* SECCIÓN 1: CONTENEDOR DE TAREAS ESTRATÉGICAS Y ACTIVIDADES (EXACTO TIPOGRAFÍA CARTERA) */}
       <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
           <div className="flex items-center gap-3">
@@ -1521,8 +1396,6 @@ export function AgendaDiaria({
                 <div key={tarea.id} className="p-5 hover:bg-slate-50/70 transition-colors space-y-3">
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
-
-
                       <div 
                         className="space-y-1.5 cursor-pointer flex-1"
                         onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
@@ -1550,13 +1423,11 @@ export function AgendaDiaria({
                             Observación: <span className="font-normal text-slate-600">{tarea.actividadInmediata}</span>
                           </p>
                         )}
-
-
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-end flex-wrap w-full">                      <div className="flex items-center gap-1.5">
-                        {/* Botón EDITAR */}
+                    <div className="flex items-center gap-2 border-t lg:border-t-0 pt-2 lg:pt-0 border-slate-100 justify-end flex-wrap w-full">
+                      <div className="flex items-center gap-1.5">
                         {!isFinalized && (
                           <button
                             onClick={(e) => {
@@ -1571,7 +1442,6 @@ export function AgendaDiaria({
                           </button>
                         )}
 
-                        {/* Botón ELIMINAR con confirmación */}
                         {confirmDeleteId === tarea.id ? (
                           <div className="flex items-center gap-1">
                             <button
@@ -1618,11 +1488,8 @@ export function AgendaDiaria({
                     </div>
                   </div>
 
-                  {/* DESPLIEGUE DE SUBTAREAS */}
                   {isExpanded && (
                     <div className="pt-3 border-t border-slate-100 space-y-4 animate-in fade-in duration-150">
-
-                      {/* FORMULARIO DE EDICIÓN INLINE */}
                       {editingTaskId === tarea.id && (
                         <div className="bg-indigo-50/60 p-4 rounded-xl border border-indigo-200 space-y-3">
                           <div className="flex items-center gap-2 text-xs font-semibold text-indigo-800 uppercase pb-2 border-b border-indigo-200">
@@ -1788,15 +1655,15 @@ export function AgendaDiaria({
                               )}
                             </select>
                             <select
-                              className="w-full sm:w-16 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                              className="w-full sm:w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
                               value={nuevaSubtareaPrioridad[tarea.id] || 'MEDIA'}
                               onChange={(e) => setNuevaSubtareaPrioridad({ ...nuevaSubtareaPrioridad, [tarea.id]: e.target.value as any })}
                               title="Prioridad"
                             >
-                              <option value="ALTA">🔴</option>
-                              <option value="MEDIA_ALTA">🟠</option>
-                              <option value="MEDIA">🟡</option>
-                              <option value="BAJA">🟢</option>
+                              <option value="ALTA">🔴 Alta</option>
+                              <option value="MEDIA_ALTA">🟠 M. Alta</option>
+                              <option value="MEDIA">🟡 Media</option>
+                              <option value="BAJA">🟢 Baja</option>
                             </select>
                             <Button
                               onClick={() => handleAddSubtarea(tarea.id)}
@@ -1819,7 +1686,7 @@ export function AgendaDiaria({
                                 <th className="w-10 px-2 py-3 border-b border-slate-200 text-center"></th>
                                 <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
                                 <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
-                                <th className="px-4 py-3 border-b border-slate-200">Prioridad</th>
+                                <th className="px-4 py-3 border-b border-slate-200 text-center">Prioridad</th>
                                 <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
                                 <th className="px-4 py-3 border-b border-slate-200">¿Se culminó?</th>
                                 <th className="px-4 py-3 border-b border-slate-200 text-center">Acciones</th>
@@ -1933,66 +1800,65 @@ export function AgendaDiaria({
                                           {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡'}
                                           {sub.prioridad === 'BAJA' && '🟢'}
                                         </span>
-                                        <select
-                                           value={sub.responsable || tarea.responsable}
-                                           onChange={(e) => {
-                                              const newRes = e.target.value;
-                                              const gerenciaList = ['steven', 'angi', 'mellani', 'javier'];
-                                              const isWorkerRes = !gerenciaList.includes(newRes.toLowerCase());
+                                        <div className="mt-1">
+                                          <select
+                                             value={sub.responsable || tarea.responsable}
+                                             onChange={(e) => {
+                                                const newRes = e.target.value;
+                                                const gerenciaList = ['steven', 'angi', 'mellani', 'javier'];
+                                                const isWorkerRes = !gerenciaList.includes(newRes.toLowerCase());
 
-                                              setTareasEstrategicas(prev => prev.map(t => {
-                                                 if (t.id === tarea.id) {
-                                                    const updatedSubtareas = t.subtareas.map(s => s.id === sub.id ? { ...s, responsable: newRes } : s);
-                                                    return {
-                                                       ...t,
-                                                       responsable: newRes,
-                                                       subtareas: updatedSubtareas
-                                                    };
-                                                 }
-                                                 return t;
-                                              }));
+                                                setTareasEstrategicas(prev => prev.map(t => {
+                                                   if (t.id === tarea.id) {
+                                                      const updatedSubtareas = t.subtareas.map(s => s.id === sub.id ? { ...s, responsable: newRes } : s);
+                                                      return {
+                                                         ...t,
+                                                         responsable: newRes,
+                                                         subtareas: updatedSubtareas
+                                                      };
+                                                   }
+                                                   return t;
+                                                }));
 
-                                              // Si estamos en gerencial y se cambió a trabajador, o viceversa, mover entre agendas via backend
-                                              const targetEndpoint = isWorkerRes ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
-                                              const sourceEndpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+                                                const targetEndpoint = isWorkerRes ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
+                                                const sourceEndpoint = isGeneralAgenda ? '/crm/agenda?tipo=trabajadores' : '/crm/agenda';
 
-                                              if ((!isGeneralAgenda && isWorkerRes) || (isGeneralAgenda && !isWorkerRes)) {
-                                                const movedTask = { ...tarea, responsable: newRes, etapaProceso: isWorkerRes ? 'TRABAJADORES' : (tarea.etapaProceso === 'TRABAJADORES' ? 'GERENCIAL' : tarea.etapaProceso) };
-                                                
-                                                // 1. Guardar en destino
-                                                api.get(targetEndpoint).then((targetList: any) => {
-                                                  const currentTarget = Array.isArray(targetList) ? targetList : [];
-                                                  return api.post(targetEndpoint, [movedTask, ...currentTarget]);
-                                                }).then(() => {
-                                                  // 2. Filtrar localmente y actualizar backend de origen
-                                                  const updatedOrigin = tareasEstrategicas.filter(t => t.id !== tarea.id);
-                                                  setTareasEstrategicas(updatedOrigin);
-                                                  return api.post(sourceEndpoint, updatedOrigin);
-                                                }).then(() => {
-                                                  toast.success(`Tarea trasladada exitosamente a ${newRes}`);
-                                                }).catch(err => console.warn('Error al mover tarea entre agendas:', err));
-                                              }
-                                           }}
-                                           className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
-                                         >
-                                           <optgroup label="Trabajadores Gerencia">
-                                             <option value="Steven">Steven</option>
-                                             <option value="Angi">Angi</option>
-                                             <option value="Mellani">Mellani</option>
-                                             <option value="Javier">Javier</option>
-                                           </optgroup>
-                                           {trabajadoresList.length > 0 && (
-                                             <optgroup label="Todos los Trabajadores">
-                                               {trabajadoresList
-                                                 .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                                                 .map((w) => (
-                                                   <option key={w.id} value={w.nombre}>
-                                                     {w.nombre}
-                                                   </option>
-                                                 ))}
+                                                if ((!isGeneralAgenda && isWorkerRes) || (isGeneralAgenda && !isWorkerRes)) {
+                                                  const movedTask = { ...tarea, responsable: newRes, etapaProceso: isWorkerRes ? 'TRABAJADORES' : (tarea.etapaProceso === 'TRABAJADORES' ? 'GERENCIAL' : tarea.etapaProceso) };
+                                                  
+                                                  api.get(targetEndpoint).then((targetList: any) => {
+                                                    const currentTarget = Array.isArray(targetList) ? targetList : [];
+                                                    return api.post(targetEndpoint, [movedTask, ...currentTarget]);
+                                                  }).then(() => {
+                                                    const updatedOrigin = tareasEstrategicas.filter(t => t.id !== tarea.id);
+                                                    setTareasEstrategicas(updatedOrigin);
+                                                    return api.post(sourceEndpoint, updatedOrigin);
+                                                  }).then(() => {
+                                                    toast.success(`Tarea trasladada exitosamente a ${newRes}`);
+                                                  }).catch(err => console.warn('Error al mover tarea entre agendas:', err));
+                                                }
+                                             }}
+                                             className="bg-slate-50 border border-slate-200 rounded px-2 py-1 text-[10px] font-bold text-slate-700 uppercase focus:outline-none focus:ring-1 focus:ring-indigo-500 cursor-pointer hover:bg-slate-100 transition-colors"
+                                           >
+                                             <optgroup label="Trabajadores Gerencia">
+                                               <option value="Steven">Steven</option>
+                                               <option value="Angi">Angi</option>
+                                               <option value="Mellani">Mellani</option>
+                                               <option value="Javier">Javier</option>
                                              </optgroup>
-                                           )}
-                                         </select>
+                                             {trabajadoresList.length > 0 && (
+                                               <optgroup label="Todos los Trabajadores">
+                                                 {trabajadoresList
+                                                   .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                                                   .map((w) => (
+                                                     <option key={w.id} value={w.nombre}>
+                                                       {w.nombre}
+                                                     </option>
+                                                   ))}
+                                               </optgroup>
+                                             )}
+                                           </select>
+                                        </div>
                                       </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
@@ -2041,7 +1907,6 @@ export function AgendaDiaria({
           )}
         </div>
 
-        {/* PAGINACIÓN ALTA CAPACIDAD TIPO CARTERA (+100 REGISTROS) */}
         {totalTaskPages > 1 && (
           <div className="p-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-50/50">
             <span className="text-xs font-medium text-slate-500">
@@ -2084,297 +1949,6 @@ export function AgendaDiaria({
           </div>
         )}
       </div>
-      )} {/* fin activeTab === 'lista' */}
-
-      {/* ─── TAB: POR EMPRESA / CLIENTE ────────────────────────────── */}
-      {activeTab === 'empresas' && (
-        <div className="space-y-3">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <LayoutGrid className="w-4 h-4 text-emerald-600" />
-              <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                {isGeneralAgenda ? 'Tareas de Trabajadores agrupadas por Empresa / Proyecto' : 'Tareas Gerenciales agrupadas por Empresa / Cliente'}
-              </h3>
-              <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                {tareasAgrupadasPorEmpresa.length} empresas
-              </span>
-            </div>
-            <div className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar empresa..."
-                value={empresaSearch}
-                onChange={e => setEmpresaSearch(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              />
-            </div>
-          </div>
-
-          {tareasAgrupadasPorEmpresa
-            .filter(g => !empresaSearch.trim() || g.empresa.toLowerCase().includes(empresaSearch.toLowerCase()))
-            .map(grupo => {
-              const isExp = expandedEmpresa === grupo.empresa;
-              const progreso = grupo.total > 0 ? Math.round((grupo.finalizada / grupo.total) * 100) : 0;
-              const tieneCriticas = grupo.retrasada > 0;
-
-              return (
-                <div
-                  key={grupo.empresa}
-                  className={`bg-white border rounded-2xl shadow-xs overflow-hidden transition-all ${tieneCriticas ? 'border-rose-200' : 'border-slate-200'}`}
-                >
-                  <button
-                    className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-slate-50/70 transition-colors"
-                    onClick={() => setExpandedEmpresa(isExp ? null : grupo.empresa)}
-                  >
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <div className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${tieneCriticas ? 'bg-rose-50 border border-rose-200' : 'bg-emerald-50 border border-emerald-200'}`}>
-                        <Building2 className={`w-4 h-4 ${tieneCriticas ? 'text-rose-600' : 'text-emerald-600'}`} />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-semibold text-slate-900 truncate">{grupo.empresa}</h4>
-                          {tieneCriticas && (
-                            <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full uppercase shrink-0">
-                              {grupo.retrasada} Retrasada{grupo.retrasada > 1 ? 's' : ''}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-1.5">
-                          <div className="flex-1 bg-slate-100 rounded-full h-1.5 max-w-[120px]">
-                            <div
-                              className="bg-emerald-500 h-1.5 rounded-full transition-all"
-                              style={{ width: `${progreso}%` }}
-                            />
-                          </div>
-                          <span className="text-[10px] text-slate-500 font-medium">{progreso}% completado</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="hidden sm:flex items-center gap-2 text-[10px] font-semibold">
-                        {grupo.pendiente > 0 && <span className="bg-amber-50 text-amber-700 border border-amber-200 px-2 py-0.5 rounded-full">{grupo.pendiente} Pend.</span>}
-                        {grupo.enProceso > 0 && <span className="bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full">{grupo.enProceso} En proc.</span>}
-                        {grupo.finalizada > 0 && <span className="bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full">{grupo.finalizada} Fin.</span>}
-                        {grupo.retrasada > 0 && <span className="bg-rose-50 text-rose-700 border border-rose-200 px-2 py-0.5 rounded-full">{grupo.retrasada} Ret.</span>}
-                      </div>
-                      <span className="text-xs text-slate-500 font-medium">{grupo.total} tarea{grupo.total !== 1 ? 's' : ''}</span>
-                      {isExp ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
-                    </div>
-                  </button>
-
-                  {isExp && (
-                    <div className="border-t border-slate-100 divide-y divide-slate-100 animate-in fade-in duration-150">
-                      {grupo.tareas.map(tarea => (
-                        <div key={tarea.id} className="px-5 py-3.5 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                          <div className="flex items-center gap-2.5 flex-1 min-w-0">
-                            {tarea.prioridad && (
-                              <span className={`w-2.5 h-2.5 shrink-0 rounded-full ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} />
-                            )}
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-slate-800 truncate">{tarea.actividadInmediata || tarea.proximoPaso || '—'}</p>
-                              <p className="text-[10px] text-slate-500 mt-0.5">
-                                <span className="font-medium">{tarea.responsable}</span>
-                                {tarea.fechaCompromiso && <> · <span className="font-mono">{tarea.fechaCompromiso}</span></>}
-                                {tarea.etapaProceso && <> · <span className="italic">{tarea.etapaProceso}</span></>}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2 shrink-0">
-                            {getStatusBadge(tarea.estado)}
-                            <span className="text-[10px] text-slate-400 font-medium">{tarea.subtareas?.length || 0} actividad(es)</span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-          {tareasAgrupadasPorEmpresa.length === 0 && (
-            <div className="p-12 text-center bg-white border border-dashed border-slate-200 rounded-2xl">
-              <Building2 className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-              <p className="text-sm font-semibold text-slate-600">No hay tareas registradas.</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ─── TAB: HISTORIAL ────────────────────────────────────────── */}
-      {activeTab === 'historial' && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-            <div className="flex items-center gap-2">
-              <History className="w-4 h-4 text-slate-600" />
-              <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Historial de Tareas Finalizadas y Retrasadas
-              </h3>
-              <span className="bg-slate-100 text-slate-600 border border-slate-200 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                {tareasHistorial.length} registros
-              </span>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider shrink-0">Empresa:</label>
-              <div className="relative flex-1 sm:w-56">
-                <input
-                  type="text"
-                  placeholder="Filtrar por empresa..."
-                  value={historialSearchEmpresa}
-                  onChange={e => {
-                    setHistorialSearchEmpresa(e.target.value);
-                    if (!e.target.value.trim()) setHistorialEmpresaFilter('TODAS');
-                  }}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-400"
-                />
-                {historialSearchEmpresa && (
-                  <div className="absolute z-10 top-full left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto">
-                    <div
-                      className="px-3 py-2 text-xs text-slate-500 hover:bg-slate-50 cursor-pointer font-medium"
-                      onClick={() => { setHistorialEmpresaFilter('TODAS'); setHistorialSearchEmpresa(''); }}
-                    >
-                      Todas las empresas
-                    </div>
-                    {empresasUnicas
-                      .filter(e => e.toLowerCase().includes(historialSearchEmpresa.toLowerCase()))
-                      .map(emp => (
-                        <div
-                          key={emp}
-                          className="px-3 py-2 text-xs text-slate-700 hover:bg-emerald-50 cursor-pointer font-semibold"
-                          onClick={() => { setHistorialEmpresaFilter(emp); setHistorialSearchEmpresa(emp); }}
-                        >
-                          {emp}
-                        </div>
-                      ))}
-                  </div>
-                )}
-              </div>
-              {historialEmpresaFilter !== 'TODAS' && (
-                <button
-                  onClick={() => { setHistorialEmpresaFilter('TODAS'); setHistorialSearchEmpresa(''); }}
-                  className="text-[11px] font-medium text-rose-600 hover:text-rose-800 shrink-0"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-            {tareasHistorial.length === 0 ? (
-              <div className="p-12 text-center">
-                <History className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-600">Sin historial de tareas finalizadas o retrasadas.</p>
-                {historialEmpresaFilter !== 'TODAS' && (
-                  <p className="text-xs text-slate-400 mt-1">No hay registros para «{historialEmpresaFilter}».</p>
-                )}
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {tareasHistorial.map((tarea, idx) => (
-                  <div key={tarea.id} className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-start gap-3 flex-1">
-                      <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center border border-slate-200 mt-0.5">
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="text-sm font-semibold text-slate-800">{tarea.empresa}</h4>
-                          {getStatusBadge(tarea.estado)}
-                        </div>
-                        {tarea.actividadInmediata && (
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{tarea.actividadInmediata}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400 font-medium">
-                          <span>👤 {tarea.responsable}</span>
-                          {tarea.fechaCompromiso && <span>📅 {tarea.fechaCompromiso}</span>}
-                          {tarea.etapaProceso && <span className="italic">{tarea.etapaProceso}</span>}
-                          <span>{tarea.subtareas?.length || 0} actividad(es) registrada(s)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ─── TAB: VISTA GENERAL (GERENCIAL + TRABAJADORES) ─────────── */}
-      {activeTab === 'general' && (
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col sm:flex-row gap-3 items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Globe className="w-4 h-4 text-indigo-600" />
-              <h3 className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-                Vista General — Gerencial + Trabajadores
-              </h3>
-              {generalLoaded && (
-                <span className="bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                  {generalTareasFiltradas.length} tareas
-                </span>
-              )}
-            </div>
-            <div className="relative w-full sm:w-72">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Buscar por empresa, responsable o estado..."
-                value={generalSearch}
-                onChange={e => setGeneralSearch(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-            {!generalLoaded ? (
-              <div className="p-12 text-center">
-                <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-xs text-slate-500 font-medium">Cargando todas las tareas...</p>
-              </div>
-            ) : generalTareasFiltradas.length === 0 ? (
-              <div className="p-12 text-center">
-                <Globe className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                <p className="text-sm font-semibold text-slate-600">No hay tareas que coincidan.</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-slate-100">
-                {generalTareasFiltradas.map((tarea, idx) => (
-                  <div key={tarea.id} className="p-4 hover:bg-slate-50/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                    <div className="flex items-start gap-3 flex-1">
-                      <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold flex items-center justify-center border border-slate-200 mt-0.5">
-                        {idx + 1}
-                      </span>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {tarea.prioridad && (
-                            <span className={`w-2 h-2 rounded-full shrink-0 ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} />
-                          )}
-                          <h4 className="text-sm font-semibold text-slate-800">{tarea.empresa}</h4>
-                          {getStatusBadge(tarea.estado)}
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${tarea.etapaProceso === 'TRABAJADORES' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                            {tarea.etapaProceso === 'TRABAJADORES' ? '👷 Trabajadores' : '🏢 Gerencial'}
-                          </span>
-                        </div>
-                        {tarea.actividadInmediata && (
-                          <p className="text-xs text-slate-500 mt-0.5 line-clamp-1">{tarea.actividadInmediata}</p>
-                        )}
-                        <div className="flex items-center gap-3 mt-1 text-[10px] text-slate-400 font-medium">
-                          <span>👤 {tarea.responsable}</span>
-                          {tarea.fechaCompromiso && <span>📅 {tarea.fechaCompromiso}</span>}
-                          <span>{tarea.subtareas?.length || 0} actividad(es)</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {showAuditoriaModal && (
         <div className="fixed inset-0 z-[100] flex justify-end">
@@ -2430,7 +2004,7 @@ export function AgendaDiaria({
                             }}
                             className="px-3 py-1.5 text-xs font-bold rounded-lg transition-all bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm active:scale-95 cursor-pointer"
                           >
-                            👤 {name}
+                            {name}
                           </button>
                         ))}
                         <button
