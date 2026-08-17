@@ -28,6 +28,27 @@ interface UnidadesGerencialesProps {
   dateRange?: { startDate: Date | null, endDate: Date | null };
 }
 
+// Normalización estricta de primer nombre canónico
+const normalizeAdvisorKey = (rawName: string): string => {
+  if (!rawName) return '';
+  const clean = rawName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  if (clean.includes('angi') || clean.includes('angie')) return 'Angi';
+  if (clean.includes('mellani') || clean.includes('melani')) return 'Mellani';
+  if (clean.includes('valentina')) return 'Valentina';
+  if (clean.includes('ariana')) return 'Ariana';
+  if (clean.includes('brenda')) return 'Brenda';
+  if (clean.includes('javier')) return 'Javier';
+  if (clean.includes('steven')) return 'Steven';
+  if (clean.includes('guillermo')) return 'Guillermo';
+  if (clean.includes('diego')) return 'Diego';
+  if (clean.includes('mario') || clean.includes('infante')) return 'Mario';
+
+  // Si es un nombre compuesto, tomar únicamente la primera palabra (Primer Nombre)
+  const firstName = rawName.trim().split(' ')[0];
+  return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+};
+
 export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesProps) {
   const [selectedUnit, setSelectedUnit] = useState<UnidadComercialType>('TODAS');
   const [tareas, setTareas] = useState<any[]>([]);
@@ -57,6 +78,57 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     };
     fetchTareasYTrabajadores();
   }, []);
+
+  // Clasificación y métricas automáticas por Unidad
+  const metrics = useMemo(() => {
+    const now = new Date();
+
+    const clientsUnit1 = clients.filter(c => getClientUnit(c.fechaCreacion, c.asignadoA) === 'UNIDAD_1');
+    const clientsUnit2 = clients.filter(c => getClientUnit(c.fechaCreacion, c.asignadoA) === 'UNIDAD_2');
+
+    const getStats = (list: Client[]) => {
+      const prospectos = list.filter(c => c.etapaComercial === 'Prospecto').length;
+      const fidelizados = list.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
+      const perdidos = list.filter(c => c.etapaComercial === 'Perdido').length;
+      const cotPendientes = list.filter(c => c.etapaComercial === 'Cotización').length;
+      const enSeguimiento = list.filter(c => c.etapaComercial === 'Seguimiento' || c.etapaComercial === 'Negociación' || c.etapaComercial === 'Contacto Inicial' || c.etapaComercial === 'Visita Técnica' || c.etapaComercial === 'Visita Comercial').length;
+      const conOrdenes = list.filter(c => c.etapaComercial === 'Orden de Servicio').length;
+      
+      const sinMovimiento = list.filter(c => {
+        if (!c.ultimoContacto) return true;
+        const diff = (now.getTime() - new Date(c.ultimoContacto).getTime()) / (1000 * 3600 * 24);
+        return diff >= 7 && c.etapaComercial !== 'Ganado / Fidelizado' && c.etapaComercial !== 'Perdido';
+      }).length;
+
+      const montoGanado = list
+        .filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial))
+        .reduce((acc, curr) => acc + (Number(curr.montoEstimado) || Number(curr.ventaProyectada) || 0), 0);
+
+      const totalProspeccion = prospectos + enSeguimiento + cotPendientes + fidelizados + perdidos;
+      const conversionProspectoACliente = totalProspeccion > 0 ? ((fidelizados / totalProspeccion) * 100).toFixed(1) : '0.0';
+      const conversionCotizacionAOrden = (cotPendientes + fidelizados) > 0 ? ((fidelizados / (cotPendientes + fidelizados)) * 100).toFixed(1) : '0.0';
+
+      return {
+        total: list.length,
+        prospectos,
+        fidelizados,
+        perdidos,
+        cotPendientes,
+        enSeguimiento,
+        conOrdenes,
+        sinMovimiento,
+        montoGanado,
+        conversionProspectoACliente,
+        conversionCotizacionAOrden
+      };
+    };
+
+    return {
+      u1: getStats(clientsUnit1),
+      u2: getStats(clientsUnit2),
+      global: getStats(clients)
+    };
+  }, [clients]);
 
   // Map de estados de trabajadores desde la BD
   const workerStatusMap = useMemo(() => {
@@ -209,6 +281,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
         unit: advInfo.unit,
         role: advInfo.role,
         color: advInfo.color,
+        activo: advInfo.activo,
         carteraCount: advClients.length,
         prospectos,
         cotizaciones,
