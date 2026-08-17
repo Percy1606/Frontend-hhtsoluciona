@@ -171,7 +171,8 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     // 2. BD Trabajadores
     trabajadoresBD.forEach(w => {
       if (w.nombre) {
-        addAdvisor(w.nombre, w.cargo || w.area, undefined, true, w.activo);
+        const cleanRole = (w.cargo || w.area || '').replace(/\s*\[Area:.*?\]\s*/g, '').trim();
+        addAdvisor(w.nombre, cleanRole || 'Colaborador', undefined, true, w.activo);
       }
     });
 
@@ -480,7 +481,9 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
                       </span>
                     )}
                   </td>
-                  <td className="p-3.5 font-medium text-slate-600">{adv.role}</td>
+                  <td className="p-3.5 font-medium text-slate-600">
+                    {(adv.role || '').replace(/\s*\[Area:.*?\]\s*/g, '').trim()}
+                  </td>
                   <td className="p-3.5 text-center font-black text-slate-800">{adv.carteraCount}</td>
                   <td className="p-3.5 text-center font-bold text-slate-600">{adv.prospectos}</td>
                   <td className="p-3.5 text-center font-bold text-slate-600">{adv.cotizaciones}</td>
