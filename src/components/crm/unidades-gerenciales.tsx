@@ -358,16 +358,16 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
           </div>
         </div>
 
-        {/* Resumen Gerencial Rápido de 4 Tarjetas Blancas Elegantes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Resumen Gerencial Rápido de 4 Tarjetas Compactas */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
           {/* Card Unidad 1 */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-emerald-50 to-white/60 backdrop-blur-md border border-emerald-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between text-emerald-700 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-emerald-100/50 px-3 py-1.5 rounded-full">Nuevos Negocios</span>
-              <Target className="w-4 h-4 text-emerald-600" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-emerald-50/80 to-white backdrop-blur-md border border-emerald-100 shadow-xs hover:shadow-sm transition-all duration-200">
+            <div className="flex items-center justify-between text-emerald-700 mb-2">
+              <span className="text-[9px] font-black uppercase tracking-wider bg-emerald-100/60 px-2 py-0.5 rounded-md">Nuevos Negocios</span>
+              <Target className="w-3.5 h-3.5 text-emerald-600" />
             </div>
-            <div className="text-3xl font-black text-slate-800">{metrics.u1.total} <span className="text-xs font-bold text-slate-500">clientes</span></div>
-            <div className="text-xs text-slate-600 mt-3 space-y-1.5 pt-2 border-t border-emerald-100/80">
+            <div className="text-xl font-black text-slate-800 tracking-tight">{metrics.u1.total} <span className="text-[10px] font-bold text-slate-400">clientes</span></div>
+            <div className="text-[11px] text-slate-600 mt-2 space-y-1 pt-1.5 border-t border-emerald-100/80">
               <div className="flex justify-between font-medium"><span>Prospectos Nuevos:</span> <strong className="text-emerald-700 font-bold">{metrics.u1.prospectos}</strong></div>
               <div className="flex justify-between font-medium"><span>Cotizaciones Pendientes:</span> <strong className="text-slate-800 font-bold">{metrics.u1.cotPendientes}</strong></div>
               <div className="flex justify-between font-medium"><span>Conversión Prospecto-Cliente:</span> <strong className="text-emerald-700 font-bold">{metrics.u1.conversionProspectoACliente}%</strong></div>
@@ -375,13 +375,13 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
           </div>
 
           {/* Card Unidad 2 */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-blue-50 to-white/60 backdrop-blur-md border border-blue-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between text-blue-700 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-blue-100/50 px-3 py-1.5 rounded-full">Estratégicos</span>
-              <Building2 className="w-4 h-4 text-blue-600" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-50/80 to-white backdrop-blur-md border border-blue-100 shadow-xs hover:shadow-sm transition-all duration-200">
+            <div className="flex items-center justify-between text-blue-700 mb-2">
+              <span className="text-[9px] font-black uppercase tracking-wider bg-blue-100/60 px-2 py-0.5 rounded-md">Estratégicos</span>
+              <Building2 className="w-3.5 h-3.5 text-blue-600" />
             </div>
-            <div className="text-3xl font-black text-slate-800">{metrics.u2.total} <span className="text-xs font-bold text-slate-500">cuentas</span></div>
-            <div className="text-xs text-slate-600 mt-3 space-y-1.5 pt-2 border-t border-blue-100/80">
+            <div className="text-xl font-black text-slate-800 tracking-tight">{metrics.u2.total} <span className="text-[10px] font-bold text-slate-400">cuentas</span></div>
+            <div className="text-[11px] text-slate-600 mt-2 space-y-1 pt-1.5 border-t border-blue-100/80">
               <div className="flex justify-between font-medium"><span>Cartera Fidelizada/Ganada:</span> <strong className="text-blue-700 font-bold">{metrics.u2.fidelizados}</strong></div>
               <div className="flex justify-between font-medium"><span>Cotizaciones Pendientes:</span> <strong className="text-slate-800 font-bold">{metrics.u2.cotPendientes}</strong></div>
               <div className="flex justify-between font-medium"><span>Conversión Cotización-Orden:</span> <strong className="text-blue-700 font-bold">{metrics.u2.conversionCotizacionAOrden}%</strong></div>
@@ -389,30 +389,30 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
           </div>
 
           {/* Card Alerta Clientes Sin Movimiento */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-rose-50 to-white/60 backdrop-blur-md border border-rose-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between text-rose-700 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-rose-100/50 px-3 py-1.5 rounded-full">Sin Movimiento (&gt;7d)</span>
-              <AlertTriangle className="w-4 h-4 text-rose-600" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-rose-50/80 to-white backdrop-blur-md border border-rose-100 shadow-xs hover:shadow-sm transition-all duration-200">
+            <div className="flex items-center justify-between text-rose-700 mb-2">
+              <span className="text-[9px] font-black uppercase tracking-wider bg-rose-100/60 px-2 py-0.5 rounded-md">Sin Movimiento (&gt;7d)</span>
+              <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
             </div>
-            <div className="text-3xl font-black text-rose-700">
+            <div className="text-xl font-black text-rose-700 tracking-tight flex items-baseline gap-1">
               {selectedUnit === 'UNIDAD_1' ? metrics.u1.sinMovimiento : selectedUnit === 'UNIDAD_2' ? metrics.u2.sinMovimiento : metrics.global.sinMovimiento}
-              <span className="text-xs font-bold text-slate-500 ml-1">inactivos</span>
+              <span className="text-[10px] font-bold text-slate-400">inactivos</span>
             </div>
-            <p className="text-xs text-slate-600 font-medium mt-3 pt-2 border-t border-rose-100/80">
+            <p className="text-[11px] text-slate-500 font-medium mt-2 pt-1.5 border-t border-rose-100/80 leading-snug">
               Cuentas que requieren atención o reasignación inmediata.
             </p>
           </div>
 
           {/* Card Ventas Ganadas Consolidadas */}
-          <div className="p-6 rounded-3xl bg-gradient-to-br from-amber-50 to-white/60 backdrop-blur-md border border-amber-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300">
-            <div className="flex items-center justify-between text-amber-700 mb-4">
-              <span className="text-[10px] font-black uppercase tracking-widest bg-amber-100/50 px-3 py-1.5 rounded-full">Ventas & Cierres</span>
-              <DollarSign className="w-4 h-4 text-amber-600" />
+          <div className="p-4 rounded-2xl bg-gradient-to-br from-amber-50/80 to-white backdrop-blur-md border border-amber-100 shadow-xs hover:shadow-sm transition-all duration-200">
+            <div className="flex items-center justify-between text-amber-700 mb-2">
+              <span className="text-[9px] font-black uppercase tracking-wider bg-amber-100/60 px-2 py-0.5 rounded-md">Ventas & Cierres</span>
+              <DollarSign className="w-3.5 h-3.5 text-amber-600" />
             </div>
-            <div className="text-2xl font-black text-slate-800">
+            <div className="text-lg font-black text-slate-800 tracking-tight">
               S/ {(selectedUnit === 'UNIDAD_1' ? metrics.u1.montoGanado : selectedUnit === 'UNIDAD_2' ? metrics.u2.montoGanado : metrics.global.montoGanado).toLocaleString('es-PE', { minimumFractionDigits: 0 })}
             </div>
-            <div className="text-xs text-slate-600 font-medium mt-3 pt-2 border-t border-amber-100/80 flex justify-between">
+            <div className="text-[11px] text-slate-600 font-medium mt-2 pt-1.5 border-t border-amber-100/80 flex justify-between">
               <span>Órdenes de Servicio:</span>
               <strong className="text-amber-700 font-bold">
                 {selectedUnit === 'UNIDAD_1' ? metrics.u1.conOrdenes : selectedUnit === 'UNIDAD_2' ? metrics.u2.conOrdenes : metrics.global.conOrdenes} activas

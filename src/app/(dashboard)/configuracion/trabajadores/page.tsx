@@ -179,12 +179,11 @@ const calcularEdad = (fechaNacimiento: string | null | undefined) => {
 
 const parseWorkerCargoAndArea = (rawCargo: string, rawArea: string) => {
   let displayArea = rawArea;
-  let displayCargo = rawCargo;
+  let displayCargo = rawCargo ? rawCargo.replace(/\s*\[Area:.*?\]\s*/g, '').trim() : '';
 
-  const areaMatch = rawCargo.match(/\[Area:(.*?)\]$/);
+  const areaMatch = (rawCargo || '').match(/\[Area:(.*?)\]$/);
   if (areaMatch && areaMatch[1]) {
     displayArea = areaMatch[1];
-    displayCargo = rawCargo.replace(/\s*\[Area:.*?\]$/, '').trim();
   }
 
   return {
