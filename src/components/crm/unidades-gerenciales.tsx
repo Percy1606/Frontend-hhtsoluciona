@@ -33,6 +33,7 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
   const [tareas, setTareas] = useState<any[]>([]);
   const [selectedAdvTasks, setSelectedAdvTasks] = useState<string | null>(null);
   const [selectedAdvStatus, setSelectedAdvStatus] = useState<string | null>(null);
+  const [showInactives, setShowInactives] = useState(false);
   const [trabajadoresBD, setTrabajadoresBD] = useState<any[]>([]);
 
   React.useEffect(() => {
@@ -57,85 +58,28 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     fetchTareasYTrabajadores();
   }, []);
 
-  // Clasificación y métricas automáticas por Unidad
-  const metrics = useMemo(() => {
-    const now = new Date();
-
-    const clientsUnit1 = clients.filter(c => getClientUnit(c.fechaCreacion, c.asignadoA) === 'UNIDAD_1');
-    const clientsUnit2 = clients.filter(c => getClientUnit(c.fechaCreacion, c.asignadoA) === 'UNIDAD_2');
-
-    const getStats = (list: Client[]) => {
-      const prospectos = list.filter(c => c.etapaComercial === 'Prospecto').length;
-      const fidelizados = list.filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial)).length;
-      const perdidos = list.filter(c => c.etapaComercial === 'Perdido').length;
-      const cotPendientes = list.filter(c => c.etapaComercial === 'Cotización').length;
-      const enSeguimiento = list.filter(c => c.etapaComercial === 'Seguimiento' || c.etapaComercial === 'Negociación' || c.etapaComercial === 'Contacto Inicial' || c.etapaComercial === 'Visita Técnica' || c.etapaComercial === 'Visita Comercial').length;
-      const conOrdenes = list.filter(c => c.etapaComercial === 'Orden de Servicio').length;
-      
-      const sinMovimiento = list.filter(c => {
-        if (!c.ultimoContacto) return true;
-        const diff = (now.getTime() - new Date(c.ultimoContacto).getTime()) / (1000 * 3600 * 24);
-        return diff >= 7 && c.etapaComercial !== 'Ganado / Fidelizado' && c.etapaComercial !== 'Perdido';
-      }).length;
-
-      const montoGanado = list
-        .filter(c => ['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(c.etapaComercial))
-        .reduce((acc, curr) => acc + (Number(curr.montoEstimado) || Number(curr.ventaProyectada) || 0), 0);
-
-      const totalProspeccion = prospectos + enSeguimiento + cotPendientes + fidelizados + perdidos;
-      const conversionProspectoACliente = totalProspeccion > 0 ? ((fidelizados / totalProspeccion) * 100).toFixed(1) : '0.0';
-      const conversionCotizacionAOrden = (cotPendientes + fidelizados) > 0 ? ((fidelizados / (cotPendientes + fidelizados)) * 100).toFixed(1) : '0.0';
-
-      return {
-        total: list.length,
-        prospectos,
-        fidelizados,
-        perdidos,
-        cotPendientes,
-        enSeguimiento,
-        conOrdenes,
-        sinMovimiento,
-        montoGanado,
-        conversionProspectoACliente,
-        conversionCotizacionAOrden
-      };
-    };
-
-    return {
-      u1: getStats(clientsUnit1),
-      u2: getStats(clientsUnit2),
-      global: getStats(clients)
-    };
-  }, [clients]);
-
-  // Normalización estricta de primer nombre canónico
-  const normalizeAdvisorKey = (rawName: string): string => {
-    if (!rawName) return '';
-    const clean = rawName.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-
-    if (clean.includes('angi') || clean.includes('angie')) return 'Angi';
-    if (clean.includes('mellani') || clean.includes('melani')) return 'Mellani';
-    if (clean.includes('valentina')) return 'Valentina';
-    if (clean.includes('ariana')) return 'Ariana';
-    if (clean.includes('brenda')) return 'Brenda';
-    if (clean.includes('javier')) return 'Javier';
-    if (clean.includes('steven')) return 'Steven';
-    if (clean.includes('guillermo')) return 'Guillermo';
-    if (clean.includes('diego')) return 'Diego';
-    if (clean.includes('mario') || clean.includes('infante')) return 'Mario';
-
-    // Si es un nombre compuesto, tomar únicamente la primera palabra (Primer Nombre)
-    const firstName = rawName.trim().split(' ')[0];
-    return firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
-  };
+  // Map de estados de trabajadores desde la BD
+  const workerStatusMap = useMemo(() => {
+    const map = new Map<string, boolean>();
+    trabajadoresBD.forEach(w => {
+      if (w.nombre) {
+        const cleanName = normalizeAdvisorKey(w.nombre);
+        map.set(cleanName, w.activo !== false);
+      }
+    });
+    return map;
+  }, [trabajadoresBD]);
 
   // Construcción dinámica de colaboradores unificando BD + Cartera/Tareas sin duplicados y filtrando activos
   const allDynamicAdvisors = useMemo(() => {
-    const map = new Map<string, { name: string; unit: 'UNIDAD_1' | 'UNIDAD_2'; role: string; color: string }>();
+    const map = new Map<string, { name: string; unit: 'UNIDAD_1' | 'UNIDAD_2'; role: string; color: string; activo: boolean }>();
 
-    const addAdvisor = (rawName: string, defaultRole?: string, defaultUnit?: 'UNIDAD_1' | 'UNIDAD_2') => {
+    const addAdvisor = (rawName: string, defaultRole?: string, defaultUnit?: 'UNIDAD_1' | 'UNIDAD_2', isFromBD?: boolean, bdActive?: boolean) => {
       if (!rawName || !rawName.trim()) return;
       const canonicalName = normalizeAdvisorKey(rawName);
+      
+      const isActive = isFromBD ? (bdActive !== false) : (workerStatusMap.has(canonicalName) ? workerStatusMap.get(canonicalName)! : true);
+
       if (!map.has(canonicalName)) {
         const isU1 = ['Ariana', 'Brenda', 'Valentina'].includes(canonicalName);
         const knownInfo = ALL_ADVISORS[canonicalName];
@@ -143,7 +87,8 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
           name: canonicalName,
           unit: defaultUnit || (knownInfo ? knownInfo.unit : (isU1 ? 'UNIDAD_1' : 'UNIDAD_2')),
           role: knownInfo ? knownInfo.role : (defaultRole || 'Colaborador'),
-          color: knownInfo ? knownInfo.color : (isU1 ? 'bg-emerald-600' : 'bg-blue-600')
+          color: knownInfo ? knownInfo.color : (isU1 ? 'bg-emerald-600' : 'bg-blue-600'),
+          activo: isActive
         });
       }
     };
@@ -151,10 +96,10 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
     // 1. Predefinidos
     Object.keys(ALL_ADVISORS).forEach(name => addAdvisor(name));
 
-    // 2. BD Trabajadores (Filtrando estrictamente los activos, OMITIR DADOS DE BAJA)
+    // 2. BD Trabajadores
     trabajadoresBD.forEach(w => {
-      if (w.nombre && (w.activo === true || w.activo === undefined)) {
-        addAdvisor(w.nombre, w.cargo || w.area);
+      if (w.nombre) {
+        addAdvisor(w.nombre, w.cargo || w.area, undefined, true, w.activo);
       }
     });
 
@@ -173,8 +118,10 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
       });
     });
 
-    return Array.from(map.values());
-  }, [trabajadoresBD, clients, tareas]);
+    const allList = Array.from(map.values());
+    if (showInactives) return allList;
+    return allList.filter(adv => adv.activo);
+  }, [trabajadoresBD, clients, tareas, workerStatusMap, showInactives]);
 
   // Métricas por colaborador
   const advisorStats = useMemo(() => {
@@ -404,12 +351,23 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
 
       {/* Tabla de Rendimiento por Colaborador con Fondo Blanco */}
       <div className="bg-white border border-slate-200/90 rounded-[2rem] p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-800 flex items-center gap-2">
             <Users className="w-4 h-4 text-indigo-600" />
             Rendimiento Individual de Integrantes por Unidad
           </h3>
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Cálculo Automático por Sistema</span>
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer text-[10px] font-bold text-slate-500 hover:text-slate-800 uppercase select-none">
+              <input 
+                type="checkbox" 
+                checked={showInactives} 
+                onChange={(e) => setShowInactives(e.target.checked)}
+                className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5"
+              />
+              Mostrar Inactivos / Históricos
+            </label>
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider hidden sm:inline">Cálculo Automático</span>
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -430,10 +388,13 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
             </thead>
             <tbody className="divide-y divide-slate-100">
               {advisorStats.map((adv) => (
-                <tr key={adv.name} className="hover:bg-slate-50/60 transition-colors">
+                <tr key={adv.name} className={`hover:bg-slate-50/60 transition-colors ${!adv.activo ? 'opacity-60 bg-slate-50/40' : ''}`}>
                   <td className="p-3.5 font-bold text-slate-800 flex items-center gap-2">
                     <span className={`w-2.5 h-2.5 rounded-full ${adv.color}`}></span>
                     {adv.name}
+                    {!adv.activo && (
+                      <span className="text-[9px] font-black uppercase text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded ml-1">Inactivo</span>
+                    )}
                   </td>
                   <td className="p-3.5 font-bold">
                     {adv.unit === 'UNIDAD_1' ? (
