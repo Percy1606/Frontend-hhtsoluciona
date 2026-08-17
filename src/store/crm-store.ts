@@ -128,6 +128,7 @@ interface CRMState {
   deleteClient: (id: string) => Promise<void>;
 
   addInteraction: (clientId: string, data: { tipo: string, accion: string, observaciones: string, usuario: string }) => Promise<void>;
+  updateInteraction: (interactionId: string, data: { tipo?: string, accion?: string, observaciones?: string, usuario?: string }) => Promise<void>;
   reassignSeller: (clientId: string, seller: string) => Promise<void>;
   attachFile: (clientId: string, file: { nombre: string, url: string, tipo: string, tamano: string, subidoPor: string }) => Promise<void>;
   attachQuoteFile: (cotizacionId: string, clientId: string, file: { nombre: string, url: string, tipo: string, subtype?: string, tamano: string, subidoPor: string }) => Promise<void>;
@@ -457,6 +458,17 @@ export const useCRMStore = create<CRMState>()(
           await get().fetchClients(1);
         } catch (error) {
           console.error("Error adding interaction:", error);
+        }
+      },
+
+      updateInteraction: async (interactionId, data) => {
+        try {
+          await api.put(`/crm/interacciones/${interactionId}`, data);
+          await get().fetchClients(1);
+          toast.success("Gestión Actualizada", { description: "Los cambios han sido guardados." });
+        } catch (error) {
+          console.error("Error updating interaction:", error);
+          toast.error("Error al actualizar la gestión.");
         }
       },
 
