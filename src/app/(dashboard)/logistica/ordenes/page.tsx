@@ -130,7 +130,7 @@ export default function OrdenesCompraPage() {
   }, [fetchOrdenes, currentPage, searchTerm, statusFilter, dateFrom, dateTo]);
 
   const ordenesPorProyecto = useMemo(() => {
-    const map = new Map<string, { proyectoId: string, proyectoCodigo: string, proyectoNombre: string, clienteNombre: string, ordenes: any[], totalRecibido: number, totalPendiente: number }>();
+    const map = new Map<string, { proyectoId: string, proyectoCodigo: string, proyectoNombre: string, ordenServicioCodigo?: string | null, clienteNombre: string, ordenes: any[], totalRecibido: number, totalPendiente: number }>();
     const unassignedId = 'unassigned';
     
     ordenes.forEach(oc => {
@@ -142,6 +142,11 @@ export default function OrdenesCompraPage() {
       
       const codigo = proyectoStore?.codigo || oc.gasto?.proyecto?.codigo || 'ÓRDENES GENERALES';
       const nombre = proyectoStore?.nombre || oc.gasto?.proyecto?.nombre || 'ALMACÉN / INVENTARIO DIRECTO';
+      
+      // Obtener Orden de Servicio (OS)
+      const osCodigo = (proyectoStore as any)?.ordenesDeServicio?.[0]?.codigo 
+        || (oc.gasto?.proyecto as any)?.ordenesDeServicio?.[0]?.codigo 
+        || null;
       
       // Intentar obtener el cliente de todas las formas posibles
       let clienteNombre = (proyectoStore as any)?.cliente?.empresa || (proyectoStore as any)?.cliente?.nombre || oc.gasto?.proyecto?.cliente?.empresa || oc.gasto?.proyecto?.cliente?.nombre;
@@ -175,6 +180,7 @@ export default function OrdenesCompraPage() {
           proyectoId: groupId,
           proyectoCodigo: codigo,
           proyectoNombre: nombre,
+          ordenServicioCodigo: osCodigo,
           clienteNombre: clienteNombre,
           ordenes: [],
           totalRecibido: 0,
@@ -275,7 +281,7 @@ export default function OrdenesCompraPage() {
                 <div className="relative mt-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <Input 
-                        placeholder="Buscar código o proveedor..." 
+                        placeholder="Buscar código, proveedor o OS..." 
                         className="pl-10 h-10 bg-slate-50/50 border-slate-200 rounded-xl font-bold text-xs shadow-none focus:bg-white transition-all"
                         value={searchTerm}
                         onChange={(e) => handleSearchChange(e.target.value)}
@@ -364,9 +370,18 @@ export default function OrdenesCompraPage() {
                             const cleanName = grupo.proyectoNombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || grupo.proyectoCodigo;
                             const combined = cleanName + (grupo.proyectoCodigo && grupo.proyectoCodigo !== grupo.proyectoNombre ? ` - ${grupo.proyectoCodigo}` : '');
                             return (
-                              <h2 className={cn("font-black uppercase tracking-tight text-slate-800 break-words whitespace-normal", combined.length > 42 ? "text-[11px] leading-snug" : "text-[13px] sm:text-sm leading-snug")} title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
-                                {combined}
-                              </h2>
+                              <div className="flex flex-col gap-0.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <h2 className={cn("font-black uppercase tracking-tight text-slate-800 break-words whitespace-normal", combined.length > 42 ? "text-[11px] leading-snug" : "text-[13px] sm:text-sm leading-snug")} title={`${grupo.proyectoNombre} - ${grupo.proyectoCodigo}`}>
+                                    {combined}
+                                  </h2>
+                                  {grupo.ordenServicioCodigo && (
+                                    <Badge className="bg-primary/10 text-primary border border-primary/20 text-[9px] font-black uppercase h-4 px-1.5 shadow-none rounded shrink-0">
+                                      {grupo.ordenServicioCodigo}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </div>
                             );
                           })()}
                           <p className="text-[10px] font-bold text-slate-500 mt-0.5 break-words whitespace-normal" title={grupo.clienteNombre}>

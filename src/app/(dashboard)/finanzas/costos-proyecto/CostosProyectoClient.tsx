@@ -523,7 +523,14 @@ export default function CostosProyectoClient() {
           </DialogHeader>
 
           <div className="space-y-6 pt-4">
-            {/* Resumen por Categoría */}
+            {/* Banner Informativo */}
+            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
+              <span className="text-slate-600 font-medium">
+                Incluye todos los egresos registrados por Logística (Órdenes de Compra y Despachos de Almacén Kardex) y Finanzas.
+              </span>
+            </div>
+
+            {/* Resumen por Categoría */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
                 <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Mano de Obra</span>
@@ -532,7 +539,7 @@ export default function CostosProyectoClient() {
                 </span>
               </div>
               <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
-                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Materiales</span>
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Materiales (Logística)</span>
                 <span className="text-sm font-black text-slate-800">
                   {formatCurrency(selectedProyecto?.rentabilidad?.desglose?.materiales || 0)}
                 </span>
@@ -551,16 +558,16 @@ export default function CostosProyectoClient() {
               </div>
             </div>
 
-            {/* Tabla de Gastos Registrados */}
+            {/* Tabla de Gastos y Órdenes de Compra */}
             <div className="space-y-2">
               <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
                 <DollarSign className="w-4 h-4 text-emerald-600" />
-                Gastos y Comprobantes Registrados ({selectedProyecto?.rentabilidad?.historialGastos?.length || 0})
+                Gastos & Órdenes de Compra Registradas ({selectedProyecto?.rentabilidad?.historialGastos?.length || 0})
               </h4>
 
               {(!selectedProyecto?.rentabilidad?.historialGastos || selectedProyecto.rentabilidad.historialGastos.length === 0) ? (
                 <div className="p-4 text-center bg-slate-50 rounded-xl text-xs text-slate-400 font-medium">
-                  No hay gastos directos o comprobantes registrados en este proyecto.
+                  No hay gastos directos ni órdenes de compra registradas en este proyecto.
                 </div>
               ) : (
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
@@ -569,7 +576,7 @@ export default function CostosProyectoClient() {
                       <TableRow>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500">Fecha</TableHead>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500">Código / Tipo</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Concepto / O.C.</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Concepto / O.C. Logística</TableHead>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500">Estado</TableHead>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500 text-right">Monto</TableHead>
                       </TableRow>
@@ -589,8 +596,8 @@ export default function CostosProyectoClient() {
                           <TableCell className="py-2.5">
                             <div className="font-medium text-slate-800">{gasto.concepto}</div>
                             {gasto.ocCodigo && (
-                              <Badge variant="outline" className="text-[8px] border-slate-200 text-indigo-600 font-bold mt-0.5">
-                                OC: {gasto.ocCodigo}
+                              <Badge variant="outline" className="text-[8px] border-indigo-200 bg-indigo-50/50 text-indigo-700 font-bold mt-0.5">
+                                LOGÍSTICA O.C: {gasto.ocCodigo}
                               </Badge>
                             )}
                           </TableCell>
@@ -615,21 +622,25 @@ export default function CostosProyectoClient() {
               )}
             </div>
 
-            {/* Tabla de Consumo de Materiales (Almacen / Kardex) */}
-            {selectedProyecto?.rentabilidad?.historialMateriales && selectedProyecto.rentabilidad.historialMateriales.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
-                  <Package className="w-4 h-4 text-indigo-600" />
-                  Despachos de Almacén / Kardex ({selectedProyecto.rentabilidad.historialMateriales.length})
-                </h4>
+            {/* Tabla de Consumo de Materiales (Logística Almacén / Kardex) */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                <Package className="w-4 h-4 text-indigo-600" />
+                Despachos & Insumos de Logística / Kardex ({selectedProyecto?.rentabilidad?.historialMateriales?.length || 0})
+              </h4>
 
+              {(!selectedProyecto?.rentabilidad?.historialMateriales || selectedProyecto.rentabilidad.historialMateriales.length === 0) ? (
+                <div className="p-4 text-center bg-slate-50 rounded-xl text-xs text-slate-400 font-medium">
+                  No hay salidas de almacén ni despachos registrados por Logística para este proyecto.
+                </div>
+              ) : (
                 <div className="rounded-xl border border-slate-200 overflow-hidden">
                   <Table>
                     <TableHeader className="bg-slate-50">
                       <TableRow>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500">Fecha</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Material / Insumo</TableHead>
-                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Origen</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Material / Insumo Logística</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Origen Logístico</TableHead>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Cant.</TableHead>
                         <TableHead className="text-[9px] font-black uppercase text-slate-500 text-right">Costo Total</TableHead>
                       </TableRow>
@@ -644,7 +655,7 @@ export default function CostosProyectoClient() {
                             {mat.material}
                           </TableCell>
                           <TableCell className="py-2.5">
-                            <Badge variant="outline" className="text-[8px] border-slate-200 text-slate-600 font-medium">
+                            <Badge variant="outline" className="text-[8px] border-slate-200 bg-slate-50 text-slate-700 font-bold">
                               {mat.origen}
                             </Badge>
                           </TableCell>
@@ -659,8 +670,8 @@ export default function CostosProyectoClient() {
                     </TableBody>
                   </Table>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>
