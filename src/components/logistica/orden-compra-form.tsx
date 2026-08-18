@@ -109,10 +109,15 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
       }
     }
     
+    const osCodigo = (p as any).ordenesDeServicio?.[0]?.codigo || null;
+    const isPreventa = Number((p as any).ventaContratada || 0) === 0;
+    const tagTipo = isPreventa ? "[PREVENTA]" : (osCodigo ? `[OS: ${osCodigo}]` : "[OFICIAL]");
+    
     let cleanName = p.nombre.replace(/^proyecto\s*:\s*(cot-\d{4}-\d{3})?/i, '').trim() || p.codigo;
     return {
-      label: `${p.codigo} - ${cleanName}`,
-      subLabel: clientName || `CÓDIGO: ${p.codigo}`
+      label: `${tagTipo} ${p.codigo} - ${cleanName}`,
+      subLabel: `${clientName ? clientName : 'CLIENTE S/N'}${osCodigo ? ` | OS: ${osCodigo}` : ''} | CÓDIGO: ${p.codigo}`,
+      osCodigo
     };
   };
 

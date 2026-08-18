@@ -310,41 +310,45 @@ export default function ProyectosPage() {
     setIsEditProjectModalOpen(true);
   };
 
+  const [isSubmittingProject, setIsSubmittingProject] = useState(false);
+
   const handleSaveNewProject = async () => {
     if (!newProject.nombre || !newProject.clientId || !newProject.fechaFinEstimada) {
       showError("Faltan Datos", "Por favor, completa los campos obligatorios.");
       return;
     }
 
-    // VALIDACIÓN LOCAL: Ya no evitamos duplicados porque una cotización puede generar múltiples OS
-    // Obtenemos existingActive de todos modos porque se usa más abajo para Preventa
-    const existingActive = proyectos.find(p => p.clientId === newProject.clientId && p.estado !== 'Finalizado');
-    const isProjectPreventa = existingActive && Number((existingActive as any).ventaContratada) === 0;
+    if (isSubmittingProject) return;
 
-    let cotizacionIdFinal = null;
+    let cotizacionIdFinal: string | null = null;
 
     if (!isPreventa) {
       const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
-      const selectedQuote = clientQuotes[0];
-      if (!selectedQuote) {
-        showError("Cotización requerida", "El cliente no tiene cotizaciones registradas. Si es un trabajo previo, active el 'Modo Preventa'.");
+      if (clientQuotes.length > 0) {
+        // Usar la cotización seleccionada en el formulario si existe, o requerir su selección
+        if (newProject.cotizacionId) {
+          cotizacionIdFinal = newProject.cotizacionId;
+        } else if (clientQuotes.length === 1) {
+          cotizacionIdFinal = clientQuotes[0].id;
+        } else {
+          showError("Seleccione Cotización", "El cliente posee múltiples cotizaciones/servicios. Seleccione la cotización correspondiente.");
+          return;
+        }
+      } else {
+        showError("Cotización requerida", "El cliente no tiene cotizaciones registradas. Si es un trabajo previo sin cotización, active el 'Modo Preventa'.");
         return;
       }
-      cotizacionIdFinal = selectedQuote.id;
     }
 
     try {
-      await addProyecto({ 
+      setIsSubmittingProject(true);
+      const result = await addProyecto({ 
         ...newProject, 
         cotizacionId: cotizacionIdFinal 
       } as any);
-      setIsNewProjectModalOpen(false);
       
-      if (isProjectPreventa && cotizacionIdFinal) {
-         showSuccess("Proyecto Actualizado", "El proyecto de Preventa ha sido convertido exitosamente a un Proyecto Oficial, importando todos los datos financieros.");
-      } else {
-         showSuccess("Proyecto Creado", "El proyecto ha sido registrado correctamente.");
-      }
+      setIsNewProjectModalOpen(false);
+      showSuccess("Proyecto Creado", "El proyecto ha sido registrado correctamente.");
       
       setNewProject({
         clientId: "",
@@ -359,11 +363,12 @@ export default function ProyectosPage() {
         responsablePrincipalId: responsables.length > 0 ? responsables[0].id : "",
         responsablesAdicionales: [],
       });
-      showSuccess("Registro Exitoso", "Proyecto creado correctamente.");
     } catch (error: any) {
       console.error(error);
       const msg = error.response?.data?.message || error.message || "No se pudo crear el proyecto. Verifique los requisitos.";
       showError("Error de Registro", msg);
+    } finally {
+      setIsSubmittingProject(false);
     }
   };
 
@@ -806,10 +811,30 @@ export default function ProyectosPage() {
               <Combobox
                 options={clientOptions}
                 value={newProject.clientId}
-                onChange={(val) => setNewProject({ ...newProject, clientId: val })}
+                onChange={(val) => setNewProject({ ...newProject, clientId: val, cotizacionId: "" })}
                 placeholder="BUSCAR CLIENTE..."
               />
             </div>
+
+            {!isPreventa && newProject.clientId && (
+              <div className="space-y-2 col-span-2">
+                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cotización / Servicio Origen</Label>
+                <Select value={newProject.cotizacionId || ""} onValueChange={(val) => setNewProject({ ...newProject, cotizacionId: val || "" })}>
+                  <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
+                    <SelectValue placeholder="SELECCIONAR COTIZACIÓN DE ORIGEN">
+                      {newProject.cotizacionId ? (quotes.find(q => q.id === newProject.cotizacionId)?.codigo + " - " + ((quotes.find(q => q.id === newProject.cotizacionId) as any)?.servicio || (quotes.find(q => q.id === newProject.cotizacionId) as any)?.nombre || 'COTIZACIÓN')) : "SELECCIONAR COTIZACIÓN DE ORIGEN"}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-slate-200">
+                    {quotes.filter(q => q.clientId === newProject.clientId).map(q => (
+                      <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
+                        {q.codigo} — {(q as any).servicio || (q as any).nombre || 'Cotización'} (S/ {Number(q.monto || 0).toLocaleString()})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="space-y-2 col-span-2">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
