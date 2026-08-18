@@ -535,6 +535,7 @@ export default function OrdenesCompraPage() {
       <CajaChicaGastoModal
         isOpen={isCajaChicaOpen}
         onClose={() => setIsCajaChicaOpen(false)}
+        moduloOrigen="logistica"
         onSuccess={() => {
           fetchOrdenes();
         }}

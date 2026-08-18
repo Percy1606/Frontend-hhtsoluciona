@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
@@ -27,11 +27,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
-import { Loader2, Upload, CheckCircle2, Wallet } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, Wallet, ChevronsUpDown, Check, Briefcase } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CajaChicaGastoModalProps {
@@ -39,6 +52,7 @@ interface CajaChicaGastoModalProps {
   onClose: () => void;
   onSuccess?: () => void;
   defaultProyectoId?: string;
+  moduloOrigen?: "logistica" | "operaciones";
 }
 
 export function CajaChicaGastoModal({
@@ -46,6 +60,7 @@ export function CajaChicaGastoModal({
   onClose,
   onSuccess,
   defaultProyectoId,
+  moduloOrigen,
 }: CajaChicaGastoModalProps) {
   const { user } = useAuthStore();
   const { proyectos, fetchProyectos } = useOperacionesStore();
@@ -55,6 +70,7 @@ export function CajaChicaGastoModal({
   const [submitting, setSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [comprobanteUrl, setComprobanteUrl] = useState<string>("");
+  const [openProjectCombobox, setOpenProjectCombobox] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -78,8 +94,9 @@ export function CajaChicaGastoModal({
         justificacion: "",
       });
       setComprobanteUrl("");
+      setOpenProjectCombobox(false);
     }
-  }, [isOpen, defaultProyectoId]);
+  }, [isOpen, defaultProyectoId, moduloOrigen]);
 
   const fetchUserCaja = async () => {
     setLoadingCaja(true);
@@ -89,13 +106,24 @@ export function CajaChicaGastoModal({
       const userName = (user?.nombre || "").toLowerCase();
 
       let found = null;
-      if (userName.includes("steven")) {
+
+      // 1. Si se invoca desde el módulo de Logística -> Siempre Caja Chica - Steven
+      if (moduloOrigen === "logistica") {
+        found = list.find((c: any) => c.nombre.toLowerCase().includes("steven"));
+      } 
+      // 2. Si se invoca desde el módulo de Operaciones -> Siempre Caja Chica - Mario
+      else if (moduloOrigen === "operaciones") {
+        found = list.find((c: any) => c.nombre.toLowerCase().includes("mario"));
+      } 
+      // 3. Fallback por nombre de usuario logueado
+      else if (userName.includes("steven")) {
         found = list.find((c: any) => c.nombre.toLowerCase().includes("steven"));
       } else if (userName.includes("mario")) {
         found = list.find((c: any) => c.nombre.toLowerCase().includes("mario"));
       } else {
         found = list.find((c: any) => c.nombre.toLowerCase().includes("chica")) || list[0];
       }
+
       setCajaUsuario(found);
     } catch (e) {
       console.error("Error al obtener caja chica:", e);
@@ -126,7 +154,7 @@ export function CajaChicaGastoModal({
 
   const onSubmit = async (values: any) => {
     if (!cajaUsuario) {
-      toast.error("No se detectó la Caja Chica del usuario.");
+      toast.error("No se detectó la Caja Chica correspondiente.");
       return;
     }
 
@@ -143,12 +171,16 @@ export function CajaChicaGastoModal({
 
     const saldoDisp = Number(cajaUsuario.saldoDisponible || cajaUsuario.saldoReal || 0);
     if (monto > saldoDisp) {
-      toast.error(`Saldo insuficiente en tu caja chica. Disponible: S/ ${saldoDisp.toFixed(2)}`);
+      toast.error(`Saldo insuficiente en ${cajaUsuario.nombre}. Disponible: S/ ${saldoDisp.toFixed(2)}`);
       return;
     }
 
     try {
       setSubmitting(true);
+
+      const areaAsignada = moduloOrigen === "logistica" || cajaUsuario.nombre.toLowerCase().includes("steven")
+        ? "LOGISTICA"
+        : "OPERACIONES";
 
       const payload = {
         concepto: values.concepto,
@@ -160,13 +192,13 @@ export function CajaChicaGastoModal({
         tipoComprobante: values.tipoComprobante,
         fechaEmision: new Date().toISOString().split("T")[0],
         comprobanteUrl: comprobanteUrl || null,
-        justificacion: `[CAJA CHICA - ${user?.nombre || "USUARIO"}] ${values.justificacion || values.concepto}`,
+        justificacion: `[${cajaUsuario.nombre.toUpperCase()}] ${values.justificacion || values.concepto}`,
         estado: "PAGADO",
-        area: user?.nombre?.toLowerCase().includes("steven") ? "LOGISTICA" : "OPERACIONES",
+        area: areaAsignada,
       };
 
       await api.post("/finanzas/gastos", payload);
-      toast.success("Gasto de Caja Chica registrado exitosamente.");
+      toast.success(`Gasto registrado en ${cajaUsuario.nombre}.`);
       onClose();
       if (onSuccess) onSuccess();
     } catch (err: any) {
@@ -178,6 +210,8 @@ export function CajaChicaGastoModal({
   };
 
   const montoActual = Number(form.watch("montoTotal") || 0);
+  const selectedProyectoId = form.watch("proyectoId");
+  const selectedProjectObj = proyectos.find((p) => p.id === selectedProyectoId);
   const saldoDisponible = Number(cajaUsuario?.saldoDisponible || cajaUsuario?.saldoReal || 0);
   const saldoFinalProyectado = saldoDisponible - montoActual;
 
@@ -196,10 +230,10 @@ export function CajaChicaGastoModal({
               <DialogDescription className="text-xs text-slate-500 font-bold">
                 {cajaUsuario ? (
                   <span>
-                    Cuenta: <strong className="text-slate-800 uppercase">{cajaUsuario.nombre}</strong> (Fondo Fijo)
+                    Cuenta asignada: <strong className="text-slate-800 uppercase">{cajaUsuario.nombre}</strong> (Fondo Fijo)
                   </span>
                 ) : (
-                  "Cargando cuenta de usuario..."
+                  "Cargando cuenta asignada..."
                 )}
               </DialogDescription>
             </div>
@@ -292,29 +326,134 @@ export function CajaChicaGastoModal({
               )}
             />
 
+            {/* SELECTOR DE PROYECTO COMPACTO Y MODERNO */}
             <FormField
               control={form.control}
               name="proyectoId"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="flex flex-col">
                   <FormLabel className="text-[10px] font-black uppercase text-slate-500">¿Es de algún Proyecto / OS?</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger className="h-10 text-xs font-bold border-slate-200">
-                        <SelectValue placeholder="Seleccionar Proyecto u Operación General" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent className="bg-white max-h-56">
-                      <SelectItem value="none" className="text-xs font-bold text-slate-500 py-2">
-                        [GASTO GENERAL] No pertenece a ningún proyecto
-                      </SelectItem>
-                      {proyectos.map((p) => (
-                        <SelectItem key={p.id} value={p.id} className="text-xs font-bold py-2 border-b last:border-none">
-                          <span className="font-black text-primary uppercase">{p.codigo || "PROY"}</span> - {p.nombre}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={openProjectCombobox} onOpenChange={setOpenProjectCombobox}>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={openProjectCombobox}
+                          className={cn(
+                            "w-full justify-between h-11 px-3 border rounded-xl text-left font-bold transition-all bg-white",
+                            field.value && field.value !== "none"
+                              ? "border-primary/40 bg-primary/5 text-primary"
+                              : "border-slate-200 text-slate-700"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 truncate">
+                            {field.value && field.value !== "none" && selectedProjectObj ? (
+                              <div className="flex items-center gap-2 truncate">
+                                <span className="font-black text-primary text-xs shrink-0 px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                                  {selectedProjectObj.codigo || "PROY"}
+                                </span>
+                                <span className="text-xs text-slate-800 truncate font-bold">
+                                  {selectedProjectObj.nombre}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs font-bold text-slate-500">
+                                [GASTO GENERAL] No pertenece a ningún proyecto
+                              </span>
+                            )}
+                          </div>
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-40" />
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border border-slate-200 shadow-xl rounded-xl" align="start">
+                      <Command className="w-full">
+                        <CommandInput 
+                          placeholder="Buscar código o nombre de proyecto..." 
+                          className="h-9 text-xs font-bold border-b border-slate-100" 
+                        />
+                        <CommandList className="max-h-52 overflow-y-auto p-1">
+                          <CommandEmpty className="py-3 text-center text-xs font-bold text-slate-400">
+                            No se encontraron proyectos.
+                          </CommandEmpty>
+                          
+                          <CommandGroup>
+                            {/* OPCIÓN 1: GASTO GENERAL */}
+                            <CommandItem
+                              value="gasto general no pertenece a ningun proyecto none"
+                              onSelect={() => {
+                                form.setValue("proyectoId", "none");
+                                setOpenProjectCombobox(false);
+                              }}
+                              className={cn(
+                                "flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-bold transition-colors mb-1",
+                                field.value === "none" || !field.value
+                                  ? "bg-slate-100 text-slate-900"
+                                  : "text-slate-600 hover:bg-slate-50"
+                              )}
+                            >
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                <span>[GASTO GENERAL] No pertenece a ningún proyecto</span>
+                              </div>
+                              {(field.value === "none" || !field.value) && (
+                                <Check className="w-4 h-4 text-slate-700 shrink-0" />
+                              )}
+                            </CommandItem>
+
+                            {/* LISTA DE PROYECTOS */}
+                            {proyectos.map((p) => {
+                              const isSelected = field.value === p.id;
+                              return (
+                                <CommandItem
+                                  key={p.id}
+                                  value={`${p.codigo || ""} ${p.nombre} ${(p as any).cliente?.razonSocial || (p as any).clienteNombre || ""}`}
+                                  onSelect={() => {
+                                    form.setValue("proyectoId", p.id);
+                                    setOpenProjectCombobox(false);
+                                  }}
+                                  className={cn(
+                                    "flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors mb-0.5 border-b last:border-none border-slate-50",
+                                    isSelected
+                                      ? "bg-primary/10 text-primary border border-primary/20"
+                                      : "text-slate-700 hover:bg-slate-50"
+                                  )}
+                                >
+                                  <div className="flex flex-col min-w-0 pr-2">
+                                    <div className="flex items-center gap-1.5">
+                                      <span className={cn(
+                                        "font-black text-[11px] uppercase tracking-tight",
+                                        isSelected ? "text-primary" : "text-primary"
+                                      )}>
+                                        {p.codigo || "PROY"}
+                                      </span>
+                                      {((p as any).cliente?.razonSocial || (p as any).clienteNombre) && (
+                                        <span className="text-[10px] text-slate-400 font-bold truncate">
+                                          • {(p as any).cliente?.razonSocial || (p as any).clienteNombre}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className={cn(
+                                      "text-[11px] font-bold truncate",
+                                      isSelected ? "text-slate-900" : "text-slate-600"
+                                    )}>
+                                      {p.nombre}
+                                    </span>
+                                  </div>
+
+                                  {isSelected && (
+                                    <Check className="w-4 h-4 text-primary shrink-0 stroke-[2.5]" />
+                                  )}
+                                </CommandItem>
+                              );
+                            })}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   <FormMessage />
                 </FormItem>
               )}

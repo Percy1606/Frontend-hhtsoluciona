@@ -1072,6 +1072,7 @@ export default function ProyectosPage() {
       <CajaChicaGastoModal
         isOpen={isGastoModalOpen}
         onClose={() => setIsGastoModalOpen(false)}
+        moduloOrigen="operaciones"
         onSuccess={() => {
           handleRefresh();
         }}
