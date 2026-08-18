@@ -59,7 +59,7 @@ import { useCRMStore } from "@/store/crm-store";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
-import { GastoForm } from "@/components/finanzas/gasto-form";
+import { CajaChicaGastoModal } from "@/components/finanzas/caja-chica-gasto-modal";
 import type { Proyecto, Actividad, EstadoProyecto, Area, Prioridad } from "@/lib/types";
 
 // Componente local para estadísticas compactas
@@ -437,10 +437,10 @@ export default function ProyectosPage() {
             <Clock className="w-4 h-4" /> Mis Horas Extras
           </Button>
           <Button
-            className="h-9 gap-2 font-black uppercase text-[10px] bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-600/20"
+            className="h-9 gap-2 font-black uppercase text-[10px] bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/20"
             onClick={() => setIsGastoModalOpen(true)}
           >
-            <Plus className="w-4 h-4" /> Nuevo Gasto
+            <Plus className="w-4 h-4" /> Caja Chica / Gasto de Campo
           </Button>
           <RetiroEquipoModal />
           <Button
@@ -1068,21 +1068,14 @@ export default function ProyectosPage() {
         </DialogContent>
       </Dialog>
 
-      {/* MODAL NUEVO GASTO */}
-      <ModernDialog
+      {/* MODAL CAJA CHICA / GASTO DE CAMPO */}
+      <CajaChicaGastoModal
         isOpen={isGastoModalOpen}
-        onOpenChange={(open) => setIsGastoModalOpen(open)}
-        title="Registrar Nuevo Gasto"
-        maxWidth="sm:max-w-4xl"
-        className="max-h-[90vh] flex flex-col"
-      >
-        <div className="flex-1 overflow-y-auto pr-1">
-          <GastoForm 
-            onSubmit={handleCreateGasto}
-            onCancel={() => setIsGastoModalOpen(false)} 
-          />
-        </div>
-      </ModernDialog>
+        onClose={() => setIsGastoModalOpen(false)}
+        onSuccess={() => {
+          handleRefresh();
+        }}
+      />
     </div>
   );
 }

@@ -41,7 +41,9 @@ import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
 import { useCRMStore } from "@/store/crm-store";
 import { OrdenCompraForm } from "@/components/logistica/orden-compra-form";
+import { CajaChicaGastoModal } from "@/components/finanzas/caja-chica-gasto-modal";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
+import { Wallet } from "lucide-react";
 import { toast } from "sonner";
 
 const StatsCard = ({ label, value, icon, color, bgColor, isCurrency = false }: any) => (
@@ -94,6 +96,7 @@ export default function OrdenesCompraPage() {
   // Estado local para paginación estable
   const [currentPage, setCurrentPage] = useState(1);
   const [isOrdenModalOpen, setIsOrdenModalOpen] = useState(false);
+  const [isCajaChicaOpen, setIsCajaChicaOpen] = useState(false);
   const [prefilledProyectoId, setPrefilledProyectoId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("TODOS");
@@ -262,9 +265,18 @@ export default function OrdenesCompraPage() {
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">Gestión de adquisiciones y abastecimiento de materiales.</p>
         </div>
         
-        <Button onClick={() => setIsOrdenModalOpen(true)} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
-            <Plus className="w-4 h-4" /> Nueva Orden
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={() => setIsCajaChicaOpen(true)} 
+            variant="outline"
+            className="h-10 px-4 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100 font-black uppercase text-[10px] tracking-wider gap-2 rounded-xl"
+          >
+              <Wallet className="w-4 h-4 text-amber-600" /> Caja Chica / Gastos Menores
+          </Button>
+          <Button onClick={() => setIsOrdenModalOpen(true)} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
+              <Plus className="w-4 h-4" /> Nueva Orden
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -518,6 +530,14 @@ export default function OrdenesCompraPage() {
         }} 
         initialData={editingOrden}
         defaultProyectoId={prefilledProyectoId || undefined}
+      />
+
+      <CajaChicaGastoModal
+        isOpen={isCajaChicaOpen}
+        onClose={() => setIsCajaChicaOpen(false)}
+        onSuccess={() => {
+          fetchOrdenes();
+        }}
       />
       
       <GenericSecureDeleteModal
