@@ -494,10 +494,10 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                                 form.setValue("proyectoId", "none");
                                                 setOpenProyecto(false);
                                             }}
-                                            className="font-bold text-xs cursor-pointer uppercase text-slate-500"
+                                            className="font-bold text-xs cursor-pointer uppercase text-amber-700 bg-amber-50/50 py-2"
                                         >
                                             <Check className={cn("mr-2 h-4 w-4 text-primary", field.value === "none" || !field.value ? "opacity-100" : "opacity-0")} />
-                                            Para Stock General (Sin Proyecto)
+                                            [ALMACEN GENERAL] Compra para Stock (Sin Proyecto)
                                         </CommandItem>
                                         {proyectos.map((p) => {
                                           const { label, subLabel } = getProjectLabel(p);
@@ -595,7 +595,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                 </div>
                                 {presupuesto.saldoDisponible < montoActual && (
                                     <p className="text-[10px] text-red-500 font-bold mt-2">
-                                        ⚠️ La orden actual excede el saldo disponible del proyecto.
+                                        La orden actual excede el saldo disponible del proyecto.
                                     </p>
                                 )}
                             </div>

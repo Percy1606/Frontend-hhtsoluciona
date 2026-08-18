@@ -529,21 +529,21 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                               "h-11 font-black text-xs transition-all",
                               !field.value ? "border-amber-300 bg-amber-50/40 text-amber-900" : "bg-white border-slate-200"
                             )}>
-                              <SelectValue placeholder="⚠️ SELECCIONAR CUENTA OBLIGATORIAMENTE...">
+                              <SelectValue placeholder="SELECCIONAR CUENTA OBLIGATORIAMENTE...">
                                 {selectedCajaObj ? (
                                   <div className="flex items-center gap-2">
                                     <span className="font-black uppercase">{selectedCajaObj.nombre}</span>
                                     <span className="text-[9px] text-slate-400 font-bold">({selectedCajaObj.subtipo || selectedCajaObj.tipo})</span>
                                   </div>
                                 ) : (
-                                  <span className="text-amber-800 font-bold">⚠️ SELECCIONAR CUENTA OBLIGATORIAMENTE...</span>
+                                  <span className="text-amber-800 font-bold">SELECCIONAR CUENTA OBLIGATORIAMENTE...</span>
                                 )}
                               </SelectValue>
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
                             <SelectItem value="none" className="font-bold text-xs italic text-slate-500 py-2">
-                              🚫 NO AFECTA CAJA (Gasto sin movimiento bancario)
+                              NO AFECTA CAJA (Gasto sin movimiento bancario)
                             </SelectItem>
                             {cajas.map((c) => {
                               const disp = Number(c.saldoDisponible || 0);
@@ -575,10 +575,10 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                             esInsuficiente ? "bg-red-50 border-red-200 text-red-800" : "bg-slate-50 border-slate-200 text-slate-700"
                           )}>
                             <span>
-                              🔻 Descuenta <strong className="text-primary font-black">S/ {montoGasto.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</strong> de <strong>{selectedCajaObj.nombre}</strong>
+                              Descuenta <strong className="text-primary font-black">S/ {montoGasto.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</strong> de <strong>{selectedCajaObj.nombre}</strong>
                             </span>
                             <span>
-                              Quedará: <strong className={esInsuficiente ? "text-red-600 font-black" : "text-emerald-600 font-black"}>
+                              Quedara: <strong className={esInsuficiente ? "text-red-600 font-black" : "text-emerald-600 font-black"}>
                                 S/ {saldoRestante.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                               </strong>
                             </span>
