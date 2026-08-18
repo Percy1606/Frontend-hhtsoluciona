@@ -231,8 +231,15 @@ export default function BandejaFinanzas() {
                           return (
                             <TableRow key={p.id} className={cn("transition-colors group", (!hasOrder && p.ventaContratada === 0) ? "bg-amber-50/20" : "")}>
                               <TableCell className="border-b border-slate-200 border-dashed p-2">
-                                <div className="font-black text-[11px] text-primary uppercase leading-tight">
-                                  {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo || p.codigo}
+                                <div className="flex items-center gap-1.5">
+                                  <span className="font-black text-[11px] text-primary uppercase leading-tight">
+                                    {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo || p.codigo}
+                                  </span>
+                                  {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo && (
+                                    <Badge variant="secondary" className="text-[8px] bg-indigo-50 text-indigo-700 border border-indigo-200/60 font-black h-4 px-1 py-0 rounded">
+                                      O.S.
+                                    </Badge>
+                                  )}
                                 </div>
                                 <div className="text-[9px] font-bold text-slate-500 mt-0.5 uppercase whitespace-normal break-words leading-tight" title={p.nombre}>
                                   {p.nombre?.replace(/^proyecto:\s*/i, '')}
@@ -244,7 +251,14 @@ export default function BandejaFinanzas() {
                                 )}
                               </TableCell>
                               <TableCell className="border-b border-slate-200 border-dashed p-2">
-                                <div className="text-[11px] font-black text-slate-700 uppercase leading-tight">{p.cotizacionOrigen?.codigo || '-'}</div>
+                                <div className="text-[11px] font-black text-slate-700 uppercase leading-tight flex items-center gap-1">
+                                  {p.cotizacionOrigen?.codigo || '-'}
+                                </div>
+                                {p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo && (
+                                  <div className="text-[9px] font-semibold text-indigo-600 mt-0.5 flex items-center gap-1">
+                                    <span>OS: {p.cotizacionOrigen.ordenesDeServicio[0].codigo}</span>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell className="border-b border-slate-200 border-dashed p-2">
                                 <div className="text-[11px] font-black text-emerald-600 font-mono">

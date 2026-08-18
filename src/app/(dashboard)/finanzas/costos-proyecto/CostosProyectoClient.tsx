@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api";
 import { cn, formatCurrency } from "@/lib/utils";
-import { Loader2, Target, Search, Building2, ChevronDown, ChevronRight, FolderKanban, Wallet, FilterX } from "lucide-react";
+import { Loader2, Target, Search, Building2, ChevronDown, ChevronRight, FolderKanban, Wallet, FilterX, Eye, Calendar, DollarSign, Package, FileText } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface ProyectoData {
   id: string;
@@ -34,7 +35,24 @@ interface ProyectoData {
       subcontratos: number;
       equipos: number;
       otros: number;
-    }
+    };
+    historialGastos?: Array<{
+      id: string;
+      concepto: string;
+      monto: number;
+      fecha: string;
+      estado: string;
+      codigo?: string;
+      tipo?: string;
+      ocCodigo?: string;
+    }>;
+    historialMateriales?: Array<{
+      material: string;
+      cantidad: number;
+      costoTotal: number;
+      fecha: string;
+      origen: string;
+    }>;
   };
   loading?: boolean;
 }
@@ -49,6 +67,15 @@ export default function CostosProyectoClient() {
   const [expandedClients, setExpandedClients] = useState<Record<string, boolean>>({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  // State for Modal Gastos / Costo Real
+  const [selectedProyecto, setSelectedProyecto] = useState<ProyectoData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleOpenGastosModal = (proyecto: ProyectoData) => {
+    setSelectedProyecto(proyecto);
+    setIsModalOpen(true);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -70,7 +97,7 @@ export default function CostosProyectoClient() {
 
         proys.forEach(async (p: any) => {
           try {
-            const rent = await api.get(`/finanzas/proyectos/${p.id}/rentabilidad`);
+            const rent: any = await api.get(`/finanzas/proyectos/${p.id}/rentabilidad`);
             setProyectos(prev => prev.map(item => {
               if (item.id === p.id) {
                 const rentData = rent as any;
@@ -87,7 +114,9 @@ export default function CostosProyectoClient() {
                     subcontratos: 0,
                     equipos: 0,
                     otros: rentData.egresos?.gastosDirectos || 0,
-                  }
+                  },
+                  historialGastos: rentData.historialGastos || [],
+                  historialMateriales: rentData.historialMateriales || []
                 };
                 return { ...item, rentabilidad: mappedRent, loading: false };
               }
@@ -394,13 +423,20 @@ export default function CostosProyectoClient() {
                                         <Loader2 className="w-3 h-3 animate-spin" />
                                       </div>
                                     ) : (
-                                      <span className={cn("font-bold text-xs", 
-                                        (proyecto.rentabilidad?.costoRealAcumulado || 0) > (proyecto.costoPresupuestado || 0) 
-                                          ? "text-rose-600" 
-                                          : "text-emerald-600"
-                                      )}>
-                                        {formatCurrency(proyecto.rentabilidad?.costoRealAcumulado || 0)}
-                                      </span>
+                                      <button 
+                                        type="button"
+                                        onClick={() => handleOpenGastosModal(proyecto)}
+                                        className={cn(
+                                          "inline-flex items-center gap-1 font-bold text-xs hover:underline cursor-pointer group/btn focus:outline-none", 
+                                          (proyecto.rentabilidad?.costoRealAcumulado || 0) > (proyecto.costoPresupuestado || 0) 
+                                            ? "text-rose-600" 
+                                            : "text-emerald-600"
+                                        )}
+                                        title="Haz clic para ver el detalle de todos los gastos"
+                                      >
+                                        <span>{formatCurrency(proyecto.rentabilidad?.costoRealAcumulado || 0)}</span>
+                                        <Eye className="w-3 h-3 opacity-0 group-hover/btn:opacity-100 transition-opacity text-slate-400" />
+                                      </button>
                                     )}
                                   </TableCell>
 
@@ -462,6 +498,173 @@ export default function CostosProyectoClient() {
           )}
         </div>
       </div>
+
+      {/* Modal de Detalle de Costo Real (Gastos & Materiales) */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-y-auto bg-white rounded-2xl p-6 border border-slate-200">
+          <DialogHeader className="pb-4 border-b border-slate-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="text-lg font-black text-slate-900 flex items-center gap-2">
+                  <FileText className="w-5 h-5 text-primary" />
+                  Detalle de Egresos Real - {selectedProyecto?.codigo}
+                </DialogTitle>
+                <DialogDescription className="text-xs text-slate-500 font-medium mt-1">
+                  {selectedProyecto?.nombre} | Cliente: {selectedProyecto?.cliente?.empresa}
+                </DialogDescription>
+              </div>
+              <div className="text-right pr-6">
+                <span className="text-[10px] font-bold uppercase text-slate-400 block">Costo Real Acumulado</span>
+                <span className="text-base font-black text-rose-600">
+                  {formatCurrency(selectedProyecto?.rentabilidad?.costoRealAcumulado || 0)}
+                </span>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4">
+            {/* Resumen por Categoría */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Mano de Obra</span>
+                <span className="text-sm font-black text-slate-800">
+                  {formatCurrency(selectedProyecto?.rentabilidad?.desglose?.manoDeObra || 0)}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Materiales</span>
+                <span className="text-sm font-black text-slate-800">
+                  {formatCurrency(selectedProyecto?.rentabilidad?.desglose?.materiales || 0)}
+                </span>
+              </div>
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block">Otros Egresos</span>
+                <span className="text-sm font-black text-slate-800">
+                  {formatCurrency(selectedProyecto?.rentabilidad?.desglose?.otros || 0)}
+                </span>
+              </div>
+              <div className="p-3 bg-indigo-50/50 rounded-xl border border-indigo-100">
+                <span className="text-[9px] font-black uppercase text-indigo-500 tracking-wider block">Ppto. Egresos</span>
+                <span className="text-sm font-black text-indigo-700">
+                  {formatCurrency(selectedProyecto?.costoPresupuestado || 0)}
+                </span>
+              </div>
+            </div>
+
+            {/* Tabla de Gastos Registrados */}
+            <div className="space-y-2">
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-600" />
+                Gastos y Comprobantes Registrados ({selectedProyecto?.rentabilidad?.historialGastos?.length || 0})
+              </h4>
+
+              {(!selectedProyecto?.rentabilidad?.historialGastos || selectedProyecto.rentabilidad.historialGastos.length === 0) ? (
+                <div className="p-4 text-center bg-slate-50 rounded-xl text-xs text-slate-400 font-medium">
+                  No hay gastos directos o comprobantes registrados en este proyecto.
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Fecha</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Código / Tipo</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Concepto / O.C.</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Estado</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500 text-right">Monto</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedProyecto.rentabilidad.historialGastos.map((gasto) => (
+                        <TableRow key={gasto.id} className="text-xs">
+                          <TableCell className="font-medium text-slate-500 py-2.5">
+                            {gasto.fecha ? new Date(gasto.fecha).toLocaleDateString('es-PE') : '-'}
+                          </TableCell>
+                          <TableCell className="font-bold text-slate-800 py-2.5">
+                            <div>{gasto.codigo || gasto.id.slice(-6)}</div>
+                            {gasto.tipo && (
+                              <span className="text-[9px] font-semibold text-slate-400 uppercase">{gasto.tipo}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            <div className="font-medium text-slate-800">{gasto.concepto}</div>
+                            {gasto.ocCodigo && (
+                              <Badge variant="outline" className="text-[8px] border-slate-200 text-indigo-600 font-bold mt-0.5">
+                                OC: {gasto.ocCodigo}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            <Badge className={cn(
+                              "text-[8px] font-black uppercase px-1.5 py-0.5 border-none",
+                              gasto.estado === 'PAGADO' ? "bg-emerald-100 text-emerald-700" :
+                              gasto.estado === 'APROBADO' ? "bg-blue-100 text-blue-700" :
+                              "bg-amber-100 text-amber-700"
+                            )}>
+                              {gasto.estado}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-black text-rose-600 text-right py-2.5">
+                            {formatCurrency(gasto.monto)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </div>
+
+            {/* Tabla de Consumo de Materiales (Almacen / Kardex) */}
+            {selectedProyecto?.rentabilidad?.historialMateriales && selectedProyecto.rentabilidad.historialMateriales.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center gap-2">
+                  <Package className="w-4 h-4 text-indigo-600" />
+                  Despachos de Almacén / Kardex ({selectedProyecto.rentabilidad.historialMateriales.length})
+                </h4>
+
+                <div className="rounded-xl border border-slate-200 overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50">
+                      <TableRow>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Fecha</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Material / Insumo</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500">Origen</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500 text-center">Cant.</TableHead>
+                        <TableHead className="text-[9px] font-black uppercase text-slate-500 text-right">Costo Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {selectedProyecto.rentabilidad.historialMateriales.map((mat, idx) => (
+                        <TableRow key={idx} className="text-xs">
+                          <TableCell className="font-medium text-slate-500 py-2.5">
+                            {mat.fecha ? new Date(mat.fecha).toLocaleDateString('es-PE') : '-'}
+                          </TableCell>
+                          <TableCell className="font-bold text-slate-800 py-2.5">
+                            {mat.material}
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            <Badge variant="outline" className="text-[8px] border-slate-200 text-slate-600 font-medium">
+                              {mat.origen}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-bold text-slate-700 text-center py-2.5">
+                            {mat.cantidad}
+                          </TableCell>
+                          <TableCell className="font-black text-rose-600 text-right py-2.5">
+                            {formatCurrency(mat.costoTotal)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
