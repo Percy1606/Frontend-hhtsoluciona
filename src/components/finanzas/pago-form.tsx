@@ -33,7 +33,7 @@ import {
   Wallet,
   Lock
 } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, cn } from "@/lib/utils";
 
 interface PagoFormProps {
   factura: Factura;
@@ -77,9 +77,6 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
       try {
         const res = await api.get('/finanzas/cajas');
         setCajas(Array.isArray(res) ? res : []);
-        if (Array.isArray(res) && res.length > 0) {
-            form.setValue('cajaId', res[0].id);
-        }
       } catch (e) {
         console.error("Error fetching cajas for payment:", e);
       }
@@ -215,41 +212,84 @@ export function PagoForm({ factura, onSubmit, onCancel }: PagoFormProps) {
           />
         </div>
 
-        <div className="bg-emerald-50/40 p-3 rounded-xl border border-emerald-100 shadow-sm">
+        <div className="bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-200 shadow-sm space-y-2">
             <FormField
                 control={form.control}
                 name="cajaId"
-                rules={{ required: "Debe seleccionar una cuenta de destino" }}
-                render={({ field }) => (
-                <FormItem>
-                    <FormLabel className="font-black text-[10px] uppercase text-emerald-700 tracking-widest flex items-center gap-1.5 mb-1">
-                    <Wallet className="w-3 h-3" /> ¿Destino de Fondos?
-                    </FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                        <SelectTrigger className="bg-white border-emerald-200 h-9 font-black text-xs shadow-sm">
-                          <SelectValue>
-                            {cajas.find(c => c.id === field.value)?.nombre || "Seleccione la cuenta..."}
-                          </SelectValue>
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        {cajas.map((c) => (
-                        <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-1.5">
-                            <div className="flex flex-col gap-0.5">
-                            <div className="flex items-center gap-1.5">
-                                <span>{c.nombre}</span>
-                                {c.esProtegida && <Lock className="w-2.5 h-2.5 text-primary" />}
-                            </div>
-                            <span className="text-[9px] text-emerald-600 font-black uppercase tracking-widest">Capital: {formatCurrency(Number(c.saldoReal))}</span>
-                            </div>
-                        </SelectItem>
-                        ))}
-                    </SelectContent>
-                    </Select>
-                    <FormMessage />
-                </FormItem>
-                )}
+                rules={{ required: "Debe seleccionar una cuenta de destino obligatoriamente" }}
+                render={({ field }) => {
+                  const selectedCajaObj = cajas.find(c => c.id === field.value);
+                  const montoPago = Number(form.watch("monto")) || 0;
+                  const saldoNuevo = selectedCajaObj ? Number(selectedCajaObj.saldoReal) + montoPago : 0;
+
+                  return (
+                    <FormItem className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <FormLabel className="font-black text-[10px] uppercase text-emerald-800 tracking-widest flex items-center gap-1.5">
+                          <Wallet className="w-3.5 h-3.5 text-emerald-600" /> ¿En qué Caja/Cuenta ingresa el dinero? *
+                        </FormLabel>
+                        {selectedCajaObj && (
+                          <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            Actual: S/ {Number(selectedCajaObj.saldoReal).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                          </span>
+                        )}
+                      </div>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger className={cn(
+                            "h-11 font-black text-xs shadow-sm transition-all",
+                            !field.value ? "border-amber-300 bg-amber-50/50 text-amber-900" : "bg-white border-emerald-200"
+                          )}>
+                            <SelectValue placeholder="⚠️ SELECCIONE LA CUENTA BANCARIA O CAJA...">
+                              {selectedCajaObj ? (
+                                <div className="flex items-center gap-2">
+                                  <span className="font-black uppercase text-slate-900">{selectedCajaObj.nombre}</span>
+                                  <span className="text-[9px] text-slate-500 font-bold">({selectedCajaObj.subtipo || selectedCajaObj.tipo})</span>
+                                </div>
+                              ) : (
+                                <span className="text-amber-800 font-bold">⚠️ SELECCIONE LA CUENTA BANCARIA O CAJA...</span>
+                              )}
+                            </SelectValue>
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {cajas.map((c) => {
+                            const capital = Number(c.saldoReal || 0);
+                            return (
+                              <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-2 border-b last:border-none">
+                                <div className="flex items-center justify-between gap-4 w-full">
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black uppercase text-slate-800">{c.nombre}</span>
+                                    <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">{c.subtipo || c.tipo}</span>
+                                    {c.esProtegida && <Lock className="w-2.5 h-2.5 text-primary" />}
+                                  </div>
+                                  <span className="text-[10px] font-black text-emerald-700 ml-auto">
+                                    Capital: S/ {capital.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+
+                      {/* Banner de Impacto de Ingreso */}
+                      {selectedCajaObj && montoPago > 0 && (
+                        <div className="p-2 rounded-xl bg-white border border-emerald-200 text-[11px] font-bold text-emerald-900 flex items-center justify-between shadow-xs mt-1">
+                          <span>
+                            ➕ Ingresa <strong className="text-emerald-700 font-black">S/ {montoPago.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</strong> a <strong>{selectedCajaObj.nombre}</strong>
+                          </span>
+                          <span>
+                            Nuevo saldo: <strong className="text-emerald-700 font-black">
+                              S/ {saldoNuevo.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </strong>
+                          </span>
+                        </div>
+                      )}
+                      <FormMessage />
+                    </FormItem>
+                  );
+                }}
             />
         </div>
 

@@ -104,10 +104,6 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
         setProveedores(Array.isArray(provRes) ? provRes : (provRes.data || []));
         setProyectos(Array.isArray(projectsRes) ? projectsRes : (projectsRes.data || []));
         setCajas(Array.isArray(cajasRes) ? cajasRes : (cajasRes.data || []));
-
-        if (Array.isArray(cajasRes) && cajasRes.length > 0 && !form.getValues('cajaId')) {
-            form.setValue('cajaId', cajasRes[0].id);
-        }
       } catch (e) {
         console.error("Error cargando datos para el formulario de gastos", e);
       }
@@ -505,32 +501,93 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                 <FormField
                   control={form.control}
                   name="cajaId"
-                  rules={{ required: "Requerido" }}
-                  render={({ field }) => (
-                    <FormItem className="md:col-span-2">
-                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">Caja / Cuenta de Origen</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
-                            <SelectValue placeholder="Seleccione cuenta...">
-                              {cajas.find(c => c.id === field.value)?.nombre || "Seleccione cuenta..."}
-                            </SelectValue>
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="none" className="font-bold text-xs italic text-slate-500">
-                            NO AFECTA CAJA (Sin movimiento)
-                          </SelectItem>
-                          {cajas.map((c) => (
-                            <SelectItem key={c.id} value={c.id} className="font-bold text-xs">
-                              {c.nombre} <span className="text-[9px] text-slate-400 ml-2">(S/ {Number(c.saldoDisponible).toLocaleString()})</span>
+                  rules={{ required: "Debe seleccionar una cuenta de origen obligatoriamente" }}
+                  render={({ field }) => {
+                    const selectedCajaObj = cajas.find(c => c.id === field.value);
+                    const montoGasto = Number(watchMonto) || 0;
+                    const saldoRestante = selectedCajaObj ? Number(selectedCajaObj.saldoDisponible) - montoGasto : 0;
+                    const esInsuficiente = selectedCajaObj && saldoRestante < 0;
+
+                    return (
+                      <FormItem className="md:col-span-2 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <FormLabel className="font-black text-[10px] uppercase text-slate-700 tracking-wider flex items-center gap-1.5">
+                            <Wallet className="w-3.5 h-3.5 text-amber-600" /> Caja / Cuenta de Origen (Egreso) *
+                          </FormLabel>
+                          {selectedCajaObj && (
+                            <span className={cn(
+                              "text-[10px] font-black uppercase px-2 py-0.5 rounded-md",
+                              esInsuficiente ? "bg-red-100 text-red-700 border border-red-200" : "bg-emerald-50 text-emerald-700 border border-emerald-200"
+                            )}>
+                              Disp: S/ {Number(selectedCajaObj.saldoDisponible).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                            </span>
+                          )}
+                        </div>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className={cn(
+                              "h-11 font-black text-xs transition-all",
+                              !field.value ? "border-amber-300 bg-amber-50/40 text-amber-900" : "bg-white border-slate-200"
+                            )}>
+                              <SelectValue placeholder="⚠️ SELECCIONAR CUENTA OBLIGATORIAMENTE...">
+                                {selectedCajaObj ? (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-black uppercase">{selectedCajaObj.nombre}</span>
+                                    <span className="text-[9px] text-slate-400 font-bold">({selectedCajaObj.subtipo || selectedCajaObj.tipo})</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-amber-800 font-bold">⚠️ SELECCIONAR CUENTA OBLIGATORIAMENTE...</span>
+                                )}
+                              </SelectValue>
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none" className="font-bold text-xs italic text-slate-500 py-2">
+                              🚫 NO AFECTA CAJA (Gasto sin movimiento bancario)
                             </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                            {cajas.map((c) => {
+                              const disp = Number(c.saldoDisponible || 0);
+                              return (
+                                <SelectItem key={c.id} value={c.id} className="font-bold text-xs py-2 border-b last:border-none">
+                                  <div className="flex items-center justify-between gap-4 w-full">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-black uppercase text-slate-800">{c.nombre}</span>
+                                      <span className="text-[9px] uppercase px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-bold">{c.subtipo || c.tipo}</span>
+                                      {c.esProtegida && <Lock className="w-3 h-3 text-primary" />}
+                                    </div>
+                                    <span className={cn(
+                                      "text-[10px] font-black ml-auto",
+                                      disp < 0 ? "text-red-600" : "text-emerald-600"
+                                    )}>
+                                      S/ {disp.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                                    </span>
+                                  </div>
+                                </SelectItem>
+                              );
+                            })}
+                          </SelectContent>
+                        </Select>
+
+                        {/* Banner de Impacto Inmediato */}
+                        {selectedCajaObj && montoGasto > 0 && (
+                          <div className={cn(
+                            "p-2.5 rounded-xl border text-[11px] font-bold flex items-center justify-between",
+                            esInsuficiente ? "bg-red-50 border-red-200 text-red-800" : "bg-slate-50 border-slate-200 text-slate-700"
+                          )}>
+                            <span>
+                              🔻 Descuenta <strong className="text-primary font-black">S/ {montoGasto.toLocaleString("es-PE", { minimumFractionDigits: 2 })}</strong> de <strong>{selectedCajaObj.nombre}</strong>
+                            </span>
+                            <span>
+                              Quedará: <strong className={esInsuficiente ? "text-red-600 font-black" : "text-emerald-600 font-black"}>
+                                S/ {saldoRestante.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                              </strong>
+                            </span>
+                          </div>
+                        )}
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={form.control}

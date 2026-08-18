@@ -515,18 +515,23 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
                                     className="h-8 text-xs"
                                   />
                                   <select 
-                                    className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                    className="flex h-9 w-full rounded-md border border-emerald-300 bg-emerald-50/40 px-2 py-1 text-xs font-black shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-emerald-500"
                                     value={payCajaId}
                                     onChange={e => setPayCajaId(e.target.value)}
                                   >
-                                    <option value="" disabled>Selecciona Caja/Banco</option>
-                                    {cajas.map(c => (
-                                      <option key={c.id} value={c.id}>{c.nombre} (S/ {Number(c.saldoReal).toLocaleString("es-PE")})</option>
-                                    ))}
+                                    <option value="">⚠️ SELECCIONA CUENTA DESTINO...</option>
+                                    {cajas.map(c => {
+                                      const isUSD = (c.moneda === 'USD' || c.nombre.toUpperCase().includes('DOLARES'));
+                                      return (
+                                        <option key={c.id} value={c.id} disabled={isUSD}>
+                                          {c.nombre} {isUSD ? '(USD - No aplicable a Soles)' : `(S/ ${Number(c.saldoReal).toLocaleString("es-PE", { minimumFractionDigits: 2 })})`}
+                                        </option>
+                                      );
+                                    })}
                                   </select>
                                   <div className="flex gap-2 mt-1">
                                     <Button size="sm" variant="outline" className="flex-1 h-7 text-[10px]" onClick={() => setPayingFacturaId(null)}>Cancelar</Button>
-                                    <Button size="sm" className="flex-1 h-7 bg-emerald-600 hover:bg-emerald-700 text-[10px] text-white" onClick={() => handleRegistrarPago(fac.id)}>Guardar</Button>
+                                    <Button size="sm" className="flex-1 h-7 bg-emerald-600 hover:bg-emerald-700 text-[10px] text-white font-bold" onClick={() => handleRegistrarPago(fac.id)}>Guardar</Button>
                                   </div>
                                 </div>
                               ) : (
@@ -535,7 +540,7 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
                                   onClick={() => {
                                     setPayingFacturaId(fac.id);
                                     setPayMonto(fac.saldoPendiente);
-                                    if (cajas.length > 0) setPayCajaId(cajas[0].id);
+                                    setPayCajaId("");
                                   }} 
                                   className="bg-emerald-600 hover:bg-emerald-700 text-[10px] uppercase font-black h-8"
                                 >

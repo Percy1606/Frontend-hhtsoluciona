@@ -176,6 +176,20 @@ export function TransferModal({ isOpen, onClose, onSubmit, cajas, initialOrigenI
                     )}
                 />
 
+                {origenCaja && form.watch("destinoId") && Number(form.watch("monto")) > 0 && (
+                  <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1.5 text-xs">
+                    <p className="text-[10px] font-black uppercase text-blue-800 tracking-wider">Resumen de la Transferencia</p>
+                    <div className="flex justify-between items-center text-slate-700">
+                      <span>Cuenta Origen: <strong>{origenCaja.nombre}</strong></span>
+                      <span className="text-red-600 font-black">- S/ {Number(form.watch("monto")).toLocaleString("es-PE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-slate-700">
+                      <span>Cuenta Destino: <strong>{cajas.find(c => c.id === form.watch("destinoId"))?.nombre}</strong></span>
+                      <span className="text-emerald-600 font-black">+ S/ {Number(form.watch("monto")).toLocaleString("es-PE", { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </div>
+                )}
+
                 <FormField
                     control={form.control}
                     name="concepto"

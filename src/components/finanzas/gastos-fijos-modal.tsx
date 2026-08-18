@@ -68,9 +68,6 @@ export function GastosFijosModal({ open, onOpenChange }: GastosFijosModalProps) 
       ]);
       setGastosFijos(gastosRes);
       setCajas(cajasRes);
-      if (cajasRes && cajasRes.length > 0) {
-        setCajaId(cajasRes[0].id);
-      }
     } catch (e) {
       toast.error("Error al cargar configuración de gastos fijos.");
     } finally {
@@ -202,19 +199,27 @@ export function GastosFijosModal({ open, onOpenChange }: GastosFijosModalProps) 
               </div>
 
               <div className="md:col-span-2">
-                <Label className="text-[9px] font-black uppercase text-slate-400">Caja de Origen (Por defecto)</Label>
+                <Label className="text-[9px] font-black uppercase text-slate-400">Caja de Origen (Por defecto) *</Label>
                 <Select value={cajaId} onValueChange={(val) => setCajaId(val || "")}>
-                  <SelectTrigger className="h-9 mt-1 text-xs font-bold">
-                    <SelectValue placeholder="Seleccione cuenta...">
-                      {cajas.find((c) => c.id === cajaId)?.nombre || "Seleccione cuenta..."}
+                  <SelectTrigger className="h-9 mt-1 text-xs font-bold border-slate-200">
+                    <SelectValue placeholder="⚠️ SELECCIONE CUENTA...">
+                      {cajas.find((c) => c.id === cajaId)?.nombre || "⚠️ SELECCIONE CUENTA..."}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent className="bg-white">
-                    {cajas.map((c) => (
-                      <SelectItem key={c.id} value={c.id} className="text-xs font-bold">
-                        {c.nombre} (S/ {Number(c.saldoReal).toLocaleString()})
-                      </SelectItem>
-                    ))}
+                    {cajas.map((c) => {
+                      const isUSD = (c.moneda === 'USD' || c.nombre.toUpperCase().includes('DOLARES'));
+                      return (
+                        <SelectItem key={c.id} value={c.id} disabled={isUSD} className="text-xs font-bold py-1.5">
+                          <div className="flex items-center justify-between gap-2 w-full">
+                            <span>{c.nombre} {isUSD ? '(USD)' : ''}</span>
+                            <span className="text-[9px] text-slate-400 font-mono">
+                              (S/ {Number(c.saldoDisponible || c.saldoReal).toLocaleString("es-PE", { minimumFractionDigits: 2 })})
+                            </span>
+                          </div>
+                        </SelectItem>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
               </div>
