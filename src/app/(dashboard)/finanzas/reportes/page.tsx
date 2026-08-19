@@ -216,7 +216,7 @@ export default function ReportesAvanzadosPage() {
             <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-3 group-hover:bg-blue-100 transition-colors">
               <Receipt className="w-4 h-4 text-blue-600" />
             </div>
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Total Facturado</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400">Ventas Facturadas</p>
             <p className="text-xl font-black tracking-tighter mt-1 text-slate-800" title={formatCurrency(totales.facturado)}>
               {formatLargeCurrency(totales.facturado)}
             </p>

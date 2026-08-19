@@ -667,11 +667,11 @@ export default function IngresosPage() {
           <div className="space-y-6">
              <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <div>
-                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Total Facturado</p>
+                  <p className="text-[10px] font-black uppercase text-slate-500 tracking-widest mb-1">Total Comprobante (Venta)</p>
                   <p className="font-black text-sm text-primary">{formatCurrency(selectedFactura.montoTotal)}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[10px] font-black uppercase text-secondary tracking-widest mb-1">Saldo Pendiente</p>
+                  <p className="text-[10px] font-black uppercase text-secondary tracking-widest mb-1">Pendiente de Cobro</p>
                   <p className="font-black text-sm text-secondary">{formatCurrency(selectedFactura.saldoPendiente)}</p>
                 </div>
              </div>

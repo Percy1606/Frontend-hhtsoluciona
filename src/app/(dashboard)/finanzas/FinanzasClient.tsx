@@ -246,32 +246,32 @@ export default function FinanzasClient() {
           {/* STATS GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
             <StatsCard 
-              label="Total Facturado" 
+              label="Ventas Facturadas" 
               value={stats?.totalFacturado || 0} 
               icon={<Receipt className="w-6 h-6 text-blue-600" />} 
               color="bg-blue-500"
-              description={`Facturas: ${stats?.facturasPendientes || 0} pnd., ${stats?.facturasParciales || 0} parc.`}
+              description={`Comprobantes: ${stats?.facturasPendientes || 0} pnd., ${stats?.facturasParciales || 0} en cobro`}
             />
             <StatsCard 
-              label="Cobranza Efectiva" 
+              label="Dinero Cobrado" 
               value={stats?.totalCobrado || 0} 
               icon={<Wallet className="w-6 h-6 text-green-600" />} 
               color="bg-green-500"
-              description="Total cobrado acumulado"
+              description={Number(stats?.totalFacturado || 0) > 0 ? `${((Number(stats?.totalCobrado || 0) / Number(stats?.totalFacturado)) * 100).toFixed(1)}% recaudado en bancos` : "Ingresado a bancos"}
             />
             <StatsCard 
-              label="Pendiente de Cobro" 
+              label="Por Cobrar (Clientes)" 
               value={stats?.totalPendiente || 0} 
               icon={<DollarSign className="w-6 h-6 text-orange-600" />} 
               color="bg-orange-500"
-              description={`${stats?.facturasVencidas || 0} facturas vencidas`}
+              description={`${stats?.facturasVencidas || 0} facturas por cobrar vencidas`}
             />
             <StatsCard 
               label="Egresos Pagados" 
               value={stats?.totalGastosPagados || 0} 
               icon={<ArrowDownRight className="w-6 h-6 text-red-600" />} 
               color="bg-red-500"
-              description={`S/ ${(stats?.totalGastosPendientes || 0).toLocaleString()} pendientes`}
+              description={`S/ ${(stats?.totalGastosPendientes || 0).toLocaleString()} pendientes de pago`}
             />
             <StatsCard 
               label="Utilidad del Mes" 
