@@ -51,13 +51,13 @@ export function KPIStats({
   const porcentajeCobranza = customPorcentajeCobranza ?? ((globalKPIs as any)?.porcentajeCobranza ?? 0); 
 
   const kpiConfig = [
-    { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600" },
-    { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600" },
-    { label: "Órdenes de Servicio", value: ordenesServicio, icon: FileText, color: "bg-purple-500/10 text-purple-600" },
-    { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600" },
-    { label: "Total Facturado", value: totalFacturado, icon: DollarSign, color: "bg-primary/10 text-primary", isCurrency: true },
-    { label: "Total Cobrado", value: totalCobrado, icon: TrendingUp, color: "bg-secondary/10 text-secondary", isCurrency: true },
-    { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true },
+    { label: "Total Clientes", value: totalClientes, icon: Users, color: "bg-blue-500/10 text-blue-600", sub: "Fidelizados" },
+    { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600", sub: "En cartera" },
+    { label: "Órdenes de Servicio", value: ordenesServicio, icon: FileText, color: "bg-purple-500/10 text-purple-600", sub: "Contratadas" },
+    { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600", sub: "En ejecución" },
+    { label: "Cobrado en Bancos", value: totalCobrado, icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600", isCurrency: true, sub: "Recaudación real" },
+    { label: "Ventas Emitidas", value: totalFacturado, icon: DollarSign, color: "bg-blue-500/10 text-blue-600", isCurrency: true, sub: "Total facturado" },
+    { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true, sub: "Efectividad cobro" },
   ];
 
   const formatFinancialValue = (val: number) => {
@@ -92,13 +92,16 @@ export function KPIStats({
               <kpi.icon className="w-4 h-4" />
             </div>
             <div className="min-w-0 w-full px-1">
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate mb-0.5">{kpi.label}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest truncate mb-0.5" title={kpi.label}>{kpi.label}</p>
               <h3 className={cn(
                 "font-black text-slate-800 leading-none tracking-tight truncate",
                 kpi.isCurrency ? "text-sm" : "text-base"
               )}>
                 {formatValue(kpi)}
               </h3>
+              {kpi.sub && (
+                <p className="text-[7.5px] font-bold text-slate-400 mt-1 uppercase tracking-tighter truncate opacity-80">{kpi.sub}</p>
+              )}
             </div>
           </CardContent>
         </Card>
