@@ -222,7 +222,7 @@ export default function CajasPage() {
             textColor="text-slate-900"
           />
           <KPICard 
-            label="Fondos Retenidos" 
+            label="Fondos Gastados" 
             value={totalRetenido} 
             subLabel="Por pagar u obligaciones"
             icon={<Lock className="w-5 h-5 text-orange-600" />}
@@ -409,7 +409,7 @@ function CajaCard({ caja, onEdit, onDelete, onHistory, onToggleProtect }: any) {
                         </p>
                     </div>
                     <div className="space-y-1 text-right">
-                        <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Retenido</p>
+                        <p className="text-[9px] font-bold uppercase text-slate-500 tracking-widest">Gastado</p>
                         <p className="text-sm font-black tracking-tighter text-orange-600">
                             - {new Intl.NumberFormat("es-PE", { style: "currency", currency: caja.moneda || 'PEN', minimumFractionDigits: 2 }).format(retenido)}
                         </p>
