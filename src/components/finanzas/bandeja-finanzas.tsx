@@ -285,7 +285,11 @@ export default function BandejaFinanzas() {
                                 <div className="flex items-center space-x-2">
                                   <Switch
                                     checked={p.autorizaCompras}
-                                    onCheckedChange={(val) => handleUpdate(p.id, { autorizaCompras: val })}
+                                    onCheckedChange={(val) => {
+                                      if (window.confirm(`¿Confirmas ${val ? 'AUTORIZAR' : 'DESACTIVAR'} las compras para el proyecto "${p.codigo || p.nombre}"?`)) {
+                                        handleUpdate(p.id, { autorizaCompras: val });
+                                      }
+                                    }}
                                   />
                                   <span className="text-[9px] font-black uppercase text-slate-600">
                                     {p.autorizaCompras ? 'Sí' : 'No'}
@@ -295,7 +299,11 @@ export default function BandejaFinanzas() {
                               <TableCell className="border-b border-slate-200 border-dashed p-2">
                                 <Select
                                   value={p.estadoFinanciero || 'SinPago'}
-                                  onValueChange={(val) => handleUpdate(p.id, { estadoFinanciero: val })}
+                                  onValueChange={(val) => {
+                                    if (window.confirm(`¿Confirmas cambiar el estado financiero de "${p.codigo || p.nombre}" a "${val}"?`)) {
+                                      handleUpdate(p.id, { estadoFinanciero: val });
+                                    }
+                                  }}
                                   disabled={!hasOrder && p.ventaContratada === 0}
                                 >
                                   <SelectTrigger className={cn(

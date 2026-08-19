@@ -28,6 +28,7 @@ import { Gasto } from "@/types/finanzas";
 import { cn, getSecureUrl } from "@/lib/utils";
 import { Wallet, Lock, Loader2, Link2, AlertTriangle, CheckCircle2, FileText, Building2 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 interface GastoFormProps {
@@ -57,6 +58,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const [proyectos, setProyectos] = useState<any[]>([]);
   const [cajas, setCajas] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [projectStats, setProjectStats] = useState<any>(null);
 
   // Extraer metodoPago guardado en justificación (si lo hay) para mostrarlo en UI
@@ -168,6 +170,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       form.setValue("comprobanteUrl", res.url);
     } catch (e) {
       console.error("Upload failed", e);
+      toast.error("Error al subir el archivo o comprobante. Intente nuevamente.");
     } finally {
       setIsUploading(false);
     }
@@ -197,7 +200,10 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const montoAprobado = (watchEstado === "APROBADO" || watchEstado === "PAGADO") ? watchMonto : 0;
   const montoEjecutado = watchEstado === "PAGADO" ? (watchMonto - watchSaldoPendiente) || watchMonto : 0;
 
-  const handleLocalSubmit = (data: any) => {
+  const handleLocalSubmit = async (data: any) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
     const justificacionFinal = data.metodoPago ? `[${data.metodoPago}] ${data.justificacion}` : data.justificacion;
 
     const finalData = {
@@ -223,7 +229,10 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       montoSubtotal: data.montoSubtotal,
       montoIgv: data.montoIgv,
     };
-    onSubmit(finalData);
+    await onSubmit(finalData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -755,8 +764,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
           <Button type="button" variant="ghost" onClick={onCancel} className="font-black uppercase text-xs text-slate-500 hover:bg-slate-100 px-6 h-11 rounded-xl">
             Cancelar
           </Button>
-          <Button type="submit" className="font-black uppercase text-xs bg-primary hover:bg-primary/90 text-white px-8 h-11 rounded-xl shadow-lg">
-            {initialData ? "Guardar Cambios" : "Registrar Gasto"}
+          <Button type="submit" disabled={isSubmitting} className="font-black uppercase text-xs bg-primary hover:bg-primary/90 text-white px-8 h-11 rounded-xl shadow-lg disabled:opacity-50">
+            {isSubmitting ? "Procesando..." : initialData ? "Guardar Cambios" : "Registrar Gasto"}
           </Button>
         </div>
       </form>

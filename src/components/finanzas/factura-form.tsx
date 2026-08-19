@@ -27,6 +27,7 @@ import { Factura } from "@/types/finanzas";
 import { cn, getSecureUrl } from "@/lib/utils";
 import { Loader2, FileText, Wallet, Lock, DollarSign, Calendar, Building2, Receipt, ShieldCheck, AlertCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 
 interface FacturaFormProps {
   initialData?: Factura | null;
@@ -114,6 +115,7 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
   const [cajas, setCajas] = useState<any[]>([]);
   const [hitos, setHitos] = useState<any[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [isManualBalance, setIsManualBalance] = useState(!!initialData);
 
   const form = useForm({
@@ -251,12 +253,13 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
       form.setValue("archivoUrl", res.url);
     } catch (e) {
       console.error("Upload error", e);
+      toast.error("Error al subir el archivo de factura. Intente nuevamente.");
     } finally {
       setIsUploading(false);
     }
   };
 
-  const submitForm = (data: any) => {
+  const submitForm = async (data: any) => {
     if (!data.clienteId || data.clienteId === "none") {
       form.setError("clienteId", { message: "El cliente es estrictamente obligatorio." });
       return;
@@ -272,7 +275,13 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
     if (payload.proyectoId === "none") payload.proyectoId = null;
     if (payload.hitoPagoId === "none") payload.hitoPagoId = null;
 
-    onSubmit(payload);
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onSubmit(payload);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -701,8 +710,8 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
           <Button type="button" variant="ghost" onClick={onCancel} className="font-bold uppercase text-xs text-slate-500">
             Cancelar
           </Button>
-          <Button type="submit" className="font-black uppercase text-xs bg-slate-800 hover:bg-slate-900 text-white px-8">
-            {initialData ? "Actualizar ERP" : "Registrar Oficialmente"}
+          <Button type="submit" disabled={isSubmitting} className="font-black uppercase text-xs bg-slate-800 hover:bg-slate-900 text-white px-8 disabled:opacity-50">
+            {isSubmitting ? "Procesando..." : initialData ? "Actualizar ERP" : "Registrar Oficialmente"}
           </Button>
         </div>
       </form>
