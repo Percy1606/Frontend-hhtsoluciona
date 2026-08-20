@@ -86,7 +86,7 @@ export default function EgresosPage() {
 
   const handleNuevoGastoClick = () => {
     const minLiquidezStr = localStorage.getItem('minLiquidez');
-    const minLiquidez = minLiquidezStr ? Number(minLiquidezStr) : 30000;
+    const minLiquidez = minLiquidezStr ? Number(minLiquidezStr) : 0;
     const liquidezTotal = cajas.reduce((acc, c) => acc + Number(c.saldoDisponible || 0), 0);
 
     if (liquidezTotal < minLiquidez && cajas.length > 0) {

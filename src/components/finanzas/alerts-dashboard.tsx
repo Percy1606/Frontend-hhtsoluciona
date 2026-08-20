@@ -20,7 +20,7 @@ type Alert = {
 export function AlertsDashboard() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [loading, setLoading] = useState(true);
-  const [minLiquidez, setMinLiquidez] = useState(30000);
+  const [minLiquidez, setMinLiquidez] = useState(0);
 
   useEffect(() => {
     const stored = localStorage.getItem('minLiquidez');

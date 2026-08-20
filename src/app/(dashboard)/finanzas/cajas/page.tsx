@@ -62,7 +62,7 @@ export default function CajasPage() {
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [cajaToDelete, setCajaToDelete] = useState<{id: string, name: string} | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [minLiquidez, setMinLiquidez] = useState(30000);
+  const [minLiquidez, setMinLiquidez] = useState(0);
 
   const fetchCajas = async () => {
     try {
