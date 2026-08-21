@@ -55,9 +55,9 @@ export function KPIStats({
     { label: "Prospectos", value: prospectos, icon: Target, color: "bg-orange-500/10 text-orange-600", sub: "En cartera" },
     { label: "Órdenes de Servicio", value: ordenesServicio, icon: FileText, color: "bg-purple-500/10 text-purple-600", sub: "Contratadas" },
     { label: "Proyectos Activos", value: proyectosActivos, icon: Activity, color: "bg-green-500/10 text-green-600", sub: "En ejecución" },
-    { label: "Cobrado en Bancos", value: totalCobrado, icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600", isCurrency: true, sub: "Recaudación real" },
-    { label: "Ventas Emitidas", value: totalFacturado, icon: DollarSign, color: "bg-blue-500/10 text-blue-600", isCurrency: true, sub: "Total facturado" },
-    { label: "% Cobranza", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true, sub: "Efectividad cobro" },
+    { label: "Total Recaudado", value: totalCobrado, icon: TrendingUp, color: "bg-emerald-500/10 text-emerald-600", isCurrency: true, sub: "Ingresos históricos por ventas" },
+    { label: "Total Facturado", value: totalFacturado, icon: DollarSign, color: "bg-blue-500/10 text-blue-600", isCurrency: true, sub: "Ventas formalizadas acumuladas" },
+    { label: "Efectividad de Cobro", value: porcentajeCobranza, icon: CheckCircle2, color: "bg-teal-500/10 text-teal-600", isPercent: true, sub: "% Facturado vs. Recaudado" },
   ];
 
   const formatFinancialValue = (val: number) => {
