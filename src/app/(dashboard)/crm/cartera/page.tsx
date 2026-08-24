@@ -18,9 +18,11 @@ import {
   FilterX,
   ChevronRight,
   Target,
-  Library
+  Library,
+  Loader2
 } from "lucide-react";
 import { useCRMStore } from "@/store/crm-store";
+import { api } from "@/lib/api";
 import { 
   Select, 
   SelectContent, 
@@ -89,28 +91,115 @@ export default function CarteraPage() {
     }
   };
 
-  const handleExportExcel = () => {
-    const dataToExport = clients.map((c, idx) => ({
-      "N°": idx + 1,
-      "Código": c.codigo,
-      "Empresa": c.empresa,
-      "RUC": c.ruc,
-      "Dirección": c.direccion,
-      "Zona": c.zona,
-      "Tarifa": c.tarifa,
-      "Clasificación": c.clasificacion || "Sin asignar",
-      "Tipo Cliente": c.tipoCliente || "Prospecto",
-      "Teléfono": c.telefono || "",
-      "Contacto": c.contacto,
-      "Cargo": c.cargo || "",
-      "Correo": c.correo || "",
-      "Asignado A": c.asignadoA,
-    }));
+  const [isExporting, setIsExporting] = useState(false);
 
-    const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Cartera Clientes");
-    XLSX.writeFile(wb, `Cartera_HH_${new Date().toISOString().split('T')[0]}.xlsx`);
+  const handleExportExcel = async () => {
+    try {
+      setIsExporting(true);
+
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: '10000',
+        _t: Date.now().toString(),
+      });
+
+      if (filters.searchQuery) queryParams.append('search', filters.searchQuery);
+      if (filters.tarifa && filters.tarifa !== 'todas') queryParams.append('tarifa', filters.tarifa);
+      if (filters.zona) queryParams.append('zona', filters.zona);
+      if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
+      if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
+      if (filters.estado) queryParams.append('estado', filters.estado);
+      if (filters.etapaComercial && filters.etapaComercial !== 'todas') queryParams.append('etapaComercial', filters.etapaComercial);
+      if (filters.tipoCliente) queryParams.append('tipoCliente', filters.tipoCliente);
+      if (filters.fechaDesde) queryParams.append('startDate', filters.fechaDesde);
+      if (filters.fechaHasta) queryParams.append('endDate', filters.fechaHasta);
+
+      const response = await api.get(`/crm/clientes?${queryParams.toString()}`);
+      
+      let allClients: any[] = [];
+      if (response && response.data && Array.isArray(response.data)) {
+        allClients = response.data;
+      } else if (Array.isArray(response)) {
+        allClients = response;
+      }
+
+      if (!allClients || allClients.length === 0) {
+        alert("No se encontraron registros con los filtros actuales para exportar.");
+        return;
+      }
+
+      const mapEtapa = (etapa: string) => {
+        const map: Record<string, string> = {
+          "Contactado": "Contacto Inicial",
+          "Llamada Realizada": "Contacto Inicial",
+          "Visita Agendada": "Visita Técnica",
+          "Inspección Realizada": "Visita Técnica",
+          "Cotización Enviada": "Cotización",
+          "Ganado": "Orden de Servicio"
+        };
+        return map[etapa] || etapa || "Prospecto";
+      };
+
+      const dataToExport = allClients.map((c: any, idx: number) => ({
+        "N°": idx + 1,
+        "Código": c.codigo || "-",
+        "Empresa": c.empresa || "-",
+        "RUC": c.ruc || "-",
+        "Dirección": c.direccion || "-",
+        "Zona Comercial": c.zona || "-",
+        "Tarifa": c.tarifa || "-",
+        "Etapa Comercial": mapEtapa(c.etapaComercial),
+        "Calidad / Rentabilidad": (c.clasificacion || "RENTABLE").replace(/_/g, ' '),
+        "Tipo Cliente": c.tipoCliente || "PROSPECTO",
+        "Contacto": c.contacto || "-",
+        "Cargo": c.cargo || "-",
+        "Teléfono": c.telefono || "-",
+        "Correo": c.correo || "-",
+        "Asesor Asignado": c.asignadoA || "-",
+        "Último Contacto": c.ultimoContacto ? new Date(c.ultimoContacto).toLocaleDateString('es-PE') : "-",
+        "Próximo Seguimiento": c.proximoSeguimiento ? new Date(c.proximoSeguimiento).toLocaleDateString('es-PE') : "-",
+        "Observaciones": c.observaciones || "-"
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+      // Anchos de columna calculados y elegantes
+      ws['!cols'] = [
+        { wch: 6 },   // N°
+        { wch: 14 },  // Código
+        { wch: 38 },  // Empresa
+        { wch: 15 },  // RUC
+        { wch: 35 },  // Dirección
+        { wch: 18 },  // Zona Comercial
+        { wch: 10 },  // Tarifa
+        { wch: 22 },  // Etapa Comercial
+        { wch: 22 },  // Calidad / Rentabilidad
+        { wch: 16 },  // Tipo Cliente
+        { wch: 26 },  // Contacto
+        { wch: 20 },  // Cargo
+        { wch: 16 },  // Teléfono
+        { wch: 28 },  // Correo
+        { wch: 18 },  // Asesor Asignado
+        { wch: 16 },  // Último Contacto
+        { wch: 18 },  // Próximo Seguimiento
+        { wch: 45 },  // Observaciones
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Base Clientes");
+
+      const etapaTag = filters.etapaComercial && filters.etapaComercial !== 'todas' 
+        ? `_${filters.etapaComercial.replace(/\s+/g, '_')}` 
+        : '';
+      const dateTag = new Date().toISOString().split('T')[0];
+      
+      XLSX.writeFile(wb, `Cartera_Clientes_HH${etapaTag}_${dateTag}.xlsx`);
+    } catch (error: any) {
+      console.error("Error exportando a Excel:", error);
+      alert("Error al exportar los datos a Excel. Intente nuevamente.");
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -144,8 +233,17 @@ export default function CarteraPage() {
               variant="outline" 
               className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] border-slate-200 text-slate-600 hover:bg-slate-50 rounded-xl px-4"
               onClick={handleExportExcel}
+              disabled={isExporting}
             >
-              <Download className="w-4 h-4" /> Exportar Base
+              {isExporting ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" /> Exportando...
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4" /> Exportar Base
+                </>
+              )}
             </Button>
             <Link href="/crm/biblioteca">
               <Button 

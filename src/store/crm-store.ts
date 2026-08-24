@@ -201,11 +201,13 @@ export const useCRMStore = create<CRMState>()(
 
           if (!ignoreFilters) {
             if (filters.searchQuery) queryParams.append('search', filters.searchQuery);
-            if (filters.tarifa) queryParams.append('tarifa', filters.tarifa);
+            if (filters.tarifa && filters.tarifa !== 'todas') queryParams.append('tarifa', filters.tarifa);
             if (filters.zona) queryParams.append('zona', filters.zona);
             if (filters.asignadoA) queryParams.append('asignadoA', filters.asignadoA);
             if (filters.clasificacion) queryParams.append('clasificacion', filters.clasificacion);
             if (filters.estado) queryParams.append('estado', filters.estado);
+            if (filters.etapaComercial && filters.etapaComercial !== 'todas') queryParams.append('etapaComercial', filters.etapaComercial);
+            if (filters.tipoCliente) queryParams.append('tipoCliente', filters.tipoCliente);
             if (filters.fechaDesde) queryParams.append('startDate', filters.fechaDesde);
             if (filters.fechaHasta) queryParams.append('endDate', filters.fechaHasta);
           }
