@@ -124,7 +124,10 @@ export function ExcelImporter({ onImportComplete }: ExcelImporterProps) {
     mapped.contacto = getRowValue(["Contacto", "Nombre Contacto", "Representante", "Atencion"]) || "";
     mapped.cargo = getRowValue(["Cargo", "Cargo Contacto", "Puesto"]) || "";
     mapped.correo = getRowValue(["Correo", "Email", "Correo Electronico", "E-mail"]) || "";
-    mapped.asignadoA = getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angi";
+    let asignadoRaw = String(getRowValue(["Asignado A", "Responsable", "Vendedor", "Asignado"]) || "Angi").trim();
+    if (asignadoRaw.toLowerCase() === "angie") asignadoRaw = "Angi";
+    mapped.asignadoA = asignadoRaw;
+    
     mapped.diaTrabajo = getRowValue(["Dia de Trabajo", "Dia Trabajo", "Dia Visita", "Dia"]) || "Lunes";
     mapped.estado = getRowValue(["Estado", "Situacion", "Estado Cliente"]) || "Activo";
 
