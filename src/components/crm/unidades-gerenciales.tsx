@@ -248,7 +248,27 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
       let tareasPendientes = 0;
       let tareasRetrasadas = 0;
       let tareasFinalizadas = 0;
-      const tareasEnProceso = 0;
+      let tareasEnProceso = 0;
+
+      let sumAvance = 0;
+      let countTareasMain = 0;
+
+      tareas.forEach((t: any) => {
+         if (matchName(t.responsable, advName)) {
+             countTareasMain++;
+             if (t.estado === 'FINALIZADA') {
+                 sumAvance += 100;
+             } else {
+                 const subs = Array.isArray(t.subtareas) ? t.subtareas : [];
+                 const avanceActivities = subs.filter((s: any) => s.avanceGlobal !== undefined && !s.isMetadata);
+                 const lastAvance = avanceActivities.length > 0 ? avanceActivities[avanceActivities.length - 1].avanceGlobal : 0;
+                 sumAvance += lastAvance;
+                 if (lastAvance > 0 && lastAvance < 100) tareasEnProceso++;
+             }
+         }
+      });
+      const avancePromedioTareas = countTareasMain > 0 ? Math.round(sumAvance / countTareasMain) : 0;
+
 
       actividades.forEach((act: any) => {
          let actDate = hoy;
@@ -293,7 +313,8 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
         tareasPendientes,
         tareasEnProceso,
         tareasFinalizadas,
-        tareasRetrasadas
+        tareasRetrasadas,
+        avancePromedioTareas
       };
     });
 
@@ -503,6 +524,17 @@ export function UnidadesGerenciales({ clients, dateRange }: UnidadesGerencialesP
                         <AlertCircle className="w-3 h-3 text-rose-500" /> {adv.tareasRetrasadas}
                       </div>
                     </div>
+                    {adv.avancePromedioTareas > 0 && (
+                      <div className="mt-2 w-full max-w-[140px] mx-auto flex items-center justify-between gap-2">
+                        <div className="flex-1 bg-slate-100 rounded-full h-1.5 overflow-hidden border border-slate-200">
+                          <div 
+                            className={`h-full rounded-full ${adv.avancePromedioTareas >= 100 ? 'bg-emerald-500' : adv.avancePromedioTareas >= 50 ? 'bg-indigo-500' : 'bg-blue-400'}`} 
+                            style={{ width: `${adv.avancePromedioTareas}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-[9px] font-bold text-slate-500">{adv.avancePromedioTareas}%</span>
+                      </div>
+                    )}
                   </td>
                   <td className="p-3.5 text-right font-black text-slate-800">
                     S/ {adv.montoTotal.toLocaleString('es-PE', { minimumFractionDigits: 0 })}

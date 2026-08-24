@@ -31,7 +31,10 @@ import {
   Edit,
   Trash2,
   Lock,
-  ArrowUpDown
+  ArrowUpDown,
+  LayoutGrid,
+  LayoutList,
+  BellRing
 } from 'lucide-react';
 import { Client } from '@/types/crm';
 import { EstadoTareaEstricto } from '@/lib/types/commercial-units';
@@ -59,6 +62,13 @@ export interface Subtarea {
   estadoStr?: 'SI' | 'NO' | 'EN_PROCESO';
   responsable?: string;
   prioridad?: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA';
+  isObservacion?: boolean;
+  documentoUrl?: string;
+  documentoNombre?: string;
+  isMetadata?: boolean;
+  avanceGlobal?: number;
+  observacion?: string;
+  hora?: string;
 }
 
 export interface TareaEstrategica {
@@ -90,7 +100,6 @@ export function AgendaDiaria({
   const { addInteraction } = useCRMStore();
   const [selectedAdvisor, setSelectedAdvisor] = useState<string>('TODOS');
   const [filterEstado, setFilterEstado] = useState<string>('TODAS');
-
   // FILTRO DE BUSQUEDA GLOBAL Y FECHAS (EXACTO CARTERA)
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilterType, setDateFilterType] = useState<string>('all');
@@ -259,9 +268,22 @@ export function AgendaDiaria({
 
   // Estado local para agregar nueva Subtarea / Avance diario
   const [nuevaSubtareaText, setNuevaSubtareaText] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaSubtareaAvance, setNuevaSubtareaAvance] = useState<{ [tareaId: string]: number }>({});
   const [nuevaSubtareaFecha, setNuevaSubtareaFecha] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaSubtareaHora, setNuevaSubtareaHora] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaResponsable, setNuevaSubtareaResponsable] = useState<{ [tareaId: string]: string }>({});
   const [nuevaSubtareaPrioridad, setNuevaSubtareaPrioridad] = useState<{ [tareaId: string]: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA' }>({});
+  const [nuevaSubtareaObservacion, setNuevaSubtareaObservacion] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaSubtareaFile, setNuevaSubtareaFile] = useState<{ [tareaId: string]: File | null }>({});
+  const [isUploadingSubtarea, setIsUploadingSubtarea] = useState<{ [tareaId: string]: boolean }>({});
+  
+  // Estado local para agregar Observaciones / Documentos a la Tarea
+  const [nuevaObsTareaText, setNuevaObsTareaText] = useState<{ [tareaId: string]: string }>({});
+  const [nuevaObsTareaFile, setNuevaObsTareaFile] = useState<{ [tareaId: string]: File | null }>({});
+  const [isUploadingObs, setIsUploadingObs] = useState<{ [tareaId: string]: boolean }>({});
+
+  const [addingSubtaskTareaId, setAddingSubtaskTareaId] = useState<string | null>(null);
+  const [addingObsTareaId, setAddingObsTareaId] = useState<string | null>(null);
 
   // Estado para EDITAR tarea existente
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
@@ -279,34 +301,71 @@ export function AgendaDiaria({
 
   // Estado para editar actividades
   const [editingSubtaskId, setEditingSubtaskId] = useState<string | null>(null);
+  const [editingSubtaskTareaId, setEditingSubtaskTareaId] = useState<string | null>(null);
   const [editSubtaskFecha, setEditSubtaskFecha] = useState('');
+  const [editSubtaskHora, setEditSubtaskHora] = useState('');
   const [editSubtaskText, setEditSubtaskText] = useState('');
+  const [editSubtaskObservacion, setEditSubtaskObservacion] = useState('');
+  const [editSubtaskFile, setEditSubtaskFile] = useState<File | null>(null);
+  const [isUploadingEditSubtask, setIsUploadingEditSubtask] = useState(false);
   const [editSubtaskResponsable, setEditSubtaskResponsable] = useState('');
   const [editSubtaskPrioridad, setEditSubtaskPrioridad] = useState<'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA'>('MEDIA');
+  const [editSubtaskAvance, setEditSubtaskAvance] = useState<number>(0);
 
-  const handleStartEditSubtask = (subtaskId: string, currentFecha: string, currentText: string, currentResponsable: string, currentPrioridad?: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA') => {
+  const handleStartEditSubtask = (tareaId: string, subtaskId: string, currentFecha: string, currentText: string, currentResponsable: string, currentPrioridad?: 'ALTA' | 'MEDIA_ALTA' | 'MEDIA' | 'BAJA', currentObservacion?: string, currentAvance?: number, currentHora?: string) => {
+    setEditingSubtaskTareaId(tareaId);
     setEditingSubtaskId(subtaskId);
     setEditSubtaskFecha(currentFecha);
+    setEditSubtaskHora(currentHora || '');
     setEditSubtaskText(currentText);
+    setEditSubtaskObservacion(currentObservacion || '');
+    setEditSubtaskFile(null);
     setEditSubtaskResponsable(currentResponsable || 'Steven');
     setEditSubtaskPrioridad(currentPrioridad || 'MEDIA');
+    setEditSubtaskAvance(currentAvance || 0);
   };
 
-  const handleSaveEditSubtask = (tareaId: string, subtaskId: string) => {
+  const handleSaveEditSubtask = async (tareaId: string, subtaskId: string) => {
     if (!editSubtaskText.trim() || !editSubtaskFecha.trim()) {
       toast.error('La fecha y el texto son obligatorios');
       return;
     }
+
+    let extraUpdates: any = {};
+    if (editSubtaskFile) {
+      setIsUploadingEditSubtask(true);
+      try {
+        const formData = new FormData();
+        formData.append('file', editSubtaskFile);
+        
+        const res = await api.post('/crm/upload', formData);
+        extraUpdates.documentoUrl = res.url;
+        extraUpdates.documentoNombre = res.nombre || editSubtaskFile.name;
+      } catch (err) {
+        console.error('Error uploading file in edit:', err);
+        toast.error('Error al subir el nuevo documento');
+        setIsUploadingEditSubtask(false);
+        return;
+      }
+      setIsUploadingEditSubtask(false);
+    }
+
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
+        let nuevoEstado = t.estado;
+        if (editSubtaskAvance === 100) nuevoEstado = 'FINALIZADA';
+        else if (editSubtaskAvance > 0 && t.estado === 'PENDIENTE') nuevoEstado = 'EN_PROCESO';
         return {
           ...t,
-          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, texto: editSubtaskText, responsable: editSubtaskResponsable, prioridad: editSubtaskPrioridad } : s)
+          estado: nuevoEstado,
+          subtareas: t.subtareas.map(s => s.id === subtaskId ? { ...s, fecha: editSubtaskFecha, hora: editSubtaskHora, texto: editSubtaskText, observacion: editSubtaskObservacion, responsable: editSubtaskResponsable, prioridad: editSubtaskPrioridad, avanceGlobal: editSubtaskAvance, completada: editSubtaskAvance === 100, ...extraUpdates } : s)
         };
       }
       return t;
     }));
     setEditingSubtaskId(null);
+    setEditingSubtaskTareaId(null);
+    setEditSubtaskFile(null);
     toast.success('Actividad actualizada exitosamente');
   };
 
@@ -711,19 +770,101 @@ export function AgendaDiaria({
   };
 
   // Crear Subtarea / Avance Diario dentro de una Tarea
-  const handleAddSubtarea = (tareaId: string) => {
+  const handleAddSubtarea = async (tareaId: string) => {
     const text = (nuevaSubtareaText[tareaId] || '').trim();
+    const avance = nuevaSubtareaAvance[tareaId] || 0;
     const responsable = nuevaSubtareaResponsable[tareaId] || 'Steven';
     const prioridad = nuevaSubtareaPrioridad[tareaId] || 'MEDIA';
+    const file = nuevaSubtareaFile[tareaId];
     // Fecha de subtarea: usa la que escribió el usuario, o la fecha de HOY
     const now = new Date();
     const defaultFecha = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`;
     const fecha = nuevaSubtareaFecha[tareaId] || defaultFecha;
+    const hora = nuevaSubtareaHora[tareaId] || '';
 
-    if (!text) {
-      toast.error('Escribe el avance o subtarea.');
+    if (!text && !file) {
+      toast.error('Escribe el avance o adjunta un documento.');
       return;
     }
+
+    let documentoUrl = '';
+    let documentoNombre = '';
+
+    if (file) {
+      setIsUploadingSubtarea(prev => ({ ...prev, [tareaId]: true }));
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const res = await api.post('/crm/upload', formData);
+        documentoUrl = res.url;
+        documentoNombre = res.nombre || file.name;
+      } catch (err) {
+        console.error('Error uploading file:', err);
+        toast.error('Error al subir el documento');
+        setIsUploadingSubtarea(prev => ({ ...prev, [tareaId]: false }));
+        return;
+      }
+    }
+
+    setTareasEstrategicas(prev => prev.map(t => {
+      if (t.id === tareaId) {
+        let nuevoEstado = t.estado;
+        if (avance === 100) nuevoEstado = 'FINALIZADA';
+        else if (avance > 0 && t.estado === 'PENDIENTE') nuevoEstado = 'EN_PROCESO';
+
+        return {
+          ...t,
+          estado: nuevoEstado,
+          subtareas: [
+            ...t.subtareas,
+            { id: `sub-${Date.now()}`, fecha, hora, texto: text || 'Documento adjunto', completada: avance === 100, responsable, prioridad, avanceGlobal: avance, observacion: nuevaSubtareaObservacion[tareaId] || '', documentoUrl, documentoNombre }
+          ]
+        };
+      }
+      return t;
+    }));
+
+    toast.success('¡Actividad agregada con éxito!');
+    setNuevaSubtareaText(prev => ({ ...prev, [tareaId]: '' }));
+    setNuevaSubtareaAvance(prev => ({ ...prev, [tareaId]: 0 }));
+    setNuevaSubtareaObservacion(prev => ({ ...prev, [tareaId]: '' }));
+    setNuevaSubtareaFile(prev => ({ ...prev, [tareaId]: null }));
+    setIsUploadingSubtarea(prev => ({ ...prev, [tareaId]: false }));
+    setNuevaSubtareaHora(prev => ({ ...prev, [tareaId]: '' }));
+    setAddingSubtaskTareaId(null);
+  };
+  
+  // Crear Observacion / Documento en la Tarea
+  const handleAddObservacionTarea = async (tareaId: string) => {
+    const text = (nuevaObsTareaText[tareaId] || '').trim();
+    const file = nuevaObsTareaFile[tareaId];
+
+    if (!text && !file) {
+      toast.error('Agrega un texto o un documento a la observación.');
+      return;
+    }
+
+    setIsUploadingObs(prev => ({ ...prev, [tareaId]: true }));
+    let documentoUrl = '';
+    let documentoNombre = '';
+
+    if (file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const res = await api.post('/crm/upload', formData);
+        documentoUrl = res.url;
+        documentoNombre = res.nombre;
+      } catch (err) {
+        toast.error('Error al subir el documento. Revisa tu conexión.');
+        setIsUploadingObs(prev => ({ ...prev, [tareaId]: false }));
+        return;
+      }
+    }
+
+    const now = new Date();
+    const defaultFecha = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
     setTareasEstrategicas(prev => prev.map(t => {
       if (t.id === tareaId) {
@@ -731,17 +872,25 @@ export function AgendaDiaria({
           ...t,
           subtareas: [
             ...t.subtareas,
-            { id: `sub-${Date.now()}`, fecha, texto: text, completada: false, responsable, prioridad }
+            { 
+              id: `obs-${Date.now()}`, 
+              fecha: defaultFecha, 
+              texto: text || 'Documento adjunto', 
+              isObservacion: true,
+              documentoUrl,
+              documentoNombre
+            }
           ]
         };
       }
       return t;
     }));
 
-    toast.success('¡Subtarea agregada y mostrada en el historial!');
-    setNuevaSubtareaText(prev => ({ ...prev, [tareaId]: '' }));
-    setNuevaSubtareaResponsable(prev => ({ ...prev, [tareaId]: 'Steven' }));
-    setNuevaSubtareaPrioridad(prev => ({ ...prev, [tareaId]: 'MEDIA' }));
+    toast.success('¡Observación agregada con éxito!');
+    setNuevaObsTareaText(prev => ({ ...prev, [tareaId]: '' }));
+    setNuevaObsTareaFile(prev => ({ ...prev, [tareaId]: null }));
+    setIsUploadingObs(prev => ({ ...prev, [tareaId]: false }));
+    setAddingObsTareaId(null);
   };
 
   // Filtrado de Clientes GANADOS de la BD para el Selector de Fidelización
@@ -829,10 +978,44 @@ export function AgendaDiaria({
     });
   }, [tareasEstrategicas, selectedAdvisor, searchQuery, dateFilterType, customStartDate, customEndDate]);
 
+  // Función helper para clasificar el estado de una actividad (subtarea)
+  const getSubtaskState = (s: any) => {
+    if (s.completada || s.estadoStr === 'SI' || s.avanceGlobal === 100) {
+      return 'FINALIZADA';
+    }
+    let isExpired = false;
+    if (s.fecha) {
+      const parts = s.fecha.split('/');
+      if (parts.length === 3) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+        if (d < today) isExpired = true;
+      }
+    }
+    const state = s.estadoStr || 'EN_PROCESO';
+    if (state === 'EN_PROCESO' || (s.avanceGlobal !== undefined && s.avanceGlobal > 0)) {
+      return 'EN_PROCESO';
+    }
+    if (isExpired) {
+      return 'RETRASADA';
+    }
+    return 'PENDIENTE';
+  };
+
   // Lista final filtrada incluyendo filterEstado (para las tarjetas inferiores y tabla)
   const filteredTareasEstrategicas = useMemo(() => {
     if (filterEstado === 'TODAS') return baseFilteredTareas;
-    return baseFilteredTareas.filter(t => t.estado === filterEstado);
+    
+    return baseFilteredTareas.filter(t => {
+      const acts = (t.subtareas || []).filter((s: any) => !s.isObservacion && !s.isMetadata);
+      // Si la tarea tiene actividades, buscamos si alguna coincide con el filtro clickeado
+      if (acts.length > 0) {
+        return acts.some((s: any) => getSubtaskState(s) === filterEstado);
+      }
+      // Si la tarea NO tiene actividades, recurrimos al estado de la tarea principal para no dejarla invisible
+      return t.estado === filterEstado;
+    });
   }, [baseFilteredTareas, filterEstado]);
 
   // Paginación Tipo Cartera con Soporte para +100 Registros
@@ -845,51 +1028,34 @@ export function AgendaDiaria({
 
   // Contadores ESTÁTICOS calculados desde baseFilteredTareas (no cambian al hacer clic en Pendiente / En Proceso / Finalizada / Retrasada)
   const counts = useMemo(() => {
-    const allSubtasks = baseFilteredTareas.flatMap(t => t.subtareas || []);
+    const allSubtasks = baseFilteredTareas.flatMap(t => (t.subtareas || []).filter(s => !s.isObservacion && !s.isMetadata));
     
     let pendiente = 0;
     let enProceso = 0;
     let finalizada = 0;
     let retrasada = 0;
+    let paraHoy = 0;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const todayStr = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
     allSubtasks.forEach(s => {
-      if (s.completada || s.estadoStr === 'SI') {
-        finalizada++;
-      } else {
-        let isExpired = false;
-        if (s.fecha) {
-          const parts = s.fecha.split('/');
-          if (parts.length === 3) {
-            const d = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-            if (d < today) isExpired = true;
-          }
-        }
+      const state = getSubtaskState(s);
+      if (state === 'FINALIZADA') finalizada++;
+      else if (state === 'EN_PROCESO') enProceso++;
+      else if (state === 'RETRASADA') retrasada++;
+      else pendiente++;
 
-        if (isExpired || s.prioridad === 'ALTA') {
-          retrasada++;
-        } else if (s.completada === false && (!s.estadoStr || s.estadoStr === 'NO')) {
-          enProceso++;
-        } else {
-          pendiente++;
-        }
+      if (s.fecha === todayStr && state !== 'FINALIZADA') {
+        paraHoy++;
       }
     });
-
-    if (allSubtasks.length === 0) {
-      pendiente = baseFilteredTareas.filter(t => t.estado === 'PENDIENTE').length;
-      enProceso = baseFilteredTareas.filter(t => t.estado === 'EN_PROCESO').length;
-      finalizada = baseFilteredTareas.filter(t => t.estado === 'FINALIZADA').length;
-      retrasada = baseFilteredTareas.filter(t => t.estado === 'RETRASADA').length;
-    }
 
     return {
       PENDIENTE: pendiente,
       EN_PROCESO: enProceso,
       FINALIZADA: finalizada,
-      RETRASADA: retrasada
+      RETRASADA: retrasada,
+      PARA_HOY: paraHoy
     };
   }, [baseFilteredTareas]);
 
@@ -945,6 +1111,9 @@ export function AgendaDiaria({
           </div>
 
           <div className="flex items-center gap-2 flex-wrap w-full md:w-auto justify-end">
+            
+
+
             {/* Selector de Límite por Página */}
             <select
               value={taskLimit}
@@ -1046,249 +1215,260 @@ export function AgendaDiaria({
         )}
       </div>
 
-      {/* FORMULARIO DE CREACIÓN DE NUEVA TAREA PRINCIPAL (ESTILO CARTERA) */}
+      {/* FORMULARIO DE CREACIÓN DE NUEVA TAREA PRINCIPAL (MODAL) */}
       {showCreateTaskModal && (
-        <form onSubmit={handleCreateTask} className="bg-white border border-slate-200 p-6 rounded-2xl shadow-sm space-y-4 animate-in fade-in duration-200">
-          <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 pb-3 border-b border-slate-100">
-            <Building2 className="w-5 h-5 text-emerald-600" />
-            {isGeneralAgenda 
-              ? "Crear y Asignar Nueva Tarea de Trabajadores (Seleccionar Empresa/Cliente BD o Escribir Nombre)"
-              : "Crear y Asignar Nueva Tarea Comercial (Seleccionar Cliente BD o Escribir Nombre)"}
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="sm:col-span-2 space-y-2">
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
-
-              {selectedTaskClientIdDB && !showTaskClientList ? (
-                <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
-                  <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
-                  <button
-                    type="button"
-                    onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
-                    className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
-                  >
-                    Cambiar
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <input
-                    type="text"
-                    placeholder="Buscar empresa/cliente en BD por RUC o Nombre (ej: Frío Frías, Costeño, Sechura, Norandino)..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                    value={searchTaskClientDBQuery}
-                    onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
-                  />
-
-                  <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
-                    {registeredClientsListTaskDB.map(c => (
-                      <div
-                        key={c.id}
-                        onClick={() => {
-                          setSelectedTaskClientIdDB(c.id);
-                          setTaskEmpresaName(c.empresa);
-                          setShowTaskClientList(false);
-                          setSearchTaskClientDBQuery('');
-                          toast.info(`Empresa "${c.empresa}" seleccionada`);
-                        }}
-                        className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
-                      >
-                        <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
-                        <span className="text-[10px] opacity-80 font-normal">{c.asignadoA ? `Asesor: ${c.asignadoA}` : 'Cliente BD'}</span>
-                      </div>
-                    ))}
-                  </div>
-                </>
-              )}
-
-              <div className="pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
-                  O Escribe el Nombre de la Empresa / Cliente *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ej: Hielos y Congelados Sechura"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={taskEmpresaName}
-                  onChange={(e) => setTaskEmpresaName(e.target.value)}
-                />
-              </div>
-              <div className="pt-1">
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Nombre del Proyecto / Área (Opcional)</label>
-                <input
-                  type="text"
-                  placeholder={isGeneralAgenda ? "Ej: Área de Operaciones y Servicios Técnicos" : "Ej: Instalación de Sistema Frigorífico"}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={taskProyectoName}
-                  onChange={(e) => setTaskProyectoName(e.target.value)}
-                />
-              </div>
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowCreateTaskModal(false)}></div>
+          <form onSubmit={handleCreateTask} className="relative bg-white w-full max-w-3xl rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200 max-h-[90vh]">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-emerald-50/50 rounded-t-2xl shrink-0">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-emerald-600" />
+                {isGeneralAgenda 
+                  ? "Crear y Asignar Nueva Tarea de Trabajadores"
+                  : "Crear y Asignar Nueva Tarea Comercial"}
+              </h3>
+              <button type="button" onClick={() => setShowCreateTaskModal(false)} className="text-slate-400 hover:text-slate-700 bg-white p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
             </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable Asignado *</label>
-                <select
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1 uppercase"
-                  value={newResponsable}
-                  onChange={(e) => setNewResponsable(e.target.value)}
-                >
-                  {isGeneralAgenda ? (
-                    Array.from(
-                      new Map(
-                        trabajadoresList
-                          .filter(w => w.activo !== false) // EXCLUIR TRABAJADORES DADOS DE BAJA
-                          .map(w => {
-                            const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-                            let displayName = w.nombre.trim().split(' ')[0];
-                            displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
-
-                            if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
-                            else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
-                            else if (clean.includes('valentina')) displayName = 'Valentina';
-                            else if (clean.includes('ariana')) displayName = 'Ariana';
-                            else if (clean.includes('brenda')) displayName = 'Brenda';
-                            else if (clean.includes('javier')) displayName = 'Javier';
-                            else if (clean.includes('steven')) displayName = 'Steven';
-                            else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario';
-
-                            return [displayName, { ...w, nombre: displayName }];
-                          })
-                      ).values()
-                    ).map((w) => (
-                      <option key={w.id} value={w.nombre}>
-                        {w.nombre}
-                      </option>
-                    ))
+            
+            <div className="p-5 flex flex-col gap-5 overflow-y-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <div className="sm:col-span-2 space-y-3">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">1. Seleccionar Cliente Registrado de la BD *</label>
+    
+                  {selectedTaskClientIdDB && !showTaskClientList ? (
+                    <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-3.5 py-2.5">
+                      <span className="text-xs font-semibold text-emerald-800">{taskEmpresaName}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedTaskClientIdDB(''); setTaskEmpresaName(''); setShowTaskClientList(true); setSearchTaskClientDBQuery(''); }}
+                        className="text-[11px] font-medium text-slate-500 hover:text-rose-600 transition-colors"
+                      >
+                        Cambiar
+                      </button>
+                    </div>
                   ) : (
                     <>
-                      <option value="Steven">Steven</option>
-                      <option value="Angi">Angi</option>
-                      <option value="Mellani">Mellani</option>
-                      <option value="Javier">Javier</option>
+                      <input
+                        type="text"
+                        placeholder="Buscar empresa/cliente en BD por RUC o Nombre..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-normal text-slate-700 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        value={searchTaskClientDBQuery}
+                        onChange={(e) => { setSearchTaskClientDBQuery(e.target.value); setShowTaskClientList(true); }}
+                      />
+    
+                      <div className="bg-white border border-slate-200 rounded-xl max-h-36 overflow-y-auto p-1.5 space-y-1">
+                        {registeredClientsListTaskDB.map(c => (
+                          <div
+                            key={c.id}
+                            onClick={() => {
+                              setSelectedTaskClientIdDB(c.id);
+                              setTaskEmpresaName(c.empresa);
+                              setShowTaskClientList(false);
+                              setSearchTaskClientDBQuery('');
+                              toast.info(`Empresa "${c.empresa}" seleccionada`);
+                            }}
+                            className="p-2 rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-between hover:bg-emerald-50 text-slate-700"
+                          >
+                            <span>{c.empresa} {c.tarifa ? `[${c.tarifa}]` : ''}</span>
+                            <span className="text-[10px] opacity-80 font-normal">{c.asignadoA ? `Asesor: ${c.asignadoA}` : 'Cliente BD'}</span>
+                          </div>
+                        ))}
+                      </div>
                     </>
                   )}
-                </select>
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
-                <div className="flex gap-2 mt-2">
-                  {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
-                    <button 
-                      type="button" 
-                      key={p} 
-                      onClick={() => setNewPrioridad(p)}
-                      className={`w-6 h-6 rounded-full border-2 transition-all ${newPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
-                      title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
+    
+                  <div className="pt-2">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                      O Escribe el Nombre de la Empresa / Cliente *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Hielos y Congelados Sechura"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={taskEmpresaName}
+                      onChange={(e) => setTaskEmpresaName(e.target.value)}
                     />
-                  ))}
+                  </div>
+                  <div className="pt-1">
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block mb-1">Nombre del Proyecto / Área (Opcional)</label>
+                    <input
+                      type="text"
+                      placeholder={isGeneralAgenda ? "Ej: Área de Operaciones y Servicios Técnicos" : "Ej: Instalación de Sistema Frigorífico"}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      value={taskProyectoName}
+                      onChange={(e) => setTaskProyectoName(e.target.value)}
+                    />
+                  </div>
+                </div>
+    
+                <div className="space-y-4">
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable Asignado *</label>
+                    <select
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1 uppercase"
+                      value={newResponsable}
+                      onChange={(e) => setNewResponsable(e.target.value)}
+                    >
+                      {isGeneralAgenda ? (
+                        Array.from(
+                          new Map(
+                            trabajadoresList
+                              .filter(w => w.activo !== false)
+                              .map(w => {
+                                const clean = w.nombre.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                                let displayName = w.nombre.trim().split(' ')[0];
+                                displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1).toLowerCase();
+    
+                                if (clean.includes('angi') || clean.includes('angie')) displayName = 'Angi';
+                                else if (clean.includes('mellani') || clean.includes('melani')) displayName = 'Mellani';
+                                else if (clean.includes('valentina')) displayName = 'Valentina';
+                                else if (clean.includes('ariana')) displayName = 'Ariana';
+                                else if (clean.includes('brenda')) displayName = 'Brenda';
+                                else if (clean.includes('javier')) displayName = 'Javier';
+                                else if (clean.includes('steven')) displayName = 'Steven';
+                                else if (clean.includes('mario') || clean.includes('infante')) displayName = 'Mario';
+    
+                                return [displayName, { ...w, nombre: displayName }];
+                              })
+                          ).values()
+                        ).map((w) => (
+                          <option key={w.id} value={w.nombre}>
+                            {w.nombre}
+                          </option>
+                        ))
+                      ) : (
+                        <>
+                          <option value="Steven">Steven</option>
+                          <option value="Angi">Angi</option>
+                          <option value="Mellani">Mellani</option>
+                          <option value="Javier">Javier</option>
+                        </>
+                      )}
+                    </select>
+                  </div>
+    
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
+                    <div className="flex gap-2 mt-2">
+                      {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
+                        <button 
+                          type="button" 
+                          key={p} 
+                          onClick={() => setNewPrioridad(p)}
+                          className={`w-6 h-6 rounded-full border-2 transition-all ${newPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
+                          title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
+                        />
+                      ))}
+                    </div>
+                  </div>
+    
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: Proyecto en ejecución"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                      value={newEtapaProceso}
+                      onChange={(e) => setNewEtapaProceso(e.target.value)}
+                    />
+                  </div>
+    
+                  <div>
+                    <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha Compromiso *</label>
+                    <input
+                      type="text"
+                      placeholder="Ej: 31/06/2026"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                      value={newFechaCompromiso}
+                      onChange={(e) => setNewFechaCompromiso(e.target.value)}
+                    />
+                  </div>
                 </div>
               </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
-                <input
-                  type="text"
-                  placeholder="Ej: Proyecto en ejecución / Proyecto aprobado"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
-                  value={newEtapaProceso}
-                  onChange={(e) => setNewEtapaProceso(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha Compromiso *</label>
-                <input
-                  type="text"
-                  placeholder="Ej: 31/06/2026 o lunes, 3 de agosto de 2026"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
-                  value={newFechaCompromiso}
-                  onChange={(e) => setNewFechaCompromiso(e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
-
-          {!isGeneralAgenda && (
-            <div className="bg-indigo-50/70 p-3.5 rounded-xl border border-indigo-100 space-y-2">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input 
-                  type="checkbox"
-                  checked={assignToWorkers}
-                  onChange={(e) => {
-                    setAssignToWorkers(e.target.checked);
-                    if (e.target.checked && trabajadoresList.length > 0 && !selectedWorkerName) {
-                      setSelectedWorkerName(trabajadoresList[0].nombre);
-                    }
-                  }}
-                  className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
-                />
-                <span className="text-xs font-bold text-indigo-900 uppercase">
-                  Asignar también a la Agenda de Trabajadores
-                </span>
-              </label>
-              
-              {assignToWorkers && (
-                <div className="pt-1.5 animate-in fade-in duration-200">
-                  <label className="text-[10px] font-black text-indigo-700 uppercase tracking-wider block mb-1">
-                    Seleccionar Trabajador Destino *
+    
+              {!isGeneralAgenda && (
+                <div className="bg-indigo-50/70 p-4 rounded-xl border border-indigo-100 space-y-3 mt-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox"
+                      checked={assignToWorkers}
+                      onChange={(e) => {
+                        setAssignToWorkers(e.target.checked);
+                        if (e.target.checked && trabajadoresList.length > 0 && !selectedWorkerName) {
+                          setSelectedWorkerName(trabajadoresList[0].nombre);
+                        }
+                      }}
+                      className="w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 cursor-pointer"
+                    />
+                    <span className="text-xs font-bold text-indigo-900 uppercase">
+                      Asignar también a la Agenda de Trabajadores
+                    </span>
                   </label>
-                  <select
-                    value={selectedWorkerName}
-                    onChange={(e) => setSelectedWorkerName(e.target.value)}
-                    className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
-                  >
-                    {trabajadoresList.length > 0 ? (
-                      trabajadoresList.map((w) => (
-                        <option key={w.id} value={w.nombre}>
-                          {w.nombre}
-                        </option>
-                      ))
-                    ) : (
-                      <>
-                        <option value="Pedro">Pedro</option>
-                        <option value="Juan">Juan</option>
-                        <option value="Carlos">Carlos</option>
-                      </>
-                    )}
-                  </select>
+                  
+                  {assignToWorkers && (
+                    <div className="pt-2 animate-in fade-in duration-200">
+                      <label className="text-[10px] font-black text-indigo-700 uppercase tracking-wider block mb-1">
+                        Seleccionar Trabajador Destino *
+                      </label>
+                      <select
+                        value={selectedWorkerName}
+                        onChange={(e) => setSelectedWorkerName(e.target.value)}
+                        className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
+                      >
+                        {trabajadoresList.length > 0 ? (
+                          trabajadoresList.map((w) => (
+                            <option key={w.id} value={w.nombre}>
+                              {w.nombre}
+                            </option>
+                          ))
+                        ) : (
+                          <>
+                            <option value="Pedro">Pedro</option>
+                            <option value="Juan">Juan</option>
+                            <option value="Carlos">Carlos</option>
+                          </>
+                        )}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
+    
+              <div className="grid grid-cols-1 gap-4">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: A la espera de respuesta del cliente..."
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
+                    value={newActividadInmediata}
+                    onChange={(e) => setNewActividadInmediata(e.target.value)}
+                  />
+                </div>
+              </div>
             </div>
-          )}
-
-          <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
-              <input
-                type="text"
-                placeholder="Ej: A la espera de respuesta del cliente..."
-                className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500 mt-1"
-                value={newActividadInmediata}
-                onChange={(e) => setNewActividadInmediata(e.target.value)}
-              />
+    
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setShowCreateTaskModal(false)}
+                className="rounded-xl text-xs font-medium bg-white"
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-xl shadow-xs min-w-[120px]"
+              >
+                <Save className="w-4 h-4 mr-1.5" />
+                Guardar Tarea
+              </Button>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setShowCreateTaskModal(false)}
-              className="rounded-xl text-xs font-medium"
-            >
-              Cancelar
-            </Button>
-            <Button
-              type="submit"
-              className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-medium"
-            >
-              Guardar y Asignar Tarea
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
       )}
 
       {/* TARJETAS KPI DE ESTADOS ESTILO CARTERA */}
@@ -1302,11 +1482,11 @@ export function AgendaDiaria({
           }`}
         >
           <div className="flex items-center justify-between text-amber-700 mb-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Pendientes</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Actividades Pendientes</span>
             <Clock className="w-4 h-4 text-amber-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{counts.PENDIENTE}</div>
-          <div className="text-xs text-slate-500 font-normal mt-0.5">Programadas sin iniciar</div>
+          <div className="text-xs text-slate-500 font-normal mt-0.5">Actividades sin iniciar</div>
         </button>
 
         <button
@@ -1318,11 +1498,11 @@ export function AgendaDiaria({
           }`}
         >
           <div className="flex items-center justify-between text-blue-700 mb-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">En Proceso</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Actividades en Proceso</span>
             <PlayCircle className="w-4 h-4 text-blue-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{counts.EN_PROCESO}</div>
-          <div className="text-xs text-slate-500 font-normal mt-0.5">En ejecución activa</div>
+          <div className="text-xs text-slate-500 font-normal mt-0.5">Actividades en ejecución activa</div>
         </button>
 
         <button
@@ -1334,11 +1514,11 @@ export function AgendaDiaria({
           }`}
         >
           <div className="flex items-center justify-between text-emerald-700 mb-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Finalizadas</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Actividades Finalizadas</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
           </div>
           <div className="text-2xl font-bold text-slate-900">{counts.FINALIZADA}</div>
-          <div className="text-xs text-slate-500 font-normal mt-0.5">Entregadas con éxito</div>
+          <div className="text-xs text-slate-500 font-normal mt-0.5">Actividades culminadas con éxito</div>
         </button>
 
         <button
@@ -1350,10 +1530,10 @@ export function AgendaDiaria({
           }`}
         >
           <div className="flex items-center justify-between text-rose-700 mb-1">
-            <span className="text-[11px] font-semibold uppercase tracking-wider">Retrasadas / Expiradas</span>
+            <span className="text-[11px] font-semibold uppercase tracking-wider">Act. Retrasadas / Expiradas</span>
             <AlertCircle className="w-4 h-4 text-rose-600" />
           </div>
-          <div className="text-2xl font-bold text-rose-700">{counts.RETRASADA}</div>
+          <div className="text-2xl font-bold text-slate-900">{counts.RETRASADA}</div>
           <div className="text-xs text-slate-500 font-normal mt-0.5">Actividades con fecha plazo vencida</div>
         </button>
       </div>
@@ -1388,21 +1568,26 @@ export function AgendaDiaria({
               const isExpired = checkIsExpiredDate(tarea.fechaCompromiso, tarea.estado);
               const isFinalized = tarea.estado === 'FINALIZADA';
 
+              const priorityColorMap: Record<string, string> = {
+                ROJO: 'border-l-rose-500',
+                ANARANJADO: 'border-l-orange-500',
+                AMARILLO: 'border-l-yellow-400',
+                VERDE: 'border-l-emerald-500'
+              };
+              const borderClass = tarea.prioridad ? priorityColorMap[tarea.prioridad] : 'border-l-transparent';
+
               return (
-                <div key={tarea.id} className="p-5 hover:bg-slate-50/70 transition-colors space-y-3">
+                <div key={tarea.id} className={`p-5 hover:bg-slate-50/70 transition-colors space-y-3 border-l-4 ${borderClass}`}>
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                     <div className="flex items-start gap-3 flex-1">
                       <div 
                         className="space-y-1.5 cursor-pointer flex-1"
                         onClick={() => setExpandedTareaId(isExpanded ? null : tarea.id)}
                       >
-                        <div className="flex flex-row items-center gap-2">
+                        <div className="flex flex-row items-center gap-2 flex-wrap">
                           <span className="w-6 h-6 shrink-0 rounded-full bg-slate-100 text-slate-700 font-semibold text-xs flex items-center justify-center border border-slate-200">
                             {(taskPage - 1) * taskLimit + idx + 1}
                           </span>
-                          {tarea.prioridad && (
-                            <span className={`w-3 h-3 shrink-0 rounded-full ${tarea.prioridad === 'ROJO' ? 'bg-rose-500' : tarea.prioridad === 'ANARANJADO' ? 'bg-orange-500' : tarea.prioridad === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`} title={`Prioridad: ${tarea.prioridad}`} />
-                          )}
                           <h4 className={`text-sm font-semibold text-slate-900 hover:text-emerald-600 transition-colors whitespace-nowrap ${isFinalized ? 'line-through text-slate-400' : ''}`}>
                             {tarea.empresa}
                           </h4>
@@ -1486,284 +1671,88 @@ export function AgendaDiaria({
 
                   {isExpanded && (
                     <div className="pt-3 border-t border-slate-100 space-y-4 animate-in fade-in duration-150">
-                      {editingTaskId === tarea.id && (
-                        <div className="bg-indigo-50/60 p-4 rounded-xl border border-indigo-200 space-y-3">
-                          <div className="flex items-center gap-2 text-xs font-semibold text-indigo-800 uppercase pb-2 border-b border-indigo-200">
-                            <Edit className="w-4 h-4 text-indigo-600" />
-                            Editando Tarea: {tarea.empresa}
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Empresa *</label>
-                              <input
-                                type="text"
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editEmpresa}
-                                onChange={(e) => setEditEmpresa(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
-                              <input
-                                type="text"
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editEtapaProceso}
-                                onChange={(e) => setEditEtapaProceso(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
-                              <select
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-bold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500 uppercase"
-                                value={editResponsable}
-                                onChange={(e) => setEditResponsable(e.target.value)}
-                              >
-                                <optgroup label="Trabajadores Gerencia">
-                                  <option value="Steven">Steven</option>
-                                  <option value="Angi">Angi</option>
-                                  <option value="Mellani">Mellani</option>
-                                  <option value="Javier">Javier</option>
-                                </optgroup>
-                                {trabajadoresList.length > 0 && (
-                                  <optgroup label="Todos los Trabajadores">
-                                    {trabajadoresList
-                                      .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                                      .map((w) => (
-                                        <option key={w.id} value={w.nombre}>
-                                          {w.nombre}
-                                        </option>
-                                      ))}
-                                  </optgroup>
-                                )}
-                              </select>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
-                              <input
-                                type="text"
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editActividadInmediata}
-                                onChange={(e) => setEditActividadInmediata(e.target.value)}
-                              />
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha Compromiso</label>
-                              <input
-                                type="text"
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editFechaCompromiso}
-                                onChange={(e) => setEditFechaCompromiso(e.target.value)}
-                              />
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Estado</label>
-                              <select
-                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-800 mt-1 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                value={editEstado}
-                                onChange={(e) => setEditEstado(e.target.value as EstadoTareaEstricto)}
-                              >
-                                <option value="PENDIENTE">Pendiente</option>
-                                <option value="EN_PROCESO">En Proceso</option>
-                                <option value="RETRASADA">Retrasada</option>
-                                <option value="FINALIZADA">Finalizada</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
-                              <div className="flex gap-2 mt-2">
-                                {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
-                                  <button 
-                                    type="button" 
-                                    key={p} 
-                                    onClick={() => setEditPrioridad(p)}
-                                    className={`w-6 h-6 rounded-full border-2 transition-all ${editPrioridad === p ? 'border-slate-800 scale-110 shadow-sm' : 'border-transparent opacity-50 hover:opacity-80'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
-                                    title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex justify-end gap-2 pt-2 border-t border-indigo-200">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={handleCancelEdit}
-                              className="rounded-lg text-xs font-medium"
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={() => handleSaveEdit(tarea.id)}
-                              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-medium"
-                            >
-                              Guardar Cambios
-                            </Button>
-                          </div>
-                        </div>
-                      )}
+
 
                       {!isFinalized && editingTaskId !== tarea.id && (
-                        <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 space-y-2">
-                          <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider block">
-                            + Agregar Actividad / Avance Diario
-                          </label>
-                          <div className="flex flex-col sm:flex-row items-center gap-2">
-                            <input
-                              type="text"
-                              placeholder="Fecha (ej: 03/08/2026)"
-                              className="w-full sm:w-36 bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-medium text-slate-800"
-                              value={nuevaSubtareaFecha[tarea.id] || (() => { const n = new Date(); return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`; })()}
-                              onChange={(e) => setNuevaSubtareaFecha({ ...nuevaSubtareaFecha, [tarea.id]: e.target.value })}
-                            />
-                            <input
-                              type="text"
-                              placeholder="Escribe la actividad / avance (ej: 11:10AM A LA ESPERA DE LAS FACTIBILIDADES...)"
-                              className="flex-1 w-full bg-white border border-slate-200 rounded-lg px-3.5 py-1.5 text-xs font-normal text-slate-800"
-                              value={nuevaSubtareaText[tarea.id] || ''}
-                              onChange={(e) => setNuevaSubtareaText({ ...nuevaSubtareaText, [tarea.id]: e.target.value })}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleAddSubtarea(tarea.id);
-                              }}
-                            />
-                            <select
-                              className="w-full sm:w-32 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                              value={nuevaSubtareaResponsable[tarea.id] || (isGeneralAgenda ? 'Mario' : 'Steven')}
-                              onChange={(e) => setNuevaSubtareaResponsable({ ...nuevaSubtareaResponsable, [tarea.id]: e.target.value })}
-                            >
-                              {isGeneralAgenda ? (
-                                trabajadoresList
-                                  .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                                  .map((w) => (
-                                    <option key={w.id} value={w.nombre}>{w.nombre}</option>
-                                  ))
-                              ) : (
-                                <>
-                                  <option value="Steven">Steven</option>
-                                  <option value="Angi">Angi</option>
-                                  <option value="Mellani">Mellani</option>
-                                  <option value="Javier">Javier</option>
-                                </>
-                              )}
-                            </select>
-                            <select
-                              className="w-full sm:w-20 bg-white border border-slate-200 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                              value={nuevaSubtareaPrioridad[tarea.id] || 'MEDIA'}
-                              onChange={(e) => setNuevaSubtareaPrioridad({ ...nuevaSubtareaPrioridad, [tarea.id]: e.target.value as any })}
-                              title="Prioridad"
-                            >
-                              <option value="ALTA">🔴 Alta</option>
-                              <option value="MEDIA_ALTA">🟠 M. Alta</option>
-                              <option value="MEDIA">🟡 Media</option>
-                              <option value="BAJA">🟢 Baja</option>
-                            </select>
-                            <Button
-                              onClick={() => handleAddSubtarea(tarea.id)}
-                              className="w-full sm:w-auto bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs rounded-lg px-4 py-1.5 shadow-xs shrink-0"
-                            >
-                              <Plus className="w-3.5 h-3.5 mr-1" /> Agregar Actividad
-                            </Button>
-                          </div>
+                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 border-t border-slate-100 mt-2 mb-4">
+                          <Button
+                            onClick={() => setAddingSubtaskTareaId(tarea.id)}
+                            variant="outline"
+                            className="w-full sm:w-auto bg-white hover:bg-emerald-50 border-emerald-200 text-emerald-700 text-xs font-semibold px-4 py-2 transition-colors shadow-xs"
+                          >
+                            <Plus className="w-4 h-4 mr-1.5" /> Nueva Actividad / Avance
+                          </Button>
+                          <Button
+                            onClick={() => setAddingObsTareaId(tarea.id)}
+                            variant="outline"
+                            className="w-full sm:w-auto bg-white hover:bg-indigo-50 border-indigo-200 text-indigo-700 text-xs font-semibold px-4 py-2 transition-colors shadow-xs"
+                          >
+                            <FileText className="w-4 h-4 mr-1.5" /> Agregar Observación o Documento
+                          </Button>
                         </div>
                       )}
 
-                      <div className="space-y-2">
-                        <h5 className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-                          Historial de Actividades ({tarea.subtareas.length})
-                        </h5>
-                        <div className="overflow-x-auto rounded-xl border border-slate-200 mt-2">
-                          <table className="w-full text-left text-xs">
-                            <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
-                              <tr>
-                                <th className="w-10 px-2 py-3 border-b border-slate-200 text-center"></th>
-                                <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
-                                <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
-                                <th className="px-4 py-3 border-b border-slate-200 text-center">Prioridad</th>
-                                <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
-                                <th className="px-4 py-3 border-b border-slate-200">¿Se culminó?</th>
-                                <th className="px-4 py-3 border-b border-slate-200 text-center">Acciones</th>
-                              </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-100 bg-white">
-                              {[...tarea.subtareas].reverse().map((sub) => (
-                                <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors group">
-                                  {editingSubtaskId === sub.id ? (
-                                    <>
-                                      <td className="px-2 py-2 align-top text-center"></td>
-                                      <td className="px-3 py-2 align-top">
-                                        <input
-                                          type="text"
-                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:border-indigo-400"
-                                          value={editSubtaskFecha}
-                                          onChange={(e) => setEditSubtaskFecha(e.target.value)}
-                                        />
-                                      </td>
-                                      <td className="px-3 py-2 align-top">
-                                        <textarea
-                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs text-slate-700 focus:outline-none focus:border-indigo-400 min-h-[40px] resize-y"
-                                          value={editSubtaskText}
-                                          onChange={(e) => setEditSubtaskText(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter' && !e.shiftKey) {
-                                              e.preventDefault();
-                                              handleSaveEditSubtask(tarea.id, sub.id);
-                                            }
-                                          }}
-                                        />
-                                      </td>
-                                      <td className="px-3 py-2 align-top text-center">
-                                        <select
-                                          className="bg-white border border-indigo-200 rounded-md px-1 py-1.5 text-xs focus:outline-none focus:border-indigo-400"
-                                          value={editSubtaskPrioridad}
-                                          onChange={(e) => setEditSubtaskPrioridad(e.target.value as any)}
-                                        >
-                                          <option value="ALTA">🔴</option>
-                                          <option value="MEDIA_ALTA">🟠</option>
-                                          <option value="MEDIA">🟡</option>
-                                          <option value="BAJA">🟢</option>
-                                        </select>
-                                      </td>
-                                      <td className="px-3 py-2 align-top">
-                                        <select
-                                          className="w-full bg-white border border-indigo-200 rounded-md px-2 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-400"
-                                          value={editSubtaskResponsable}
-                                          onChange={(e) => setEditSubtaskResponsable(e.target.value)}
-                                        >
-                                           <optgroup label="Trabajadores Gerencia">
-                                             <option value="Steven">Steven</option>
-                                             <option value="Angi">Angi</option>
-                                             <option value="Mellani">Mellani</option>
-                                             <option value="Javier">Javier</option>
-                                           </optgroup>
-                                           {trabajadoresList.length > 0 && (
-                                             <optgroup label="Todos los Trabajadores">
-                                               {trabajadoresList
-                                                 .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
-                                                 .map((w) => (
-                                                   <option key={w.id} value={w.nombre}>{w.nombre}</option>
-                                                 ))}
-                                             </optgroup>
-                                           )}
-                                        </select>
-                                      </td>
-                                      <td className="px-4 py-3 align-top"></td>
-                                      <td className="px-3 py-2 align-top text-center">
-                                        <div className="flex flex-col items-center gap-1.5">
-                                          <button onClick={() => handleSaveEditSubtask(tarea.id, sub.id)} className="flex items-center gap-1 px-2 py-1 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-md font-medium transition-colors w-full justify-center">
-                                            <Save className="w-3.5 h-3.5" /> Guardar
-                                          </button>
-                                          <button onClick={() => setEditingSubtaskId(null)} className="flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 hover:bg-slate-200 rounded-md font-medium transition-colors w-full justify-center">
-                                            <X className="w-3.5 h-3.5" /> Cancelar
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </>
-                                  ) : (
-                                    <>
+                      <div className="space-y-6 pt-2">
+                        {/* Observaciones (Documentos y Notas Adicionales) */}
+                        {tarea.subtareas.filter(s => s.isObservacion).length > 0 && (
+                          <div className="space-y-3">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-indigo-100 pb-2 gap-2">
+                              <h5 className="text-[11px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5" />
+                                Observaciones y Documentos ({tarea.subtareas.filter(s => s.isObservacion).length})
+                              </h5>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {[...tarea.subtareas].filter(s => s.isObservacion).reverse().map((obs) => (
+                                <div key={obs.id} className="bg-indigo-50/30 border border-indigo-100 rounded-lg p-3 text-xs flex flex-col gap-1.5 shadow-sm">
+                                  <div className="flex justify-between items-start">
+                                    <span className="font-mono text-[10px] text-slate-500">{obs.fecha}</span>
+                                    <button onClick={() => handleDeleteSubtask(tarea.id, obs.id)} className="text-rose-400 hover:text-rose-600 transition-colors" title="Eliminar observación">
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                  <p className="text-slate-700 whitespace-pre-wrap">{obs.texto}</p>
+                                  {obs.documentoUrl && (
+                                    <a href={api.getFileUrl(obs.documentoUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-indigo-600 hover:text-indigo-800 bg-indigo-100/50 px-2 py-1.5 rounded-md mt-1 w-fit transition-colors group">
+                                      <FileText className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                                      <span className="font-medium truncate max-w-[200px]">{obs.documentoNombre || 'Ver Documento'}</span>
+                                    </a>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Historial de Actividades */}
+                        <div className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-200 pb-2 gap-2">
+                            <h5 className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                              Historial de Actividades ({tarea.subtareas.filter(s => !s.isObservacion && !s.isMetadata).length})
+                            </h5>
+                          </div>
+                          <div className="overflow-x-auto rounded-xl border border-slate-200 mt-2">
+                            <table className="w-full text-left text-xs">
+                              <thead className="bg-slate-50 text-slate-500 uppercase font-semibold">
+                                <tr>
+                                  <th className="w-10 px-2 py-3 border-b border-slate-200 text-center"></th>
+                                  <th className="w-10 px-2 py-3 border-b border-slate-200 text-center">Nº</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 whitespace-nowrap">Fecha de Actividad</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 min-w-[200px]">Actividad</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 min-w-[150px]">Observación</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 text-center">Prioridad</th>
+                                  <th className="px-4 py-3 border-b border-slate-200">Responsable</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 text-center">Avance</th>
+                                  <th className="px-4 py-3 border-b border-slate-200">¿Se culminó?</th>
+                                  <th className="px-4 py-3 border-b border-slate-200 text-center">Acciones</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 bg-white">
+                                {[...tarea.subtareas].filter(s => !s.isObservacion && !s.isMetadata).reverse().map((sub, idx, arr) => (
+                                  <tr key={sub.id} className="hover:bg-slate-50/50 transition-colors group">
+
+
                                       <td className="px-2 py-3 align-top text-center">
                                         <button
                                           onClick={() => toggleSubtaskCompletion(tarea.id, sub.id)}
@@ -1778,16 +1767,40 @@ export function AgendaDiaria({
                                           )}
                                         </button>
                                       </td>
+                                      <td className="px-2 py-3 align-top text-center font-bold text-slate-400 text-[11px]">
+                                        {arr.length - idx}
+                                      </td>
                                       <td className="px-4 py-3 font-mono font-medium text-slate-700 whitespace-nowrap align-top">
-                                        <div className="flex items-center gap-1.5">
-                                          <CalendarIcon className={`w-4 h-4 ${!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-500' : 'text-emerald-500'}`} />
-                                          <span className={!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-600 font-bold' : ''}>{sub.fecha}</span>
+                                        <div className="flex flex-col gap-1">
+                                          <div className="flex items-center gap-1.5">
+                                            <CalendarIcon className={`w-4 h-4 ${!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-500' : 'text-emerald-500'}`} />
+                                            <span className={!sub.completada && isSubtaskPastDue(sub.fecha) ? 'text-rose-600 font-bold' : ''}>{sub.fecha}</span>
+                                          </div>
+                                          {sub.hora && (
+                                            <div className="flex items-center gap-1.5 text-[11px] text-slate-500">
+                                              <Clock className="w-3.5 h-3.5" />
+                                              <span>{sub.hora}</span>
+                                            </div>
+                                          )}
                                         </div>
                                       </td>
                                       <td className="px-4 py-3 align-top">
                                         <p className={`font-medium leading-relaxed ${sub.completada ? 'text-slate-500 line-through decoration-slate-300' : 'text-slate-800'}`}>
                                           {sub.texto}
                                         </p>
+                                      </td>
+                                      <td className="px-4 py-3 align-top">
+                                        <div className="flex flex-col gap-1">
+                                          <p className="text-slate-600 text-[11px] italic">
+                                            {sub.observacion || '-'}
+                                          </p>
+                                          {sub.documentoUrl && (
+                                            <a href={api.getFileUrl(sub.documentoUrl)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-1.5 py-1 rounded text-[10px] w-fit transition-colors group">
+                                              <FileText className="w-3 h-3 group-hover:scale-110 transition-transform" />
+                                              <span className="font-medium truncate max-w-[120px]">{sub.documentoNombre || 'Ver Documento'}</span>
+                                            </a>
+                                          )}
+                                        </div>
                                       </td>
                                       <td className="px-4 py-3 align-top text-center" title={sub.prioridad || 'MEDIA'}>
                                         <span className="text-sm">
@@ -1796,7 +1809,9 @@ export function AgendaDiaria({
                                           {(!sub.prioridad || sub.prioridad === 'MEDIA') && '🟡'}
                                           {sub.prioridad === 'BAJA' && '🟢'}
                                         </span>
-                                        <div className="mt-1">
+                                      </td>
+                                      <td className="px-4 py-3 align-top">
+                                        <div className="flex flex-col">
                                           <select
                                              value={sub.responsable || tarea.responsable}
                                              onChange={(e) => {
@@ -1856,6 +1871,9 @@ export function AgendaDiaria({
                                            </select>
                                         </div>
                                       </td>
+                                      <td className="px-4 py-3 align-top text-center font-bold text-slate-700">
+                                        {sub.avanceGlobal !== undefined ? `${sub.avanceGlobal}%` : '-'}
+                                      </td>
                                       <td className="px-4 py-3 align-top whitespace-nowrap">
                                         <select
                                           value={sub.estadoStr || (sub.completada ? 'SI' : 'EN_PROCESO')}
@@ -1872,9 +1890,9 @@ export function AgendaDiaria({
                                         </select>
                                       </td>
                                       <td className="px-4 py-3 align-top text-center">
-                                        <div className="flex flex-col items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <div className="flex flex-col items-center gap-1.5 transition-opacity">
                                           <button 
-                                            onClick={() => handleStartEditSubtask(sub.id, sub.fecha, sub.texto, sub.responsable || tarea.responsable, sub.prioridad)} 
+                                            onClick={() => handleStartEditSubtask(tarea.id, sub.id, sub.fecha, sub.texto, sub.responsable || tarea.responsable, sub.prioridad, sub.observacion, sub.avanceGlobal, sub.hora)} 
                                             className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-medium transition-colors"
                                           >
                                             <Edit2 className="w-3.5 h-3.5" /> Editar
@@ -1887,13 +1905,13 @@ export function AgendaDiaria({
                                           </button>
                                         </div>
                                       </td>
-                                    </>
-                                  )}
+
                                 </tr>
                               ))}
                             </tbody>
                           </table>
                         </div>
+                      </div>
                       </div>
                     </div>
                   )}
@@ -2449,6 +2467,472 @@ export function AgendaDiaria({
           )}
         </div>
         </>
+      )}
+
+      {/* Modal para AGREGAR NUEVA ACTIVIDAD / AVANCE */}
+      {addingSubtaskTareaId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setAddingSubtaskTareaId(null)}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-emerald-50/50 rounded-t-2xl">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600" />
+                Nueva Actividad / Avance
+              </h3>
+              <button onClick={() => setAddingSubtaskTareaId(null)} className="text-slate-400 hover:text-slate-700 bg-white p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={nuevaSubtareaFecha[addingSubtaskTareaId] || (() => { const n = new Date(); return `${String(n.getDate()).padStart(2,'0')}/${String(n.getMonth()+1).padStart(2,'0')}/${n.getFullYear()}`; })()}
+                    onChange={(e) => setNuevaSubtareaFecha({ ...nuevaSubtareaFecha, [addingSubtaskTareaId]: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Hora</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 10:30 AM"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={nuevaSubtareaHora[addingSubtaskTareaId] || ''}
+                    onChange={(e) => setNuevaSubtareaHora({ ...nuevaSubtareaHora, [addingSubtaskTareaId]: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={nuevaSubtareaPrioridad[addingSubtaskTareaId] || 'MEDIA'}
+                    onChange={(e) => setNuevaSubtareaPrioridad({ ...nuevaSubtareaPrioridad, [addingSubtaskTareaId]: e.target.value as any })}
+                  >
+                    <option value="ALTA">🔴 Alta</option>
+                    <option value="MEDIA_ALTA">🟠 M. Alta</option>
+                    <option value="MEDIA">🟡 Media</option>
+                    <option value="BAJA">🟢 Baja</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Avance</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-center"
+                      value={nuevaSubtareaAvance[addingSubtaskTareaId] !== undefined ? nuevaSubtareaAvance[addingSubtaskTareaId] : ''}
+                      min="0"
+                      max="100"
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value, 10);
+                        if (isNaN(val)) val = 0;
+                        if (val < 0) val = 0;
+                        if (val > 100) val = 100;
+                        setNuevaSubtareaAvance({ ...nuevaSubtareaAvance, [addingSubtaskTareaId]: val });
+                      }}
+                    />
+                    <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  value={nuevaSubtareaResponsable[addingSubtaskTareaId] || (isGeneralAgenda ? 'Mario' : 'Steven')}
+                  onChange={(e) => setNuevaSubtareaResponsable({ ...nuevaSubtareaResponsable, [addingSubtaskTareaId]: e.target.value })}
+                >
+                  {isGeneralAgenda ? (
+                    trabajadoresList
+                      .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                      .map((w) => (
+                        <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                      ))
+                  ) : (
+                    <>
+                      <option value="Steven">Steven</option>
+                      <option value="Angi">Angi</option>
+                      <option value="Mellani">Mellani</option>
+                      <option value="Javier">Javier</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actividad / Avance</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all min-h-[60px] resize-y"
+                  placeholder="Ej: 11:10AM A LA ESPERA DE LAS FACTIBILIDADES..."
+                  value={nuevaSubtareaText[addingSubtaskTareaId] || ''}
+                  onChange={(e) => setNuevaSubtareaText({ ...nuevaSubtareaText, [addingSubtaskTareaId]: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all min-h-[50px] resize-y"
+                  placeholder="Observación..."
+                  value={nuevaSubtareaObservacion[addingSubtaskTareaId] || ''}
+                  onChange={(e) => setNuevaSubtareaObservacion({ ...nuevaSubtareaObservacion, [addingSubtaskTareaId]: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Documento Adjunto (Opcional)</label>
+                <div className="relative overflow-hidden w-full">
+                  <Button type="button" variant="outline" className="w-full bg-slate-50 hover:bg-slate-100 border-slate-200 text-xs text-slate-700 justify-start py-2 h-auto">
+                    <FileText className="w-4 h-4 mr-2 text-emerald-600" />
+                    {nuevaSubtareaFile[addingSubtaskTareaId] ? nuevaSubtareaFile[addingSubtaskTareaId]?.name : 'Seleccionar documento...'}
+                  </Button>
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setNuevaSubtareaFile({ ...nuevaSubtareaFile, [addingSubtaskTareaId]: e.target.files[0] });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl">
+              <Button onClick={() => setAddingSubtaskTareaId(null)} variant="outline" className="text-xs">
+                Cancelar
+              </Button>
+              <Button onClick={() => handleAddSubtarea(addingSubtaskTareaId)} disabled={isUploadingSubtarea[addingSubtaskTareaId]} className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-sm min-w-[120px]">
+                {isUploadingSubtarea[addingSubtaskTareaId] ? 'Guardando...' : 'Agregar Actividad'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para AGREGAR OBSERVACION / DOCUMENTO */}
+      {addingObsTareaId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setAddingObsTareaId(null)}></div>
+          <div className="relative bg-white w-full max-w-md rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-indigo-50/50 rounded-t-2xl">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <FileText className="w-4 h-4 text-indigo-600" />
+                Agregar Observación o Documento
+              </h3>
+              <button onClick={() => setAddingObsTareaId(null)} className="text-slate-400 hover:text-slate-700 bg-white p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all min-h-[80px] resize-y"
+                  placeholder="Escribe la observación..."
+                  value={nuevaObsTareaText[addingObsTareaId] || ''}
+                  onChange={(e) => setNuevaObsTareaText({ ...nuevaObsTareaText, [addingObsTareaId]: e.target.value })}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Documento Adjunto</label>
+                <div className="relative overflow-hidden w-full">
+                  <Button type="button" variant="outline" className="w-full bg-slate-50 hover:bg-slate-100 border-slate-200 text-xs text-slate-700 justify-start py-2 h-auto">
+                    <FileText className="w-4 h-4 mr-2 text-indigo-600" />
+                    {nuevaObsTareaFile[addingObsTareaId] ? nuevaObsTareaFile[addingObsTareaId]?.name : 'Seleccionar documento...'}
+                  </Button>
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setNuevaObsTareaFile({ ...nuevaObsTareaFile, [addingObsTareaId]: e.target.files[0] });
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl">
+              <Button onClick={() => setAddingObsTareaId(null)} variant="outline" className="text-xs">
+                Cancelar
+              </Button>
+              <Button onClick={() => handleAddObservacionTarea(addingObsTareaId)} disabled={isUploadingObs[addingObsTareaId]} className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-sm min-w-[120px]">
+                {isUploadingObs[addingObsTareaId] ? 'Guardando...' : 'Guardar Observación'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+      {/* Modal para Editar Actividad / Subtarea */}
+      {editingSubtaskId && editingSubtaskTareaId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => { setEditingSubtaskId(null); setEditingSubtaskTareaId(null); setEditSubtaskFile(null); }}></div>
+          <div className="relative bg-white w-full max-w-lg rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-2xl">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Edit2 className="w-4 h-4 text-emerald-600" />
+                Editar Actividad
+              </h3>
+              <button onClick={() => { setEditingSubtaskId(null); setEditingSubtaskTareaId(null); setEditSubtaskFile(null); }} className="text-slate-400 hover:text-slate-700 bg-white p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="p-5 flex flex-col gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={editSubtaskFecha}
+                    onChange={(e) => setEditSubtaskFecha(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Hora</label>
+                  <input
+                    type="text"
+                    placeholder="Ej: 10:30 AM"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={editSubtaskHora}
+                    onChange={(e) => setEditSubtaskHora(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Prioridad</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                    value={editSubtaskPrioridad}
+                    onChange={(e) => setEditSubtaskPrioridad(e.target.value as any)}
+                  >
+                    <option value="ALTA">🔴 Alta</option>
+                    <option value="MEDIA_ALTA">🟠 M. Alta</option>
+                    <option value="MEDIA">🟡 Media</option>
+                    <option value="BAJA">🟢 Baja</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Avance</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-center"
+                      value={editSubtaskAvance}
+                      min="0"
+                      max="100"
+                      onChange={(e) => {
+                        let val = parseInt(e.target.value, 10);
+                        if (isNaN(val)) val = 0;
+                        if (val < 0) val = 0;
+                        if (val > 100) val = 100;
+                        setEditSubtaskAvance(val);
+                      }}
+                    />
+                    <span className="absolute right-3 text-xs font-bold text-slate-400">%</span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
+                <select
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all"
+                  value={editSubtaskResponsable}
+                  onChange={(e) => setEditSubtaskResponsable(e.target.value)}
+                >
+                  <optgroup label="Trabajadores Gerencia">
+                    <option value="Steven">Steven</option>
+                    <option value="Angi">Angi</option>
+                    <option value="Mellani">Mellani</option>
+                    <option value="Javier">Javier</option>
+                  </optgroup>
+                  {trabajadoresList.length > 0 && (
+                    <optgroup label="Todos los Trabajadores">
+                      {trabajadoresList
+                        .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                        .map((w) => (
+                          <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                        ))}
+                    </optgroup>
+                  )}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Actividad</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all min-h-[60px] resize-y"
+                  value={editSubtaskText}
+                  onChange={(e) => setEditSubtaskText(e.target.value)}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación</label>
+                <textarea
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all min-h-[50px] resize-y"
+                  value={editSubtaskObservacion}
+                  onChange={(e) => setEditSubtaskObservacion(e.target.value)}
+                  placeholder="Observación..."
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Documento Adjunto (Opcional)</label>
+                <div className="relative overflow-hidden w-full">
+                  <Button type="button" variant="outline" className="w-full bg-slate-50 hover:bg-slate-100 border-slate-200 text-xs text-slate-700 justify-start py-2 h-auto">
+                    <FileText className="w-4 h-4 mr-2 text-emerald-600" />
+                    {editSubtaskFile ? editSubtaskFile.name : 'Seleccionar nuevo documento para reemplazar...'}
+                  </Button>
+                  <input 
+                    type="file" 
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setEditSubtaskFile(e.target.files[0]);
+                      }
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl">
+              <Button onClick={() => { setEditingSubtaskId(null); setEditingSubtaskTareaId(null); setEditSubtaskFile(null); }} variant="outline" className="text-xs">
+                Cancelar
+              </Button>
+              <Button onClick={() => handleSaveEditSubtask(editingSubtaskTareaId, editingSubtaskId)} disabled={isUploadingEditSubtask} className="bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-sm min-w-[120px]">
+                {isUploadingEditSubtask ? 'Guardando...' : 'Guardar Cambios'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal para EDITAR TAREA PRINCIPAL */}
+      {editingTaskId && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={handleCancelEdit}></div>
+          <div className="relative bg-white w-full max-w-2xl rounded-2xl shadow-2xl flex flex-col animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-indigo-50/50 rounded-t-2xl">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Edit className="w-4 h-4 text-indigo-600" />
+                Editando Tarea: {editEmpresa || '...'}
+              </h3>
+              <button onClick={handleCancelEdit} className="text-slate-400 hover:text-slate-700 bg-white p-1.5 rounded-full hover:bg-slate-200 transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            
+            <div className="p-5 flex flex-col gap-5 max-h-[75vh] overflow-y-auto">
+              {/* Bloque 1 */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Empresa *</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    value={editEmpresa}
+                    onChange={(e) => setEditEmpresa(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Etapa del Proceso</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    value={editEtapaProceso}
+                    onChange={(e) => setEditEtapaProceso(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Responsable</label>
+                  <select
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all uppercase"
+                    value={editResponsable}
+                    onChange={(e) => setEditResponsable(e.target.value)}
+                  >
+                    <optgroup label="Trabajadores Gerencia">
+                      <option value="Steven">Steven</option>
+                      <option value="Angi">Angi</option>
+                      <option value="Mellani">Mellani</option>
+                      <option value="Javier">Javier</option>
+                    </optgroup>
+                    {trabajadoresList.length > 0 && (
+                      <optgroup label="Todos los Trabajadores">
+                        {trabajadoresList
+                          .filter(w => !['steven', 'angi', 'mellani', 'javier'].includes(w.nombre.toLowerCase()))
+                          .map((w) => (
+                            <option key={w.id} value={w.nombre}>{w.nombre}</option>
+                          ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              {/* Bloque 2 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Observación (Opcional)</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    value={editActividadInmediata}
+                    onChange={(e) => setEditActividadInmediata(e.target.value)}
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fecha Compromiso</label>
+                  <input
+                    type="text"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                    value={editFechaCompromiso}
+                    onChange={(e) => setEditFechaCompromiso(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Bloque 3 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 bg-slate-50/50 rounded-xl border border-slate-100">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Estado de la Tarea</label>
+                  <select
+                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all shadow-sm"
+                    value={editEstado}
+                    onChange={(e) => setEditEstado(e.target.value as EstadoTareaEstricto)}
+                  >
+                    <option value="PENDIENTE">Pendiente</option>
+                    <option value="EN_PROCESO">En Proceso</option>
+                    <option value="RETRASADA">Retrasada</option>
+                    <option value="FINALIZADA">Finalizada</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Nivel de Prioridad</label>
+                  <div className="flex gap-3 mt-1 bg-white p-2 rounded-lg border border-slate-200 w-fit shadow-sm">
+                    {(['ROJO', 'ANARANJADO', 'AMARILLO', 'VERDE'] as const).map(p => (
+                      <button 
+                        type="button" 
+                        key={p} 
+                        onClick={() => setEditPrioridad(p)}
+                        className={`w-6 h-6 rounded-full border-2 transition-all ${editPrioridad === p ? 'border-slate-800 scale-125 shadow-md' : 'border-transparent opacity-40 hover:opacity-100'} ${p === 'ROJO' ? 'bg-rose-500' : p === 'ANARANJADO' ? 'bg-orange-500' : p === 'AMARILLO' ? 'bg-yellow-400' : 'bg-emerald-500'}`}
+                        title={p === "ROJO" ? "CRÍTICA" : p === "ANARANJADO" ? "IMPORTANTE" : p === "AMARILLO" ? "NORMAL" : "ESPECIAL (48H)"}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50/50 rounded-b-2xl">
+              <Button onClick={handleCancelEdit} variant="outline" className="text-xs">
+                Cancelar
+              </Button>
+              <Button onClick={() => handleSaveEdit(editingTaskId)} className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-xs shadow-sm min-w-[120px]">
+                Guardar Cambios
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
