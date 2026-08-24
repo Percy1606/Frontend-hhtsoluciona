@@ -344,16 +344,12 @@ export default function CarteraPage() {
                     <SelectContent className="bg-white border-slate-200">
                         <SelectItem value="todas" className="font-black text-[10px] uppercase text-slate-400">TODAS LAS ETAPAS</SelectItem>
                         <SelectItem value="Prospecto" className="font-black text-[10px] uppercase">PROSPECTO</SelectItem>
-                        <SelectItem value="Contacto Inicial" className="font-black text-[10px] uppercase">CONTACTO INICIAL</SelectItem>
                         <SelectItem value="Visita Comercial" className="font-black text-[10px] uppercase">VISITA COMERCIAL</SelectItem>
                         <SelectItem value="Visita Técnica" className="font-black text-[10px] uppercase">VISITA TÉCNICA</SelectItem>
-                        <SelectItem value="Seguimiento" className="font-black text-[10px] uppercase">SEGUIMIENTO</SelectItem>
                         <SelectItem value="Cotización" className="font-black text-[10px] uppercase">COTIZACIÓN</SelectItem>
                         <SelectItem value="Negociación" className="font-black text-[10px] uppercase">NEGOCIACIÓN</SelectItem>
                         <SelectItem value="Orden de Servicio" className="font-black text-[10px] uppercase text-emerald-600">ORDEN DE SERVICIO</SelectItem>
-                        <SelectItem value="Servicio Ejecutado" className="font-black text-[10px] uppercase">SERVICIO EJECUTADO</SelectItem>
-                        <SelectItem value="Facturación" className="font-black text-[10px] uppercase">FACTURACIÓN</SelectItem>
-                        <SelectItem value="Postventa" className="font-black text-[10px] uppercase">POSTVENTA</SelectItem>
+                        <SelectItem value="Perdido" className="font-black text-[10px] uppercase text-red-600">PERDIDO</SelectItem>
                     </SelectContent>
                 </Select>
             </div>

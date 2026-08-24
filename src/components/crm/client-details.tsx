@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -78,9 +79,21 @@ const stageList = [
 const sellerList = ["Angi", "Valentina", "Ariana", "Brenda"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
-  const { reassignSeller, changeStage, addInteraction, updateInteraction, attachFile, deleteFile, updateClient } = useCRMStore();
+  const router = useRouter();
+  const { quotes, fetchQuotes, reassignSeller, changeStage, addInteraction, updateInteraction, attachFile, deleteFile, updateClient } = useCRMStore();
   const { responsables, proyectos, fetchProjectProfitability } = useOperacionesStore();
   const [activeTab, setActiveTab] = useState("general");
+
+  useEffect(() => {
+    if (isOpen) {
+      fetchQuotes();
+    }
+  }, [isOpen, fetchQuotes]);
+
+  const clientQuotes = useMemo(() => {
+    if (!client) return [];
+    return quotes.filter(q => q.clientId === client.id || (q.empresa && client.empresa && q.empresa.trim().toLowerCase() === client.empresa.trim().toLowerCase()));
+  }, [quotes, client]);
   
   const [intType, setIntType] = useState<Interaction['tipo']>("Llamada");
   const [intAction, setIntAction] = useState("");

@@ -22,15 +22,18 @@ import {
   Trophy,
   XCircle,
   Clock,
-  User
+  User,
+  Download,
+  FileCheck,
+  Plus
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { ClientDetails } from "./client-details";
 import { ClientForm } from "./client-form";
 import { FollowUpModal } from "./follow-up-modal";
 import { cn, formatDate } from "@/lib/utils";
+import { api } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -50,27 +53,56 @@ import { ModernDialog, DialogType } from "@/components/ui/modern-dialog";
 
 const columns = [
   { id: "Prospecto", title: "Prospecto", color: "bg-slate-400" },
-  { id: "Contacto Inicial", title: "Contacto Inicial", color: "bg-cyan-500" },
   { id: "Visita Comercial", title: "Visita Comercial", color: "bg-indigo-500" },
   { id: "Visita Técnica", title: "Visita Técnica", color: "bg-blue-600" },
-  { id: "Seguimiento", title: "Seguimiento", color: "bg-pink-500" },
   { id: "Cotización", title: "Cotización", color: "bg-violet-500" },
   { id: "Negociación", title: "Negociación", color: "bg-orange-500" },
   { id: "Orden de Servicio", title: "Orden de Servicio", color: "bg-emerald-600" },
-  { id: "Servicio Ejecutado", title: "Servicio Ejecutado", color: "bg-teal-500" },
-  { id: "Facturación", title: "Facturación", color: "bg-blue-500" },
-  { id: "Postventa", title: "Postventa", color: "bg-purple-500" },
-  { id: "Ganado / Fidelizado", title: "Ganado / Fidelizado", color: "bg-success" },
   { id: "Perdido", title: "Perdido", color: "bg-error" },
 ];
 
 export function ClientKanban() {
-  const { clients, filters, updateClient, deleteClient, changeStage, addInteraction, fetchClients, loading, page, totalPages } = useCRMStore();
+  const { clients, quotes, fetchQuotes, filters, updateClient, deleteClient, changeStage, addInteraction, fetchClients, loading, page, totalPages } = useCRMStore();
 
   const { responsables } = useOperacionesStore();
   
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [osModalClient, setOsModalClient] = useState<{ client: Client; quotes: any[] } | null>(null);
   const [visibleItems, setVisibleItems] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    fetchQuotes();
+  }, [fetchQuotes]);
+
+  const wonQuotesByClient = useMemo(() => {
+    const map = new Map<string, number>();
+    quotes.forEach((q) => {
+      const isWon = ['Ganada', 'Aprobado', 'Aprobada', 'Ganado', 'Orden de Servicio'].includes(q.estado) || !!(q as any).archivoAdjuntoUrl;
+      if (isWon) {
+        if (q.clientId) {
+          map.set(q.clientId, (map.get(q.clientId) || 0) + 1);
+        }
+        if (q.empresa) {
+          const empKey = q.empresa.trim().toLowerCase();
+          map.set(empKey, (map.get(empKey) || 0) + 1);
+        }
+      }
+    });
+    return map;
+  }, [quotes]);
+
+  const getClientDisplayAmount = (client: Client) => {
+    const empKey = client.empresa?.trim().toLowerCase() || '';
+    const clientWonQuotes = quotes.filter(q => {
+      const matchesClient = q.clientId === client.id || (q.empresa && client.empresa && q.empresa.trim().toLowerCase() === empKey);
+      const isWon = ['Ganada', 'Aprobado', 'Aprobada', 'Ganado', 'Orden de Servicio'].includes(q.estado) || !!(q as any).archivoAdjuntoUrl;
+      return matchesClient && isWon;
+    });
+    if (clientWonQuotes.length > 0) {
+      return clientWonQuotes.reduce((sum, q) => sum + Number(q.monto || 0), 0);
+    }
+    return client.ventaProyectada || client.montoEstimado || 0;
+  };
   
   // Delete State
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -184,11 +216,6 @@ export function ClientKanban() {
   const moveStage = (e: React.MouseEvent, client: Client, direction: "prev" | "next") => {
     e.stopPropagation();
     
-    if (client.etapaComercial === 'Ganado / Fidelizado') {
-      showError("Acción Bloqueada", "No se puede cambiar el estado de un cliente que ya ha sido marcado como FIDELIZADO.");
-      return;
-    }
-
     const currentIndex = columns.findIndex(c => c.id === client.etapaComercial);
     if (direction === "prev" && currentIndex > 0) {
       changeStage(client.id, columns[currentIndex - 1].id as any);
@@ -205,7 +232,7 @@ export function ClientKanban() {
           const displayLimit = visibleItems[column.id] || 12;
           const paginatedClients = columnClients.slice(0, displayLimit);
           const hasMore = columnClients.length > displayLimit;
-          const columnTotal = columnClients.reduce((sum, c) => sum + (c.ventaProyectada || 0), 0);
+          const columnTotal = columnClients.reduce((sum, c) => sum + getClientDisplayAmount(c), 0);
           
           return (
             <div key={column.id} className="flex-shrink-0 w-80 flex flex-col gap-3">
@@ -247,11 +274,35 @@ export function ClientKanban() {
 
                       <CardContent className="p-3.5 space-y-3">
                         <div className="flex justify-between items-start">
-                          <div className="flex flex-wrap gap-1.5">
+                          <div className="flex flex-wrap gap-1.5 items-center">
                             <Badge variant="outline" className="text-[8px] font-black tracking-widest uppercase border-primary/20 bg-primary/5 text-primary h-4 px-1">
                                 {client.codigo}
                             </Badge>
-                            {client.etapaComercial === 'Ganado / Fidelizado' && <Trophy className="w-3 h-3 text-yellow-500" />}
+                            {(() => {
+                              const empKey = client.empresa?.trim().toLowerCase() || '';
+                              const count = (client.id ? wonQuotesByClient.get(client.id) : 0) || (empKey ? wonQuotesByClient.get(empKey) : 0) || 0;
+                              if (count > 0) {
+                                return (
+                                  <Badge 
+                                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 text-[8px] font-black uppercase px-1.5 h-4 gap-1 shadow-none cursor-pointer transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const clientWonQuotes = quotes.filter(q => {
+                                        const matchesClient = q.clientId === client.id || (q.empresa && client.empresa && q.empresa.trim().toLowerCase() === client.empresa.trim().toLowerCase());
+                                        const isWon = ['Ganada', 'Aprobado', 'Aprobada', 'Ganado', 'Orden de Servicio'].includes(q.estado) || !!(q as any).archivoAdjuntoUrl;
+                                        return matchesClient && isWon;
+                                      });
+                                      setOsModalClient({ client, quotes: clientWonQuotes });
+                                    }}
+                                    title="Clic para ver las Órdenes de Servicio de este cliente"
+                                  >
+                                    <Trophy className="w-2.5 h-2.5 text-emerald-600 fill-emerald-600 group-hover:text-white" />
+                                    {count} {count === 1 ? 'OS' : 'OS Ganadas'}
+                                  </Badge>
+                                );
+                              }
+                              return null;
+                            })()}
                           </div>
                           
                           <div className="flex items-center gap-1">
@@ -302,11 +353,17 @@ export function ClientKanban() {
                             {overdue ? <AlertCircle className="w-3 h-3" /> : <Clock className="w-3 h-3" />}
                             {formatDate(client.proximoSeguimiento)}
                           </div>
-                          {client.ventaProyectada > 0 && (
-                            <span className="text-[9px] font-black text-secondary">
-                                S/ {new Intl.NumberFormat('es-PE').format(client.ventaProyectada)}
-                            </span>
-                          )}
+                          {(() => {
+                            const amount = getClientDisplayAmount(client);
+                            if (amount > 0) {
+                              return (
+                                <span className="text-[9px] font-black text-secondary">
+                                  {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(amount)}
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
 
                         <div className="flex items-center justify-between pt-2 border-t border-slate-100">
@@ -389,6 +446,100 @@ export function ClientKanban() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* MODAL DETALLE DE ÓRDENES DE SERVICIO AL HACER CLIC EN LA INSIGNIA */}
+      {osModalClient && (
+        <Dialog open={!!osModalClient} onOpenChange={() => setOsModalClient(null)}>
+          <DialogContent className="max-w-2xl w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
+            <DialogHeader className="p-5 bg-slate-900 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-500 text-white font-black text-[8px] uppercase border-none px-2 py-0.5">
+                      Expediente Comercial
+                    </Badge>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold">RUC: {osModalClient.client.ruc || "Sin RUC"}</span>
+                  </div>
+                  <DialogTitle className="text-xl font-black uppercase tracking-tight">{osModalClient.client.empresa}</DialogTitle>
+                  <p className="text-[10px] text-slate-300 font-semibold">{osModalClient.client.contacto ? `Contacto: ${osModalClient.client.contacto}` : 'Órdenes de servicio cerradas'}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[8px] font-black uppercase text-slate-400">Total Acumulado</p>
+                  <p className="text-lg font-black text-emerald-400">
+                    S/ {osModalClient.quotes.reduce((sum, q) => sum + Number(q.monto || 0), 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </p>
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <h4 className="font-black text-[11px] uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <FileCheck className="w-3.5 h-3.5 text-emerald-600" /> Órdenes de Servicio ({osModalClient.quotes.length})
+                </h4>
+                <Button 
+                  size="sm" 
+                  className="h-7 font-black uppercase text-[8px] bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg gap-1 px-2.5"
+                  onClick={() => {
+                    setOsModalClient(null);
+                    window.location.href = `/crm/cotizaciones?newClient=${osModalClient.client.id}`;
+                  }}
+                >
+                  <Plus className="w-3 h-3" /> Nueva Cotización
+                </Button>
+              </div>
+
+              {osModalClient.quotes.length === 0 ? (
+                <p className="text-center py-6 text-slate-400 text-xs font-bold uppercase">No se encontraron órdenes cerradas.</p>
+              ) : (
+                <div className="space-y-2">
+                  {osModalClient.quotes.map((q) => (
+                    <div key={q.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5 overflow-hidden">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-xs text-primary">{q.codigo || "—"}</span>
+                          <Badge className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase border-none px-1.5 py-0">
+                            Orden de Servicio
+                          </Badge>
+                          <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-0.5">
+                            <Calendar className="w-2.5 h-2.5" /> {formatDate(q.fecha)}
+                          </span>
+                        </div>
+                        <p className="font-black text-xs text-slate-800 uppercase truncate max-w-[280px]">{q.referencia || "Servicio Técnico"}</p>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                        <p className="text-xs font-black text-slate-900">
+                          {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                        <div className="flex items-center gap-1">
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            className="h-7 font-black uppercase text-[8px] border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2"
+                            onClick={() => window.open(`/documental/cotizaciones/preview/${q.id}`, '_blank')}
+                          >
+                            <Eye className="w-3 h-3 mr-1" /> Propuesta
+                          </Button>
+                          {(q as any).archivoAdjuntoUrl && (
+                            <Button 
+                              size="sm" 
+                              className="h-7 font-black uppercase text-[8px] bg-emerald-600 hover:bg-emerald-700 text-white px-2"
+                              onClick={() => window.open(api.getFileUrl((q as any).archivoAdjuntoUrl), '_blank')}
+                            >
+                              <Download className="w-3 h-3 mr-1" /> OS Firmada
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       <ModernDialog isOpen={modernDialog.isOpen} onOpenChange={(open) => setModernDialog(prev => ({ ...prev, isOpen: open }))} title={modernDialog.title} description={modernDialog.description} type={modernDialog.type} confirmText={modernDialog.confirmText} cancelText={modernDialog.cancelText} showCancel={modernDialog.showCancel} onConfirm={modernDialog.onConfirm} />
     </>

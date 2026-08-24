@@ -228,13 +228,33 @@ export const useCRMStore = create<CRMState>()(
           }
 
           const mapEtapa = (etapa: string) => {
+            if (!etapa) return "Prospecto";
             const map: Record<string, string> = {
-              "Contactado": "Contacto Inicial",
-              "Llamada Realizada": "Contacto Inicial",
+              "Contactado": "Prospecto",
+              "Llamada Realizada": "Prospecto",
+              "Contacto Inicial": "Prospecto",
+              "PROSPECTO": "Prospecto",
               "Visita Agendada": "Visita Técnica",
               "Inspección Realizada": "Visita Técnica",
+              "Visita Tecnica": "Visita Técnica",
+              "VISITA_TECNICA": "Visita Técnica",
+              "Visita Comercial": "Visita Comercial",
+              "VISITA_COMERCIAL": "Visita Comercial",
               "Cotización Enviada": "Cotización",
-              "Ganado": "Ganado / Fidelizado"
+              "Cotizacion": "Cotización",
+              "Cotizacion Enviada": "Cotización",
+              "Seguimiento": "Cotización",
+              "COTIZACION": "Cotización",
+              "Negociacion": "Negociación",
+              "NEGOCIACION": "Negociación",
+              "Ganado": "Orden de Servicio",
+              "Ganado / Fidelizado": "Orden de Servicio",
+              "GANADO": "Orden de Servicio",
+              "Servicio Ejecutado": "Orden de Servicio",
+              "Facturación": "Orden de Servicio",
+              "Facturacion": "Orden de Servicio",
+              "Postventa": "Orden de Servicio",
+              "ORDEN_DE_SERVICIO": "Orden de Servicio"
             };
             return map[etapa] || etapa;
           };
@@ -665,13 +685,6 @@ export const useCRMStore = create<CRMState>()(
           const client = get().clients.find(c => c.id === id);
           if (!client) return;
 
-          if (client.etapaComercial === 'Ganado / Fidelizado' && newStage !== 'Ganado / Fidelizado') {
-            toast.error("Movimiento no permitido", { 
-              description: "No se puede cambiar el estado de un cliente que ya ha sido marcado como GANADO / FIDELIZADO." 
-            });
-            return;
-          }
-
           const { 
             id: _, 
             interacciones, 
@@ -700,15 +713,15 @@ export const useCRMStore = create<CRMState>()(
             probabilidad: safeNumber(data.probabilidad) 
           };
 
-          // Programación automática de fidelización si es GANADO / FIDELIZADO
-          if (newStage === 'Ganado / Fidelizado') {
+          // Programación automática de fidelización si es Orden de Servicio
+          if (newStage === 'Orden de Servicio') {
             await get().scheduleFollowUp(
               id,
               format(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), 'yyyy-MM-dd'),
               "Llamada de Fidelización Post-Servicio",
               "Llamada"
             );
-            payload.accion = "Fidelización Mensual (Post-Venta)";
+            payload.accion = "Cierre Comercial - Orden de Servicio";
           }
 
           set((state) => ({ 

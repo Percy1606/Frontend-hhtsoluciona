@@ -57,6 +57,7 @@ const menuItems = [
     subItems: [
       { icon: Table, label: "Base de Datos Clientes", href: "/crm/cartera" },
       { icon: Grid, label: "Proceso de ventas", href: "/crm/pipeline" },
+      { icon: FileCheck, label: "Órdenes de Servicio", href: "/crm/ordenes-servicio" },
       { icon: Clock, label: "Seguimiento y Actividades", href: "/crm/seguimiento" },
       { icon: ClipboardList, label: "Cotizaciones", href: "/crm/cotizaciones" },
       { icon: BarChart, label: "Informes", href: "/crm/estadisticas" },
