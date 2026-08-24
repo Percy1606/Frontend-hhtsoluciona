@@ -154,11 +154,7 @@ export default function CarteraPage() {
         "Contacto": c.contacto || "-",
         "Cargo": c.cargo || "-",
         "Teléfono": c.telefono || "-",
-        "Correo": c.correo || "-",
-        "Asesor Asignado": c.asignadoA || "-",
-        "Último Contacto": c.ultimoContacto ? new Date(c.ultimoContacto).toLocaleDateString('es-PE') : "-",
-        "Próximo Seguimiento": c.proximoSeguimiento ? new Date(c.proximoSeguimiento).toLocaleDateString('es-PE') : "-",
-        "Observaciones": c.observaciones || "-"
+        "Correo": c.correo || "-"
       }));
 
       const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -178,11 +174,7 @@ export default function CarteraPage() {
         { wch: 26 },  // Contacto
         { wch: 20 },  // Cargo
         { wch: 16 },  // Teléfono
-        { wch: 28 },  // Correo
-        { wch: 18 },  // Asesor Asignado
-        { wch: 16 },  // Último Contacto
-        { wch: 18 },  // Próximo Seguimiento
-        { wch: 45 },  // Observaciones
+        { wch: 28 }   // Correo
       ];
 
       const wb = XLSX.utils.book_new();

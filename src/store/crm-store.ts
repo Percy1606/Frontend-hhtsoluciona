@@ -352,10 +352,10 @@ export const useCRMStore = create<CRMState>()(
 
       setView: (view) => set({ view }),
       setSearchQuery: (query) => set((state) => ({ page: 1, filters: { ...state.filters, searchQuery: query } })),
-      setTarifa: (tarifa) => set((state) => ({ page: 1, filters: { ...state.filters, tarifa } })),
+      setTarifa: (tarifa) => set((state) => ({ page: 1, filters: { ...state.filters, tarifa: tarifa === 'todas' ? '' : tarifa } })),
       setAsignadoA: (asignadoA) => set((state) => ({ page: 1, filters: { ...state.filters, asignadoA } })),
       setEstado: (estado) => set((state) => ({ page: 1, filters: { ...state.filters, estado } })),
-      setEtapaComercial: (etapaComercial) => set((state) => ({ page: 1, filters: { ...state.filters, etapaComercial } })),
+      setEtapaComercial: (etapaComercial) => set((state) => ({ page: 1, filters: { ...state.filters, etapaComercial: etapaComercial === 'todas' ? '' : etapaComercial } })),
       setPrioridad: (prioridad) => set((state) => ({ page: 1, filters: { ...state.filters, prioridad } })),
       setZona: (zona) => set((state) => ({ page: 1, filters: { ...state.filters, zona } })),
       setTipoCliente: (tipoCliente) => set((state) => ({ page: 1, filters: { ...state.filters, tipoCliente } })),
