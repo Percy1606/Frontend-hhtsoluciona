@@ -332,41 +332,44 @@ export default function OrdenesServicioPage() {
             <p className="text-xs font-black text-slate-500 uppercase">Sin órdenes de servicio registradas.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
             {clientFolders.map((folder) => (
               <div 
                 key={folder.empresa}
                 onClick={() => setSelectedFolderClient(folder)}
-                className="bg-white border border-slate-200 hover:border-emerald-500/60 hover:shadow transition-all rounded-xl p-3 cursor-pointer flex flex-col justify-between group"
+                className="bg-white border border-slate-200 hover:border-emerald-500/60 hover:shadow-md transition-all rounded-xl p-3.5 cursor-pointer flex flex-col justify-between group gap-2.5 h-[155px]"
               >
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <div className="p-1.5 bg-emerald-100/70 text-emerald-700 rounded-lg group-hover:bg-emerald-600 group-hover:text-white transition-colors">
-                      <Folder className="w-3.5 h-3.5 fill-current" />
+                      <Folder className="w-4 h-4 fill-current" />
                     </div>
-                    <Badge className="bg-emerald-50 text-emerald-700 font-black text-[8px] uppercase border border-emerald-200 px-1 py-0 h-4">
+                    <Badge className="bg-emerald-50 text-emerald-700 font-black text-[9px] uppercase border border-emerald-200 px-2 py-0.5 h-4.5">
                       {folder.quotes.length} OS
                     </Badge>
                   </div>
 
-                  <div>
-                    <h3 className="font-black text-xs text-slate-800 uppercase tracking-tight line-clamp-1 group-hover:text-emerald-700 transition-colors" title={folder.empresa}>
+                  <div className="space-y-0.5">
+                    <h3 
+                      className="font-black text-xs text-slate-800 uppercase tracking-tight line-clamp-2 leading-snug group-hover:text-emerald-700 transition-colors" 
+                      title={folder.empresa}
+                    >
                       {folder.empresa}
                     </h3>
-                    <p className="text-[8px] text-slate-400 font-bold uppercase truncate">
-                      {folder.ruc ? `RUC: ${folder.ruc}` : folder.zona}
+                    <p className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">
+                      {folder.ruc ? `RUC: ${folder.ruc}` : (folder.zona || "Sin RUC")}
                     </p>
                   </div>
                 </div>
 
-                <div className="pt-2 mt-2 border-t border-slate-100 flex items-center justify-between">
+                <div className="pt-2.5 border-t border-slate-100 flex items-center justify-between">
                   <div>
-                    <p className="text-[7px] font-black uppercase text-slate-400">Total</p>
+                    <p className="text-[8px] font-black uppercase text-slate-400">Total</p>
                     <p className="text-xs font-black text-slate-900">
                       S/ {folder.totalAmount.toLocaleString('es-PE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                     </p>
                   </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-emerald-600 transition-colors" />
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-emerald-600 group-hover:translate-x-0.5 transition-all" />
                 </div>
               </div>
             ))}
@@ -392,9 +395,9 @@ export default function OrdenesServicioPage() {
                   <TableCell className="font-black text-[8px] text-slate-400 pl-3 w-[25px]">{idx + 1}</TableCell>
                   <TableCell className="font-black text-[11px] text-primary">{q.codigo || "—"}</TableCell>
                   <TableCell className="font-black text-xs text-slate-800 uppercase max-w-[150px] truncate">{q.empresa}</TableCell>
-                  <TableCell className="font-bold text-[11px] text-slate-700 uppercase max-w-[200px] truncate">{q.referencia || "Servicio Técnico"}</TableCell>
-                  <TableCell className="text-center text-[9px] font-bold text-slate-500 uppercase">{formatDate(q.fecha)}</TableCell>
-                  <TableCell className="text-right font-black text-xs text-slate-900">
+                  <TableCell className="font-bold text-[11px] text-slate-700 uppercase break-words leading-snug">{q.referencia || "Servicio Técnico"}</TableCell>
+                  <TableCell className="text-center text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">{formatDate(q.fecha)}</TableCell>
+                  <TableCell className="text-right font-black text-xs text-slate-900 whitespace-nowrap">
                     {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-right pr-3">
@@ -429,7 +432,7 @@ export default function OrdenesServicioPage() {
       {/* MODAL EXPEDIENTE - ULTRA COMPACT */}
       {selectedFolderClient && (
         <Dialog open={!!selectedFolderClient} onOpenChange={() => setSelectedFolderClient(null)}>
-          <DialogContent className="max-w-2xl w-full p-0 border-none bg-white shadow-2xl rounded-xl overflow-hidden">
+          <DialogContent className="max-w-3xl w-full p-0 border-none bg-white shadow-2xl rounded-xl overflow-hidden">
             <DialogHeader className="p-4 bg-slate-900 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-0.5">
@@ -464,19 +467,21 @@ export default function OrdenesServicioPage() {
 
               <div className="space-y-1.5">
                 {selectedFolderClient.quotes.map((q) => (
-                  <div key={q.id} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-xs transition-all flex items-center justify-between gap-2">
-                    <div className="space-y-0.5 overflow-hidden">
-                      <div className="flex items-center gap-1.5">
+                  <div key={q.id} className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 hover:bg-white hover:shadow-xs transition-all flex items-center justify-between gap-3">
+                    <div className="space-y-0.5 flex-1 min-w-0 pr-2">
+                      <div className="flex items-center gap-2">
                         <span className="font-black text-[11px] text-primary">{q.codigo || "—"}</span>
-                        <span className="text-[7px] text-slate-400 font-bold uppercase flex items-center gap-0.5">
-                          <Calendar className="w-2 h-2" /> {formatDate(q.fecha)}
+                        <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-0.5">
+                          <Calendar className="w-2.5 h-2.5" /> {formatDate(q.fecha)}
                         </span>
                       </div>
-                      <p className="font-black text-xs text-slate-800 uppercase truncate max-w-[280px]">{q.referencia || "Servicio Técnico"}</p>
+                      <p className="font-black text-xs text-slate-800 uppercase break-words line-clamp-2 leading-snug" title={q.referencia}>
+                        {q.referencia || "Servicio Técnico"}
+                      </p>
                     </div>
 
                     <div className="flex items-center gap-2 shrink-0">
-                      <p className="text-xs font-black text-slate-900">
+                      <p className="text-xs font-black text-slate-900 whitespace-nowrap">
                         {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </p>
                       <Button 

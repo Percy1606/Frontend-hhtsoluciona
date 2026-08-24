@@ -101,7 +101,7 @@ export function ClientKanban() {
     if (clientWonQuotes.length > 0) {
       return clientWonQuotes.reduce((sum, q) => sum + Number(q.monto || 0), 0);
     }
-    return client.ventaProyectada || client.montoEstimado || 0;
+    return Number(client.ventaProyectada) || Number(client.montoEstimado) || 0;
   };
   
   // Delete State
@@ -236,7 +236,7 @@ export function ClientKanban() {
           
           return (
             <div key={column.id} className="flex-shrink-0 w-80 flex flex-col gap-3">
-              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm space-y-2">
+              <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 overflow-hidden">
                     <div className={cn("w-2.5 h-6 rounded-full shrink-0", column.color)} />
@@ -248,14 +248,6 @@ export function ClientKanban() {
                     {columnClients.length}
                   </Badge>
                 </div>
-                {columnTotal > 0 && (
-                    <div className="flex justify-between items-center px-1">
-                        <span className="text-[9px] font-bold text-slate-400 uppercase">Valor Etapa</span>
-                        <span className="text-[10px] font-black text-secondary">
-                            {new Intl.NumberFormat('es-PE', { style: 'currency', currency: 'PEN', maximumFractionDigits: 0 }).format(columnTotal)}
-                        </span>
-                    </div>
-                )}
               </div>
 
               <div className="flex-1 bg-slate-100/50 rounded-xl p-2.5 space-y-2.5 overflow-y-auto border border-border/40 scrollbar-thin">
@@ -505,11 +497,13 @@ export function ClientKanban() {
                             <Calendar className="w-2.5 h-2.5" /> {formatDate(q.fecha)}
                           </span>
                         </div>
-                        <p className="font-black text-xs text-slate-800 uppercase truncate max-w-[280px]">{q.referencia || "Servicio Técnico"}</p>
+                        <p className="font-black text-xs text-slate-800 uppercase break-words line-clamp-2 leading-snug" title={q.referencia}>
+                          {q.referencia || "Servicio Técnico"}
+                        </p>
                       </div>
 
                       <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <p className="text-xs font-black text-slate-900">
+                        <p className="text-xs font-black text-slate-900 whitespace-nowrap">
                           {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                         <div className="flex items-center gap-1">
