@@ -25,7 +25,8 @@ import {
   User,
   Download,
   FileCheck,
-  Plus
+  Plus,
+  FileText
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useMemo, useEffect } from "react";
@@ -34,6 +35,7 @@ import { ClientForm } from "./client-form";
 import { FollowUpModal } from "./follow-up-modal";
 import { cn, formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
+import { useAuthStore } from "@/store/auth-store";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +104,30 @@ export function ClientKanban() {
       return clientWonQuotes.reduce((sum, q) => sum + Number(q.monto || 0), 0);
     }
     return Number(client.ventaProyectada) || Number(client.montoEstimado) || 0;
+  };
+
+  const handleOpenDocument = (doc: any) => {
+    if (!doc?.url) return;
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+    const parts = doc.url.split('/').filter(Boolean);
+    let folder = 'cotizaciones';
+    let filename = parts[parts.length - 1];
+
+    if (parts.length >= 3) {
+      folder = parts[1];
+      filename = parts[2];
+    } else if (parts.length === 2) {
+      folder = 'root';
+    }
+
+    const { token } = useAuthStore.getState();
+    let previewUrl = `${API_URL}/files/preview/${folder}/${filename}?token=${token}`;
+    if (folder === 'root') {
+      previewUrl = `${API_URL}/uploads/${filename}?token=${token}`;
+    }
+
+    const viewerUrl = `/file-viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(doc.nombre || 'Documento')}&token=${token}`;
+    window.open(viewerUrl, '_blank');
   };
   
   // Delete State
@@ -276,7 +302,7 @@ export function ClientKanban() {
                               if (count > 0) {
                                 return (
                                   <Badge 
-                                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 text-[8px] font-black uppercase px-1.5 h-4 gap-1 shadow-none cursor-pointer transition-colors"
+                                    className="bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white border border-emerald-200 text-[8px] font-black uppercase px-2 h-4 gap-1 shadow-none cursor-pointer transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       const clientWonQuotes = quotes.filter(q => {
@@ -289,7 +315,7 @@ export function ClientKanban() {
                                     title="Clic para ver las Órdenes de Servicio de este cliente"
                                   >
                                     <Trophy className="w-2.5 h-2.5 text-emerald-600 fill-emerald-600 group-hover:text-white" />
-                                    {count} {count === 1 ? 'OS' : 'OS Ganadas'}
+                                    {count} {count === 1 ? 'Orden de Servicio' : 'Órdenes de Servicio'}
                                   </Badge>
                                 );
                               }
