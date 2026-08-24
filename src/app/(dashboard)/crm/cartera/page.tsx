@@ -49,7 +49,7 @@ export default function CarteraPage() {
     setSearchQuery,
     setTarifa,
     setAsignadoA,
-    setEstado,
+    setEtapaComercial,
     setZona,
     setTipoCliente,
     setClasificacion,
@@ -74,7 +74,7 @@ export default function CarteraPage() {
     filters.searchQuery !== '' ||
     filters.tarifa !== '' ||
     filters.asignadoA !== '' ||
-    filters.estado !== '' ||
+    filters.etapaComercial !== '' ||
     filters.zona !== '' ||
     filters.clasificacion !== '' ||
     filters.tipoCliente !== '';
@@ -246,14 +246,24 @@ export default function CarteraPage() {
             </div>
 
             <div className="space-y-2">
-                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Estado Comercial</Label>
-                <Select value={filters.estado} onValueChange={(val) => setEstado(val || "")}>
+                <Label className="text-[9px] font-black uppercase text-slate-400 tracking-widest ml-1">Etapa Comercial</Label>
+                <Select value={filters.etapaComercial || ""} onValueChange={(val) => setEtapaComercial(val || "")}>
                     <SelectTrigger className="h-10 text-[10px] border-slate-200 bg-white font-black uppercase rounded-xl shadow-sm">
-                        <SelectValue placeholder="SELECCIONAR ESTADO" />
+                        <SelectValue placeholder="SELECCIONAR ETAPA" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
-                        <SelectItem value="Activo" className="font-black text-[10px] uppercase">ACTIVO</SelectItem>
-                        <SelectItem value="Inactivo" className="font-black text-[10px] uppercase">INACTIVO</SelectItem>
+                        <SelectItem value="todas" className="font-black text-[10px] uppercase text-slate-400">TODAS LAS ETAPAS</SelectItem>
+                        <SelectItem value="Prospecto" className="font-black text-[10px] uppercase">PROSPECTO</SelectItem>
+                        <SelectItem value="Contacto Inicial" className="font-black text-[10px] uppercase">CONTACTO INICIAL</SelectItem>
+                        <SelectItem value="Visita Comercial" className="font-black text-[10px] uppercase">VISITA COMERCIAL</SelectItem>
+                        <SelectItem value="Visita Técnica" className="font-black text-[10px] uppercase">VISITA TÉCNICA</SelectItem>
+                        <SelectItem value="Seguimiento" className="font-black text-[10px] uppercase">SEGUIMIENTO</SelectItem>
+                        <SelectItem value="Cotización" className="font-black text-[10px] uppercase">COTIZACIÓN</SelectItem>
+                        <SelectItem value="Negociación" className="font-black text-[10px] uppercase">NEGOCIACIÓN</SelectItem>
+                        <SelectItem value="Orden de Servicio" className="font-black text-[10px] uppercase text-emerald-600">ORDEN DE SERVICIO</SelectItem>
+                        <SelectItem value="Servicio Ejecutado" className="font-black text-[10px] uppercase">SERVICIO EJECUTADO</SelectItem>
+                        <SelectItem value="Facturación" className="font-black text-[10px] uppercase">FACTURACIÓN</SelectItem>
+                        <SelectItem value="Postventa" className="font-black text-[10px] uppercase">POSTVENTA</SelectItem>
                     </SelectContent>
                 </Select>
             </div>
