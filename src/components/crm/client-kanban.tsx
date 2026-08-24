@@ -129,6 +129,15 @@ export function ClientKanban() {
     const viewerUrl = `/file-viewer?url=${encodeURIComponent(previewUrl)}&name=${encodeURIComponent(doc.nombre || 'Documento')}&token=${token}`;
     window.open(viewerUrl, '_blank');
   };
+
+  const getCurrencySymbol = (moneda?: string) => {
+    if (!moneda) return "S/";
+    const m = moneda.toUpperCase().trim();
+    if (m === "USD" || m === "DOLARES" || m === "DOLAR" || m === "$" || m === "USD$") {
+      return "$";
+    }
+    return "S/";
+  };
   
   // Delete State
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -490,7 +499,7 @@ export function ClientKanban() {
               </div>
             </DialogHeader>
 
-            <div className="p-5 space-y-3 max-h-[60vh] overflow-y-auto">
+            <div className="p-5 space-y-4 max-h-[65vh] overflow-y-auto">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <h4 className="font-black text-[11px] uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <FileCheck className="w-3.5 h-3.5 text-emerald-600" /> Órdenes de Servicio ({osModalClient.quotes.length})
@@ -510,50 +519,143 @@ export function ClientKanban() {
               {osModalClient.quotes.length === 0 ? (
                 <p className="text-center py-6 text-slate-400 text-xs font-bold uppercase">No se encontraron órdenes cerradas.</p>
               ) : (
-                <div className="space-y-2">
-                  {osModalClient.quotes.map((q) => (
-                    <div key={q.id} className="p-3 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-sm transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-0.5 overflow-hidden">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black text-xs text-primary">{q.codigo || "—"}</span>
-                          <Badge className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase border-none px-1.5 py-0">
-                            Orden de Servicio
-                          </Badge>
-                          <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-0.5">
-                            <Calendar className="w-2.5 h-2.5" /> {formatDate(q.fecha)}
-                          </span>
-                        </div>
-                        <p className="font-black text-xs text-slate-800 uppercase break-words line-clamp-2 leading-snug" title={q.referencia}>
-                          {q.referencia || "Servicio Técnico"}
-                        </p>
-                      </div>
+                <div className="space-y-3">
+                  {osModalClient.quotes.map((q) => {
+                    const docs = (q as any).documentos || [];
+                    const hasDirectFile = (q as any).archivoAdjuntoUrl;
 
-                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
-                        <p className="text-xs font-black text-slate-900 whitespace-nowrap">
-                          {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </p>
-                        <div className="flex items-center gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="outline" 
-                            className="h-7 font-black uppercase text-[8px] border-indigo-200 text-indigo-700 hover:bg-indigo-50 px-2"
-                            onClick={() => window.open(`/documental/cotizaciones/preview/${q.id}`, '_blank')}
-                          >
-                            <Eye className="w-3 h-3 mr-1" /> Propuesta
-                          </Button>
-                          {(q as any).archivoAdjuntoUrl && (
-                            <Button 
-                              size="sm" 
-                              className="h-7 font-black uppercase text-[8px] bg-emerald-600 hover:bg-emerald-700 text-white px-2"
-                              onClick={() => window.open(api.getFileUrl((q as any).archivoAdjuntoUrl), '_blank')}
-                            >
-                              <Download className="w-3 h-3 mr-1" /> OS Firmada
-                            </Button>
+                    return (
+                      <div key={q.id} className="p-3.5 rounded-xl border border-slate-200 bg-slate-50/60 hover:bg-white hover:shadow-sm transition-all space-y-3">
+                        {/* Cabecera de la Orden / Proyecto */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-200/70 pb-2">
+                          <div className="space-y-0.5 flex-1 min-w-0 pr-2">
+                            <div className="flex items-center gap-2">
+                              <span className="font-black text-xs text-primary">{q.codigo || "—"}</span>
+                              <Badge className="bg-emerald-100 text-emerald-800 text-[8px] font-black uppercase border-none px-1.5 py-0">
+                                Orden Ganada
+                              </Badge>
+                              <span className="text-[8px] text-slate-400 font-bold uppercase flex items-center gap-0.5">
+                                <Calendar className="w-2.5 h-2.5" /> {formatDate(q.fecha)}
+                              </span>
+                            </div>
+                            <p className="font-black text-xs text-slate-800 uppercase break-words line-clamp-2 leading-snug" title={q.referencia}>
+                              {q.referencia || "Servicio Técnico"}
+                            </p>
+                          </div>
+
+                          <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                            <div className="text-right">
+                              <p className="text-[7px] font-black uppercase text-slate-400">Monto del Servicio</p>
+                              <p className="text-xs font-black text-slate-900 whitespace-nowrap">
+                                {getCurrencySymbol(q.moneda)} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Expediente de Documentos Asociados */}
+                        <div className="space-y-1.5">
+                          <p className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Documentos Asociados</p>
+                          
+                          {docs && docs.length > 0 ? (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              {docs.map((doc: any, dIdx: number) => {
+                                const isContract = doc.subtype === 'ORDEN_SERVICIO' || (doc.nombre && doc.nombre.toLowerCase().includes('orden'));
+                                return (
+                                  <div 
+                                    key={doc.id || dIdx} 
+                                    className={cn(
+                                      "p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-all",
+                                      isContract ? "bg-emerald-50/80 border-emerald-300" : "bg-white border-slate-200"
+                                    )}
+                                  >
+                                    <div className="flex items-center gap-2 overflow-hidden min-w-0 mr-2">
+                                      <div className={cn(
+                                        "w-7 h-7 rounded-lg flex items-center justify-center shrink-0",
+                                        isContract ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600"
+                                      )}>
+                                        <FileText className="w-3.5 h-3.5" />
+                                      </div>
+                                      <div className="overflow-hidden min-w-0">
+                                        <p className="font-black text-[11px] text-slate-800 uppercase truncate" title={doc.nombre}>
+                                          {doc.nombre}
+                                        </p>
+                                        <div className="flex items-center gap-1.5 text-[8px] font-bold text-slate-400 mt-0.5">
+                                          <span className={cn(
+                                            "px-1 py-0 rounded text-[7px] uppercase font-black", 
+                                            isContract ? "bg-emerald-200/80 text-emerald-900" : "bg-slate-200 text-slate-600"
+                                          )}>
+                                            {isContract ? "Sustento Contractual" : "Propuesta Técnica"}
+                                          </span>
+                                          {doc.tamano && <span>• {doc.tamano}</span>}
+                                        </div>
+                                      </div>
+                                    </div>
+
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <Button 
+                                        size="sm"
+                                        variant={isContract ? "default" : "outline"}
+                                        className={cn(
+                                          "h-6 px-2 font-black uppercase text-[7px] gap-0.5",
+                                          isContract ? "bg-emerald-600 hover:bg-emerald-700 text-white" : "border-slate-200 text-slate-700 hover:bg-slate-50"
+                                        )}
+                                        onClick={() => handleOpenDocument(doc)}
+                                      >
+                                        <Eye className="w-2.5 h-2.5" /> Ver
+                                      </Button>
+                                      {doc.url && (
+                                        <Button 
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0 text-slate-400 hover:text-slate-700"
+                                          onClick={() => window.open(api.getFileUrl(doc.url), '_blank')}
+                                          title="Descargar archivo"
+                                        >
+                                          <Download className="w-3 h-3" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200">
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                  <FileText className="w-3.5 h-3.5" />
+                                </div>
+                                <div>
+                                  <p className="font-black text-[11px] text-slate-800 uppercase">Propuesta del Sistema ({q.codigo})</p>
+                                  <p className="text-[8px] font-bold text-slate-400 uppercase">Documento base registrado</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  className="h-6 px-2 font-black uppercase text-[7px] border-indigo-200 text-indigo-700 hover:bg-indigo-50"
+                                  onClick={() => window.open(`/documental/cotizaciones/preview/${q.id}`, '_blank')}
+                                >
+                                  <Eye className="w-2.5 h-2.5 mr-0.5" /> Ver Propuesta
+                                </Button>
+                                {hasDirectFile && (
+                                  <Button 
+                                    size="sm" 
+                                    className="h-6 px-2 font-black uppercase text-[7px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                                    onClick={() => window.open(api.getFileUrl((q as any).archivoAdjuntoUrl), '_blank')}
+                                  >
+                                    <Download className="w-2.5 h-2.5 mr-0.5" /> OS Firmada
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>

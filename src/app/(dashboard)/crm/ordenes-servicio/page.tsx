@@ -79,6 +79,15 @@ export default function OrdenesServicioPage() {
     window.open(viewerUrl, '_blank');
   };
 
+  const getCurrencySymbol = (moneda?: string) => {
+    if (!moneda) return "S/";
+    const m = moneda.toUpperCase().trim();
+    if (m === "USD" || m === "DOLARES" || m === "DOLAR" || m === "$" || m === "USD$") {
+      return "$";
+    }
+    return "S/";
+  };
+
   const serviceOrders = useMemo(() => {
     return quotes.filter((q) => {
       const isWon = ['Ganada', 'Aprobado', 'Aprobada', 'Ganado', 'Orden de Servicio'].includes(q.estado);
@@ -424,7 +433,7 @@ export default function OrdenesServicioPage() {
                   <TableCell className="font-bold text-[11px] text-slate-700 uppercase break-words leading-snug">{q.referencia || "Servicio Técnico"}</TableCell>
                   <TableCell className="text-center text-[9px] font-bold text-slate-500 uppercase whitespace-nowrap">{formatDate(q.fecha)}</TableCell>
                   <TableCell className="text-right font-black text-xs text-slate-900 whitespace-nowrap">
-                    {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    {getCurrencySymbol(q.moneda)} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </TableCell>
                   <TableCell className="text-right pr-3">
                     <div className="flex items-center justify-end gap-1.5">
@@ -542,7 +551,7 @@ export default function OrdenesServicioPage() {
                           <div className="text-right">
                             <p className="text-[7px] font-black uppercase text-slate-400">Monto del Servicio</p>
                             <p className="text-xs font-black text-slate-900 whitespace-nowrap">
-                              {q.moneda === 'USD' ? '$' : 'S/'} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              {getCurrencySymbol(q.moneda)} {Number(q.monto || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </p>
                           </div>
                         </div>
