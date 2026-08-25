@@ -267,16 +267,23 @@ export default function ManualPage() {
     }
   };
 
-  const handleDeleteVideo = async (id: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("¿Estás seguro de que deseas eliminar este video tutorial?")) return;
+  // Modal para confirmar eliminación
+  const [videoAEliminar, setVideoAEliminar] = useState<ManualVideo | null>(null);
+  const [deletingVideo, setDeletingVideo] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!videoAEliminar) return;
 
     try {
-      await api.delete(`/config/manuales/video/${id}`);
-      toast.success("Video eliminado con éxito");
+      setDeletingVideo(true);
+      await api.delete(`/config/manuales/video/${videoAEliminar.id}`);
+      toast.success(`Video "${videoAEliminar.titulo}" eliminado con éxito`);
+      setVideoAEliminar(null);
       await fetchVideos();
     } catch (error: any) {
       toast.error(error?.message || "Error al eliminar video");
+    } finally {
+      setDeletingVideo(false);
     }
   };
 
@@ -510,6 +517,15 @@ export default function ManualPage() {
                           <ExternalLink className="w-3.5 h-3.5" />
                           Abrir en Drive
                         </a>
+
+                        <button
+                          onClick={() => setVideoAEliminar(selectedVideo)}
+                          title="Eliminar este video"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Eliminar Video
+                        </button>
                       </div>
                     </div>
                   </>
@@ -582,17 +598,20 @@ export default function ManualPage() {
                               </div>
                             </div>
 
-                            {isAdmin && (
-                              <button
-                                onClick={(e) => handleDeleteVideo(vid.id, e)}
-                                title="Eliminar Video"
-                                className={`opacity-0 group-hover:opacity-100 p-1.5 rounded-lg transition-opacity ${
-                                  isPlaying ? "hover:bg-white/20 text-rose-300" : "hover:bg-rose-100 text-rose-600"
-                                }`}
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setVideoAEliminar(vid);
+                              }}
+                              title="Eliminar Video"
+                              className={`p-2 rounded-xl transition-all ${
+                                isPlaying
+                                  ? "hover:bg-white/20 text-rose-300"
+                                  : "hover:bg-rose-100 text-rose-500"
+                              }`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
                           </div>
                         </div>
                       );
@@ -602,6 +621,54 @@ export default function ManualPage() {
               </div>
             </div>
           </div>
+
+          {/* Modal / Dialog de Confirmación de Eliminación */}
+          <Dialog open={!!videoAEliminar} onOpenChange={(open) => !open && setVideoAEliminar(null)}>
+            <DialogContent className="sm:max-w-[420px] rounded-3xl p-6 bg-white">
+              <DialogHeader>
+                <div className="mx-auto w-12 h-12 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center mb-2">
+                  <Trash2 className="w-6 h-6" />
+                </div>
+                <DialogTitle className="text-center text-lg font-black uppercase text-[#001F3F]">
+                  ¿Deseas eliminar este video?
+                </DialogTitle>
+              </DialogHeader>
+
+              <div className="text-center space-y-2 py-2">
+                <p className="text-xs text-slate-600 font-medium">
+                  Estás a punto de eliminar el siguiente videotutorial del sistema:
+                </p>
+                <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                  <p className="text-xs font-bold text-[#001F3F]">
+                    {videoAEliminar?.titulo}
+                  </p>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  (El enlace se quitará de la plataforma. El archivo original en tu Google Drive permanecerá intacto).
+                </p>
+              </div>
+
+              <DialogFooter className="mt-4 flex gap-2 justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setVideoAEliminar(null)}
+                  disabled={deletingVideo}
+                  className="rounded-xl h-10 text-xs font-semibold flex-1"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={confirmDelete}
+                  disabled={deletingVideo}
+                  className="bg-[#E30613] hover:bg-[#C20510] text-white rounded-xl h-10 text-xs font-bold flex-1 shadow-md shadow-rose-600/20"
+                >
+                  {deletingVideo ? "Eliminando..." : "Sí, Eliminar"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       )}
 
