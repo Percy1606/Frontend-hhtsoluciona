@@ -126,10 +126,32 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
     p.codigo.toLowerCase().includes(projectSearch.toLowerCase())
   );
 
-  const filteredResponsables = responsables.filter(r =>
-    r.nombre.toLowerCase().includes(responsibleSearch.toLowerCase()) ||
-    r.area.toLowerCase().includes(responsibleSearch.toLowerCase())
-  );
+  const OPERATIONAL_AREAS = [
+    "logisticayrecursos",
+    "logísticayrecursos",
+    "operacionesdecampo",
+    "operaciones",
+    "serviciostecnicos",
+    "serviciostécnicos",
+    "ingenieriaysupervision",
+    "ingenieríaysupervisión",
+    "supervision",
+    "supervisión",
+    "ingenieria",
+    "ingeniería",
+  ];
+
+  const filteredResponsables = responsables.filter(r => {
+    const rArea = (r.area || "").toLowerCase().replace(/\s+/g, "");
+    const belongsToArea = OPERATIONAL_AREAS.some(a => rArea.includes(a));
+    if (!belongsToArea) return false;
+
+    const query = responsibleSearch.toLowerCase();
+    return (
+      r.nombre.toLowerCase().includes(query) ||
+      (r.area && r.area.toLowerCase().includes(query))
+    );
+  });
 
   const form = useForm<ActividadFormValues>({
     resolver: zodResolver(actividadSchema),

@@ -10,6 +10,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { ModalActividadesPendientesLogin } from "@/components/operaciones/modal-actividades-login";
 
 function DashboardInner({ children }: { children: React.ReactNode }) {
   const { state } = useSidebar();
@@ -29,6 +30,7 @@ function DashboardInner({ children }: { children: React.ReactNode }) {
             {children}
           </TooltipProvider>
         </main>
+        <ModalActividadesPendientesLogin />
       </div>
     </div>
   );

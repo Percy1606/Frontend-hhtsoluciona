@@ -39,7 +39,7 @@ interface QuoteFormProps {
 
 export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel }: QuoteFormProps) {
   const { clients, uploadQuoteFile, quotes, fetchClientById } = useCRMStore();
-  const { responsables, fetchResponsables } = useOperacionesStore();
+  const { responsables, fetchResponsables, proyectos, fetchProyectos } = useOperacionesStore();
   const [selectedLiderId, setSelectedLiderId] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [additionalClient, setAdditionalClient] = useState<any>(null);
@@ -51,7 +51,8 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
 
   useEffect(() => {
     fetchResponsables();
-  }, [fetchResponsables]);
+    fetchProyectos();
+  }, [fetchResponsables, fetchProyectos]);
 
   useEffect(() => {
     if (quote && (quote as any).proyectoGenerado) {
@@ -378,6 +379,26 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                 </div>
               </div>
             )}
+
+            {selectedClient && !quote && (() => {
+              const preventaActiva = proyectos.find(p => p.clientId === selectedClientId && Number((p as any).ventaContratada || 0) === 0 && p.estado !== 'Finalizado');
+              if (!preventaActiva) return null;
+              return (
+                <div className="p-4 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div className="bg-amber-500 text-white p-2 rounded-lg shrink-0 mt-0.5">
+                    <AlertTriangle className="w-4 h-4" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black uppercase text-amber-900 tracking-wider">
+                      Proyecto Preliminar / Preventa Detectado: [{preventaActiva.codigo}] {preventaActiva.nombre}
+                    </p>
+                    <p className="text-xs text-amber-800 leading-relaxed font-medium">
+                      Al aprobar o ganar esta cotización, el sistema convertirá automáticamente este proyecto preliminar a oficial, conservando todas las tareas, avances y gastos sin duplicar registros.
+                    </p>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           <Separator className="opacity-50" />

@@ -197,6 +197,15 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
               <Badge className="bg-white/10 text-white/90 border-white/20 font-black uppercase text-[9px] tracking-widest px-2.5 py-1 rounded-full backdrop-blur-md">
                 CÓDIGO: {proyecto.codigo}
               </Badge>
+              {Number((proyecto as any).ventaContratada || 0) === 0 ? (
+                <Badge className="bg-amber-400 text-amber-950 border-none font-black uppercase text-[9px] tracking-widest px-2.5 py-1 rounded-full shadow-sm">
+                  PREVENTA / PRELIMINAR
+                </Badge>
+              ) : (
+                <Badge className="bg-emerald-500 text-white border-none font-black uppercase text-[9px] tracking-widest px-2.5 py-1 rounded-full shadow-sm">
+                  OFICIAL CONTRATADO
+                </Badge>
+              )}
             </div>
             
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">

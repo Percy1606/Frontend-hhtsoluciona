@@ -85,7 +85,7 @@ export default function CostosProyectoClient() {
     async function loadData() {
       try {
         setLoadingInitial(true);
-        const resProyectos: any = await api.get('/finanzas/bandeja-proyectos?todas=true');
+        const resProyectos: any = await api.get('/finanzas/bandeja-proyectos');
         
         const proys = (resProyectos || []).map((p: any) => ({
           ...p,

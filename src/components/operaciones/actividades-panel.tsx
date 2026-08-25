@@ -27,6 +27,7 @@ import {
   Package,
   FileText,
   Hammer,
+  Paperclip,
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,6 +36,7 @@ import type { Proyecto, Actividad } from "@/lib/types";
 import { ActividadForm } from "./actividad-form";
 import { ActividadesBulkModal } from "./actividades-bulk-modal";
 import { CopiarAlcanceModal } from "./copiar-alcance-modal";
+import { ActividadDocumentosModal } from "./actividad-documentos-modal";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -161,6 +163,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [isAlcanceOpen, setIsAlcanceOpen] = useState(false);
   const [editingActividad, setEditingActividad] = useState<Actividad | null>(null);
+  const [documentosActividad, setDocumentosActividad] = useState<Actividad | null>(null);
   const [progresoEditando, setProgresoEditando] = useState<Record<string, string>>({});
   const [defaultGroupForNew, setDefaultGroupForNew] = useState<string | undefined>(undefined);
 
@@ -307,8 +310,42 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
     }
   };
 
+  const isOficial = Number((proyecto as any).ventaContratada || 0) > 0;
+  const cotizacionCodigo = (proyecto as any).cotizacionOrigen?.codigo || (proyecto as any).cotizacion?.codigo;
+
   return (
     <div className="space-y-6">
+      {/* TARJETA DE ESTADO COMERCIAL EN VIVO */}
+      <div className={cn(
+        "p-4 rounded-2xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all",
+        isOficial 
+          ? "bg-emerald-50/70 border-emerald-200/80 text-emerald-950" 
+          : "bg-amber-50/70 border-amber-200/80 text-amber-950"
+      )}>
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "w-3 h-3 rounded-full animate-pulse shrink-0",
+            isOficial ? "bg-emerald-500 ring-4 ring-emerald-100" : "bg-amber-500 ring-4 ring-amber-100"
+          )} />
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Estado Comercial en Vivo:</span>
+              <Badge className={cn(
+                "border-none font-black text-[9px] uppercase px-2 py-0.5 shadow-none",
+                isOficial ? "bg-emerald-600 text-white" : "bg-amber-500 text-white"
+              )}>
+                {isOficial ? "VENTA OFICIAL CONTRATADA" : "PREVENTA / EN NEGOCIACIÓN"}
+              </Badge>
+            </div>
+            <p className="text-xs font-medium opacity-90">
+              {isOficial 
+                ? `Proyecto respaldado por Cotización Ganada ${cotizacionCodigo ? `[${cotizacionCodigo}]` : ''} - Venta: S/ ${Number((proyecto as any).ventaContratada || 0).toLocaleString()}. Activo en Finanzas.`
+                : "Trabajo preliminar / visita técnica. Cuando Comercial marque la cotización como Ganada en CRM, este proyecto pasará automáticamente a Oficial y se activará en Finanzas."}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-black flex items-center gap-2 text-primary">
           <ClipboardList className="w-5 h-5" />
@@ -396,7 +433,11 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200">
                 <SelectItem value="all" className="text-[10px] text-slate-400 uppercase tracking-tighter italic">TODOS</SelectItem>
-                {responsables.map(r => (
+                {responsables.filter(r => {
+                  const rArea = (r.area || "").toLowerCase().replace(/\s+/g, "");
+                  const valid = ["logisticayrecursos", "logísticayrecursos", "operacionesdecampo", "operaciones", "serviciostecnicos", "serviciostécnicos", "ingenieriaysupervision", "ingenieríaysupervisión", "supervision", "supervisión", "ingenieria", "ingeniería"];
+                  return valid.some(v => rArea.includes(v));
+                }).map(r => (
                   <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-bold">{r.nombre}</SelectItem>
                 ))}
               </SelectContent>
@@ -417,193 +458,42 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {filteredActividades.length === 0 ? (
           <div className="text-center py-20 bg-muted/10 rounded-2xl border border-dashed">
-            <p className="text-muted-foreground font-medium italic">No se encontraron actividades con estos filtros</p>
+            <p className="text-muted-foreground font-medium italic">No se encontraron actividades registradas para este proyecto.</p>
           </div>
         ) : (
-          Object.entries(activitiesByFolder).map(([folderName, folderActivities]) => {
-            const isCollapsed = collapsedGroups[folderName];
+          filteredActividades.map((actividad) => {
+            const respInfo = getResponsableDisplay(actividad.responsablePrincipalId);
+            const isBloqueada = actividad.checklistBloqueado || actividad.estado === "Bloqueada";
             
-            const total = folderActivities.length;
-            const completed = folderActivities.filter(a => a.estado === 'Completada' || a.estado === 'Validada').length;
-            const pending = total - completed;
-            const overdue = folderActivities.filter(a => a.estado !== 'Completada' && a.estado !== 'Validada' && getDueDateStatus(a.fechaVencimiento).isOverdue).length;
-            
-            const avgProgress = total > 0 
-              ? Math.round(folderActivities.reduce((acc, a) => acc + a.progreso, 0) / total)
-              : 0;
-
-            const pendingWithDueDate = folderActivities.filter(a => a.estado !== 'Completada' && a.estado !== 'Validada' && a.fechaVencimiento);
-            const nearestDueDate = pendingWithDueDate.length > 0
-              ? pendingWithDueDate.reduce<string | null>((nearest, a) => {
-                  if (!nearest) return a.fechaVencimiento || null;
-                  return a.fechaVencimiento && new Date(a.fechaVencimiento) < new Date(nearest) ? a.fechaVencimiento : nearest;
-                }, null)
-              : null;
-
-            const meta = groupMeta[folderName] || {
-              icon: <FolderOpen className="w-5 h-5 text-slate-400" />,
-              color: "text-slate-600",
-              bgColor: "bg-slate-50 border-slate-100"
-            };
+            // --- LÓGICA DE ALERTA ---
+            const { isOverdue, isImminent } = getDueDateStatus(actividad.fechaVencimiento);
+            const needsAttention = (isOverdue || isImminent) && actividad.estado !== "Validada" && actividad.estado !== "Completada";
 
             return (
-              <div key={folderName} className="space-y-4 bg-slate-50/10 p-2 sm:p-4 rounded-2xl border border-slate-200 shadow-sm">
-                {/* Group Header Card */}
-                <div 
-                  className={cn(
-                    "flex flex-col lg:flex-row lg:items-center justify-between p-4 cursor-pointer select-none gap-4 rounded-xl transition-all border bg-white shadow-sm hover:shadow-md hover:border-primary/20",
-                    !isCollapsed && "border-primary/15 bg-primary/[0.01]"
-                  )}
-                  onClick={() => toggleGroup(folderName)}
-                >
-                  {/* Title & Icon */}
-                  <div className="flex items-center gap-3 min-w-[200px]">
-                    <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center border shadow-sm shrink-0", meta.bgColor)}>
-                      {meta.icon}
+              <div
+                key={actividad.id}
+                className={cn(
+                  "p-5 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all",
+                  actividad.estado === "Validada" ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200",
+                  needsAttention ? "border-red-300 ring-1 ring-red-100" : "" 
+                )}
+              >
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm",
+                      actividad.estado === "Validada" ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-slate-200"
+                    )}>
+                      {actividad.estado === "Validada" ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4 text-slate-400" />}
                     </div>
                     <div>
-                      <h4 className="font-black text-xs text-slate-800 uppercase tracking-tight">
-                        {folderName}
+                      <h4 className={cn("font-bold text-slate-800 text-[11px] leading-tight", actividad.estado === "Validada" && "text-emerald-900")}>
+                        {getCleanDescription(actividad.descripcion)}
                       </h4>
-                      <p className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                        Estructura del Proyecto
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Indicators Grid */}
-                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 flex-1 max-w-2xl">
-                    {/* Total */}
-                    <div className="bg-slate-50/50 border border-slate-100 p-1.5 rounded-lg flex flex-col items-center justify-center text-center">
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider">Total</span>
-                      <span className="text-xs font-black text-slate-700">{total}</span>
-                    </div>
-                    
-                    {/* OK */}
-                    <div className="bg-emerald-50/30 border border-emerald-100/50 p-1.5 rounded-lg flex flex-col items-center justify-center text-center">
-                      <span className="text-[7.5px] font-black text-emerald-600/70 uppercase tracking-wider">OK</span>
-                      <span className="text-xs font-black text-emerald-600">{completed}</span>
-                    </div>
-                    
-                    {/* Pend. */}
-                    <div className="bg-blue-50/30 border border-blue-100/50 p-1.5 rounded-lg flex flex-col items-center justify-center text-center">
-                      <span className="text-[7.5px] font-black text-blue-600/70 uppercase tracking-wider">Pend.</span>
-                      <span className="text-xs font-black text-blue-600">{pending}</span>
-                    </div>
-
-                    {/* Venc. */}
-                    <div className={cn(
-                      "p-1.5 rounded-lg flex flex-col items-center justify-center text-center border",
-                      overdue > 0 ? "bg-red-50 border-red-100 text-red-600" : "bg-slate-50/50 border-slate-100 text-slate-400"
-                    )}>
-                      <span className={cn("text-[7.5px] font-black uppercase tracking-wider", overdue > 0 ? "text-red-600/70" : "text-slate-400")}>Venc.</span>
-                      <span className="text-xs font-black">{overdue}</span>
-                    </div>
-
-                    {/* Vence */}
-                    <div className="bg-slate-50/50 border border-slate-100 p-1.5 rounded-lg flex flex-col items-center justify-center text-center col-span-3 sm:col-span-1">
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider">Vence</span>
-                      <span className={cn(
-                        "text-[9px] font-black mt-0.5 uppercase tracking-tighter truncate max-w-full",
-                        nearestDueDate ? "text-orange-600" : "text-slate-400"
-                      )}>
-                        {nearestDueDate ? formatDate(nearestDueDate) : "—"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress & Actions */}
-                  <div className="flex items-center justify-between lg:justify-end gap-4 border-t lg:border-t-0 pt-3 lg:pt-0 border-slate-100">
-                    {/* Progress Badge */}
-                    <div className="flex flex-col items-center lg:items-end">
-                      <span className="text-[7.5px] font-black text-slate-400 uppercase tracking-wider">Avance</span>
-                      <Badge className={cn(
-                        "font-black text-[10px] px-2 py-0.5 rounded mt-0.5 shadow-none",
-                        avgProgress === 100 ? "bg-emerald-500 text-white" : "bg-primary/5 text-primary border border-primary/10"
-                      )}>
-                        {avgProgress}%
-                      </Badge>
-                    </div>
-
-                    {/* Action buttons */}
-                    <div className="flex items-center gap-1.5">
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingActividad(null);
-                          setDefaultGroupForNew(folderName);
-                          setIsFormOpen(true);
-                        }}
-                        className="h-8 text-[8px] font-black uppercase border-slate-200 hover:bg-primary/5 hover:border-primary/30 rounded-lg px-2 gap-1 shadow-none"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-primary" />
-                        Tarea
-                      </Button>
-                      <Button 
-                        size="sm" 
-                        variant="outline" 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingActividad(null);
-                          setDefaultGroupForNew(folderName);
-                          setIsBulkOpen(true);
-                        }}
-                        className="h-8 text-[8px] font-black uppercase border-slate-200 hover:bg-primary/5 hover:border-primary/30 rounded-lg px-2 gap-1 shadow-none"
-                      >
-                        <Plus className="w-3.5 h-3.5 text-primary" />
-                        Masivo
-                      </Button>
-                      
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="h-8 w-8 p-0 rounded-full text-slate-400 hover:text-primary hover:bg-primary/5 transition-transform duration-200 shrink-0"
-                        style={{ transform: isCollapsed ? 'rotate(0deg)' : 'rotate(180deg)' }}
-                      >
-                        <ChevronDown className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Folder Activities */}
-                {!isCollapsed && (
-                  <div className="space-y-4 pl-2 sm:pl-4 border-l-2 border-slate-100 mt-2">
-                    {folderActivities.map((actividad) => {
-                      const respInfo = getResponsableDisplay(actividad.responsablePrincipalId);
-                      const isBloqueada = actividad.checklistBloqueado || actividad.estado === "Bloqueada";
-                      
-                      // --- LÓGICA DE ALERTA ---
-                      const { isOverdue, isImminent } = getDueDateStatus(actividad.fechaVencimiento);
-                      const needsAttention = (isOverdue || isImminent) && actividad.estado !== "Validada" && actividad.estado !== "Completada";
-
-                      return (
-                        <div
-                          key={actividad.id}
-                          className={cn(
-                            "p-5 rounded-2xl border bg-white shadow-sm hover:shadow-md transition-all",
-                            actividad.estado === "Validada" ? "border-emerald-200 bg-emerald-50/30" : "border-slate-200",
-                            needsAttention ? "border-red-300 ring-1 ring-red-100" : "" 
-                          )}
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-3">
-                              <div className={cn(
-                                "w-8 h-8 rounded-lg flex items-center justify-center border shadow-sm",
-                                actividad.estado === "Validada" ? "bg-emerald-500 border-emerald-500 text-white" : "bg-white border-slate-200"
-                              )}>
-                                {actividad.estado === "Validada" ? <CheckCircle2 className="w-4 h-4" /> : <Clock className="w-4 h-4 text-slate-400" />}
-                              </div>
-                              <div>
-                                <h4 className={cn("font-bold text-slate-800 text-[11px] leading-tight", actividad.estado === "Validada" && "text-emerald-900")}>
-                                  {getCleanDescription(actividad.descripcion)}
-                                </h4>
-                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                   <Badge variant="outline" className={cn("text-[8px] font-black uppercase tracking-tighter px-1.5 py-0", tipoColors[actividad.tipo])}>
                                     {actividad.tipo}
                                   </Badge>
@@ -633,6 +523,17 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                               </div>
 
                               <div className="flex items-center gap-1 border-l border-slate-100 pl-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="h-7 px-2 border-slate-200 text-slate-700 hover:bg-primary/5 hover:text-primary hover:border-primary/30 rounded-lg font-black text-[9px] uppercase gap-1"
+                                  onClick={() => setDocumentosActividad(actividad)}
+                                  title="Subir o consultar documentos y fotos de esta actividad"
+                                >
+                                  <Paperclip className="w-3 h-3 text-primary" />
+                                  Adjuntos
+                                </Button>
+
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
@@ -820,8 +721,26 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                             </div>
                           </div>
 
+                          {/* Observations and Quick Attachments Section */}
+                          <div className="mt-4 pt-3 border-t border-slate-100/80 space-y-2">
+                            {actividad.observaciones ? (
+                              <div className="p-3 bg-amber-50/40 border border-amber-200/50 rounded-xl text-xs text-slate-700">
+                                <span className="text-[8px] font-black uppercase text-amber-800 tracking-wider block mb-1">
+                                  Observaciones / Notas de Campo:
+                                </span>
+                                <p className="font-medium whitespace-pre-wrap leading-relaxed text-slate-700">
+                                  {actividad.observaciones}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-[9px] text-slate-400 font-medium italic">
+                                Sin observaciones de campo registradas. (Usa "Editar" para añadir notas técnicas o hallazgos).
+                              </div>
+                            )}
+                          </div>
+
                           {/* Progress Bar */}
-                          <div className="mt-6 pt-4 border-t border-slate-100">
+                          <div className="mt-4 pt-3 border-t border-slate-100">
                             <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                               <div
                                 className={cn(
@@ -834,12 +753,7 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                           </div>
                         </div>
                       );
-                    })}
-                  </div>
-                )}
-              </div>
-            );
-          })
+                    })
         )}
       </div>
 
@@ -853,6 +767,12 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
         isOpen={isBulkOpen}
         onClose={() => setIsBulkOpen(false)}
         defaultGroup={defaultGroupForNew}
+      />
+      <ActividadDocumentosModal
+        proyectoId={proyecto.id}
+        actividad={documentosActividad}
+        isOpen={!!documentosActividad}
+        onClose={() => setDocumentosActividad(null)}
       />
       <ActividadForm
         proyectoId={proyecto.id}

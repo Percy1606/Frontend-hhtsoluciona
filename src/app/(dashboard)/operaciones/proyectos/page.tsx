@@ -786,8 +786,10 @@ export default function ProyectosPage() {
                   <Plus className="w-8 h-8 text-accent" />
                   Nuevo Proyecto Operativo
                 </DialogTitle>
-                <DialogDescription className="text-white/70 font-bold uppercase text-xs mt-2">
-                  {isPreventa ? "PROYECTO DE EVALUACIÓN PREVIA (SIN COTIZACIÓN)." : "REGISTRE UN NUEVO PROYECTO A PARTIR DE UNA COTIZACIÓN GANADA."}
+                <DialogDescription className="text-white/80 font-medium text-xs mt-2 leading-relaxed">
+                  {isPreventa 
+                    ? "PROYECTO PRELIMINAR / PREVENTA (Sin cotización vinculada. Permite ejecutar actividades y registrar gastos preliminares sin impactar la facturación de Finanzas)." 
+                    : "REGISTRE UN NUEVO PROYECTO OFICIAL A PARTIR DE UNA COTIZACIÓN GANADA."}
                 </DialogDescription>
               </div>
               <Button 
@@ -875,7 +877,11 @@ export default function ProyectosPage() {
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                  {responsables.map(r => (
+                  {responsables.filter(r => {
+                    const rArea = (r.area || "").toLowerCase().replace(/\s+/g, "");
+                    const valid = ["logisticayrecursos", "logísticayrecursos", "operacionesdecampo", "operaciones", "serviciostecnicos", "serviciostécnicos", "ingenieriaysupervision", "ingenieríaysupervisión", "supervision", "supervisión", "ingenieria", "ingeniería"];
+                    return valid.some(v => rArea.includes(v));
+                  }).map(r => (
                     <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
                   ))}
                 </SelectContent>

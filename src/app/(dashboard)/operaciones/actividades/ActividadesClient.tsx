@@ -34,6 +34,7 @@ import {
   Layers,
   ArrowRight,
   ListTodo,
+  Paperclip,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ import { useCRMStore } from "@/store/crm-store";
 import type { Actividad, Proyecto } from "@/lib/types";
 import { ActividadForm } from "@/components/operaciones/actividad-form";
 import { ActividadesBulkModal } from "@/components/operaciones/actividades-bulk-modal";
+import { ActividadDocumentosModal } from "@/components/operaciones/actividad-documentos-modal";
 import { toast } from "sonner";
 
 const StatsCard = ({ label, value, icon, containerBg, iconBg, iconColor, titleColor, textColor }: any) => (
@@ -233,6 +235,7 @@ export default function ActividadesClient() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBulkOpen, setIsBulkOpen] = useState(false);
   const [editingActividad, setEditingActividad] = useState<Actividad | null>(null);
+  const [selectedDocActividad, setSelectedDocActividad] = useState<Actividad | null>(null);
   const [defaultProyectoId, setDefaultProyectoId] = useState<string | null>(null);
   const [defaultProyectoForBulk, setDefaultProyectoForBulk] = useState<Proyecto | null>(null);
 
@@ -269,19 +272,41 @@ export default function ActividadesClient() {
     });
   }, [actividades, filtroEstado, filtroResponsable, searchQuery]);
 
+  const [highlightedActividadId, setHighlightedActividadId] = useState<string | null>(null);
+
   useEffect(() => {
     const editId = searchParams.get('edit');
+    const actId = searchParams.get('actividadId');
+    const projId = searchParams.get('proyectoId');
+
+    if (projId) {
+      setExpanded(prev => new Set(prev).add(projId));
+    }
+
+    if (actId) {
+      setHighlightedActividadId(actId);
+      setTimeout(() => {
+        const el = document.getElementById(`actividad-row-${actId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 500);
+
+      // Desvanecer y remover el resaltado automáticamente después de 5 segundos
+      const timer = setTimeout(() => {
+        setHighlightedActividadId(null);
+      }, 5000);
+
+      return () => clearTimeout(timer);
+    }
+
     if (editId && actividades.length > 0) {
       const target = actividades.find(a => a.id === editId);
       if (target) {
         setEditingActividad(target);
         setIsFormOpen(true);
         if (target.proyectoId) {
-          setExpanded(prev => {
-            const n = new Set(prev);
-            n.add(target.proyectoId);
-            return n;
-          });
+          setExpanded(prev => new Set(prev).add(target.proyectoId));
         }
         window.history.replaceState({}, '', window.location.pathname);
       }
@@ -414,28 +439,6 @@ export default function ActividadesClient() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 w-full md:w-auto mt-2 md:mt-0">
-          {groupedByProject.length > 0 && (
-            <>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={expandAllProjects}
-                className="h-8 px-2 font-semibold uppercase text-[9px] tracking-wide text-slate-500 hover:text-primary"
-                title="Expandir todo"
-              >
-                <Layers className="w-3 h-3 mr-1" /> Expandir
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={collapseAllProjects}
-                className="h-8 px-2 font-semibold uppercase text-[9px] tracking-wide text-slate-500 hover:text-primary"
-                title="Contraer todo"
-              >
-                <Layers className="w-3 h-3 mr-1" /> Contraer
-              </Button>
-            </>
-          )}
           <Button
             variant="outline"
             onClick={handleForceRefresh}
@@ -526,7 +529,11 @@ export default function ActividadesClient() {
             </SelectTrigger>
             <SelectContent className="bg-white border-slate-200">
               <SelectItem value="all" className="text-[10px] text-slate-400 italic">Todos los responsables</SelectItem>
-              {responsables.map(r => (
+              {responsables.filter(r => {
+                const rArea = (r.area || "").toLowerCase().replace(/\s+/g, "");
+                const valid = ["logisticayrecursos", "logísticayrecursos", "operacionesdecampo", "operaciones", "serviciostecnicos", "serviciostécnicos", "ingenieriaysupervision", "ingenieríaysupervisión", "supervision", "supervisión", "ingenieria", "ingeniería"];
+                return valid.some(v => rArea.includes(v));
+              }).map(r => (
                 <SelectItem key={r.id} value={r.id} className="uppercase text-[10px] font-semibold">{r.nombre}</SelectItem>
               ))}
             </SelectContent>
@@ -817,12 +824,19 @@ export default function ActividadesClient() {
                               actividad.estado !== "Validada" &&
                               actividad.estado !== "Completada";
 
+                            const isSelected = highlightedActividadId === actividad.id;
+
                             return (
                               <TableRow
+                                id={`actividad-row-${actividad.id}`}
                                 key={actividad.id}
                                 className={cn(
-                                  "hover:bg-slate-50/50 transition-colors border-b border-slate-300 border-dashed",
-                                  needsAttention ? "bg-red-50/20" : "",
+                                  "transition-all border-b border-slate-300 border-dashed",
+                                  isSelected
+                                    ? "bg-amber-100/70 ring-2 ring-amber-400 font-bold"
+                                    : needsAttention
+                                    ? "bg-red-50/20 hover:bg-slate-50/50"
+                                    : "hover:bg-slate-50/50",
                                 )}
                               >
                                 <TableCell className="pl-4 py-2 font-semibold text-[9px] text-slate-400 tabular-nums">
@@ -893,7 +907,16 @@ export default function ActividadesClient() {
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right pr-4 py-2">
-                                  <div className="flex items-center justify-end gap-0">
+                                  <div className="flex items-center justify-end gap-1">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 text-slate-600 hover:text-primary hover:bg-primary/5 rounded"
+                                      onClick={() => setSelectedDocActividad(actividad)}
+                                      title="Adjuntar o ver documentos de esta actividad"
+                                    >
+                                      <Paperclip className="w-3.5 h-3.5" />
+                                    </Button>
                                     <Button
                                       variant="ghost"
                                       size="icon"
@@ -946,6 +969,14 @@ export default function ActividadesClient() {
             setDefaultProyectoForBulk(null);
             fetchActividades(1, 20);
           }}
+        />
+      )}
+      {selectedDocActividad && (
+        <ActividadDocumentosModal
+          proyectoId={selectedDocActividad.proyectoId}
+          actividad={selectedDocActividad}
+          isOpen={!!selectedDocActividad}
+          onClose={() => setSelectedDocActividad(null)}
         />
       )}
       {isFormOpen && (
