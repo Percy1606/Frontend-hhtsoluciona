@@ -44,13 +44,39 @@ export function ActividadDocumentosModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [docNombre, setDocNombre] = useState("");
   const [isUploading, setIsUploading] = useState(false);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [documentosLocales, setDocumentosLocales] = useState<any[]>([]);
+
+  const loadDocuments = async () => {
+    if (!proyectoId) return;
+    setIsLoadingDocs(true);
+    try {
+      // Consultar directamente el proyecto con sus documentos
+      const proj = await api.get(`/operaciones/proyectos/${proyectoId}`);
+      if (proj && Array.isArray(proj.documentos)) {
+        setDocumentosLocales(proj.documentos);
+      }
+    } catch (e) {
+      console.error("Error al cargar documentos:", e);
+    } finally {
+      setIsLoadingDocs(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isOpen && proyectoId) {
+      loadDocuments();
+    }
+  }, [isOpen, proyectoId]);
 
   if (!actividad) return null;
 
   const currentProject = proyectos.find((p) => p.id === proyectoId);
-  const actividadDocs = (currentProject?.documentos || []).filter(
+  const allDocs = documentosLocales.length > 0 ? documentosLocales : (currentProject?.documentos || []);
+  const actividadDocs = allDocs.filter(
     (d: any) =>
       d.observaciones?.includes(`[Actividad: ${actividad.id}]`) ||
+      d.observaciones?.includes(actividad.id) ||
       d.nombre?.toLowerCase().includes(`act-${actividad.id.slice(0, 4)}`)
   );
 
@@ -95,6 +121,7 @@ export function ActividadDocumentosModal({
       toast.success("Documento adjuntado exitosamente a la actividad");
       setSelectedFile(null);
       setDocNombre("");
+      await loadDocuments();
       await fetchProyectos();
     } catch (error: any) {
       console.error("Error al subir documento de actividad:", error);
@@ -111,6 +138,7 @@ export function ActividadDocumentosModal({
       try {
         await deleteDocumento(proyectoId, docId);
         toast.success("Documento eliminado");
+        await loadDocuments();
         await fetchProyectos();
       } catch (error) {
         toast.error("Error al eliminar");
@@ -196,7 +224,14 @@ export function ActividadDocumentosModal({
               </span>
             </div>
 
-            {actividadDocs.length === 0 ? (
+            {isLoadingDocs ? (
+              <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-200">
+                <Loader2 className="w-6 h-6 text-primary animate-spin mx-auto mb-2" />
+                <p className="text-xs font-bold text-slate-500 uppercase">
+                  Cargando documentos...
+                </p>
+              </div>
+            ) : actividadDocs.length === 0 ? (
               <div className="p-8 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
                 <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
                 <p className="text-xs font-bold text-slate-500 uppercase">
