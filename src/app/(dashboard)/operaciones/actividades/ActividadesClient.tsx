@@ -347,6 +347,8 @@ export default function ActividadesClient() {
       proyectoId: string;
       codigo: string;
       nombre: string;
+      clienteNombre: string;
+      clientId?: string;
       actividades: Actividad[];
     }>();
     // Usamos filteredActividades en lugar de actividades
@@ -355,11 +357,19 @@ export default function ActividadesClient() {
       const existing = map.get(key);
       if (existing) {
         existing.actividades.push(act);
+        if (!existing.clienteNombre && (act as any).clienteNombre) {
+          existing.clienteNombre = (act as any).clienteNombre;
+        }
+        if (!existing.clientId && (act as any).clientId) {
+          existing.clientId = (act as any).clientId;
+        }
       } else {
         map.set(key, {
           proyectoId: act.proyectoId || "SIN_PROYECTO",
           codigo: act.proyectoCodigo || "—",
           nombre: act.proyectoNombre || "PROYECTO SIN NOMBRE",
+          clienteNombre: (act as any).clienteNombre || (act as any).proyecto?.cliente?.empresa || "",
+          clientId: (act as any).clientId || (act as any).proyecto?.clientId,
           actividades: [act],
         });
       }
@@ -647,11 +657,20 @@ export default function ActividadesClient() {
                         {grupo.nombre}
                       </h2>
                     </div>
-                    {proyectoFull?.clientId && (
-                      <div className="text-[9px] font-black tracking-widest uppercase text-amber-300 truncate" title={(proyectoFull as any).cliente?.empresa || (proyectoFull as any).cliente?.nombre || crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}>
-                        {(proyectoFull as any).cliente?.empresa || (proyectoFull as any).cliente?.nombre || crmClients.find(c => c.id === proyectoFull.clientId)?.empresa || "CLIENTE EXTERNO"}
-                      </div>
-                    )}
+                    {/* Nombre del Cliente / Empresa */}
+                    {(() => {
+                      const clientName = grupo.clienteNombre || 
+                                         (proyectoFull as any)?.cliente?.empresa || 
+                                         (proyectoFull as any)?.cliente?.nombre || 
+                                         (proyectoFull?.clientId ? crmClients.find(c => c.id === proyectoFull.clientId)?.empresa : "") ||
+                                         (grupo.clientId ? crmClients.find(c => c.id === grupo.clientId)?.empresa : "");
+                      if (!clientName) return null;
+                      return (
+                        <div className="text-[9px] font-black tracking-widest uppercase text-amber-300 truncate" title={clientName}>
+                          {clientName}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   {/* Semáforo + Estado */}

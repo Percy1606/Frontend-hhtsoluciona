@@ -119,22 +119,28 @@ export default function BandejaFinanzas() {
       };
     }
 
-    // Si ya existe un proyecto para esta misma cotización con Orden de Servicio, no duplicar la línea
+    // Deduplicar si comparten la misma cotización O el mismo nombre de proyecto en el cliente
     const existingIndex = acc[p.cliente.id].proyectos.findIndex((existing) => {
-      if (p.cotizacionOrigen?.id && existing.cotizacionOrigen?.id === p.cotizacionOrigen.id) {
+      // 1. Coincidencia por Cotización
+      if (p.cotizacionOrigen?.id && existing.cotizacionOrigen?.id && p.cotizacionOrigen.id === existing.cotizacionOrigen.id) {
+        return true;
+      }
+      // 2. Coincidencia por Código de Cotización o Nombre Idéntico de Servicio
+      const pCleanName = (p.nombre || "").trim().toLowerCase().replace(/^proyecto:\s*/i, '');
+      const existingCleanName = (existing.nombre || "").trim().toLowerCase().replace(/^proyecto:\s*/i, '');
+      if (pCleanName.length > 5 && pCleanName === existingCleanName) {
         return true;
       }
       return false;
     });
 
     if (existingIndex !== -1) {
-      // Priorizar el que tenga Orden de Servicio oficial
       const existing = acc[p.cliente.id].proyectos[existingIndex];
       const pHasOs = !!p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo;
       const existingHasOs = !!existing.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo;
 
+      // Si el elemento nuevo tiene OS oficial y el anterior no, reemplazamos por el oficial
       if (pHasOs && !existingHasOs) {
-        // Reemplazar la línea sin OS por la oficial con OS
         acc[p.cliente.id].totalVenta -= Number(existing.ventaContratada || 0);
         acc[p.cliente.id].totalAdelantos -= existing.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);
         acc[p.cliente.id].totalPptoEgresos -= Number(existing.costoPresupuestado || 0);
@@ -144,6 +150,7 @@ export default function BandejaFinanzas() {
         acc[p.cliente.id].totalAdelantos += p.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);
         acc[p.cliente.id].totalPptoEgresos += Number(p.costoPresupuestado || 0);
       }
+      // Si el existente ya tenía la OS y este no, simplemente ignoramos el duplicado
       return acc;
     }
 

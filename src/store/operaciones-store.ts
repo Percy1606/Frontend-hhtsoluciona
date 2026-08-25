@@ -466,7 +466,10 @@ export const useOperacionesStore = create<OperacionesState>()(
                 prioridad: mapPrioridadToFrontend(a.prioridad),
                 estado: mapEstadoActividadToFrontend(a.estado),
                 proyectoCodigo: a.proyecto?.codigo || 'N/A',
-                proyectoNombre: a.proyecto?.nombre || 'PROYECTO SIN NOMBRE'
+                proyectoNombre: a.proyecto?.nombre || 'PROYECTO SIN NOMBRE',
+                clienteNombre: a.proyecto?.cliente?.empresa || a.cliente?.empresa || a.clienteNombre || '',
+                cliente: a.proyecto?.cliente || a.cliente || null,
+                clientId: a.proyecto?.clientId || a.clientId || null,
             })), 
             totalActividades: total,
             actividadPage: page,
