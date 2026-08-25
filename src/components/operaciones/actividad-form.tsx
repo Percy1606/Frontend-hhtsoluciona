@@ -61,6 +61,7 @@ const actividadSchema = z.object({
   orden: z.number(),
   progreso: z.number().min(0).max(100).optional(),
   observaciones: z.string().optional(),
+  seguimientoOperativo: z.string().optional(),
 }).refine((data) => {
   if (data.fechaInicio && data.fechaVencimiento) {
     return new Date(data.fechaVencimiento) >= new Date(data.fechaInicio);
@@ -170,6 +171,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
       orden: 0,
       progreso: 0,
       observaciones: "",
+      seguimientoOperativo: "",
     },
   });
 
@@ -195,6 +197,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         orden: actividad.orden || 0,
         progreso: actividad.progreso ?? 0,
         observaciones: actividad.observaciones || "",
+        seguimientoOperativo: (actividad as any).seguimientoOperativo || "",
       });
     } else {
       form.reset({
@@ -212,6 +215,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
         orden: 0,
         progreso: 0,
         observaciones: "",
+        seguimientoOperativo: "",
       });
     }
   }, [actividad, proyectoId, form, isOpen]);
@@ -567,7 +571,75 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                 </FormItem>
               )}
             />
+
+            {/* PERSONAL DE APOYO (MÚLTIPLE) */}
+            <FormField
+              control={form.control}
+              name="responsablesApoyo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Personal de Apoyo (Opcional)</FormLabel>
+                  <div className="flex flex-wrap gap-1.5 p-2 bg-slate-50/50 border border-slate-200 rounded-xl min-h-[44px] items-center">
+                    {filteredResponsables
+                      .filter(r => r.id !== form.watch("responsablePrincipalId"))
+                      .map((r) => {
+                        const isSelected = (field.value || []).includes(r.id);
+                        return (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => {
+                              const current = field.value || [];
+                              if (isSelected) {
+                                field.onChange(current.filter(id => id !== r.id));
+                              } else {
+                                field.onChange([...current, r.id]);
+                              }
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase transition-all flex items-center gap-1.5 border",
+                              isSelected 
+                                ? "bg-primary text-white border-primary shadow-sm" 
+                                : "bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-100/60"
+                            )}
+                          >
+                            <span>{r.nombre}</span>
+                            {isSelected && <Check className="w-3 h-3" />}
+                          </button>
+                        );
+                      })}
+                  </div>
+                  <FormMessage className="text-[10px] font-black uppercase" />
+                </FormItem>
+              )}
+            />
+            {/* FILA: PESO (PONDERACIÓN) Y % PROGRESO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="ponderacion"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Peso / Ponderación %</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input
+                          type="number"
+                          min={0}
+                          placeholder="1"
+                          {...field}
+                          value={field.value ?? 1}
+                          onChange={(e) => field.onChange(Number(e.target.value) || 0)}
+                          className="h-10 border-slate-200 font-bold pr-8"
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">%</span>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="progreso"
@@ -592,21 +664,45 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
                   </FormItem>
                 )}
               />
-
-              <FormField
-                control={form.control}
-                name="observaciones"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Observaciones (Opcional)</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Detalles adicionales, requisitos especiales o notas para el equipo..." {...field} className="min-h-[100px] border-slate-200 font-medium bg-slate-50/30" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
+
+            {/* ENTREGABLE REQUERIDO */}
+            <FormField
+              control={form.control}
+              name="seguimientoOperativo"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Entregable Requerido (Opcional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej: Informe Técnico en PDF, Protocolo de Pruebas, Certificado de Calibración..." 
+                      {...field} 
+                      className="h-10 border-slate-200 font-medium bg-slate-50/30" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* DESCRIPCIÓN DETALLADA / OBSERVACIONES */}
+            <FormField
+              control={form.control}
+              name="observaciones"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-black uppercase text-primary tracking-widest">Descripción Detallada / Observaciones</FormLabel>
+                  <FormControl>
+                    <Textarea 
+                      placeholder="Detalles adicionales, requisitos especiales, alcance detallado o notas para el equipo de campo..." 
+                      {...field} 
+                      className="min-h-[90px] border-slate-200 font-medium bg-slate-50/30" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <DialogFooter className="pt-4 border-t border-slate-100 flex justify-end gap-3">
               <Button type="button" variant="outline" onClick={onClose} disabled={loading} className="h-12 px-8 font-black uppercase text-xs tracking-widest">

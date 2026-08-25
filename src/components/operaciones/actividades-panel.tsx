@@ -504,6 +504,21 @@ export function ActividadesPanel({ proyecto }: ActividadesPanelProps) {
                                     <Calendar className="w-2.5 h-2.5" />
                                     {formatDate(actividad.fechaInicio)}
                                   </span>
+                                  {(actividad as any).seguimientoOperativo && (
+                                    <span className="text-[10px] font-bold bg-amber-50 text-amber-800 px-2 py-0.5 rounded-md border border-amber-200">
+                                      Entregable: {(actividad as any).seguimientoOperativo}
+                                    </span>
+                                  )}
+                                  {actividad.responsablesApoyo && actividad.responsablesApoyo.length > 0 && (
+                                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md truncate max-w-[320px]" title={actividad.responsablesApoyo.map((id: string) => getResponsableDisplay(id).nombre).join(", ")}>
+                                      Apoyo: {actividad.responsablesApoyo.map((id: string) => getResponsableDisplay(id).nombre).join(", ")}
+                                    </span>
+                                  )}
+                                  {actividad.ponderacion !== undefined && actividad.ponderacion !== null && (
+                                    <span className="text-[10px] font-bold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-md">
+                                      Peso: {actividad.ponderacion}%
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>

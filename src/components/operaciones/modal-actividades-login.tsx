@@ -74,11 +74,12 @@ export function ModalActividadesPendientesLogin() {
     }
   }, [user, isAuthorizedArea, fetchActividades, fetchResponsables, fetchProyectos]);
 
-  // 2. Filtrar actividades pendientes del usuario
+  // 2. Filtrar actividades pendientes del usuario (o todas las del sistema si es ADMIN/Gerencia)
   const misActividades = useMemo(() => {
     if (!user || !isAuthorizedArea || !actividades || actividades.length === 0) return [];
 
     const userRespId = (user as any)?.responsableId || (user as any)?.responsable?.id;
+    const isAdmin = user.rol === "ADMIN" || user.rol === "GERENCIA";
 
     const myResp = responsables.find(
       (r) =>
@@ -91,16 +92,28 @@ export function ModalActividadesPendientesLogin() {
     today.setHours(0, 0, 0, 0);
 
     const items = actividades.filter((act) => {
-      const isMine =
-        (userRespId && act.responsablePrincipalId === userRespId) ||
+      const isPending = act.estado !== "Completada" && act.estado !== "Validada";
+      if (!isPending) return false;
+
+      if (isAdmin) {
+        // Admin ve todas las actividades pendientes y vencidas del sistema
+        return true;
+      }
+
+      const isPrincipal = (userRespId && act.responsablePrincipalId === userRespId) ||
         (myResp && act.responsablePrincipalId === myResp.id);
 
-      const isPending = act.estado !== "Completada" && act.estado !== "Validada";
+      const isApoyo = (act.responsablesApoyo || []).some((id: string) => 
+        id === userRespId || (myResp && id === myResp.id)
+      );
 
-      return isMine && isPending;
+      return isPrincipal || isApoyo;
     });
 
-    // Ordenar por urgencia (vencidas primero, luego más próximas a vencer)
+    // Ordenar por urgencia:
+    // 1. Vencidas (fecha más antigua primero)
+    // 2. Por vencer / en curso (más cercanas a vencer primero)
+    // 3. Sin fecha al final
     return items.sort((a, b) => {
       if (!a.fechaVencimiento && !b.fechaVencimiento) return 0;
       if (!a.fechaVencimiento) return 1;

@@ -825,7 +825,8 @@ export default function ActividadesClient() {
                         <TableHeader className="bg-slate-50/60">
                           <TableRow>
                             <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 pl-4 w-8">#</TableHead>
-                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2">Actividad</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 min-w-[220px]">Actividad</TableHead>
+                            <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-52 max-w-[210px]">Entregable</TableHead>
                             <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-20">Tipo</TableHead>
                             <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-20">Prioridad</TableHead>
                             <TableHead className="font-bold text-primary uppercase text-[9px] tracking-wide py-2 w-32">Responsable</TableHead>
@@ -864,12 +865,36 @@ export default function ActividadesClient() {
                                 <TableCell className="py-2">
                                   <p
                                     className={cn(
-                                      "font-semibold text-[11px] leading-snug max-w-[420px] line-clamp-1",
+                                      "font-bold text-[11px] leading-snug break-words",
                                       (actividad.estado === "Completada" || actividad.estado === "Validada") ? "text-slate-400 line-through" : "text-slate-800",
                                     )}
                                   >
                                     {actividad.descripcion}
                                   </p>
+                                  {/* Subtítulos: Apoyo y Peso */}
+                                  <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                    {actividad.responsablesApoyo && actividad.responsablesApoyo.length > 0 && (
+                                      <span className="text-[10px] font-bold text-slate-700 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md truncate max-w-[280px]" title={actividad.responsablesApoyo.map(id => getResponsableName(id)).join(", ")}>
+                                        Apoyo: {actividad.responsablesApoyo.map(id => getResponsableName(id)).join(", ")}
+                                      </span>
+                                    )}
+                                    {actividad.ponderacion !== undefined && actividad.ponderacion !== null && (
+                                      <span className="text-[10px] font-bold text-slate-700 bg-slate-100/90 border border-slate-200 px-2 py-0.5 rounded-md">
+                                        Peso: {actividad.ponderacion}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="py-2 w-52 max-w-[210px] align-top">
+                                  {(actividad as any).seguimientoOperativo ? (
+                                    <div className="p-1.5 bg-amber-50/90 border border-amber-200/90 rounded-md">
+                                      <p className="text-[10px] font-bold text-amber-900 leading-snug break-words whitespace-normal">
+                                        {(actividad as any).seguimientoOperativo}
+                                      </p>
+                                    </div>
+                                  ) : (
+                                    <span className="text-[10px] text-slate-300 font-medium italic">—</span>
+                                  )}
                                 </TableCell>
                                 <TableCell className="py-2">
                                   <Badge variant="outline" className={cn("text-[8px] font-semibold uppercase tracking-tight px-1.5 py-0", tipoColors[actividad.tipo] || "bg-slate-100 text-slate-700")}>
