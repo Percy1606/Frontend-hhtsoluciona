@@ -107,7 +107,7 @@ export default function BandejaFinanzas() {
     );
   });
 
-  // Agrupar por Cliente
+  // Agrupar por Cliente y Deduplicar proyectos que compartan la misma cotización/OS
   const groupedProyectos = filteredProyectos.reduce((acc, p) => {
     if (!acc[p.cliente.id]) {
       acc[p.cliente.id] = {
@@ -118,6 +118,35 @@ export default function BandejaFinanzas() {
         totalPptoEgresos: 0
       };
     }
+
+    // Si ya existe un proyecto para esta misma cotización con Orden de Servicio, no duplicar la línea
+    const existingIndex = acc[p.cliente.id].proyectos.findIndex((existing) => {
+      if (p.cotizacionOrigen?.id && existing.cotizacionOrigen?.id === p.cotizacionOrigen.id) {
+        return true;
+      }
+      return false;
+    });
+
+    if (existingIndex !== -1) {
+      // Priorizar el que tenga Orden de Servicio oficial
+      const existing = acc[p.cliente.id].proyectos[existingIndex];
+      const pHasOs = !!p.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo;
+      const existingHasOs = !!existing.cotizacionOrigen?.ordenesDeServicio?.[0]?.codigo;
+
+      if (pHasOs && !existingHasOs) {
+        // Reemplazar la línea sin OS por la oficial con OS
+        acc[p.cliente.id].totalVenta -= Number(existing.ventaContratada || 0);
+        acc[p.cliente.id].totalAdelantos -= existing.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);
+        acc[p.cliente.id].totalPptoEgresos -= Number(existing.costoPresupuestado || 0);
+
+        acc[p.cliente.id].proyectos[existingIndex] = p;
+        acc[p.cliente.id].totalVenta += Number(p.ventaContratada || 0);
+        acc[p.cliente.id].totalAdelantos += p.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);
+        acc[p.cliente.id].totalPptoEgresos += Number(p.costoPresupuestado || 0);
+      }
+      return acc;
+    }
+
     acc[p.cliente.id].proyectos.push(p);
     acc[p.cliente.id].totalVenta += Number(p.ventaContratada || 0);
     acc[p.cliente.id].totalAdelantos += p.adelantos.reduce((sum, a) => sum + Number(a.monto), 0);

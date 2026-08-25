@@ -324,18 +324,27 @@ export default function ProyectosPage() {
 
     if (!isPreventa) {
       const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
-      if (clientQuotes.length > 0) {
-        // Usar la cotización seleccionada en el formulario si existe, o requerir su selección
+      const availableQuotes = clientQuotes.filter(q => {
+        const alreadyAssigned = proyectos.some(p => 
+          (p as any).cotizacionId === q.id || 
+          (p as any).cotizacion?.id === q.id || 
+          (p as any).cotizacionOrigen?.id === q.id ||
+          (p as any).ordenesDeServicio?.some((os: any) => os.cotizacionId === q.id)
+        );
+        return !alreadyAssigned;
+      });
+
+      if (availableQuotes.length > 0) {
         if (newProject.cotizacionId) {
           cotizacionIdFinal = newProject.cotizacionId;
-        } else if (clientQuotes.length === 1) {
-          cotizacionIdFinal = clientQuotes[0].id;
+        } else if (availableQuotes.length === 1) {
+          cotizacionIdFinal = availableQuotes[0].id;
         } else {
-          showError("Seleccione Cotización", "El cliente posee múltiples cotizaciones/servicios. Seleccione la cotización correspondiente.");
+          showError("Seleccione Cotización", "El cliente posee múltiples cotizaciones disponibles. Seleccione la cotización correspondiente.");
           return;
         }
       } else {
-        showError("Cotización requerida", "El cliente no tiene cotizaciones registradas. Si es un trabajo previo sin cotización, active el 'Modo Preventa'.");
+        showError("Cotización ya asignada", "Todas las cotizaciones de este cliente ya tienen una Orden de Servicio / Proyecto asignado. Si es un trabajo nuevo, active 'Modo Preventa'.");
         return;
       }
     }
@@ -660,6 +669,11 @@ export default function ProyectosPage() {
                           </Badge>
                         )}
                       </div>
+                      {(proyecto as any).ordenesDeServicio?.[0]?.codigo && (proyecto as any).ordenesDeServicio[0].codigo !== proyecto.codigo && (
+                        <div className="text-[9.5px] font-bold text-slate-400 uppercase mt-0.5 tracking-tight">
+                          {proyecto.codigo}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-[320px] whitespace-normal break-words">
                       <div className="flex flex-col">
@@ -818,25 +832,53 @@ export default function ProyectosPage() {
               />
             </div>
 
-            {!isPreventa && newProject.clientId && (
-              <div className="space-y-2 col-span-2">
-                <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cotización / Servicio Origen</Label>
-                <Select value={newProject.cotizacionId || ""} onValueChange={(val) => setNewProject({ ...newProject, cotizacionId: val || "" })}>
-                  <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
-                    <SelectValue placeholder="SELECCIONAR COTIZACIÓN DE ORIGEN">
-                      {newProject.cotizacionId ? (quotes.find(q => q.id === newProject.cotizacionId)?.codigo + " - " + ((quotes.find(q => q.id === newProject.cotizacionId) as any)?.servicio || (quotes.find(q => q.id === newProject.cotizacionId) as any)?.nombre || 'COTIZACIÓN')) : "SELECCIONAR COTIZACIÓN DE ORIGEN"}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent className="bg-white border-slate-200">
-                    {quotes.filter(q => q.clientId === newProject.clientId).map(q => (
-                      <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
-                        {q.codigo} — {(q as any).servicio || (q as any).nombre || 'Cotización'} (S/ {Number(q.monto || 0).toLocaleString()})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            {!isPreventa && newProject.clientId && (() => {
+              const clientQuotes = quotes.filter(q => q.clientId === newProject.clientId);
+              // Filtrar cotizaciones que ya tengan un proyecto creado
+              const availableQuotes = clientQuotes.filter(q => {
+                const alreadyAssigned = proyectos.some(p => 
+                  (p as any).cotizacionId === q.id || 
+                  (p as any).cotizacion?.id === q.id || 
+                  (p as any).cotizacionOrigen?.id === q.id ||
+                  (p as any).ordenesDeServicio?.some((os: any) => os.cotizacionId === q.id)
+                );
+                return !alreadyAssigned;
+              });
+
+              return (
+                <div className="space-y-2 col-span-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cotización / Servicio Origen</Label>
+                    {availableQuotes.length === 0 && clientQuotes.length > 0 && (
+                      <span className="text-[9px] font-bold text-amber-600 uppercase">Todas las cotizaciones ya tienen proyecto asignado</span>
+                    )}
+                  </div>
+                  <Select 
+                    value={newProject.cotizacionId || ""} 
+                    onValueChange={(val) => setNewProject({ ...newProject, cotizacionId: val || "" })}
+                    disabled={availableQuotes.length === 0}
+                  >
+                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
+                      <SelectValue placeholder={availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN"}>
+                        {newProject.cotizacionId ? (quotes.find(q => q.id === newProject.cotizacionId)?.codigo + " - " + ((quotes.find(q => q.id === newProject.cotizacionId) as any)?.servicio || (quotes.find(q => q.id === newProject.cotizacionId) as any)?.nombre || 'COTIZACIÓN')) : (availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN")}
+                      </SelectValue>
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-slate-200">
+                      {availableQuotes.map(q => (
+                        <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
+                          {q.codigo} — {(q as any).servicio || (q as any).nombre || 'Cotización'} (S/ {Number(q.monto || 0).toLocaleString()})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {availableQuotes.length === 0 && clientQuotes.length > 0 && (
+                    <p className="text-[10px] font-semibold text-slate-500 italic ml-1">
+                      Si este es un trabajo directo o una preventa adicional, activa el botón <strong>"✔ MODO PREVENTA"</strong> arriba.
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="space-y-2 col-span-2">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
