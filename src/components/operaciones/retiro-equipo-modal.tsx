@@ -136,8 +136,8 @@ export function RetiroEquipoModal() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Proyecto Destino</label>
             <Select value={proyectoId} onValueChange={(val) => setProyectoId(val || "")}>
-              <SelectTrigger className="h-11 w-full border-slate-200 rounded-xl font-bold bg-white text-xs">
-                <SelectValue placeholder="SELECCIONE EL PROYECTO">
+              <SelectTrigger className="h-11 w-full max-w-full min-w-0 border-slate-200 rounded-xl font-bold bg-white text-xs overflow-hidden">
+                <SelectValue placeholder="SELECCIONE EL PROYECTO" className="truncate min-w-0 max-w-full block">
                   {proyectoId ? (() => {
                     const p = proyectos.find(proj => proj.id === proyectoId);
                     if (!p) return "SELECCIONE EL PROYECTO";

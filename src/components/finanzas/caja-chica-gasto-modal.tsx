@@ -217,7 +217,7 @@ export function CajaChicaGastoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md bg-white p-6 rounded-2xl border border-slate-200 shadow-2xl">
+      <DialogContent className="max-w-lg w-full min-w-0 overflow-hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-2xl">
         <DialogHeader>
           <div className="flex items-center gap-2">
             <div className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
@@ -341,28 +341,28 @@ export function CajaChicaGastoModal({
                           role="combobox"
                           aria-expanded={openProjectCombobox}
                           className={cn(
-                            "w-full justify-between h-11 px-3 border rounded-xl text-left font-bold transition-all bg-white",
+                            "w-full max-w-full min-w-0 justify-between h-11 px-3 border rounded-xl text-left font-bold transition-all bg-white overflow-hidden",
                             field.value && field.value !== "none"
                               ? "border-primary/40 bg-primary/5 text-primary"
                               : "border-slate-200 text-slate-700"
                           )}
                         >
-                          <div className="flex items-center gap-2 truncate min-w-0">
+                          <div className="flex items-center gap-2 truncate min-w-0 max-w-[calc(100%-20px)] flex-1 overflow-hidden">
                             {field.value && field.value !== "none" && selectedProjectObj ? (() => {
                               const osCodigo = (selectedProjectObj as any).ordenesDeServicio?.[0]?.codigo || selectedProjectObj.codigo || "PROY";
                               const clienteEmpresa = (selectedProjectObj as any).cliente?.empresa || (selectedProjectObj as any).cliente?.nombre || (selectedProjectObj as any).cliente?.razonSocial || (selectedProjectObj as any).clienteNombre || "";
                               return (
-                                <div className="flex items-center gap-2 truncate min-w-0">
+                                <div className="flex items-center gap-2 truncate min-w-0 max-w-full overflow-hidden">
                                   <span className="font-black text-primary text-[11px] shrink-0 px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
                                     {osCodigo}
                                   </span>
-                                  <span className="text-xs text-slate-800 truncate font-bold">
+                                  <span className="text-xs text-slate-800 truncate font-bold min-w-0 max-w-full">
                                     {selectedProjectObj.nombre} {clienteEmpresa ? `(${clienteEmpresa})` : ''}
                                   </span>
                                 </div>
                               );
                             })() : (
-                              <span className="text-xs font-bold text-slate-500">
+                              <span className="text-xs font-bold text-slate-500 truncate min-w-0">
                                 [GASTO GENERAL] No pertenece a ningún proyecto
                               </span>
                             )}
