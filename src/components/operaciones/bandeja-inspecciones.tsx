@@ -521,13 +521,13 @@ export default function BandejaInspecciones() {
 
       {/* Header Normalizado */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-primary/10 p-3 rounded-2xl border border-primary/5">
-            <ClipboardList className="w-6 h-6 text-primary" />
+        <div className="flex items-center gap-3">
+          <div className="bg-primary/10 p-2.5 rounded-xl border border-primary/5 shrink-0">
+            <ClipboardList className="w-5 h-5 text-primary" />
           </div>
           <div>
-              <h1 className="text-2xl font-black text-primary tracking-tight uppercase leading-none">Bandeja Técnica</h1>
-              <p className="text-[10px] text-muted-foreground mt-1.5 font-bold uppercase tracking-widest opacity-60">
+              <h1 className="text-[15px] font-black text-primary tracking-tight uppercase leading-none">Bandeja Técnica</h1>
+              <p className="text-[9.5px] text-muted-foreground mt-1 font-bold uppercase tracking-widest opacity-60">
                   Control Operativo de Inspecciones en Campo
               </p>
           </div>

@@ -147,22 +147,25 @@ export function RetiroEquipoModal() {
                   })() : "SELECCIONE EL PROYECTO"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent className="max-h-72 bg-white border-slate-200">
+              <SelectContent className="max-h-80 bg-white border-slate-200 w-[var(--radix-select-trigger-width)] max-w-full">
                 {proyectos.map(p => {
                   const osCodigo = (p as any).ordenesDeServicio?.[0]?.codigo || p.codigo;
                   const clienteEmpresa = (p as any).cliente?.empresa || (p as any).cliente?.nombre || "";
                   return (
-                    <SelectItem key={p.id} value={p.id} className="py-2 px-3 border-b border-slate-100 last:border-none focus:bg-slate-50 cursor-pointer">
-                      <div className="flex flex-col gap-0.5 text-left w-full">
-                        <div className="flex items-center gap-1.5 font-black text-xs text-primary">
-                          <span className="shrink-0">{osCodigo}</span>
-                          <span className="text-slate-300">·</span>
-                          <span className="text-slate-700 font-bold truncate">{p.nombre}</span>
+                    <SelectItem key={p.id} value={p.id} className="py-2.5 px-3 border-b border-slate-100 last:border-none focus:bg-slate-100 data-highlighted:bg-slate-100 hover:bg-slate-100 cursor-pointer">
+                      <div className="flex flex-col gap-1 text-left w-full min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-black text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-md shrink-0">
+                            {osCodigo}
+                          </span>
+                        </div>
+                        <div className="font-bold text-xs text-slate-800 uppercase leading-snug whitespace-normal break-words">
+                          {p.nombre}
                         </div>
                         {clienteEmpresa && (
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">
+                          <div className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
                             {clienteEmpresa}
-                          </span>
+                          </div>
                         )}
                       </div>
                     </SelectItem>

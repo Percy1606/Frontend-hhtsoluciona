@@ -347,17 +347,21 @@ export function CajaChicaGastoModal({
                               : "border-slate-200 text-slate-700"
                           )}
                         >
-                          <div className="flex items-center gap-2 truncate">
-                            {field.value && field.value !== "none" && selectedProjectObj ? (
-                              <div className="flex items-center gap-2 truncate">
-                                <span className="font-black text-primary text-xs shrink-0 px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
-                                  {selectedProjectObj.codigo || "PROY"}
-                                </span>
-                                <span className="text-xs text-slate-800 truncate font-bold">
-                                  {selectedProjectObj.nombre}
-                                </span>
-                              </div>
-                            ) : (
+                          <div className="flex items-center gap-2 truncate min-w-0">
+                            {field.value && field.value !== "none" && selectedProjectObj ? (() => {
+                              const osCodigo = (selectedProjectObj as any).ordenesDeServicio?.[0]?.codigo || selectedProjectObj.codigo || "PROY";
+                              const clienteEmpresa = (selectedProjectObj as any).cliente?.empresa || (selectedProjectObj as any).cliente?.nombre || (selectedProjectObj as any).cliente?.razonSocial || (selectedProjectObj as any).clienteNombre || "";
+                              return (
+                                <div className="flex items-center gap-2 truncate min-w-0">
+                                  <span className="font-black text-primary text-[11px] shrink-0 px-1.5 py-0.5 rounded bg-primary/10 border border-primary/20">
+                                    {osCodigo}
+                                  </span>
+                                  <span className="text-xs text-slate-800 truncate font-bold">
+                                    {selectedProjectObj.nombre} {clienteEmpresa ? `(${clienteEmpresa})` : ''}
+                                  </span>
+                                </div>
+                              );
+                            })() : (
                               <span className="text-xs font-bold text-slate-500">
                                 [GASTO GENERAL] No pertenece a ningún proyecto
                               </span>
@@ -368,13 +372,13 @@ export function CajaChicaGastoModal({
                       </FormControl>
                     </PopoverTrigger>
 
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 bg-white border border-slate-200 shadow-xl rounded-xl" align="start">
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] max-w-full p-0 bg-white border border-slate-200 shadow-xl rounded-xl" align="start">
                       <Command className="w-full">
                         <CommandInput 
-                          placeholder="Buscar código o nombre de proyecto..." 
-                          className="h-9 text-xs font-bold border-b border-slate-100" 
+                          placeholder="Buscar código, proyecto o cliente..." 
+                          className="h-10 text-xs font-bold border-b border-slate-100" 
                         />
-                        <CommandList className="max-h-52 overflow-y-auto p-1">
+                        <CommandList className="max-h-72 overflow-y-auto p-1">
                           <CommandEmpty className="py-3 text-center text-xs font-bold text-slate-400">
                             No se encontraron proyectos.
                           </CommandEmpty>
@@ -388,14 +392,14 @@ export function CajaChicaGastoModal({
                                 setOpenProjectCombobox(false);
                               }}
                               className={cn(
-                                "flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs font-bold transition-colors mb-1",
+                                "flex items-center justify-between p-2.5 rounded-lg cursor-pointer text-xs font-bold transition-colors mb-1",
                                 field.value === "none" || !field.value
                                   ? "bg-slate-100 text-slate-900"
-                                  : "text-slate-600 hover:bg-slate-50"
+                                  : "text-slate-600 hover:bg-slate-100"
                               )}
                             >
                               <div className="flex items-center gap-2">
-                                <div className="w-2 h-2 rounded-full bg-slate-400" />
+                                <div className="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0" />
                                 <span>[GASTO GENERAL] No pertenece a ningún proyecto</span>
                               </div>
                               {(field.value === "none" || !field.value) && (
@@ -406,45 +410,41 @@ export function CajaChicaGastoModal({
                             {/* LISTA DE PROYECTOS */}
                             {proyectos.map((p) => {
                               const isSelected = field.value === p.id;
+                              const osCodigo = (p as any).ordenesDeServicio?.[0]?.codigo || p.codigo || "PROY";
+                              const clienteEmpresa = (p as any).cliente?.empresa || (p as any).cliente?.nombre || (p as any).cliente?.razonSocial || (p as any).clienteNombre || "";
                               return (
                                 <CommandItem
                                   key={p.id}
-                                  value={`${p.codigo || ""} ${p.nombre} ${(p as any).cliente?.razonSocial || (p as any).clienteNombre || ""}`}
+                                  value={`${osCodigo} ${p.codigo || ""} ${p.nombre} ${clienteEmpresa}`}
                                   onSelect={() => {
                                     form.setValue("proyectoId", p.id);
                                     setOpenProjectCombobox(false);
                                   }}
                                   className={cn(
-                                    "flex items-center justify-between p-2 rounded-lg cursor-pointer text-xs transition-colors mb-0.5 border-b last:border-none border-slate-50",
+                                    "flex items-start justify-between p-2.5 rounded-lg cursor-pointer text-xs transition-colors mb-1 border-b last:border-none border-slate-100",
                                     isSelected
-                                      ? "bg-primary/10 text-primary border border-primary/20"
-                                      : "text-slate-700 hover:bg-slate-50"
+                                      ? "bg-slate-100 text-slate-900 border border-slate-200"
+                                      : "text-slate-700 hover:bg-slate-100"
                                   )}
                                 >
-                                  <div className="flex flex-col min-w-0 pr-2">
-                                    <div className="flex items-center gap-1.5">
-                                      <span className={cn(
-                                        "font-black text-[11px] uppercase tracking-tight",
-                                        isSelected ? "text-primary" : "text-primary"
-                                      )}>
-                                        {p.codigo || "PROY"}
+                                  <div className="flex flex-col gap-1 text-left w-full min-w-0 pr-2">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-black text-[11px] text-primary bg-primary/10 px-2 py-0.5 rounded-md shrink-0">
+                                        {osCodigo}
                                       </span>
-                                      {((p as any).cliente?.razonSocial || (p as any).clienteNombre) && (
-                                        <span className="text-[10px] text-slate-400 font-bold truncate">
-                                          • {(p as any).cliente?.razonSocial || (p as any).clienteNombre}
-                                        </span>
-                                      )}
                                     </div>
-                                    <span className={cn(
-                                      "text-[11px] font-bold truncate",
-                                      isSelected ? "text-slate-900" : "text-slate-600"
-                                    )}>
+                                    <div className="font-bold text-xs text-slate-800 uppercase leading-snug whitespace-normal break-words">
                                       {p.nombre}
-                                    </span>
+                                    </div>
+                                    {clienteEmpresa && (
+                                      <div className="text-[10px] font-black text-slate-500 uppercase tracking-tight">
+                                        {clienteEmpresa}
+                                      </div>
+                                    )}
                                   </div>
 
                                   {isSelected && (
-                                    <Check className="w-4 h-4 text-primary shrink-0 stroke-[2.5]" />
+                                    <Check className="w-4 h-4 text-primary shrink-0 stroke-[2.5] mt-1" />
                                   )}
                                 </CommandItem>
                               );

@@ -793,14 +793,14 @@ export default function ProyectosPage() {
       {/* MODAL: NUEVO PROYECTO */}
       <Dialog open={isNewProjectModalOpen} onOpenChange={setIsNewProjectModalOpen}>
         <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
-          <DialogHeader className="p-8 bg-primary text-white">
+          <DialogHeader className="p-5 bg-primary text-white">
             <div className="flex justify-between items-start gap-4">
               <div>
-                <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-3">
-                  <Plus className="w-8 h-8 text-accent" />
+                <DialogTitle className="text-[15px] font-black uppercase tracking-tight flex items-center gap-2.5">
+                  <Plus className="w-5 h-5 text-accent" />
                   Nuevo Proyecto Operativo
                 </DialogTitle>
-                <DialogDescription className="text-white/80 font-medium text-xs mt-2 leading-relaxed">
+                <DialogDescription className="text-white/80 font-medium text-[11px] mt-1 leading-relaxed">
                   {isPreventa 
                     ? "PROYECTO PRELIMINAR / PREVENTA (Sin cotización vinculada. Permite ejecutar actividades y registrar gastos preliminares sin impactar la facturación de Finanzas)." 
                     : "REGISTRE UN NUEVO PROYECTO OFICIAL A PARTIR DE UNA COTIZACIÓN GANADA."}
@@ -810,7 +810,7 @@ export default function ProyectosPage() {
                 variant="outline" 
                 onClick={() => setIsPreventa(!isPreventa)}
                 className={cn(
-                  "font-black text-[10px] uppercase tracking-widest border-2 h-8 px-4",
+                  "font-black text-[9px] uppercase tracking-widest border-2 h-7 px-3 shrink-0",
                   isPreventa 
                     ? "bg-accent text-primary border-accent hover:bg-accent/90" 
                     : "bg-transparent text-white border-white/30 hover:bg-white/10 hover:text-white"
@@ -821,8 +821,8 @@ export default function ProyectosPage() {
             </div>
           </DialogHeader>
 
-          <div className="p-8 grid grid-cols-2 gap-6">
-            <div className="space-y-2 col-span-2">
+          <div className="p-6 grid grid-cols-2 gap-4">
+            <div className="space-y-1.5 col-span-2">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cliente / Empresa</Label>
               <Combobox
                 options={clientOptions}
@@ -877,7 +877,7 @@ export default function ProyectosPage() {
               });
 
               return (
-                <div className="space-y-2 col-span-2">
+                <div className="space-y-1.5 col-span-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Cotización / Servicio Origen</Label>
                     {availableQuotes.length === 0 && clientQuotes.length > 0 && (
@@ -897,7 +897,7 @@ export default function ProyectosPage() {
                     }}
                     disabled={availableQuotes.length === 0}
                   >
-                    <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
+                    <SelectTrigger className="h-11 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
                       <SelectValue placeholder={availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN"}>
                         {newProject.cotizacionId ? (() => {
                           const selQ = quotes.find(q => q.id === newProject.cotizacionId);
@@ -910,7 +910,7 @@ export default function ProyectosPage() {
                       {availableQuotes.map(q => {
                         const quoteName = q.referencia || (q as any).servicio || (q as any).nombre || (q as any).objetivo || 'Cotización';
                         return (
-                          <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
+                          <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase py-2">
                             {q.codigo} — {quoteName} (S/ {Number(q.monto || 0).toLocaleString()})
                           </SelectItem>
                         );
@@ -926,40 +926,40 @@ export default function ProyectosPage() {
               );
             })()}
 
-            <div className="space-y-2 col-span-2">
+            <div className="space-y-1.5 col-span-2">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
               <Input 
-                className="h-12 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl uppercase"
+                className="h-11 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl uppercase text-xs"
                 placeholder="EJ: MANTENIMIENTO PREVENTIVO SEDAPAL"
                 value={newProject.nombre}
                 onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Inicio</Label>
               <Input 
                 type="date"
-                className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                className="h-11 border-slate-200 font-bold bg-slate-50 rounded-xl text-xs"
                 value={newProject.fechaInicio}
                 onChange={(e) => setNewProject({ ...newProject, fechaInicio: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Fecha Fin Est.</Label>
               <Input 
                 type="date"
-                className="h-12 border-slate-200 font-bold bg-slate-50 rounded-xl"
+                className="h-11 border-slate-200 font-bold bg-slate-50 rounded-xl text-xs"
                 value={newProject.fechaFinEstimada}
                 onChange={(e) => setNewProject({ ...newProject, fechaFinEstimada: e.target.value })}
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Responsable Principal</Label>
               <Select value={newProject.responsablePrincipalId || ""} onValueChange={(val) => setNewProject({ ...newProject, responsablePrincipalId: val as string })}>
-                <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                <SelectTrigger className="h-11 border-slate-200 bg-slate-50 rounded-xl text-xs font-bold">
                   <SelectValue placeholder="SELECCIONAR LÍDER">
                     {newProject.responsablePrincipalId ? responsables.find(r => r.id === newProject.responsablePrincipalId)?.nombre : "SELECCIONAR LÍDER"}
                   </SelectValue>
@@ -970,33 +970,33 @@ export default function ProyectosPage() {
                     const valid = ["logisticayrecursos", "logísticayrecursos", "operacionesdecampo", "operaciones", "serviciostecnicos", "serviciostécnicos", "ingenieriaysupervision", "ingenieríaysupervisión", "supervision", "supervisión", "ingenieria", "ingeniería"];
                     return valid.some(v => rArea.includes(v));
                   }).map(r => (
-                    <SelectItem key={r.id} value={r.id} className="uppercase">{r.nombre}</SelectItem>
+                    <SelectItem key={r.id} value={r.id} className="uppercase font-bold text-xs">{r.nombre}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Área Ejecutora</Label>
               <Select value={newProject.area} onValueChange={(val) => setNewProject({ ...newProject, area: val as Area })}>
-                <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl">
+                <SelectTrigger className="h-11 border-slate-200 bg-slate-50 rounded-xl text-xs font-bold">
                   <SelectValue placeholder="ÁREA">
                     {newProject.area || "ÁREA"}
                   </SelectValue>
                 </SelectTrigger>
                 <SelectContent className="bg-white border-slate-200">
-                  <SelectItem value="Logística y Recursos">Logística</SelectItem>
-                  <SelectItem value="Ingeniería y Supervisión Técnica">Ingeniería</SelectItem>
-                  <SelectItem value="Gestión Documentaria y Expedientes Técnicos">Documental</SelectItem>
-                  <SelectItem value="Operaciones de Campo y Control de Obra">Operaciones</SelectItem>
+                  <SelectItem value="Logística y Recursos" className="font-bold text-xs">Logística</SelectItem>
+                  <SelectItem value="Ingeniería y Supervisión Técnica" className="font-bold text-xs">Ingeniería</SelectItem>
+                  <SelectItem value="Gestión Documentaria y Expedientes Técnicos" className="font-bold text-xs">Documental</SelectItem>
+                  <SelectItem value="Operaciones de Campo y Control de Obra" className="font-bold text-xs">Operaciones</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
 
-          <DialogFooter className="p-8 bg-slate-50 flex items-center justify-end gap-3">
-            <Button variant="ghost" onClick={() => setIsNewProjectModalOpen(false)} className="font-bold text-slate-500 uppercase text-xs">Cancelar</Button>
-            <Button onClick={handleSaveNewProject} className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs h-12 px-8 rounded-xl shadow-lg shadow-primary/20">Crear Proyecto</Button>
+          <DialogFooter className="p-5 bg-slate-50 flex items-center justify-end gap-3 border-t border-slate-100">
+            <Button variant="ghost" onClick={() => setIsNewProjectModalOpen(false)} className="font-bold text-slate-500 uppercase text-xs h-10 px-4">Cancelar</Button>
+            <Button onClick={handleSaveNewProject} className="bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs h-10 px-6 rounded-xl shadow-lg shadow-primary/20">Crear Proyecto</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
