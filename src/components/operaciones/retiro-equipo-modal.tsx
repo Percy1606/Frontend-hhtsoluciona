@@ -119,34 +119,58 @@ export function RetiroEquipoModal() {
           <Wrench className="w-4 h-4" /> Solicitud Retiro Equipo
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md bg-slate-50/95 backdrop-blur-xl border-slate-200 shadow-2xl p-0 overflow-hidden">
-        <div className="bg-gradient-to-r from-secondary to-secondary/80 p-6 flex flex-col items-center border-b border-white/10">
-          <div className="w-16 h-16 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 mb-3 shadow-inner">
-            <Wrench className="w-8 h-8 text-white" />
+      <DialogContent className="max-w-lg w-full bg-slate-50 border-slate-200 shadow-2xl p-0 overflow-hidden rounded-2xl">
+        <div className="bg-gradient-to-r from-secondary to-secondary/90 p-5 flex flex-col items-center border-b border-white/10">
+          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 mb-2 shadow-inner">
+            <Wrench className="w-6 h-6 text-white" />
           </div>
-          <DialogTitle className="text-xl font-black text-white uppercase tracking-widest text-center">
+          <DialogTitle className="text-lg font-black text-white uppercase tracking-wider text-center">
             Retiro de Equipo
           </DialogTitle>
-          <p className="text-white/80 text-xs font-bold mt-1 text-center max-w-[280px]">
+          <p className="text-white/80 text-[11px] font-bold mt-0.5 text-center max-w-[320px]">
             Registra la salida de un equipo del almacén asignado a un proyecto.
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Proyecto Destino</label>
             <Select value={proyectoId} onValueChange={(val) => setProyectoId(val || "")}>
-              <SelectTrigger className="h-12 w-full border-slate-200 rounded-xl font-bold bg-white">
-                <SelectValue placeholder="Seleccione el proyecto">
-                  {proyectoId ? proyectos.find(p => p.id === proyectoId)?.nombre : "Seleccione el proyecto"}
+              <SelectTrigger className="h-11 w-full border-slate-200 rounded-xl font-bold bg-white text-xs">
+                <SelectValue placeholder="SELECCIONE EL PROYECTO">
+                  {proyectoId ? (() => {
+                    const p = proyectos.find(proj => proj.id === proyectoId);
+                    if (!p) return "SELECCIONE EL PROYECTO";
+                    const osCodigo = (p as any).ordenesDeServicio?.[0]?.codigo || p.codigo;
+                    const clienteEmpresa = (p as any).cliente?.empresa || (p as any).cliente?.nombre || "";
+                    return `${osCodigo} · ${p.nombre}${clienteEmpresa ? ` (${clienteEmpresa})` : ''}`;
+                  })() : "SELECCIONE EL PROYECTO"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
-                {proyectos.map(p => (
-                  <SelectItem key={p.id} value={p.id} className="font-bold text-slate-700 uppercase text-xs">
-                    {p.codigo} - {p.nombre}
-                  </SelectItem>
-                ))}
+              <SelectContent className="max-h-72 bg-white border-slate-200">
+                {proyectos.map(p => {
+                  const osCodigo = (p as any).ordenesDeServicio?.[0]?.codigo || p.codigo;
+                  const clienteEmpresa = (p as any).cliente?.empresa || (p as any).cliente?.nombre || "";
+                  return (
+                    <SelectItem key={p.id} value={p.id} className="py-2 px-3 border-b border-slate-100 last:border-none focus:bg-slate-50 cursor-pointer">
+                      <div className="flex flex-col gap-0.5 text-left w-full">
+                        <div className="flex items-center gap-1.5 font-black text-xs text-primary">
+                          <span className="shrink-0">{osCodigo}</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-slate-700 font-bold truncate">{p.nombre}</span>
+                        </div>
+                        {clienteEmpresa && (
+                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-tight">
+                            {clienteEmpresa}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+                {proyectos.length === 0 && (
+                  <div className="p-3 text-center text-xs text-slate-400 font-bold uppercase">No hay proyectos activos registrados.</div>
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -154,19 +178,19 @@ export function RetiroEquipoModal() {
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Equipo (Almacén)</label>
             <Select value={equipoId} onValueChange={(val) => setEquipoId(val || "")}>
-              <SelectTrigger className="h-12 w-full border-slate-200 rounded-xl font-bold bg-white">
-                <SelectValue placeholder="Seleccione el equipo">
-                  {equipoId ? equipos.find(e => e.id === equipoId)?.nombre : "Seleccione el equipo"}
+              <SelectTrigger className="h-11 w-full border-slate-200 rounded-xl font-bold bg-white text-xs">
+                <SelectValue placeholder="SELECCIONE EL EQUIPO">
+                  {equipoId ? equipos.find(e => e.id === equipoId)?.nombre : "SELECCIONE EL EQUIPO"}
                 </SelectValue>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-60 bg-white border-slate-200">
                 {equipos.map(e => (
-                  <SelectItem key={e.id} value={e.id} className="font-bold text-slate-700 uppercase text-xs">
+                  <SelectItem key={e.id} value={e.id} className="font-bold text-slate-700 uppercase text-xs py-2">
                     {e.nombre} (Stock: {e.stockActual})
                   </SelectItem>
                 ))}
                 {equipos.length === 0 && (
-                  <div className="p-3 text-center text-xs text-slate-500 font-bold">No se encontraron equipos.</div>
+                  <div className="p-3 text-center text-xs text-slate-400 font-bold uppercase">No se encontraron equipos disponibles.</div>
                 )}
               </SelectContent>
             </Select>

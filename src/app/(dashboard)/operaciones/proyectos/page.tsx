@@ -827,7 +827,38 @@ export default function ProyectosPage() {
               <Combobox
                 options={clientOptions}
                 value={newProject.clientId}
-                onChange={(val) => setNewProject({ ...newProject, clientId: val, cotizacionId: "" })}
+                onChange={(val) => {
+                  if (!val) {
+                    setNewProject(prev => ({ ...prev, clientId: "", cotizacionId: "", nombre: "" }));
+                    return;
+                  }
+
+                  const clientQuotes = quotes.filter(q => q.clientId === val);
+                  const availableQuotes = clientQuotes.filter(q => {
+                    const alreadyAssigned = proyectos.some(p => 
+                      (p as any).cotizacionId === q.id || 
+                      (p as any).cotizacion?.id === q.id || 
+                      (p as any).cotizacionOrigen?.id === q.id ||
+                      (p as any).ordenesDeServicio?.some((os: any) => os.cotizacionId === q.id)
+                    );
+                    return !alreadyAssigned;
+                  });
+
+                  let autoCotizacionId = "";
+                  let autoNombre = newProject.nombre;
+                  if (availableQuotes.length === 1) {
+                    const q = availableQuotes[0];
+                    autoCotizacionId = q.id;
+                    autoNombre = q.referencia || (q as any).servicio || (q as any).nombre || (q as any).objetivo || "";
+                  }
+
+                  setNewProject(prev => ({
+                    ...prev,
+                    clientId: val,
+                    cotizacionId: autoCotizacionId,
+                    nombre: autoNombre
+                  }));
+                }}
                 placeholder="BUSCAR CLIENTE..."
               />
             </div>
@@ -855,20 +886,35 @@ export default function ProyectosPage() {
                   </div>
                   <Select 
                     value={newProject.cotizacionId || ""} 
-                    onValueChange={(val) => setNewProject({ ...newProject, cotizacionId: val || "" })}
+                    onValueChange={(val) => {
+                      const selectedQuote = quotes.find(q => q.id === val);
+                      const quoteRealName = selectedQuote?.referencia || (selectedQuote as any)?.servicio || (selectedQuote as any)?.nombre || (selectedQuote as any)?.objetivo || "";
+                      setNewProject(prev => ({
+                        ...prev,
+                        cotizacionId: val || "",
+                        nombre: quoteRealName || prev.nombre
+                      }));
+                    }}
                     disabled={availableQuotes.length === 0}
                   >
                     <SelectTrigger className="h-12 border-slate-200 bg-slate-50 rounded-xl font-bold text-xs">
                       <SelectValue placeholder={availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN"}>
-                        {newProject.cotizacionId ? (quotes.find(q => q.id === newProject.cotizacionId)?.codigo + " - " + ((quotes.find(q => q.id === newProject.cotizacionId) as any)?.servicio || (quotes.find(q => q.id === newProject.cotizacionId) as any)?.nombre || 'COTIZACIÓN')) : (availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN")}
+                        {newProject.cotizacionId ? (() => {
+                          const selQ = quotes.find(q => q.id === newProject.cotizacionId);
+                          const qName = selQ?.referencia || (selQ as any)?.servicio || (selQ as any)?.nombre || (selQ as any)?.objetivo || 'COTIZACIÓN';
+                          return `${selQ?.codigo} - ${qName}`;
+                        })() : (availableQuotes.length === 0 ? "NO HAY COTIZACIONES PENDIENTES DE ASIGNAR" : "SELECCIONAR COTIZACIÓN DE ORIGEN")}
                       </SelectValue>
                     </SelectTrigger>
-                    <SelectContent className="bg-white border-slate-200">
-                      {availableQuotes.map(q => (
-                        <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
-                          {q.codigo} — {(q as any).servicio || (q as any).nombre || 'Cotización'} (S/ {Number(q.monto || 0).toLocaleString()})
-                        </SelectItem>
-                      ))}
+                    <SelectContent className="bg-white border-slate-200 max-h-64">
+                      {availableQuotes.map(q => {
+                        const quoteName = q.referencia || (q as any).servicio || (q as any).nombre || (q as any).objetivo || 'Cotización';
+                        return (
+                          <SelectItem key={q.id} value={q.id} className="font-bold text-xs uppercase">
+                            {q.codigo} — {quoteName} (S/ {Number(q.monto || 0).toLocaleString()})
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   {availableQuotes.length === 0 && clientQuotes.length > 0 && (
@@ -883,7 +929,7 @@ export default function ProyectosPage() {
             <div className="space-y-2 col-span-2">
               <Label className="text-[10px] font-black uppercase text-primary ml-1 tracking-widest">Nombre del Proyecto</Label>
               <Input 
-                className="h-12 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl"
+                className="h-12 border-slate-200 font-bold bg-slate-50 focus:bg-white transition-all rounded-xl uppercase"
                 placeholder="EJ: MANTENIMIENTO PREVENTIVO SEDAPAL"
                 value={newProject.nombre}
                 onChange={(e) => setNewProject({ ...newProject, nombre: e.target.value })}
