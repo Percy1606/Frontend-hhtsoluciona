@@ -119,12 +119,12 @@ export function RetiroEquipoModal() {
           <Wrench className="w-4 h-4" /> Solicitud Retiro Equipo
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-lg w-full bg-slate-50 border-slate-200 shadow-2xl p-0 overflow-hidden rounded-2xl">
-        <div className="bg-gradient-to-r from-secondary to-secondary/90 p-5 flex flex-col items-center border-b border-white/10">
-          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 mb-2 shadow-inner">
+      <DialogContent className="max-w-lg w-full min-w-0 bg-slate-50 border-slate-200 shadow-2xl p-0 overflow-hidden rounded-2xl box-border">
+        <div className="bg-gradient-to-r from-secondary to-secondary/90 p-4 sm:p-5 flex flex-col items-center border-b border-white/10 w-full min-w-0 box-border">
+          <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 mb-2 shadow-inner shrink-0">
             <Wrench className="w-6 h-6 text-white" />
           </div>
-          <DialogTitle className="text-lg font-black text-white uppercase tracking-wider text-center">
+          <DialogTitle className="text-base sm:text-lg font-black text-white uppercase tracking-wider text-center">
             Retiro de Equipo
           </DialogTitle>
           <p className="text-white/80 text-[11px] font-bold mt-0.5 text-center max-w-[320px]">
@@ -132,11 +132,11 @@ export function RetiroEquipoModal() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-3.5">
-          <div className="space-y-1.5">
+        <form onSubmit={handleSubmit} className="p-4 sm:p-5 space-y-3.5 w-full min-w-0 box-border">
+          <div className="space-y-1.5 w-full min-w-0">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Proyecto Destino</label>
             <Select value={proyectoId} onValueChange={(val) => setProyectoId(val || "")}>
-              <SelectTrigger className="h-11 w-full max-w-full min-w-0 border-slate-200 rounded-xl font-bold bg-white text-xs overflow-hidden">
+              <SelectTrigger className="h-11 w-full max-w-full min-w-0 border-slate-200 rounded-xl font-bold bg-white text-xs overflow-hidden box-border">
                 <SelectValue placeholder="SELECCIONE EL PROYECTO" className="truncate min-w-0 max-w-full block">
                   {proyectoId ? (() => {
                     const p = proyectos.find(proj => proj.id === proyectoId);
@@ -178,11 +178,11 @@ export function RetiroEquipoModal() {
             </Select>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full min-w-0">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Equipo (Almacén)</label>
             <Select value={equipoId} onValueChange={(val) => setEquipoId(val || "")}>
-              <SelectTrigger className="h-11 w-full border-slate-200 rounded-xl font-bold bg-white text-xs">
-                <SelectValue placeholder="SELECCIONE EL EQUIPO">
+              <SelectTrigger className="h-11 w-full max-w-full min-w-0 border-slate-200 rounded-xl font-bold bg-white text-xs overflow-hidden box-border">
+                <SelectValue placeholder="SELECCIONE EL EQUIPO" className="truncate min-w-0 max-w-full block">
                   {equipoId ? equipos.find(e => e.id === equipoId)?.nombre : "SELECCIONE EL EQUIPO"}
                 </SelectValue>
               </SelectTrigger>
@@ -199,50 +199,50 @@ export function RetiroEquipoModal() {
             </Select>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0 box-border">
+            <div className="space-y-1.5 w-full min-w-0">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Responsable</label>
               <Input
                 value={responsable}
                 onChange={e => setResponsable(e.target.value)}
                 placeholder="Nombre de quien retira"
-                className="h-12 rounded-xl border-slate-200 font-bold bg-white text-xs"
+                className="h-11 w-full min-w-0 max-w-full rounded-xl border-slate-200 font-bold bg-white text-xs box-border"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 w-full min-w-0">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Fecha Retorno</label>
               <Input
                 type="date"
                 value={fechaDevolucion}
                 onChange={e => setFechaDevolucion(e.target.value)}
-                className="h-12 rounded-xl border-slate-200 font-bold bg-white text-xs"
+                className="h-11 w-full min-w-0 max-w-full rounded-xl border-slate-200 font-bold bg-white text-xs box-border"
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1.5 w-full min-w-0">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Condición / Notas (Opcional)</label>
             <Textarea
               value={condicion}
               onChange={e => setCondicion(e.target.value)}
               placeholder="Ej: Se entrega con baterías cargadas, rayón en la pantalla..."
-              className="resize-none rounded-xl border-slate-200 font-bold bg-white text-xs min-h-[80px]"
+              className="resize-none w-full min-w-0 max-w-full rounded-xl border-slate-200 font-bold bg-white text-xs min-h-[70px] box-border"
             />
           </div>
 
-          <div className="pt-2 flex justify-end gap-3">
+          <div className="pt-2 flex flex-col-reverse sm:flex-row justify-end gap-2.5 w-full min-w-0 box-border">
             <Button
               type="button"
               variant="outline"
               onClick={() => setIsOpen(false)}
-              className="h-12 px-6 rounded-xl font-black uppercase text-xs text-slate-500"
+              className="h-11 w-full sm:w-auto px-5 rounded-xl font-black uppercase text-xs text-slate-500"
             >
               Cancelar
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="h-12 px-8 rounded-xl font-black uppercase text-xs bg-secondary hover:bg-secondary/90 shadow-lg shadow-secondary/20"
+              className="h-11 w-full sm:w-auto px-6 rounded-xl font-black uppercase text-xs bg-secondary hover:bg-secondary/90 shadow-lg shadow-secondary/20"
             >
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Registrar Salida"}
             </Button>

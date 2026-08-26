@@ -72,11 +72,11 @@ function DialogContent({
   return (
     <DialogPortal>
       <DialogOverlay />
-      <DialogPrimitive.Viewport className="fixed inset-0 z-50 flex items-center justify-center p-4 pointer-events-none">
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 overflow-y-auto pointer-events-none box-border">
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(
-            "pointer-events-auto relative grid w-full max-w-[calc(100%-2rem)] rounded-xl bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 duration-100 outline-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+            "pointer-events-auto relative w-full max-w-[calc(100vw-1.5rem)] sm:max-w-lg min-w-0 my-auto rounded-2xl bg-white text-slate-800 shadow-2xl transition duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 focus:outline-none box-border overflow-hidden",
             className
           )}
           {...props}
@@ -88,18 +88,17 @@ function DialogContent({
               render={
                 <Button
                   variant="ghost"
-                  className="absolute top-2 right-2"
+                  className="absolute top-3 right-3 text-slate-400 hover:text-slate-700 z-10 size-8 p-0"
                   size="icon-sm"
                 />
               }
             >
-              <XIcon
-              />
+              <XIcon className="size-4" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           )}
         </DialogPrimitive.Popup>
-      </DialogPrimitive.Viewport>
+      </div>
     </DialogPortal>
   )
 }

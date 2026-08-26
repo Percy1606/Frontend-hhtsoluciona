@@ -217,17 +217,17 @@ export function CajaChicaGastoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg w-full min-w-0 overflow-hidden bg-white p-6 rounded-2xl border border-slate-200 shadow-2xl">
+      <DialogContent className="max-w-lg w-full min-w-0 overflow-hidden bg-white p-4 sm:p-6 rounded-2xl border border-slate-200 shadow-2xl box-border">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200">
+            <div className="p-2 rounded-xl bg-amber-50 text-amber-700 border border-amber-200 shrink-0">
               <Wallet className="w-5 h-5" />
             </div>
-            <div>
-              <DialogTitle className="text-base font-black uppercase text-slate-900">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-base font-black uppercase text-slate-900 truncate">
                 Registrar Gasto de Caja Chica
               </DialogTitle>
-              <DialogDescription className="text-xs text-slate-500 font-bold">
+              <DialogDescription className="text-xs text-slate-500 font-bold truncate">
                 {cajaUsuario ? (
                   <span>
                     Cuenta asignada: <strong className="text-slate-800 uppercase">{cajaUsuario.nombre}</strong> (Fondo Fijo)
@@ -241,7 +241,7 @@ export function CajaChicaGastoModal({
         </DialogHeader>
 
         {cajaUsuario && (
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs font-bold">
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs font-bold w-full min-w-0 box-border">
             <div>
               <p className="text-[9px] uppercase text-slate-400 font-black">Efectivo Disponible</p>
               <p className="text-emerald-700 font-black text-sm">
@@ -260,8 +260,8 @@ export function CajaChicaGastoModal({
         )}
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5 mt-2">
-            <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3.5 mt-2 w-full min-w-0 box-border">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full min-w-0 box-border">
               <FormField
                 control={form.control}
                 name="montoTotal"
@@ -480,14 +480,14 @@ export function CajaChicaGastoModal({
               </div>
             </div>
 
-            <DialogFooter className="pt-2 gap-2">
-              <Button type="button" variant="outline" className="h-10 text-xs font-bold rounded-xl" onClick={onClose}>
+            <DialogFooter className="pt-2 flex flex-col-reverse sm:flex-row justify-end gap-2 w-full min-w-0 box-border">
+              <Button type="button" variant="outline" className="h-10 w-full sm:w-auto text-xs font-bold rounded-xl" onClick={onClose}>
                 Cancelar
               </Button>
               <Button
                 type="submit"
                 disabled={submitting || isUploading || !cajaUsuario}
-                className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md"
+                className="h-10 w-full sm:w-auto bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow-md"
               >
                 {submitting ? (
                   <>
