@@ -900,19 +900,19 @@ export default function BandejaInspecciones() {
       </Dialog>
 
       <Dialog open={isAttachmentsOpen} onOpenChange={setIsAttachmentsOpen}>
-        <DialogContent className="max-w-md w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
+        <DialogContent className="max-w-lg w-full p-0 border-none bg-white shadow-2xl rounded-2xl overflow-hidden">
           <DialogHeader className="p-6 bg-blue-900 text-white shrink-0 flex flex-row items-center justify-between">
             <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-2 uppercase">
-              <Camera className="w-5 h-5 text-blue-200" />
+              <Camera className="w-5 h-5 text-blue-200 shrink-0" />
               Gestión de Adjuntos
             </DialogTitle>
           </DialogHeader>
           
-          <div className="p-6 space-y-6">
+          <div className="p-6 space-y-6 w-full min-w-0 overflow-hidden">
             {/* Info de la Ficha */}
-            <div>
-              <h4 className="text-sm font-black text-slate-800 uppercase truncate">
-                {selectedFichaForAttachments?.cliente?.empresa}
+            <div className="min-w-0">
+              <h4 className="text-sm font-black text-slate-800 uppercase truncate" title={selectedFichaForAttachments?.cliente?.empresa}>
+                {selectedFichaForAttachments?.cliente?.empresa || "Cliente"}
               </h4>
               <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
                 Visita técnica del {selectedFichaForAttachments?.fechaVisita ? format(new Date(selectedFichaForAttachments.fechaVisita), "dd/MM/yyyy") : "---"}
@@ -920,7 +920,7 @@ export default function BandejaInspecciones() {
             </div>
 
             {/* Subidor de archivo */}
-            <div className="space-y-2">
+            <div className="space-y-2 w-full">
               <Label className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-1">
                 <Upload className="w-3.5 h-3.5" /> Subir Nueva Foto / Evidencia
               </Label>
@@ -950,7 +950,7 @@ export default function BandejaInspecciones() {
             </div>
 
             {/* Listado de archivos actuales */}
-            <div className="space-y-3">
+            <div className="space-y-3 w-full min-w-0">
               <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">
                 Archivos adjuntos ({selectedFichaForAttachments?.adjuntos?.length || 0})
               </span>
@@ -960,34 +960,42 @@ export default function BandejaInspecciones() {
                   <span className="text-[10px] text-slate-400 uppercase font-bold italic">No hay archivos adjuntos en esta visita</span>
                 </div>
               ) : (
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {selectedFichaForAttachments.adjuntos.map((adj: any) => {
-                    const isImage = adj.tipo?.toLowerCase().includes('image') || adj.nombre?.toLowerCase().endsWith('.png') || adj.nombre?.toLowerCase().endsWith('.jpg') || adj.nombre?.toLowerCase().endsWith('.jpeg');
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1 w-full min-w-0">
+                  {selectedFichaForAttachments.adjuntos.map((adj: any, idx: number) => {
+                    const isImage = adj?.tipo?.toLowerCase()?.includes('image') || 
+                      adj?.nombre?.toLowerCase()?.endsWith('.png') || 
+                      adj?.nombre?.toLowerCase()?.endsWith('.jpg') || 
+                      adj?.nombre?.toLowerCase()?.endsWith('.jpeg') ||
+                      (typeof adj?.url === 'string' && (adj.url.includes('.png') || adj.url.includes('.jpg') || adj.url.includes('.jpeg') || adj.url.includes('.webp')));
                     const fullUrl = api.getFileUrl(adj.url);
                     return (
                       <div
-                        key={adj.id || adj.url}
-                        className="flex items-center justify-between bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs font-bold text-slate-700 uppercase hover:bg-slate-100/50 transition-colors"
+                        key={adj.id || adj.url || idx}
+                        className="w-full min-w-0 flex items-center justify-between gap-3 bg-slate-50 border border-slate-200 rounded-xl p-2.5 hover:bg-slate-100/50 transition-colors"
                       >
-                        <div className="flex items-center gap-2 truncate pr-4">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
                           {isImage ? (
                             <img
                               src={fullUrl}
-                              alt={adj.nombre}
-                              className="w-8 h-8 rounded object-cover border border-slate-200 shrink-0"
+                              alt={adj.nombre || "Foto"}
+                              className="w-8 h-8 rounded object-cover border border-slate-200 shrink-0 bg-white"
                             />
                           ) : (
-                            <FileText className="w-6 h-6 text-[#001529] shrink-0" />
+                            <div className="w-8 h-8 rounded bg-slate-100 flex items-center justify-center border border-slate-200 shrink-0">
+                              <FileText className="w-4 h-4 text-[#001529]" />
+                            </div>
                           )}
-                          <span className="truncate text-[10px]" title={adj.nombre}>{adj.nombre}</span>
+                          <span className="truncate text-xs font-bold text-slate-700 uppercase block min-w-0 flex-1" title={adj.nombre || "Archivo"}>
+                            {adj.nombre || "Archivo Adjunto"}
+                          </span>
                         </div>
                         
-                        <div className="flex items-center gap-1.5 shrink-0">
+                        <div className="flex items-center gap-1 shrink-0">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-slate-400 hover:text-primary hover:bg-slate-200 rounded-lg"
+                            className="h-8 w-8 text-slate-500 hover:text-primary hover:bg-slate-200 rounded-lg"
                             onClick={() => window.open(fullUrl, '_blank')}
                             title="Descargar / Ver"
                           >
@@ -997,7 +1005,7 @@ export default function BandejaInspecciones() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="h-7 w-7 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
+                            className="h-8 w-8 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg"
                             onClick={() => handleDeleteAttachment(adj)}
                             disabled={uploadingAttachment}
                             title="Eliminar"
