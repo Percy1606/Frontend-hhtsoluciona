@@ -515,6 +515,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                         <SelectContent className="bg-white">
                           <SelectItem value="Llamada">Llamada</SelectItem>
                           <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                          <SelectItem value="Correo">Correo</SelectItem>
                           <SelectItem value="Visita">Visita</SelectItem>
                           <SelectItem value="Cotización">Cotización</SelectItem>
                           <SelectItem value="Nota">Nota</SelectItem>
@@ -619,6 +620,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                                     <SelectContent className="bg-white">
                                       <SelectItem value="Llamada">Llamada</SelectItem>
                                       <SelectItem value="WhatsApp">WhatsApp</SelectItem>
+                                      <SelectItem value="Correo">Correo</SelectItem>
                                       <SelectItem value="Visita">Visita</SelectItem>
                                       <SelectItem value="Cotización">Cotización</SelectItem>
                                       <SelectItem value="Nota">Nota</SelectItem>

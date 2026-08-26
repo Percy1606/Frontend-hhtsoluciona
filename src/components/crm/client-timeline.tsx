@@ -20,6 +20,7 @@ import {
   Trophy, 
   XCircle,
   History,
+  Mail,
   ArrowRight
 } from 'lucide-react';
 
@@ -85,7 +86,9 @@ export function ClientTimeline({ client }: ClientTimelineProps) {
       } else {
         if (int.tipo?.toLowerCase().includes('llamada')) { icon = <Phone className="w-4 h-4" />; color = 'bg-white text-slate-600 border-slate-200'; }
         else if (int.tipo?.toLowerCase().includes('visita')) { icon = <MapPin className="w-4 h-4" />; color = 'bg-white text-slate-600 border-slate-200'; }
-        else if (int.tipo?.toLowerCase().includes('cotización')) { icon = <FileText className="w-4 h-4" />; color = 'bg-white text-slate-600 border-slate-200'; }
+        else if (int.tipo?.toLowerCase().includes('cotización') || int.tipo?.toLowerCase().includes('cotizacion')) { icon = <FileText className="w-4 h-4" />; color = 'bg-white text-slate-600 border-slate-200'; }
+        else if (int.tipo?.toLowerCase().includes('correo')) { icon = <Mail className="w-4 h-4 text-blue-600" />; color = 'bg-blue-50 text-blue-600 border-blue-200'; }
+        else if (int.tipo?.toLowerCase().includes('whatsapp')) { icon = <MessageCircle className="w-4 h-4 text-green-600" />; color = 'bg-green-50 text-green-600 border-green-200'; }
       }
 
       const cleanObs = (int.observaciones || '').replace(/\[IMG\].*?\[\/IMG\]/, '').trim();
