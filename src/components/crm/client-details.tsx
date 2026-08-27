@@ -368,37 +368,37 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-          <div className="px-8 border-b border-border bg-slate-50/50 shrink-0">
-            <TabsList className="bg-transparent h-12 w-full justify-start gap-8 rounded-none p-0">
+        <Tabs defaultValue="general" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden min-h-0">
+          <div className="px-4 sm:px-8 border-b border-border bg-slate-50/50 shrink-0 overflow-x-auto overflow-y-hidden">
+            <TabsList className="bg-transparent h-12 w-full flex items-stretch justify-start sm:justify-between md:justify-start gap-3 sm:gap-6 md:gap-8 rounded-none p-0 min-w-max md:min-w-0">
               <TabsTrigger 
                 value="general" 
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full"
+                className="flex-1 md:flex-initial whitespace-nowrap data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-[11px] sm:text-xs uppercase h-full px-2 sm:px-3 text-center transition-colors shrink-0"
               >
                 Visión General
               </TabsTrigger>
               <TabsTrigger 
                 value="history" 
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full"
+                className="flex-1 md:flex-initial whitespace-nowrap data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-[11px] sm:text-xs uppercase h-full px-2 sm:px-3 text-center transition-colors shrink-0"
               >
                 Bitácora ({client.historialInteracciones?.length || 0})
               </TabsTrigger>
               <TabsTrigger 
                 value="timeline" 
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full text-indigo-600 data-[state=active]:text-primary gap-1"
+                className="flex-1 md:flex-initial whitespace-nowrap data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-[11px] sm:text-xs uppercase h-full text-indigo-600 data-[state=active]:text-primary gap-1 px-2 sm:px-3 text-center transition-colors shrink-0"
               >
-                <History className="w-3.5 h-3.5 inline-block" /> Timeline
+                <History className="w-3.5 h-3.5 inline-block shrink-0" /> Timeline
               </TabsTrigger>
               <TabsTrigger 
                 value="files" 
-                className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-xs uppercase h-full"
+                className="flex-1 md:flex-initial whitespace-nowrap data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none font-black text-[11px] sm:text-xs uppercase h-full px-2 sm:px-3 text-center transition-colors shrink-0"
               >
                 Documentos ({client.archivosAdjuntos?.length || 0})
               </TabsTrigger>
 
               {/* Pestañas operativas removidas para mantener limpio el CRM */}
-              </TabsList>
-              </div>
+            </TabsList>
+          </div>
 
               <div className="flex-1 overflow-y-auto p-8">
               {/* CONTENIDO EXISTENTE */}
