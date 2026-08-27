@@ -46,7 +46,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -763,40 +762,42 @@ export default function PersonalPage() {
 
       {/* Form Dialog */}
       <Dialog open={showForm} onOpenChange={(open) => { if (!open) { setShowForm(false); resetForm(); } }}>
-        <DialogContent className="max-w-lg bg-white">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar Personal" : "Registrar Personal"}</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="w-full sm:max-w-lg bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              {editingId ? "Editar Personal" : "Registrar Personal"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
               {editingId
-                ? "Actualiza los datos del trabajador"
-                : "Registra un nuevo trabajador asignado a un proyecto"}
+                ? "Actualiza los datos del trabajador asignado al proyecto."
+                : "Registra un nuevo trabajador asignado a un proyecto."}
             </DialogDescription>
           </DialogHeader>
 
-          <div className="overflow-y-auto max-h-[55vh] min-h-0 py-3">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Nombre completo *</label>
-                <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} placeholder="Ej: Juan Pérez" />
+          <div className="space-y-4 py-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Nombre completo <span className="text-red-500">*</span></label>
+                <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} placeholder="Ej: Juan Pérez" className="h-10" />
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Documento (DNI/CE)</label>
-                <Input value={formData.documento} onChange={(e) => setFormData({ ...formData, documento: e.target.value })} placeholder="Ej: 12345678" />
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Documento (DNI/CE)</label>
+                <Input value={formData.documento} onChange={(e) => setFormData({ ...formData, documento: e.target.value })} placeholder="Ej: 12345678" className="h-10" />
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Rol</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Rol</label>
                 <Select value={formData.rol} onValueChange={(v) => v && setFormData({ ...formData, rol: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
                     {ROLES.map((r) => (<SelectItem key={r} value={r}>{r}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Proyecto *</label>
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Proyecto <span className="text-red-500">*</span></label>
                 <Combobox
                   options={proyectosDisponibles}
                   value={formData.proyectoId}
@@ -814,48 +815,48 @@ export default function PersonalPage() {
                   emptyMessage="No hay proyectos disponibles"
                 />
                 {formData.proyectoNombre && (
-                  <p className="text-xs text-muted-foreground mt-1">{formData.proyectoCodigo} - {formData.proyectoNombre}</p>
+                  <p className="text-[11px] font-medium text-slate-500 mt-1">{formData.proyectoCodigo} - {formData.proyectoNombre}</p>
                 )}
               </div>
 
-              <Separator className="col-span-2" />
+              <Separator className="sm:col-span-2 my-1" />
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Tipo de Contrato</label>
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Tipo de Contrato</label>
                 <Select value={formData.tipoContrato} onValueChange={(v) => v && setFormData({ ...formData, tipoContrato: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
+                  <SelectTrigger className="h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent className="bg-white">
                     {TIPOS_CONTRATO.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}
                   </SelectContent>
                 </Select>
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Monto Diario (S/.)</label>
-                <Input type="number" min="0" step="0.01" value={formData.montoDiario} onChange={(e) => setFormData({ ...formData, montoDiario: Number(e.target.value) })} />
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Monto Diario (S/.) <span className="text-red-500">*</span></label>
+                <Input type="number" min="0" step="0.01" value={formData.montoDiario} onChange={(e) => setFormData({ ...formData, montoDiario: Number(e.target.value) })} className="h-10 font-bold" />
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Fecha de Inicio</label>
-                <Input type="date" value={formData.fechaInicio} onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })} />
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Fecha de Inicio <span className="text-red-500">*</span></label>
+                <Input type="date" value={formData.fechaInicio} onChange={(e) => setFormData({ ...formData, fechaInicio: e.target.value })} className="h-10" />
               </div>
 
-              <div>
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Fecha de Fin (opcional)</label>
-                <Input type="date" value={formData.fechaFin} onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })} />
+              <div className="space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Fecha de Fin (opcional)</label>
+                <Input type="date" value={formData.fechaFin} onChange={(e) => setFormData({ ...formData, fechaFin: e.target.value })} className="h-10" />
               </div>
 
-              <div className="col-span-2">
-                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Observaciones</label>
-                <Input value={formData.observaciones} onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} placeholder="Notas adicionales..." />
+              <div className="sm:col-span-2 space-y-1.5">
+                <label className="text-[11px] font-bold uppercase text-slate-700 block">Observaciones</label>
+                <Input value={formData.observaciones} onChange={(e) => setFormData({ ...formData, observaciones: e.target.value })} placeholder="Notas adicionales..." className="h-10" />
               </div>
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-2">
             <Button variant="outline" onClick={() => { setShowForm(false); resetForm(); }}>Cancelar</Button>
-            <Button onClick={handleSubmit}>{editingId ? "Guardar Cambios" : "Registrar"}</Button>
-          </DialogFooter>
+            <Button onClick={handleSubmit} className="bg-primary hover:bg-primary/90 text-white font-bold">{editingId ? "Guardar Cambios" : "Registrar Personal"}</Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -985,89 +986,89 @@ export default function PersonalPage() {
 
       {/* Comprometer Proyecto Dialog */}
       <Dialog open={!!comprometerProyecto} onOpenChange={() => setComprometerProyecto(null)}>
-        <DialogContent className="max-w-sm bg-white">
+        <DialogContent className="sm:max-w-[420px] bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Banknote className="w-5 h-5 text-emerald-500" />
+            <DialogTitle className="flex items-center gap-2 text-base font-bold text-slate-900">
+              <Banknote className="w-5 h-5 text-emerald-600" />
               Comprometer Mano de Obra
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs text-slate-500">
               Se generará un único gasto consolidado para todo el personal activo del proyecto.
             </DialogDescription>
           </DialogHeader>
           {comprometerProyecto && (
-            <div className="space-y-4">
+            <div className="space-y-4 my-2">
               <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
                 <p className="text-[10px] font-black uppercase text-slate-400 tracking-wider mb-2">
                   {comprometerProyecto.proyectoNombre}
                 </p>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] font-bold text-slate-500">{comprometerProyecto.totalTrabajadores} trabajadores activos</span>
+                  <span className="text-xs font-bold text-slate-600">{comprometerProyecto.totalTrabajadores} trabajadores activos</span>
                   <span className="text-lg font-black text-emerald-600">{formatearMoneda(comprometerProyecto.costoTotal)}</span>
                 </div>
               </div>
               <div className="bg-amber-50 rounded-xl p-3 border border-amber-100">
-                <p className="text-[9px] font-bold text-amber-700 flex items-center gap-1">
-                  <AlertTriangle className="w-3 h-3" />
+                <p className="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 shrink-0" />
                   Este gasto pasará a Finanzas para su aprobación como una sola solicitud.
                 </p>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setComprometerProyecto(null)} className="font-black uppercase text-[10px] tracking-widest rounded-xl">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-3">
+            <Button variant="outline" onClick={() => setComprometerProyecto(null)} className="font-bold">
               Cancelar
             </Button>
             <Button
               onClick={handleComprometerProyecto}
               disabled={comprometerProyecto?.loading}
-              className="bg-emerald-600 hover:bg-emerald-700 font-black uppercase text-[10px] tracking-widest rounded-xl"
+              className="bg-emerald-600 hover:bg-emerald-700 font-bold text-white"
             >
               {comprometerProyecto?.loading ? (
                 <Loader2 className="w-4 h-4 animate-spin mr-2" />
               ) : null}
               Generar Compromiso
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirm */}
       <Dialog open={!!confirmDelete} onOpenChange={() => setConfirmDelete(null)}>
-        <DialogContent className="max-w-sm bg-white">
+        <DialogContent className="sm:max-w-[400px] bg-white p-6">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
+            <DialogTitle className="flex items-center gap-2 text-red-600 text-base font-bold">
               <AlertCircle className="w-5 h-5" />
               Confirmar Eliminación
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-xs text-slate-600 pt-1">
               ¿Estás seguro de eliminar este registro de personal? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
             <Button variant="outline" onClick={() => setConfirmDelete(null)}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={() => confirmDelete && handleDelete(confirmDelete)}>
               Eliminar
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
       {/* Form Horas Extras */}
       <Dialog open={showExtrasForm} onOpenChange={setShowExtrasForm}>
-        <DialogContent className="max-w-sm bg-white">
-          <DialogHeader>
-            <DialogTitle>Registrar Horas Extras</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[480px] bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-base font-bold text-slate-900">Registrar Horas Extras</DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
               Se enviará directo a Finanzas como un Gasto Operativo asociado al proyecto del trabajador.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-3">
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Trabajador Activo *</label>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase text-slate-700 block">Trabajador Activo <span className="text-red-500">*</span></label>
               <Combobox
                 options={personal.filter((p) => p.activo).map((p) => ({
                   value: p.id,
@@ -1079,28 +1080,28 @@ export default function PersonalPage() {
                 placeholder="Buscar trabajador..."
               />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Monto Extra a Pagar (S/.) *</label>
-              <Input type="number" min="0" step="0.01" value={extrasData.montoTotal} onChange={(e) => setExtrasData({ ...extrasData, montoTotal: Number(e.target.value) })} />
-              <p className="text-[10px] text-muted-foreground mt-1">Suma al costo del proyecto (Planilla)</p>
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase text-slate-700 block">Monto Extra a Pagar (S/.) <span className="text-red-500">*</span></label>
+              <Input type="number" min="0" step="0.01" value={extrasData.montoTotal} onChange={(e) => setExtrasData({ ...extrasData, montoTotal: Number(e.target.value) })} className="h-10 font-bold" />
+              <p className="text-[10px] text-slate-400 font-medium">Suma al costo del proyecto (Planilla)</p>
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Fecha de Ejecución *</label>
-              <Input type="date" value={extrasData.fecha} onChange={(e) => setExtrasData({ ...extrasData, fecha: e.target.value })} />
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase text-slate-700 block">Fecha de Ejecución <span className="text-red-500">*</span></label>
+              <Input type="date" value={extrasData.fecha} onChange={(e) => setExtrasData({ ...extrasData, fecha: e.target.value })} className="h-10" />
             </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Observaciones / Justificación</label>
-              <Input value={extrasData.observaciones} onChange={(e) => setExtrasData({ ...extrasData, observaciones: e.target.value })} placeholder="Ej: Trabajo día sábado" />
+            <div className="space-y-1.5">
+              <label className="text-[11px] font-bold uppercase text-slate-700 block">Observaciones / Justificación</label>
+              <Input value={extrasData.observaciones} onChange={(e) => setExtrasData({ ...extrasData, observaciones: e.target.value })} placeholder="Ej: Trabajo día sábado" className="h-10" />
             </div>
           </div>
 
-          <DialogFooter>
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-2">
             <Button variant="outline" onClick={() => setShowExtrasForm(false)} disabled={isSubmittingExtras}>Cancelar</Button>
-            <Button onClick={handleExtrasSubmit} disabled={isSubmittingExtras} className="bg-amber-600 hover:bg-amber-700 font-black uppercase text-[10px] tracking-widest rounded-xl">
+            <Button onClick={handleExtrasSubmit} disabled={isSubmittingExtras} className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
               {isSubmittingExtras ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Clock className="w-4 h-4 mr-2" />}
               Aprobar Monto
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
