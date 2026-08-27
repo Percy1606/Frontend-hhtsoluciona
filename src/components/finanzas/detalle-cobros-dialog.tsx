@@ -255,7 +255,7 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
   return (
     <>
       <Dialog open={open} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-6xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col h-[90vh]">
+      <DialogContent className="w-full sm:max-w-5xl lg:max-w-6xl xl:max-w-7xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col max-h-[92vh] h-[90vh]">
         {/* HEADER & DASHBOARD */}
         <div className="bg-white border-b border-slate-200 shadow-sm z-10 shrink-0">
           <DialogHeader className="p-5 pb-4">
@@ -655,7 +655,7 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
       </Dialog>
 
       <Dialog open={!!previewDoc} onOpenChange={(o) => !o && setPreviewDoc(null)}>
-        <DialogContent className="max-w-4xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col h-[85vh]">
+        <DialogContent className="w-full sm:max-w-4xl lg:max-w-5xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col h-[85vh]">
           <DialogHeader className="p-4 bg-white border-b border-slate-200 shrink-0 flex flex-row items-center justify-between">
             <DialogTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-500" />
