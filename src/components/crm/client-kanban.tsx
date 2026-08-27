@@ -446,13 +446,13 @@ export function ClientKanban() {
       <FollowUpModal client={selectedClient} isOpen={isFollowUpOpen} onClose={() => setIsFollowUpOpen(false)} />
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-hidden p-0 border-none bg-white shadow-2xl rounded-2xl">
-          <DialogHeader className="p-8 bg-primary text-white rounded-t-xl shrink-0">
-            <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3 uppercase">
-              <Edit className="w-8 h-8 text-accent" /> Editar Cliente
+        <DialogContent className="w-full sm:max-w-2xl md:max-w-3xl max-h-[88vh] overflow-hidden p-0 border-none bg-white shadow-2xl rounded-2xl flex flex-col">
+          <DialogHeader className="px-6 py-4 bg-primary text-white rounded-t-2xl shrink-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-lg font-black tracking-wide flex items-center gap-2 uppercase">
+              <Edit className="w-5 h-5 text-accent" /> Editar Cliente
             </DialogTitle>
           </DialogHeader>
-          <div className="p-0 overflow-y-auto flex-1">
+          <div className="p-0 flex-1 overflow-hidden min-h-0 flex flex-col">
             <ClientForm client={selectedClient} onSubmit={handleUpdateClient} onCancel={() => setIsEditOpen(false)} />
           </div>
         </DialogContent>

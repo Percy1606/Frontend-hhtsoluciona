@@ -287,7 +287,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-6xl w-full max-h-[94vh] overflow-hidden p-0 border-none bg-white shadow-2xl flex flex-col">
+      <DialogContent className="w-full sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl max-h-[94vh] overflow-hidden p-0 border-none bg-white shadow-2xl flex flex-col">
         <DialogHeader className="px-8 py-5 bg-primary text-white shrink-0 relative">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div className="flex-1 space-y-1.5">

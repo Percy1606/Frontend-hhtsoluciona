@@ -246,10 +246,10 @@ export default function CarteraPage() {
               </Button>
             </Link>
             <Button 
-              className="h-12 flex-1 sm:flex-none gap-2 font-black uppercase text-[10px] bg-accent hover:bg-accent/90 text-white shadow-lg shadow-accent/20 rounded-xl px-4"
+              className="h-10 flex-1 sm:flex-none gap-2 font-black uppercase text-xs bg-primary hover:bg-primary/90 text-white shadow-md rounded-xl px-4"
               onClick={() => setIsAddModalOpen(true)}
             >
-              <Plus className="w-4 h-4" /> Nuevo Cliente
+              <Plus className="w-4 h-4" /> Registrar Cliente
             </Button>
           </div>
         </div>
@@ -368,14 +368,14 @@ export default function CarteraPage() {
       <ClientTable mode="cartera" />
 
       <Dialog open={isAddModalOpen} onOpenChange={setIsAddModalOpen}>
-        <DialogContent className="max-w-5xl w-full max-h-[90vh] overflow-hidden p-0 border-none bg-white shadow-2xl rounded-xl">
-          <DialogHeader className="p-8 bg-primary text-white rounded-t-xl shrink-0">
-            <DialogTitle className="text-3xl font-black tracking-tight flex items-center gap-2 uppercase">
-              <Plus className="w-8 h-8 text-accent" />
+        <DialogContent className="w-full sm:max-w-2xl md:max-w-3xl max-h-[88vh] overflow-hidden p-0 border-none bg-white shadow-2xl rounded-2xl flex flex-col">
+          <DialogHeader className="px-6 py-4 bg-primary text-white rounded-t-2xl shrink-0 flex flex-row items-center justify-between">
+            <DialogTitle className="text-lg font-black tracking-wide flex items-center gap-2 uppercase">
+              <Plus className="w-5 h-5 text-accent" />
               Registrar Nuevo Cliente
             </DialogTitle>
           </DialogHeader>
-          <div className="p-0 flex-1 overflow-hidden">
+          <div className="p-0 flex-1 overflow-hidden min-h-0 flex flex-col">
             <ClientForm 
               onSubmit={handleCreateClient} 
               onCancel={() => setIsAddModalOpen(false)} 

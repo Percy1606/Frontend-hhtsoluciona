@@ -79,16 +79,16 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
-        <ScrollArea className="flex-1 max-h-[60vh]">
-          <div className="space-y-6 p-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col min-h-0 flex-1">
+        <div className="flex-1 overflow-y-auto max-h-[calc(88vh-130px)] px-6 py-5 space-y-5 custom-scrollbar">
+          <div className="space-y-5">
             {/* Sección: Información de la Empresa */}
-            <div className="space-y-4">
+            <div className="space-y-3">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-1 h-4 bg-primary rounded-full" />
+                <span className="w-1.5 h-3.5 bg-primary rounded-full" />
                 Información de la Empresa
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="codigo"
@@ -97,7 +97,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Código Empresa <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="HHT-..." {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
+                        <Input placeholder="HHT-..." {...field} className="h-9 text-sm border-slate-200 focus:border-primary w-full" />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>
@@ -111,14 +111,14 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Razón Social <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Empresa S.A.C." {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
+                        <Input placeholder="Empresa S.A.C." {...field} className="h-9 text-sm border-slate-200 focus:border-primary w-full" />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="ruc"
@@ -132,7 +132,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                         RUC {form.watch("etapaComercial") !== "Prospecto" && <span className="text-error">*</span>}
                       </FormLabel>
                       <FormControl>
-                        <Input placeholder="20..." maxLength={11} {...field} className="h-9 text-sm border-slate-200 focus:border-primary" />
+                        <Input placeholder="20..." maxLength={11} {...field} className="h-9 text-sm border-slate-200 focus:border-primary w-full" />
                       </FormControl>
                       <FormMessage className="text-[10px]" />
                     </FormItem>
@@ -146,7 +146,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Tarifa</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200 w-full">
                             <SelectValue placeholder="MT / BT" />
                           </SelectTrigger>
                         </FormControl>
@@ -167,7 +167,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="direccion"
@@ -176,7 +176,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Dirección <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Av. Principal..." {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="Av. Principal..." {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -189,7 +189,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Zona / Distrito <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Piura" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="Piura" {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -202,10 +202,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
             {/* Sección: Datos de Contacto */}
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-1 h-4 bg-primary rounded-full" />
+                <span className="w-1.5 h-3.5 bg-primary rounded-full" />
                 Contacto & Comunicación
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="contacto"
@@ -214,7 +214,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Nombre Contacto <span className="text-error">*</span></FormLabel>
                       <FormControl>
-                        <Input placeholder="Persona responsable" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="Persona responsable" {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -226,13 +226,13 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Cargo</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Administrador" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="Ej: Administrador" {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
                 />
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="telefono"
@@ -240,7 +240,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Teléfono</FormLabel>
                       <FormControl>
-                        <Input placeholder="999..." {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="999..." {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -252,7 +252,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Correo</FormLabel>
                       <FormControl>
-                        <Input placeholder="email@ejemplo.com" type="email" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="email@ejemplo.com" type="email" {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -265,10 +265,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
             {/* Sección: Gestión Comercial */}
             <div className="space-y-4">
               <h3 className="text-xs font-black uppercase tracking-wider text-primary flex items-center gap-2">
-                <span className="w-1 h-4 bg-primary rounded-full" />
+                <span className="w-1.5 h-3.5 bg-primary rounded-full" />
                 Gestión Comercial
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
                 <FormField
                   control={form.control}
                   name="etapaComercial"
@@ -281,7 +281,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                         disabled={['Orden de Servicio', 'Servicio Ejecutado', 'Facturación', 'Postventa', 'Ganado / Fidelizado'].includes(client?.etapaComercial as string)}
                       >
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-8.5 text-xs bg-white border-slate-200 w-full">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -310,7 +310,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Asignado A</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-8.5 text-xs bg-white border-slate-200 w-full">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -319,7 +319,6 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           <SelectItem value="Valentina">Valentina</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
                           <SelectItem value="Brenda">Brenda</SelectItem>
-
                         </SelectContent>
                       </Select>
                     </FormItem>
@@ -333,7 +332,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Día de Revisión</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-8.5 text-xs bg-white border-slate-200 w-full">
                             <SelectValue placeholder="Seleccionar día" />
                           </SelectTrigger>
                         </FormControl>
@@ -354,7 +353,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Prioridad</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-8.5 text-xs bg-white border-slate-200 w-full">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -376,7 +375,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Clasificación</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                          <SelectTrigger className="h-9 text-sm bg-white border-slate-200">
+                          <SelectTrigger className="h-8.5 text-xs bg-white border-slate-200 w-full">
                             <SelectValue />
                           </SelectTrigger>
                         </FormControl>
@@ -397,10 +396,10 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
             {/* Sección: Seguimiento */}
             <div className="space-y-4 bg-slate-50 p-4 rounded-xl border border-slate-200 border-dashed">
               <h3 className="text-xs font-black uppercase tracking-wider text-accent flex items-center gap-2">
-                <span className="w-1 h-4 bg-accent rounded-full" />
+                <span className="w-1.5 h-3.5 bg-accent rounded-full" />
                 Seguimiento
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="accion"
@@ -408,7 +407,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Acción Programada</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ej: Llamar" {...field} className="h-9 text-sm border-slate-200" />
+                        <Input placeholder="Ej: Llamar" {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -420,7 +419,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                     <FormItem>
                       <FormLabel className="font-bold text-slate-700 text-[11px] uppercase">Fecha</FormLabel>
                       <FormControl>
-                        <Input type="date" min={new Date().toISOString().split("T")[0]} {...field} className="h-9 text-sm border-slate-200" />
+                        <Input type="date" min={new Date().toISOString().split("T")[0]} {...field} className="h-9 text-sm border-slate-200 w-full" />
                       </FormControl>
                     </FormItem>
                   )}
@@ -438,7 +437,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                   <FormControl>
                     <Textarea 
                       placeholder="Monto de recibo y detalles adicionales..." 
-                      className="min-h-[80px] text-sm resize-none border-slate-200"
+                      className="min-h-[80px] text-sm resize-none border-slate-200 w-full" 
                       {...field} 
                     />
                   </FormControl>
@@ -446,7 +445,7 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
               )}
             />
           </div>
-        </ScrollArea>
+        </div>
 
         {/* Footer fijo con botones */}
         <div className="flex items-center justify-end gap-3 p-4 border-t bg-slate-50 mt-auto shrink-0">
