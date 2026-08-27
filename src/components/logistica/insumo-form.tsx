@@ -108,7 +108,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg p-0 border-none bg-white overflow-hidden rounded-2xl">
+      <DialogContent className="max-w-lg p-0 border-none bg-white overflow-hidden rounded-2xl max-h-[90vh] flex flex-col">
         <DialogHeader className="p-6 bg-primary text-white shrink-0">
           <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3">
             <Package className="w-6 h-6 text-accent" />
@@ -117,7 +117,7 @@ export function InsumoForm({ isOpen, onClose, insumo }: InsumoFormProps) {
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-4 flex-1 overflow-y-auto">
             <FormField
               control={form.control}
               name="nombre"

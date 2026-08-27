@@ -38,7 +38,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -506,98 +505,158 @@ export default function VehiculosEmpresa() {
         if (!open) resetForm();
         setIsDialogOpen(open);
       }}>
-        <DialogContent className="sm:max-w-[600px] bg-white h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar" : "Registrar"} Vehículo</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[600px] bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              {editingId ? "Editar" : "Registrar"} Vehículo
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
               Completa los datos del vehículo y adjunta sus documentos.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-700">Placa <span className="text-red-500">*</span></Label>
-                <Input value={placa} onChange={(e) => setPlaca(e.target.value.toUpperCase())} placeholder="ABC-123" />
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase text-slate-700">
+                  Placa <span className="text-red-500">*</span>
+                </Label>
+                <Input 
+                  value={placa} 
+                  onChange={(e) => setPlaca(e.target.value.toUpperCase())} 
+                  placeholder="ABC-123" 
+                  className="h-10 font-bold"
+                />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-bold uppercase text-slate-700">Marca y Modelo <span className="text-red-500">*</span></Label>
-                <Input value={marcaModelo} onChange={(e) => setMarcaModelo(e.target.value)} placeholder="Ej: Toyota Hilux" />
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-4 bg-slate-50">
-              <h3 className="font-bold text-sm mb-4">Datos del SOAT</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-700">Vencimiento <span className="text-red-500">*</span></Label>
-                  <Input type="date" value={soatVencimiento} onChange={(e) => setSoatVencimiento(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-700">Archivo SOAT</Label>
-                  <input type="file" accept=".pdf" className="text-xs" ref={soatInputRef} onChange={(e) => setSoatFile(e.target.files?.[0] || null)} />
-                  {existingSoat && !soatFile && <p className="text-[10px] text-green-600 font-bold">Documento actual guardado</p>}
-                </div>
-              </div>
-            </div>
-
-            <div className="border rounded-lg p-4 bg-slate-50">
-              <h3 className="font-bold text-sm mb-4">Revisión Técnica</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-700">Vencimiento <span className="text-red-500">*</span></Label>
-                  <Input type="date" value={rtVencimiento} onChange={(e) => setRtVencimiento(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-700">Archivo Revisión</Label>
-                  <input type="file" accept=".pdf" className="text-xs" ref={rtInputRef} onChange={(e) => setRtFile(e.target.files?.[0] || null)} />
-                  {existingRt && !rtFile && <p className="text-[10px] text-green-600 font-bold">Documento actual guardado</p>}
-                </div>
+              <div className="space-y-1.5">
+                <Label className="text-[11px] font-bold uppercase text-slate-700">
+                  Marca y Modelo <span className="text-red-500">*</span>
+                </Label>
+                <Input 
+                  value={marcaModelo} 
+                  onChange={(e) => setMarcaModelo(e.target.value)} 
+                  placeholder="Ej: Toyota Hilux" 
+                  className="h-10"
+                />
               </div>
             </div>
 
-            <div className="border rounded-lg p-4 bg-slate-50">
-              <h3 className="font-bold text-sm mb-4">Tarjeta de Propiedad</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-[11px] font-bold uppercase text-slate-700">Archivo Tarjeta Prop.</Label>
-                  <input type="file" accept=".pdf" className="text-xs" ref={tpInputRef} onChange={(e) => setTpFile(e.target.files?.[0] || null)} />
-                  {existingTp && !tpFile && <p className="text-[10px] text-green-600 font-bold">Documento actual guardado</p>}
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700">1. Datos del SOAT</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-600">
+                    Vencimiento <span className="text-red-500">*</span>
+                  </Label>
+                  <Input 
+                    type="date" 
+                    value={soatVencimiento} 
+                    onChange={(e) => setSoatVencimiento(e.target.value)} 
+                    className="h-9 bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-600">Archivo SOAT (PDF)</Label>
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    className="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                    ref={soatInputRef} 
+                    onChange={(e) => setSoatFile(e.target.files?.[0] || null)} 
+                  />
+                  {existingSoat && !soatFile && (
+                    <p className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-1">
+                      ✓ Documento actual guardado
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
 
-            <DialogFooter className="pt-4">
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700">2. Revisión Técnica</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-600">
+                    Vencimiento <span className="text-red-500">*</span>
+                  </Label>
+                  <Input 
+                    type="date" 
+                    value={rtVencimiento} 
+                    onChange={(e) => setRtVencimiento(e.target.value)} 
+                    className="h-9 bg-white"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-600">Archivo Revisión (PDF)</Label>
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    className="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                    ref={rtInputRef} 
+                    onChange={(e) => setRtFile(e.target.files?.[0] || null)} 
+                  />
+                  {existingRt && !rtFile && (
+                    <p className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-1">
+                      ✓ Documento actual guardado
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="border border-slate-200 rounded-xl p-4 bg-slate-50/70 space-y-3">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-700">3. Tarjeta de Propiedad</h3>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold uppercase text-slate-600">Archivo Tarjeta Propiedad (PDF)</Label>
+                  <input 
+                    type="file" 
+                    accept=".pdf" 
+                    className="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
+                    ref={tpInputRef} 
+                    onChange={(e) => setTpFile(e.target.files?.[0] || null)} 
+                  />
+                  {existingTp && !tpFile && (
+                    <p className="text-[10px] text-green-600 font-bold flex items-center gap-1 mt-1">
+                      ✓ Documento actual guardado
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {isSubmitting ? "Guardando..." : "Guardar Vehículo"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-white">
+        <DialogContent className="sm:max-w-[400px] bg-white p-6">
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               Confirmar Eliminación
             </DialogTitle>
-            <DialogDescription className="pt-2">
+            <DialogDescription className="pt-2 text-xs text-slate-600">
               ¿Estás seguro de que deseas eliminar el vehículo <strong>{vehiculoToDelete?.nombre}</strong>? Se borrarán también los documentos adjuntos y esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-4">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
               {isSubmitting ? "Eliminando..." : "Eliminar"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

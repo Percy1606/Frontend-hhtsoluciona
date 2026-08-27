@@ -38,7 +38,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
@@ -488,48 +487,61 @@ export default function CertificadosEquipos() {
         if (!open) resetForm();
         setIsDialogOpen(open);
       }}>
-        <DialogContent className="sm:max-w-[500px] bg-white">
-          <DialogHeader>
-            <DialogTitle>{editingId ? "Editar" : "Registrar"} Certificado de Equipo</DialogTitle>
-            <DialogDescription>
+        <DialogContent className="sm:max-w-[520px] bg-white p-6 max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-lg font-bold text-slate-900">
+              {editingId ? "Editar" : "Registrar"} Certificado de Equipo
+            </DialogTitle>
+            <DialogDescription className="text-xs text-slate-500">
               Completa los datos del certificado del equipo y sube el documento PDF.
             </DialogDescription>
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="nombre" className="text-[11px] font-bold uppercase text-slate-700">Nombre del Equipo <span className="text-red-500">*</span></Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="nombre" className="text-[11px] font-bold uppercase text-slate-700">
+                Nombre del Equipo <span className="text-red-500">*</span>
+              </Label>
               <Input
                 id="nombre"
                 value={nombre}
                 onChange={(e) => setNombre(e.target.value)}
                 placeholder="Ej: Estación Total Leica TS06"
+                className="h-10"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="fechaCalibracion" className="text-[11px] font-bold uppercase text-slate-700">Fecha de Calibración <span className="text-red-500">*</span></Label>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="fechaCalibracion" className="text-[11px] font-bold uppercase text-slate-700">
+                  Fecha de Calibración <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="fechaCalibracion"
                   type="date"
                   value={fechaCalibracion}
                   onChange={(e) => setFechaCalibracion(e.target.value)}
+                  className="h-10"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="fechaVencimiento" className="text-[11px] font-bold uppercase text-slate-700">Fecha de Vencimiento <span className="text-red-500">*</span></Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="fechaVencimiento" className="text-[11px] font-bold uppercase text-slate-700">
+                  Fecha de Vencimiento <span className="text-red-500">*</span>
+                </Label>
                 <Input
                   id="fechaVencimiento"
                   type="date"
                   value={fechaVencimiento}
                   onChange={(e) => setFechaVencimiento(e.target.value)}
+                  className="h-10"
                 />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="text-[11px] font-bold uppercase text-slate-700">Documento PDF {editingId ? "(Opcional si ya existe)" : <span className="text-red-500">*</span>}</Label>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] font-bold uppercase text-slate-700">
+                Documento PDF {editingId ? "(Opcional si ya existe)" : <span className="text-red-500">*</span>}
+              </Label>
               <div 
                 className={cn(
-                  "border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer",
+                  "border-2 border-dashed rounded-xl p-5 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer text-center",
                   file ? "border-blue-500 bg-blue-50/50" : "border-slate-300 bg-slate-50 hover:bg-slate-100"
                 )}
                 onClick={() => fileInputRef.current?.click()}
@@ -548,24 +560,24 @@ export default function CertificadosEquipos() {
                     }
                   }}
                 />
-                <Upload className={cn("w-8 h-8 transition-colors", file ? "text-blue-500" : existingPdf ? "text-green-500" : "text-slate-400")} />
+                <Upload className={cn("w-7 h-7 transition-colors", file ? "text-blue-500" : existingPdf ? "text-green-500" : "text-slate-400")} />
                 <div className="text-center">
                   {file ? (
                     <>
-                      <p className="text-sm font-semibold text-blue-600 truncate max-w-[280px]" title={file.name}>{file.name}</p>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Archivo seleccionado (listo para guardar)</p>
+                      <p className="text-xs font-semibold text-blue-600 truncate max-w-[280px]" title={file.name}>{file.name}</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">Archivo seleccionado (listo para guardar)</p>
                     </>
                   ) : existingPdf ? (
                     <>
-                      <p className="text-sm font-semibold text-green-600 truncate max-w-[280px]" title={existingPdf.url.split(/[/\\]/).pop()}>
+                      <p className="text-xs font-semibold text-green-600 truncate max-w-[280px]" title={existingPdf.url.split(/[/\\]/).pop()}>
                         {existingPdf.url.split(/[/\\]/).pop()}
                       </p>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Documento actual (haz clic para reemplazar)</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">Documento actual (haz clic para reemplazar)</p>
                     </>
                   ) : (
                     <>
-                      <p className="text-sm font-semibold text-slate-700">Haz clic para subir un PDF</p>
-                      <p className="text-xs text-slate-500 mt-1 font-medium">Solo archivos PDF hasta 50MB</p>
+                      <p className="text-xs font-semibold text-slate-700">Haz clic para subir un PDF</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">Solo archivos PDF hasta 50MB</p>
                     </>
                   )}
                 </div>
@@ -574,7 +586,7 @@ export default function CertificadosEquipos() {
                     type="button" 
                     variant="ghost" 
                     size="sm" 
-                    className="mt-2 text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
+                    className="mt-1 h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50 z-10"
                     onClick={(e) => {
                       e.stopPropagation();
                       setFile(null);
@@ -582,44 +594,44 @@ export default function CertificadosEquipos() {
                       if (fileInputRef.current) fileInputRef.current.value = "";
                     }}
                   >
-                    <Trash2 className="w-4 h-4 mr-1" />
+                    <Trash2 className="w-3.5 h-3.5 mr-1" />
                     Quitar documento
                   </Button>
                 )}
               </div>
             </div>
-            <DialogFooter className="pt-4">
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
               <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)} disabled={isSubmitting}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
+              <Button type="submit" disabled={isSubmitting} className="bg-blue-600 hover:bg-blue-700 text-white">
                 {isSubmitting ? "Guardando..." : "Guardar Certificado"}
               </Button>
-            </DialogFooter>
+            </div>
           </form>
         </DialogContent>
       </Dialog>
 
       {/* Delete Confirmation */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[400px] bg-white">
+        <DialogContent className="sm:max-w-[400px] bg-white p-6">
           <DialogHeader>
             <DialogTitle className="text-red-600 flex items-center gap-2">
               <AlertTriangle className="w-5 h-5" />
               Confirmar Eliminación
             </DialogTitle>
-            <DialogDescription className="pt-2">
+            <DialogDescription className="pt-2 text-xs text-slate-600">
               ¿Estás seguro de que deseas eliminar el certificado del equipo <strong>{certificadoToDelete?.nombre}</strong>? Esta acción no se puede deshacer.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="pt-4">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100 mt-4">
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={isSubmitting}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={handleDelete} disabled={isSubmitting}>
               {isSubmitting ? "Eliminando..." : "Eliminar"}
             </Button>
-          </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

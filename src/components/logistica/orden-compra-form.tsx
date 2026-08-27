@@ -318,8 +318,8 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
   return (
     <>
     <Dialog open={isOpen} onOpenChange={(val) => !val && onClose()}>
-      <DialogContent className="max-w-4xl p-0 border-none bg-slate-50 overflow-hidden rounded-2xl flex flex-col max-h-[90vh]">
-        <DialogHeader className="p-5 bg-primary text-white shrink-0">
+      <DialogContent className="w-full sm:max-w-4xl lg:max-w-5xl p-0 border-none bg-slate-50 overflow-hidden rounded-2xl flex flex-col max-h-[92vh]">
+        <DialogHeader className="px-6 py-4 bg-primary text-white shrink-0">
           <DialogTitle className="text-lg font-black tracking-tight flex items-center gap-3">
             <ShoppingCart className="w-5 h-5 text-accent" />
             {initialData ? "Editar Orden de Materiales" : "Nueva Orden de Materiales"}
@@ -327,7 +327,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
         </DialogHeader>
 
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-5 space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 overflow-y-auto p-6 space-y-6">
             
             {/* SECCIÓN 1: DATOS GENERALES */}
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
@@ -336,7 +336,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                     <h4 className="text-xs font-black uppercase tracking-widest text-primary">1. Datos Generales</h4>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                     <FormField
                         control={form.control as any}
                         name="codigo"
@@ -355,7 +355,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                         control={form.control as any}
                         name="proveedorId"
                         render={({ field }) => (
-                            <FormItem className="flex flex-col md:col-span-2">
+                            <FormItem className="flex flex-col sm:col-span-2">
                             <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Proveedor *</FormLabel>
                             <Popover open={openProveedor} onOpenChange={setOpenProveedor}>
                                 <PopoverTrigger asChild>
@@ -446,7 +446,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                 {!initialData ? "PENDIENTE" : (form.watch("estado") === "PENDIENTE" ? "PENDIENTE" : form.watch("estado"))}
                             </div>
                             <p className="text-[9px] text-slate-400 font-bold mt-1 leading-tight">
-                                {!initialData ? "Las órdenes nuevas inician en PENDIENTE." : "Solo Finanzas o Gerencia puede cambiar el estado."}
+                                {!initialData ? "Inicia en PENDIENTE." : "Controlado por Finanzas."}
                             </p>
                         </FormItem>
                     )}
@@ -457,7 +457,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                         control={form.control as any}
                         name="proyectoId"
                         render={({ field }) => (
-                            <FormItem className="flex flex-col">
+                            <FormItem className="flex flex-col md:col-span-1">
                             <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Proyecto Destino</FormLabel>
                             <Popover open={openProyecto} onOpenChange={setOpenProyecto}>
                                 <PopoverTrigger asChild>
@@ -538,6 +538,54 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                         )}
                     />
 
+                    <FormField
+                        control={form.control as any}
+                        name="condicionPago"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Condición de Pago</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                <SelectTrigger className="h-10 border-slate-200 font-bold text-xs rounded-xl">
+                                    <SelectValue placeholder="Condición" />
+                                </SelectTrigger>
+                                </FormControl>
+                                <SelectContent className="bg-white border-slate-200">
+                                    <SelectItem value="CONTADO" className="font-bold text-xs">AL CONTADO</SelectItem>
+                                    <SelectItem value="CREDITO_15" className="font-bold text-xs">CRÉDITO 15 DÍAS</SelectItem>
+                                    <SelectItem value="CREDITO_30" className="font-bold text-xs">CRÉDITO 30 DÍAS</SelectItem>
+                                    <SelectItem value="CREDITO_45" className="font-bold text-xs">CRÉDITO 45 DÍAS</SelectItem>
+                                    <SelectItem value="CREDITO_60" className="font-bold text-xs">CRÉDITO 60 DÍAS</SelectItem>
+                                    <SelectItem value="LETRAS" className="font-bold text-xs">LETRAS (ESPECIFICAR)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
+                    <FormField
+                        control={form.control as any}
+                        name="fechaEntrega"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Fecha Requerida / Entrega</FormLabel>
+                            <FormControl>
+                                <Input 
+                                  type="date" 
+                                  {...field} 
+                                  min={(() => {
+                                      const d = new Date();
+                                      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
+                                  })()}
+                                  className="h-10 border-slate-200 bg-slate-50 font-bold text-xs rounded-xl" 
+                                />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+
                     {presupuesto && (
                         <div ref={budgetPanelRef} className="md:col-span-3 mt-2 p-4 rounded-xl border border-slate-200 bg-slate-50 relative overflow-hidden">
                             <div className="absolute top-0 left-0 w-1 h-full bg-slate-800" />
@@ -601,54 +649,6 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                             </div>
                         </div>
                     )}
-                    
-                    <FormField
-                        control={form.control as any}
-                        name="condicionPago"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Condición de Pago</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger className="h-10 border-slate-200 font-bold text-xs rounded-xl">
-                                    <SelectValue placeholder="Condición" />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent className="bg-white border-slate-200">
-                                    <SelectItem value="CONTADO" className="font-bold text-xs">AL CONTADO</SelectItem>
-                                    <SelectItem value="CREDITO_15" className="font-bold text-xs">CRÉDITO 15 DÍAS</SelectItem>
-                                    <SelectItem value="CREDITO_30" className="font-bold text-xs">CRÉDITO 30 DÍAS</SelectItem>
-                                    <SelectItem value="CREDITO_45" className="font-bold text-xs">CRÉDITO 45 DÍAS</SelectItem>
-                                    <SelectItem value="CREDITO_60" className="font-bold text-xs">CRÉDITO 60 DÍAS</SelectItem>
-                                    <SelectItem value="LETRAS" className="font-bold text-xs">LETRAS (ESPECIFICAR)</SelectItem>
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-
-                    <FormField
-                        control={form.control as any}
-                        name="fechaEntrega"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Fecha Requerida / Entrega</FormLabel>
-                            <FormControl>
-                                <Input 
-                                  type="date" 
-                                  {...field} 
-                                  min={(() => {
-                                      const d = new Date();
-                                      return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, '0') + "-" + String(d.getDate()).padStart(2, '0');
-                                  })()}
-                                  className="h-10 border-slate-200 bg-slate-50 font-bold text-xs rounded-xl" 
-                                />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
                 </div>
             </div>
 
@@ -672,9 +672,11 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
 
                 <div className="space-y-2">
                     {/* CABECERA DE LISTA */}
-                    <div className="flex gap-2 px-2 mb-1 hidden md:flex">
-                        <div className="w-10"></div>
-                        <div className="flex-[2]">
+                    <div className="flex gap-2 px-2 mb-1 hidden md:flex items-center">
+                        <div className="w-10 text-center">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">#</span>
+                        </div>
+                        <div className="flex-1">
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1">Material / Insumo</span>
                         </div>
                         <div className="w-24 text-center">
@@ -696,14 +698,14 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                         const sub = cant * pu;
 
                         return (
-                            <div key={field.id} className="flex flex-col md:flex-row gap-2 md:items-center bg-slate-50 p-3 md:p-2 rounded-xl border border-slate-100 group">
+                            <div key={field.id} className="flex flex-col md:flex-row gap-2 md:items-center bg-slate-50/80 hover:bg-slate-100/80 transition-colors p-3 md:p-2 rounded-xl border border-slate-200/70 group">
                                 
-                                <div className="w-full md:w-16 text-left pl-2 hidden md:block">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Item {index + 1}</span>
+                                <div className="w-10 text-center hidden md:block">
+                                  <span className="text-[10px] font-bold text-slate-400">{index + 1}</span>
                                 </div>
 
-                                <div className="flex-[2] w-full">
-                                        <FormField
+                                <div className="flex-1 w-full min-w-0">
+                                    <FormField
                                         control={form.control as any}
                                         name={`items.${index}.insumoId`}
                                         render={({ field }) => (
@@ -725,7 +727,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                     />
                                 </div>
 
-                                <div className="flex gap-2 w-full md:w-auto mt-2 md:mt-0">
+                                <div className="flex items-center gap-2 w-full md:w-auto mt-2 md:mt-0">
                                     <div className="w-1/2 md:w-24">
                                         <FormField
                                             control={form.control as any}
@@ -776,25 +778,25 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
                                             )}
                                         />
                                     </div>
-                                </div>
 
-                                <div className="w-full md:w-32 flex justify-between md:justify-end items-center px-2 mt-2 md:mt-0">
-                                    <span className="text-[10px] font-bold text-slate-400 uppercase md:hidden">Subtotal:</span>
-                                    <span className="font-black text-xs text-blue-700">
-                                        S/ {sub.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                    </span>
-                                </div>
+                                    <div className="w-28 md:w-32 flex justify-between md:justify-end items-center px-2">
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase md:hidden">Subtotal:</span>
+                                        <span className="font-black text-xs text-blue-700 whitespace-nowrap">
+                                            S/ {sub.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
+                                    </div>
 
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => remove(index)}
-                                    className="h-10 md:h-9 w-full md:w-9 mt-2 md:mt-0 text-slate-400 hover:text-error hover:bg-red-50 rounded-lg shrink-0 border border-slate-200 md:border-none"
-                                    disabled={fields.length === 1}
-                                >
-                                    <Trash2 className="w-4 h-4" />
-                                </Button>
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => remove(index)}
+                                        className="h-9 w-9 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg shrink-0"
+                                        disabled={fields.length === 1}
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                </div>
                             </div>
                         );
                     })}
@@ -802,7 +804,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
             </div>
 
             {/* SECCIÓN 3: NOTAS, ADJUNTOS Y RESUMEN FINANCIERO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 
                 {/* Notas y Adjuntos */}
                 <div className="space-y-4">
@@ -913,7 +915,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
 
             </div>
 
-            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-slate-50 p-4 border-t border-slate-200 -mx-5 -mb-5">
+            <div className="pt-4 flex justify-end gap-3 sticky bottom-0 bg-slate-50 p-4 border-t border-slate-200 -mx-6 -mb-6">
               <Button type="button" variant="ghost" onClick={onClose} disabled={loading} className="h-11 px-6 font-black uppercase text-[10px] tracking-widest text-slate-400 hover:bg-slate-200 rounded-xl">
                 Cancelar
               </Button>
@@ -928,7 +930,7 @@ export function OrdenCompraForm({ isOpen, onClose, initialData, defaultProyectoI
     </Dialog>
 
     <Dialog open={!!previewFile} onOpenChange={(val) => !val && setPreviewFile(null)}>
-        <DialogContent className="max-w-4xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col h-[85vh] z-[60]">
+        <DialogContent className="w-full sm:max-w-4xl bg-slate-50 border-slate-200 shadow-2xl overflow-hidden p-0 flex flex-col h-[85vh] z-[60]">
           <DialogHeader className="p-4 bg-white border-b border-slate-200 shrink-0 flex flex-row items-center justify-between">
             <DialogTitle className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <FileText className="w-4 h-4 text-blue-500" />
