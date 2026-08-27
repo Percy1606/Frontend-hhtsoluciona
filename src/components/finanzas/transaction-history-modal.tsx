@@ -120,8 +120,8 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
   return (
     <>
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl bg-white p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
-        <DialogHeader className="bg-slate-900 text-white p-6">
+      <DialogContent className="w-full sm:max-w-4xl lg:max-w-5xl bg-white p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col max-h-[92vh]">
+        <DialogHeader className="bg-slate-900 text-white p-6 shrink-0">
           <div className="flex items-center justify-between">
             <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" /> Auditoría de Caja: {caja.nombre}
@@ -132,7 +132,7 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
           </div>
         </DialogHeader>
 
-        <div className="p-6">
+        <div className="p-6 flex-1 overflow-y-auto">
             {loading ? (
                 <div className="h-64 flex flex-col items-center justify-center gap-3">
                     <Loader2 className="w-8 h-8 text-primary animate-spin opacity-20" />
