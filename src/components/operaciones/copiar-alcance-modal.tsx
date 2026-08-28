@@ -263,7 +263,7 @@ export function CopiarAlcanceModal({ proyecto, isOpen, onClose }: CopiarAlcanceM
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col rounded-2xl shadow-2xl overflow-hidden">
+      <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] p-0 border-none bg-white flex flex-col rounded-2xl shadow-2xl overflow-hidden">
         <DialogHeader className="p-6 bg-gradient-to-br from-secondary via-secondary to-secondary/90 text-white shrink-0">
           <DialogTitle className="text-xl font-black tracking-tight flex items-center gap-3">
             <Copy className="w-7 h-7 text-accent" />

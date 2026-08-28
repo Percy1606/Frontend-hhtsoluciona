@@ -182,7 +182,7 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
 
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-7xl w-[95vw] max-h-[95vh] p-0 border-none bg-slate-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden">
+      <DialogContent className="w-full sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl max-h-[92vh] h-[90vh] p-0 border-none bg-slate-50 flex flex-col rounded-2xl shadow-2xl overflow-hidden">
         {/* HEADER REDUCIDO */}
         <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white rounded-t-2xl shrink-0 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-10 opacity-10 pointer-events-none">
@@ -273,7 +273,7 @@ export function ProyectoDetail({ proyecto, onClose, onRefresh }: ProyectoDetailP
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0 bg-white">
-          <div className="px-6 border-b bg-white shrink-0">
+          <div className="px-6 border-b bg-white shrink-0 overflow-x-auto custom-scrollbar">
             <TabsList className="bg-transparent h-12 w-full justify-start gap-6 rounded-none p-0">
                 <TabsTrigger value="actividades" className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-[3px] data-[state=active]:border-primary rounded-none font-black text-[11px] uppercase h-full gap-2 text-slate-400 data-[state=active]:text-primary transition-all duration-300">
                     <ClipboardList className="w-4 h-4" /> Actividades ({proyecto.actividades.length})

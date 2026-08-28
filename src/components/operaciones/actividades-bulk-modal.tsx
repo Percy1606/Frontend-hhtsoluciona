@@ -349,7 +349,7 @@ export function ActividadesBulkModal({ proyecto: propProyecto, isOpen, onClose }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-5xl w-[95vw] max-h-[95vh] p-0 border-none bg-white flex flex-col rounded-2xl shadow-2xl overflow-hidden">
+      <DialogContent className="w-full sm:max-w-4xl md:max-w-5xl max-h-[92vh] h-[90vh] p-0 border-none bg-white flex flex-col rounded-2xl shadow-2xl overflow-hidden">
         {/* HEADER */}
         <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white shrink-0">
           <div className="flex items-start justify-between">

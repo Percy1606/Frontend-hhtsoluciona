@@ -148,7 +148,7 @@ export function ActividadDocumentosModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
+      <DialogContent className="w-full sm:max-w-2xl bg-white border-none shadow-2xl rounded-2xl p-0 overflow-hidden">
         <DialogHeader className="p-6 bg-primary text-white">
           <div className="flex items-center gap-3">
             <div className="p-2.5 bg-white/10 rounded-xl border border-white/20">

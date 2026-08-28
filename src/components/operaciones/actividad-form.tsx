@@ -264,9 +264,9 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto z-[100]">
-        <DialogHeader className="p-6 bg-primary text-white rounded-t-lg shrink-0">
+    <Dialog open={true} onOpenChange={onClose}>
+      <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto z-[100]">
+        <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white shrink-0">
           <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
             <ClipboardList className="w-6 h-6 text-accent" />
             {actividad ? "Editar Actividad" : "Nueva Actividad"}
