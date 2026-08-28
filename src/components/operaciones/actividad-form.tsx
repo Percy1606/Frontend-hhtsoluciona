@@ -264,7 +264,7 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
   };
 
   return (
-    <Dialog open={true} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto z-[100]">
         <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white shrink-0">
           <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
