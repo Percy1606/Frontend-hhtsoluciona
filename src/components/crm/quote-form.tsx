@@ -292,7 +292,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
     <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-0">
-        <div className="px-8 py-6 space-y-8 overflow-y-auto max-h-[72vh]">
+        <div className="px-6 py-5 space-y-6 overflow-y-auto max-h-[72vh]">
           <div className="space-y-4">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -656,7 +656,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 px-8 py-4 border-t border-slate-100 bg-slate-50/80">
+        <div className="flex justify-end gap-3 px-6 py-4 border-t border-slate-100 bg-slate-50/80">
           <Button 
             type="button" 
             variant="ghost" 

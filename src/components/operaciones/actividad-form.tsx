@@ -265,10 +265,16 @@ export function ActividadForm({ proyectoId, actividad, isOpen, onClose }: Activi
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-full sm:max-w-2xl max-h-[90vh] p-0 border-none bg-white flex flex-col overflow-y-auto z-[100]">
-        <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white shrink-0">
-          <DialogTitle className="text-2xl font-black tracking-tight flex items-center gap-3">
-            <ClipboardList className="w-6 h-6 text-accent" />
+      <DialogContent 
+        overlayClassName="bg-slate-950/80 backdrop-blur-md z-[100]"
+        containerClassName="z-[105]"
+        className="w-[94%] sm:w-full sm:max-w-2xl max-h-[88vh] p-0 border border-slate-200/80 bg-white flex flex-col rounded-3xl shadow-2xl shadow-black/50 overflow-hidden"
+      >
+        <DialogHeader className="p-6 bg-gradient-to-br from-primary via-primary to-primary/90 text-white shrink-0 shadow-sm">
+          <DialogTitle className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-3 uppercase">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/20">
+              <ClipboardList className="w-5 h-5 text-accent" />
+            </div>
             {actividad ? "Editar Actividad" : "Nueva Actividad"}
           </DialogTitle>
         </DialogHeader>

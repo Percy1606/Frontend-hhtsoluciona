@@ -667,7 +667,7 @@ export default function CotizacionesInboxPage() {
           setIsVersionUpdate(false);
         }
       }}>
-        <DialogContent className="w-[96%] sm:w-[92%] max-w-[1020px] sm:max-w-[1020px] md:max-w-[1020px] bg-white p-0 border-none shadow-2xl overflow-hidden rounded-2xl mx-auto">
+        <DialogContent className="w-[94%] sm:w-full max-w-2xl bg-white p-0 border-none shadow-2xl overflow-hidden rounded-2xl mx-auto">
           <DialogHeader className="p-6 bg-primary text-white shrink-0">
             <div className="flex items-center gap-4">
               <div className="bg-white/10 p-2 rounded-lg">
