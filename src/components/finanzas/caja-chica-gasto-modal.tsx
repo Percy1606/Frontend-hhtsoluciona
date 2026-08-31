@@ -71,6 +71,9 @@ export function CajaChicaGastoModal({
   const [isUploading, setIsUploading] = useState(false);
   const [comprobanteUrl, setComprobanteUrl] = useState<string>("");
   const [openProjectCombobox, setOpenProjectCombobox] = useState(false);
+  const [personalProyectoList, setPersonalProyectoList] = useState<any[]>([]);
+  const [loadingPersonal, setLoadingPersonal] = useState(false);
+  const [selectedPersonalId, setSelectedPersonalId] = useState<string>("none");
 
   const form = useForm({
     defaultValues: {
@@ -95,8 +98,32 @@ export function CajaChicaGastoModal({
       });
       setComprobanteUrl("");
       setOpenProjectCombobox(false);
+      setSelectedPersonalId("none");
+      if (defaultProyectoId && defaultProyectoId !== "none") {
+        fetchPersonalDeProyecto(defaultProyectoId);
+      } else {
+        setPersonalProyectoList([]);
+      }
     }
   }, [isOpen, defaultProyectoId, moduloOrigen]);
+
+  const fetchPersonalDeProyecto = async (proyectoId: string) => {
+    if (!proyectoId || proyectoId === "none") {
+      setPersonalProyectoList([]);
+      return;
+    }
+    try {
+      setLoadingPersonal(true);
+      const res = await api.get(`/logistica/personal?proyectoId=${proyectoId}&limit=100`);
+      const list = res?.data || (Array.isArray(res) ? res : []);
+      setPersonalProyectoList(list);
+    } catch (e) {
+      console.error("Error al cargar personal del proyecto:", e);
+      setPersonalProyectoList([]);
+    } finally {
+      setLoadingPersonal(false);
+    }
+  };
 
   const fetchUserCaja = async () => {
     setLoadingCaja(true);
@@ -419,6 +446,7 @@ export function CajaChicaGastoModal({
                                   onSelect={() => {
                                     form.setValue("proyectoId", p.id);
                                     setOpenProjectCombobox(false);
+                                    fetchPersonalDeProyecto(p.id);
                                   }}
                                   className={cn(
                                     "flex items-start justify-between p-2.5 rounded-lg cursor-pointer text-xs transition-colors mb-1 border-b last:border-none border-slate-100",
@@ -458,6 +486,72 @@ export function CajaChicaGastoModal({
                 </FormItem>
               )}
             />
+
+            {/* SELECCIÓN INTELIGENTE DE PERSONAL DE LOGÍSTICA SI HAY PROYECTO */}
+            {selectedProyectoId && selectedProyectoId !== "none" && (
+              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-3.5 h-3.5 text-slate-700" />
+                    <span className="text-[11px] font-black tracking-wider uppercase text-slate-800">
+                      Asignación de Personal Técnico
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-bold text-slate-600 bg-slate-200/80 px-2 py-0.5 rounded uppercase tracking-wider">
+                    Logística
+                  </span>
+                </div>
+
+                <div className="text-[11px] text-slate-600 font-medium leading-relaxed bg-white p-2.5 rounded-lg border border-slate-200">
+                  <p>
+                    <strong className="text-slate-800">Indicación:</strong> Si el pago corresponde a mano de obra o jornal, selecciónalo de la lista para sincronizarlo con el costo del proyecto. Los nuevos trabajadores deben ser registrados previamente en el módulo de <strong>Logística / Personal</strong>.
+                  </p>
+                </div>
+
+                {loadingPersonal ? (
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-600 py-1">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" /> Consultando personal asignado al proyecto...
+                  </div>
+                ) : personalProyectoList.length > 0 ? (
+                  <Select
+                    value={selectedPersonalId}
+                    onValueChange={(val: string | null) => {
+                      const v = val || "none";
+                      setSelectedPersonalId(v);
+                      if (v && v !== "none") {
+                        const persona = personalProyectoList.find((p) => p.id === v);
+                        if (persona) {
+                          const monto = Number(persona.montoDiario) || 0;
+                          form.setValue("concepto", `Pago Jornal: ${persona.nombre} (${persona.rol || "Técnico"}) - ${selectedProjectObj?.nombre || ""}`);
+                          if (monto > 0) {
+                            form.setValue("montoTotal", monto);
+                          }
+                          toast.info(`Personal asignado: ${persona.nombre}. Puede ajustar el monto final si incluye viáticos o pasajes.`);
+                        }
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-10 bg-white border-slate-200 text-xs font-bold text-slate-800">
+                      <SelectValue placeholder="Seleccionar trabajador asignado..." />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="none" className="text-xs font-bold text-slate-500">
+                        -- Gasto Operativo General / Materiales / Otros --
+                      </SelectItem>
+                      {personalProyectoList.map((p) => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs font-bold">
+                          {p.nombre} ({p.rol || "Técnico"}) — Jornal Base: S/ {Number(p.montoDiario || 0).toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="text-[11px] text-slate-600 bg-white p-2.5 rounded-lg border border-slate-200 font-medium">
+                    No se registra personal asignado en Logística para este proyecto. Puede ingresar el concepto de forma manual o coordinar con Logística para su registro previo.
+                  </div>
+                )}
+              </div>
+            )}
 
             <div>
               <label className="text-[10px] font-black uppercase text-slate-500 block mb-1">

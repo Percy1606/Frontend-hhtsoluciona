@@ -26,7 +26,7 @@ import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { Gasto } from "@/types/finanzas";
 import { cn, getSecureUrl } from "@/lib/utils";
-import { Wallet, Lock, Loader2, Link2, AlertTriangle, CheckCircle2, FileText, Building2 } from "lucide-react";
+import { Wallet, Lock, Loader2, Link2, AlertTriangle, CheckCircle2, FileText, Building2, Briefcase } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -60,6 +60,9 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [projectStats, setProjectStats] = useState<any>(null);
+  const [personalProyectoList, setPersonalProyectoList] = useState<any[]>([]);
+  const [loadingPersonal, setLoadingPersonal] = useState(false);
+  const [selectedPersonalId, setSelectedPersonalId] = useState<string>("none");
 
   // Extraer metodoPago guardado en justificación (si lo hay) para mostrarlo en UI
   const initialJustificacion = (initialData as any)?.justificacion || "";
@@ -141,6 +144,15 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
       form.setValue("clasificacion", "PROYECTO");
       form.setValue("tipo", "PROYECTO");
 
+      setLoadingPersonal(true);
+      api.get(`/logistica/personal?proyectoId=${selectedProjectId}&limit=100`)
+        .then((res: any) => {
+          const list = res?.data || (Array.isArray(res) ? res : []);
+          setPersonalProyectoList(list);
+        })
+        .catch(() => setPersonalProyectoList([]))
+        .finally(() => setLoadingPersonal(false));
+
       api.get(`/finanzas/bandeja-proyectos/${selectedProjectId}/detalle`)
         .then(res => {
            const adelantosTotales = res.adelantos?.reduce((acc: number, a: any) => acc + Number(a.monto), 0) || 0;
@@ -156,6 +168,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
         .catch(() => setProjectStats(null));
     } else {
       setProjectStats(null);
+      setPersonalProyectoList([]);
+      setSelectedPersonalId("none");
     }
   }, [selectedProjectId, form]);
 
@@ -307,6 +321,74 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                   )}
                 />
               </div>
+
+              {/* SELECCIÓN INTELIGENTE DE PERSONAL DE LOGÍSTICA SI HAY PROYECTO */}
+              {selectedProjectId && selectedProjectId !== "none" && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="w-3.5 h-3.5 text-slate-700" />
+                      <span className="text-xs font-black tracking-wider uppercase text-slate-800">
+                        Asignación de Personal Técnico
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-600 bg-slate-200/80 px-2.5 py-0.5 rounded uppercase tracking-wider">
+                      Logística
+                    </span>
+                  </div>
+
+                  <div className="text-[11px] text-slate-600 font-medium leading-relaxed bg-white p-3 rounded-lg border border-slate-200">
+                    <p>
+                      <strong className="text-slate-800">Control de Mano de Obra:</strong> Si el desembolso corresponde al jornal o planilla de un trabajador, selecciónelo directamente para sincronizarlo con el costo real del proyecto. Para registrar nuevos técnicos, debe realizarse previamente en el módulo de <strong>Logística / Personal de Obra</strong>.
+                    </p>
+                  </div>
+
+                  {loadingPersonal ? (
+                    <div className="flex items-center gap-2 text-xs font-bold text-slate-600 py-1">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-slate-600" /> Consultando personal asignado al proyecto...
+                    </div>
+                  ) : personalProyectoList.length > 0 ? (
+                    <Select
+                      value={selectedPersonalId}
+                      onValueChange={(val: string | null) => {
+                        const v = val || "none";
+                        setSelectedPersonalId(v);
+                        if (v && v !== "none") {
+                          const persona = personalProyectoList.find((p) => p.id === v);
+                          if (persona) {
+                            const monto = Number(persona.montoDiario) || 0;
+                            form.setValue("concepto", `Pago Jornal: ${persona.nombre} (${persona.rol || "Técnico"}) - ${selectedProjectObj?.nombre || ""}`);
+                            form.setValue("categoriaDistribucion", "MANO_OBRA");
+                            form.setValue("area", "OperacionesDeCampo");
+                            if (monto > 0) {
+                              form.setValue("montoTotal", monto);
+                            }
+                            toast.info(`Personal asignado: ${persona.nombre}. Puede ajustar el monto final si incluye viáticos o pasajes.`);
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="h-10 bg-white border-slate-200 text-xs font-bold text-slate-800">
+                        <SelectValue placeholder="Seleccionar trabajador asignado en Logística..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="none" className="text-xs font-bold text-slate-500">
+                          -- Gasto Operativo General / Materiales / Otros --
+                        </SelectItem>
+                        {personalProyectoList.map((p) => (
+                          <SelectItem key={p.id} value={p.id} className="text-xs font-bold">
+                            {p.nombre} ({p.rol || "Técnico"}) — Jornal Base: S/ {Number(p.montoDiario || 0).toFixed(2)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <div className="text-[11px] text-slate-600 bg-white p-3 rounded-lg border border-slate-200 font-medium">
+                      No se registra personal asignado en Logística para este proyecto. Puede ingresar el gasto de forma manual o coordinar con Logística para su registro previo.
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* RESUMEN PRESUPUESTAL Y ALERTAS FINANCIERAS */}
               {selectedProjectObj && (

@@ -422,21 +422,44 @@ export default function PersonalPage() {
             <div className="bg-primary/10 p-2 rounded-lg">
               <HardHat className="w-5 h-5 text-primary" />
             </div>
-            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Mano de Obra</h1>
+            <h1 className="text-xl font-black text-primary tracking-tight uppercase">Mano de Obra / Personal de Campo</h1>
           </div>
           <p className="text-[10px] text-muted-foreground mt-0.5 font-bold uppercase tracking-wide">
-            Gestiona el personal asignado y los costos laborales de cada proyecto.
+            Gestiona la cuadrilla técnica y los jornales pactados por proyecto.
           </p>
         </div>
+
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          <Button onClick={() => router.push('/logistica/horas-extras')} variant="outline" className="h-10 px-6 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-blue-500 text-blue-600 hover:bg-blue-50">
+          <Button onClick={() => router.push('/logistica/horas-extras')} variant="outline" className="h-10 px-5 font-black uppercase text-[10px] tracking-widest gap-2 rounded-xl border-blue-500 text-blue-600 hover:bg-blue-50">
             <CheckCircle2 className="w-4 h-4" />
             Solicitudes RRHH
           </Button>
-          <Button onClick={() => { resetForm(); setShowForm(true); }} className="h-10 px-6 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
+          <Button onClick={() => { resetForm(); setShowForm(true); }} className="h-10 px-5 bg-primary hover:bg-primary/90 font-black uppercase text-[10px] tracking-widest shadow-lg shadow-primary/20 gap-2 rounded-xl">
             <UserPlus className="w-4 h-4" />
             Registrar Personal
           </Button>
+        </div>
+      </div>
+
+      {/* GUÍA DE PROCEDIMIENTO Y NO DUPLICIDAD */}
+      <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div className="flex items-start gap-3">
+          <div className="p-2.5 bg-slate-200/70 rounded-xl text-slate-700 shrink-0 mt-0.5">
+            <Users className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="font-black text-slate-900 uppercase tracking-wider text-xs">
+              Procedimiento Operativo: Registro y Pago de Mano de Obra
+            </h4>
+            <div className="text-[11px] text-slate-600 leading-relaxed font-medium">
+              <p>
+                <strong>1. Registro en Logística:</strong> Da de alta al técnico ingresando su nombre, proyecto asignado y tarifa diaria acordada.
+              </p>
+              <p>
+                <strong>2. Desembolso en Finanzas:</strong> Al pagar desde <em>Finanzas / Caja Chica</em>, el encargado seleccionará al trabajador de la lista precargada para evitar doble registro y cuadrar el costo real del proyecto automáticamente.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 
