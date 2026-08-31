@@ -44,7 +44,7 @@ import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { useAuthStore } from "@/store/auth-store";
 import { useOperacionesStore } from "@/store/operaciones-store";
-import { Loader2, Upload, CheckCircle2, Wallet, ChevronsUpDown, Check, Briefcase } from "lucide-react";
+import { Loader2, Upload, CheckCircle2, Wallet, ChevronsUpDown, Check, Briefcase, AlertCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CajaChicaGastoModalProps {
@@ -197,10 +197,7 @@ export function CajaChicaGastoModal({
     }
 
     const saldoDisp = Number(cajaUsuario.saldoDisponible || cajaUsuario.saldoReal || 0);
-    if (monto > saldoDisp) {
-      toast.error(`Saldo insuficiente en ${cajaUsuario.nombre}. Disponible: S/ ${saldoDisp.toFixed(2)}`);
-      return;
-    }
+    const esSobregiro = monto > saldoDisp;
 
     try {
       setSubmitting(true);
@@ -228,7 +225,15 @@ export function CajaChicaGastoModal({
       };
 
       await api.post("/finanzas/gastos", payload);
-      toast.success(`Gasto registrado en ${cajaUsuario.nombre}.`);
+      
+      if (esSobregiro) {
+        toast.warning(`Gasto registrado con SOBREGIRO en ${cajaUsuario.nombre}.`, {
+          description: `Se excedió el saldo por S/ ${(monto - saldoDisp).toFixed(2)}. Finanzas repondrá este monto.`
+        });
+      } else {
+        toast.success(`Gasto registrado en ${cajaUsuario.nombre}.`);
+      }
+
       onClose();
       if (onSuccess) onSuccess();
     } catch (err: any) {
@@ -271,19 +276,30 @@ export function CajaChicaGastoModal({
         </DialogHeader>
 
         {cajaUsuario && (
-          <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs font-bold w-full min-w-0 box-border">
-            <div>
-              <p className="text-[9px] uppercase text-slate-400 font-black">Efectivo Disponible</p>
-              <p className="text-emerald-700 font-black text-sm">
-                S/ {saldoDisponible.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            {montoActual > 0 && (
-              <div className="text-right">
-                <p className="text-[9px] uppercase text-slate-400 font-black">Quedará en Caja</p>
-                <p className={cn("font-black text-sm", saldoFinalProyectado < 0 ? "text-red-600" : "text-slate-700")}>
-                  S/ {saldoFinalProyectado.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+          <div className="space-y-2">
+            <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 flex items-center justify-between text-xs font-bold w-full min-w-0 box-border">
+              <div>
+                <p className="text-[9px] uppercase text-slate-400 font-black">Efectivo Disponible</p>
+                <p className={cn("font-black text-sm", saldoDisponible < 0 ? "text-red-600" : "text-emerald-700")}>
+                  S/ {saldoDisponible.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
                 </p>
+              </div>
+              {montoActual > 0 && (
+                <div className="text-right">
+                  <p className="text-[9px] uppercase text-slate-400 font-black">Quedará en Caja</p>
+                  <p className={cn("font-black text-sm", saldoFinalProyectado < 0 ? "text-red-600" : "text-slate-700")}>
+                    S/ {saldoFinalProyectado.toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {montoActual > saldoDisponible && (
+              <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-2 text-amber-800 text-[11px] font-bold animate-in fade-in">
+                <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                <span>
+                  <strong>Aviso de Sobregiro:</strong> El gasto excede el saldo en caja (dinero puesto de bolsillo). Se registrará como sobregiro para su posterior reposición por Finanzas.
+                </span>
               </div>
             )}
           </div>
