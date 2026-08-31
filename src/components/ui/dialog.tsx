@@ -76,7 +76,8 @@ function DialogContent({
         <DialogPrimitive.Popup
           data-slot="dialog-content"
           className={cn(
-            "pointer-events-auto relative w-full max-w-[calc(100vw-1.5rem)] sm:max-w-lg min-w-0 my-auto rounded-2xl bg-white text-slate-800 shadow-2xl transition duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 focus:outline-none box-border overflow-hidden",
+            "pointer-events-auto relative w-full min-w-0 my-auto rounded-2xl bg-white text-slate-800 shadow-2xl transition duration-150 ease-out data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 focus:outline-none box-border overflow-hidden",
+            (typeof className !== 'string' || !className.includes("max-w-")) && "max-w-[calc(100vw-1.5rem)] sm:max-w-lg",
             className
           )}
           {...props}
