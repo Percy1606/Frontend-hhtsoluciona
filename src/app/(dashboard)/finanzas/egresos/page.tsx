@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input";
 import { cn, formatDate, formatLargeCurrency } from "@/lib/utils";
 import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
 import { ModernDialog } from "@/components/ui/modern-dialog";
@@ -53,6 +54,8 @@ const gastoStatus: Record<string, { label: string, color: string }> = {
 };
 
 export default function EgresosPage() {
+  const searchParams = useSearchParams();
+  const highlightGastoId = searchParams.get("highlightGastoId") || "";
   const { user } = useAuthStore();
   const { proyectos, fetchProyectos } = useOperacionesStore();
   const { quotes: globalQuotes, fetchQuotes } = useCRMStore();
@@ -615,8 +618,20 @@ export default function EgresosPage() {
                               
                               {isMonthOpen && (
                                 <div>
-                                  {monthGroup.gastos.map((g: any, idx: number) => (
-                                    <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < monthGroup.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
+                                  {monthGroup.gastos.map((g: any, idx: number) => {
+                                    const isHighlighted = highlightGastoId && g.id === highlightGastoId;
+                                    return (
+                                    <div 
+                                      key={g.id} 
+                                      id={`gasto-${g.id}`}
+                                      className={cn(
+                                        "px-4 py-3 transition-all",
+                                        idx < monthGroup.gastos.length - 1 ? "border-b border-slate-300 border-dashed" : "",
+                                        isHighlighted 
+                                          ? "bg-amber-100/90 border-2 border-amber-400 rounded-xl shadow-md my-1.5 ring-2 ring-amber-300/60" 
+                                          : "hover:bg-white"
+                                      )}
+                                    >
                                       <div className="flex items-start justify-between mb-1.5">
                                         <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
                                           {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
@@ -683,7 +698,7 @@ export default function EgresosPage() {
                                         <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                                       </div>
                                     </div>
-                                  ))}
+                                  );})}
                                 </div>
                               )}
                             </div>

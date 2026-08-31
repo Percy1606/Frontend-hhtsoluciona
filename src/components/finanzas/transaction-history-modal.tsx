@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Dialog, 
   DialogContent, 
@@ -19,14 +20,18 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { 
   History, 
-  ArrowUpRight, 
-  ArrowDownLeft, 
-  AlertCircle,
-  RefreshCw,
-  Loader2,
-  Trash2,
-  ChevronLeft,
-  ChevronRight
+  RefreshCw, 
+  Loader2, 
+  Trash2, 
+  ChevronLeft, 
+  ChevronRight,
+  ExternalLink,
+  Eye,
+  FileText,
+  Building2,
+  Calendar,
+  DollarSign,
+  AlertCircle
 } from "lucide-react";
 import { cn, formatCurrency, formatDate } from "@/lib/utils";
 import { api } from "@/lib/api";
@@ -51,11 +56,11 @@ const cleanConcepto = (concepto: string) => {
 };
 
 const getTipoVisual = (tipo: string, concepto: string = "") => {
-  if (tipo === 'BLOQUEO') return { label: '🔒 FONDOS GASTADOS', color: 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/20' };
-  if (tipo === 'LIBERACION') return { label: '🔓 FONDOS LIBERADOS', color: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-indigo-500/20' };
-  if (tipo === 'ANULACION' || concepto.toUpperCase().includes('ANULADO')) return { label: '🚫 MOV. ANULADO', color: 'bg-red-50 text-red-600 border-red-200 ring-red-500/20' };
-  if (tipo === 'EGRESO') return { label: '💸 PAGO EJECUTADO', color: 'bg-rose-50 text-rose-600 border-rose-200 ring-rose-500/20' };
-  if (tipo === 'INGRESO') return { label: '💰 INGRESO', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 ring-emerald-500/20' };
+  if (tipo === 'BLOQUEO') return { label: 'FONDOS GASTADOS', color: 'bg-orange-50 text-orange-600 border-orange-200 ring-orange-500/20' };
+  if (tipo === 'LIBERACION') return { label: 'FONDOS LIBERADOS', color: 'bg-indigo-50 text-indigo-600 border-indigo-200 ring-indigo-500/20' };
+  if (tipo === 'ANULACION' || concepto.toUpperCase().includes('ANULADO')) return { label: 'MOVIMIENTO ANULADO', color: 'bg-red-50 text-red-600 border-red-200 ring-red-500/20' };
+  if (tipo === 'EGRESO') return { label: 'PAGO EJECUTADO', color: 'bg-rose-50 text-rose-600 border-rose-200 ring-rose-500/20' };
+  if (tipo === 'INGRESO') return { label: 'INGRESO', color: 'bg-emerald-50 text-emerald-600 border-emerald-200 ring-emerald-500/20' };
   return { label: tipo, color: 'bg-slate-50 text-slate-600 border-slate-200 ring-slate-500/20' };
 };
 
@@ -67,11 +72,16 @@ const formatFechaBonita = (d: string) => {
 };
 
 export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalProps) {
+  const router = useRouter();
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const limit = 10;
+
+  // Selected Detail Modal
+  const [selectedTx, setSelectedTx] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Deletions
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
@@ -115,6 +125,17 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
     }
   };
 
+  const handleOpenDetail = (t: any) => {
+    setSelectedTx(t);
+    setIsDetailOpen(true);
+  };
+
+  const handleGoToExpense = (gastoId: string) => {
+    onClose();
+    setIsDetailOpen(false);
+    router.push(`/finanzas/egresos?highlightGastoId=${gastoId}`);
+  };
+
   if (!caja) return null;
 
   return (
@@ -122,12 +143,18 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="w-full sm:max-w-4xl lg:max-w-5xl bg-white p-0 overflow-hidden rounded-3xl border-none shadow-2xl flex flex-col max-h-[92vh]">
         <DialogHeader className="bg-slate-900 text-white p-6 shrink-0">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between pr-8">
             <DialogTitle className="text-sm font-black uppercase tracking-widest flex items-center gap-2">
                 <History className="w-5 h-5 text-primary" /> Auditoría de Caja: {caja.nombre}
             </DialogTitle>
-            <Button variant="ghost" onClick={() => fetchHistory(page)} className="h-7 w-7 p-0 text-white/50 hover:text-white">
-                <RefreshCw className={cn("w-4 h-4", loading && "animate-spin")} />
+            <Button 
+              variant="ghost" 
+              onClick={() => fetchHistory(page)} 
+              className="h-8 px-2.5 text-white/70 hover:text-white hover:bg-white/10 rounded-lg text-xs font-bold gap-1.5 transition-colors"
+              title="Actualizar movimientos"
+            >
+                <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+                <span className="text-[10px] uppercase font-bold tracking-wider">Recargar</span>
             </Button>
           </div>
         </DialogHeader>
@@ -153,7 +180,7 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                 <TableHead className="text-[9px] font-black uppercase">Tipo</TableHead>
                                 <TableHead className="text-[9px] font-black uppercase">Concepto / Motivo</TableHead>
                                 <TableHead className="text-[9px] font-black uppercase text-right">Monto</TableHead>
-                                <TableHead className="w-[50px]"></TableHead>
+                                <TableHead className="w-[80px] text-center"></TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -161,7 +188,6 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                 const isSameAsPrev = i > 0 && t.referenciaId && t.referenciaId === transactions[i-1].referenciaId;
                                 const tipoVisual = getTipoVisual(t.tipo, t.concepto);
                                 
-                                // Calculation logic based on type to find previous balance
                                 const montoNum = Number(t.monto);
                                 const saldoFinal = Number(t.saldoRealNuevo);
                                 let saldoAnterior = saldoFinal;
@@ -169,7 +195,13 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                 if (t.tipo === 'EGRESO' || t.tipo === 'ANULACION') saldoAnterior = saldoFinal + montoNum;
                                 
                                 return (
-                                <TableRow key={t.id} className={cn("hover:bg-slate-50/50 transition-colors border-slate-100", isSameAsPrev && "border-t-0 bg-slate-50/30")}>
+                                <TableRow 
+                                  key={t.id} 
+                                  className={cn(
+                                    "hover:bg-slate-50/80 transition-colors border-slate-100 group", 
+                                    isSameAsPrev && "border-t-0 bg-slate-50/30"
+                                  )}
+                                >
                                     <TableCell className="pl-4 align-top pt-4">
                                         <div className="flex flex-col">
                                             <span className="text-[10px] font-black text-slate-700">{formatFechaBonita(t.fecha).split(',')[0]}</span>
@@ -181,13 +213,23 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                             {tipoVisual.label}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="max-w-[200px] md:max-w-[320px] align-top pt-4 whitespace-normal break-words">
-                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug whitespace-normal break-words">{cleanConcepto(t.concepto)}</p>
-                                        {!isSameAsPrev && t.referenciaTipo && (
-                                            <div className="mt-1.5 flex flex-wrap gap-1">
-                                                <Badge variant="secondary" className="text-[8px] font-black uppercase bg-slate-100 text-slate-500 hover:bg-slate-200">
-                                                    {t.referenciaTipo === 'ORDEN_COMPRA' ? 'ORDEN DE COMPRA' : t.referenciaTipo.replace('_', ' ')}
-                                                </Badge>
+                                    <TableCell 
+                                      onClick={() => handleOpenDetail(t)}
+                                      className="max-w-[200px] md:max-w-[320px] align-top pt-4 whitespace-normal break-words cursor-pointer"
+                                    >
+                                        <p className="text-[11px] font-bold text-slate-800 uppercase leading-snug hover:text-primary transition-colors">
+                                          {cleanConcepto(t.concepto)}
+                                        </p>
+                                        {!isSameAsPrev && (
+                                            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                                                {t.referenciaTipo && (
+                                                  <Badge variant="secondary" className="text-[8px] font-black uppercase bg-slate-100 text-slate-500">
+                                                      {t.referenciaTipo === 'ORDEN_COMPRA' ? 'ORDEN DE COMPRA' : t.referenciaTipo.replace('_', ' ')}
+                                                  </Badge>
+                                                )}
+                                                <span className="text-[9px] font-extrabold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                                                  <Eye className="w-3 h-3" /> Ver Detalle
+                                                </span>
                                             </div>
                                         )}
                                     </TableCell>
@@ -210,18 +252,30 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
                                             </div>
                                         </div>
                                     </TableCell>
-                                    <TableCell className="pr-4 align-top pt-3">
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-8 w-8 rounded-full hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
-                                            onClick={() => {
-                                                setTransactionToDelete(t);
-                                                setDeleteModalOpen(true);
-                                            }}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </Button>
+                                    <TableCell className="pr-4 align-top pt-3 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-7 w-7 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors"
+                                              onClick={() => handleOpenDetail(t)}
+                                              title="Ver Detalle"
+                                          >
+                                              <Eye className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button 
+                                              variant="ghost" 
+                                              size="icon" 
+                                              className="h-7 w-7 rounded-lg hover:bg-red-50 text-slate-300 hover:text-red-500 transition-colors"
+                                              onClick={() => {
+                                                  setTransactionToDelete(t);
+                                                  setDeleteModalOpen(true);
+                                              }}
+                                              title="Eliminar Movimiento"
+                                          >
+                                              <Trash2 className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </div>
                                     </TableCell>
                                 </TableRow>
                             )})}
@@ -258,6 +312,100 @@ export function TransactionHistoryModal({ isOpen, onClose, caja }: HistoryModalP
         </div>
       </DialogContent>
     </Dialog>
+
+    {/* MODAL DE DETALLE DEL MOVIMIENTO */}
+    {selectedTx && (
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="max-w-md w-full bg-white p-6 rounded-2xl border border-slate-200 shadow-2xl">
+          <DialogHeader className="pb-3 border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-xl bg-slate-100 text-slate-700">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <DialogTitle className="text-sm font-black uppercase text-slate-900">
+                  Detalle del Movimiento
+                </DialogTitle>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                  {formatFechaBonita(selectedTx.fecha)}
+                </p>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-3 text-xs">
+            {/* Concepto y Monto */}
+            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+              <span className="text-[9px] font-black uppercase text-slate-400 tracking-wider block mb-1">
+                Concepto / Motivo
+              </span>
+              <p className="font-bold text-slate-900 leading-snug">
+                {selectedTx.concepto}
+              </p>
+
+              <div className="flex items-center justify-between mt-3 pt-2 border-t border-slate-200/80">
+                <span className="text-[10px] font-black uppercase text-slate-500">Monto Ejecutado</span>
+                <span className="text-sm font-black text-slate-900 font-mono">
+                  {formatCurrency(Number(selectedTx.monto), caja.moneda)}
+                </span>
+              </div>
+            </div>
+
+            {/* Proyecto Asignado si existe */}
+            {selectedTx.gastoDetalle?.proyecto && (
+              <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl space-y-1">
+                <div className="flex items-center gap-1.5 text-blue-900 font-black text-[10px] uppercase tracking-wide">
+                  <Building2 className="w-3.5 h-3.5 text-blue-700" />
+                  <span>Proyecto Vinculado</span>
+                </div>
+                <p className="text-xs font-bold text-slate-900">
+                  {selectedTx.gastoDetalle.proyecto.codigo} - {selectedTx.gastoDetalle.proyecto.nombre}
+                </p>
+                {selectedTx.gastoDetalle.proyecto.cliente && (
+                  <p className="text-[10px] font-bold text-slate-500 uppercase">
+                    Cliente: {selectedTx.gastoDetalle.proyecto.cliente.empresa || selectedTx.gastoDetalle.proyecto.cliente.nombre}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Comprobante Adjunto si existe */}
+            {selectedTx.gastoDetalle?.comprobanteUrl && (
+              <div className="flex items-center justify-between p-3 bg-emerald-50 border border-emerald-200 rounded-xl">
+                <span className="text-[10px] font-black uppercase text-emerald-900">Sustento Adjunto</span>
+                <a 
+                  href={selectedTx.gastoDetalle.comprobanteUrl} 
+                  target="_blank" 
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 hover:underline"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Ver Comprobante
+                </a>
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+              <Button 
+                variant="outline" 
+                className="h-9 text-xs font-bold rounded-xl"
+                onClick={() => setIsDetailOpen(false)}
+              >
+                Cerrar
+              </Button>
+              {selectedTx.referenciaTipo === 'GASTO' && selectedTx.referenciaId && (
+                <Button 
+                  className="h-9 bg-primary hover:bg-primary/90 text-white text-xs font-bold rounded-xl gap-1.5 shadow-sm"
+                  onClick={() => handleGoToExpense(selectedTx.referenciaId)}
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Ver en Módulo de Gastos
+                </Button>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    )}
 
     <GenericSecureDeleteModal
         isOpen={deleteModalOpen}
