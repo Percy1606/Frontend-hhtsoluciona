@@ -119,6 +119,9 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
     return existingFacturas.some(f => f.codigo && f.codigo.trim().toLowerCase() === cleanCode);
   }, [watchCodigo, existingFacturas, initialData]);
 
+  const [projectDetail, setProjectDetail] = useState<any>(null);
+  const [loadingProjectDetail, setLoadingProjectDetail] = useState(false);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -132,6 +135,14 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
         setProyectos(Array.isArray(projectsRes) ? projectsRes : (projectsRes.data || []));
         const cajasList = Array.isArray(cajasRes) ? cajasRes : (cajasRes.data || []);
         setCajas(cajasList);
+
+        // Si existe una cuenta/caja configurada como predeterminada, seleccionarla automáticamente
+        if (!form.getValues('cajaId')) {
+          const defaultCaja = cajasList.find((c: any) => c.esPredeterminada === true || c.isDefault === true || c.predeterminada === true);
+          if (defaultCaja) {
+            form.setValue('cajaId', defaultCaja.id);
+          }
+        }
       } catch (e) {
         console.error("Error cargando datos del formulario de facturas", e);
       }
@@ -139,19 +150,33 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
     fetchData();
   }, []);
 
-  // Cargar Hitos cuando cambie el Proyecto
+  // Cargar Hitos y Totales Financieros cuando cambie el Proyecto
   useEffect(() => {
     if (selectedProyectoId && selectedProyectoId !== "none") {
+      setLoadingProjectDetail(true);
       api.get(`/finanzas/bandeja-proyectos/${selectedProyectoId}/detalle`)
         .then(res => {
+          setProjectDetail(res);
           if (res?.cotizacionOrigen?.hitosPago) {
             setHitos(res.cotizacionOrigen.hitosPago);
           } else {
             setHitos([]);
           }
+
+          // Si es una factura nueva y el proyecto tiene saldo por cobrar, sugerir el monto
+          if (!initialData && res?.totales?.saldoPorCobrar > 0 && Number(form.getValues("montoTotal")) === 0) {
+            const saldoCobrar = Number(res.totales.saldoPorCobrar);
+            form.setValue("montoTotal", saldoCobrar);
+            recalculateAmounts(saldoCobrar);
+          }
         })
-        .catch(() => setHitos([]));
+        .catch(() => {
+          setProjectDetail(null);
+          setHitos([]);
+        })
+        .finally(() => setLoadingProjectDetail(false));
     } else {
+      setProjectDetail(null);
       setHitos([]);
     }
   }, [selectedProyectoId]);
@@ -384,6 +409,49 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
               />
             </div>
 
+            {/* RESUMEN FINANCIERO DEL PROYECTO: Monto por cobrar y avances */}
+            {selectedProyectoId && selectedProyectoId !== "none" && (
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-semibold text-slate-700">
+                    Estado financiero del proyecto
+                  </span>
+                  {loadingProjectDetail && (
+                    <span className="flex items-center gap-1 text-[10px] text-slate-400">
+                      <Loader2 className="w-3 h-3 animate-spin" /> Cargando saldos...
+                    </span>
+                  )}
+                </div>
+
+                {projectDetail ? (
+                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200/60 text-center">
+                    <div className="bg-white p-2 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-slate-500 font-medium">Facturado</p>
+                      <p className="text-xs font-semibold text-slate-800">
+                        S/ {Number(projectDetail.totales?.totalFacturado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-emerald-600 font-medium">Cobrado a la fecha</p>
+                      <p className="text-xs font-semibold text-emerald-600">
+                        S/ {Number(projectDetail.totales?.totalCobrado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                    <div className="bg-white p-2 rounded-lg border border-slate-100">
+                      <p className="text-[10px] text-amber-700 font-semibold">Pendiente por cobrar</p>
+                      <p className="text-xs font-bold text-amber-700">
+                        S/ {Number(projectDetail.totales?.saldoPorCobrar || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                ) : !loadingProjectDetail ? (
+                  <p className="text-[11px] text-slate-500 italic">
+                    Sin facturación previa registrada para este proyecto.
+                  </p>
+                ) : null}
+              </div>
+            )}
+
             {showProyectoWarning && (
               <div className="bg-amber-50/80 border border-amber-200 p-3 rounded-xl text-amber-900 text-xs">
                 <p className="font-semibold mb-1">Aviso sobre el proyecto seleccionado:</p>
@@ -567,7 +635,9 @@ export function FacturaForm({ initialData, existingFacturas = [], onSubmit, onCa
                           >
                             <FormControl>
                               <SelectTrigger className="bg-white border-slate-200 h-9 text-xs">
-                                <SelectValue placeholder="Seleccionar hito..." />
+                                <SelectValue placeholder="Sin hito específico">
+                                  {hitosOptions.find((h) => h.value === (field.value || "none"))?.label || "Sin hito específico"}
+                                </SelectValue>
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="bg-white">
