@@ -51,11 +51,11 @@ export function Combobox({
         )}
       >
         <div className="flex flex-col min-w-0 flex-1 pr-2">
-          <span className="text-xs text-slate-800 font-medium whitespace-normal break-words leading-snug">
+          <span className="text-xs text-slate-900 font-bold whitespace-normal break-words leading-snug">
             {selectedOption ? selectedOption.label : placeholder}
           </span>
           {selectedOption?.subLabel && (
-            <span className="text-[10px] text-slate-500 font-normal mt-0.5 whitespace-normal break-words">
+            <span className="text-[10px] text-slate-500 font-medium mt-0.5 whitespace-normal break-words">
               {selectedOption.subLabel}
             </span>
           )}
@@ -87,7 +87,7 @@ export function Combobox({
                     {value === option.value && <Check className="h-3.5 w-3.5 text-primary stroke-[3px]" />}
                   </div>
                   <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
-                    <span className="font-semibold text-slate-800 text-xs whitespace-normal break-words leading-relaxed">
+                    <span className="font-bold text-slate-900 text-xs whitespace-normal break-words leading-relaxed">
                       {option.label}
                     </span>
                     {option.subLabel && (

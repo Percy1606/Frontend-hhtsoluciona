@@ -101,14 +101,16 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [provRes, projectsRes, cajasRes] = await Promise.all([
+        const [provRes, projectsRes, cajasRes, quotesRes] = await Promise.all([
           api.get('/logistica/proveedores?limit=500'),
           api.get('/operaciones/proyectos?limit=500'),
-          api.get('/finanzas/cajas')
+          api.get('/finanzas/cajas'),
+          api.get('/crm/quotes?limit=500').catch(() => [])
         ]);
         
         setProveedores(Array.isArray(provRes) ? provRes : (provRes.data || []));
         setProyectos(Array.isArray(projectsRes) ? projectsRes : (projectsRes.data || []));
+        const quotesList = Array.isArray(quotesRes) ? quotesRes : (quotesRes.data || []);
         const cajasList = Array.isArray(cajasRes) ? cajasRes : (cajasRes.data || []);
         setCajas(cajasList);
       } catch (e) {
@@ -126,15 +128,18 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     })), [proveedores]);
 
   const projectOptions = useMemo(() => {
-    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General (Sin Proyecto)" }];
+    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General (Sin Proyecto / Oficina / Flota)" }];
+    
+    // Proyectos de Operaciones
     proyectos.forEach(p => {
       const clientName = p.cliente?.razonSocial || p.cliente?.empresa || p.clienteNombre || '';
       options.push({
         value: p.id,
-        label: `${p.codigo} - ${p.nombre}${clientName ? ` (${clientName})` : ''}`,
-        subLabel: clientName ? `CLIENTE: ${clientName}` : `CÓDIGO: ${p.codigo}`
+        label: `${p.codigo} - ${p.nombre}`,
+        subLabel: clientName ? `CLIENTE: ${clientName}` : `PROYECTO: ${p.codigo}`
       });
     });
+
     return options;
   }, [proyectos]);
 
