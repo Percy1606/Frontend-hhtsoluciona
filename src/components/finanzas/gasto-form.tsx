@@ -18,15 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { api } from "@/lib/api";
 import { Combobox } from "@/components/ui/combobox";
 import { Gasto } from "@/types/finanzas";
 import { cn, getSecureUrl } from "@/lib/utils";
-import { Wallet, Lock, Loader2, FileText, Building2, Briefcase, ChevronDown, ChevronUp, Layers, CheckCircle2, DollarSign } from "lucide-react";
+import { Wallet, Loader2, UploadCloud, ChevronDown, ChevronRight, Briefcase, FileCheck, CheckCircle2 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { toast } from "sonner";
 
@@ -62,6 +61,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const [loadingPersonal, setLoadingPersonal] = useState(false);
   const [selectedPersonalId, setSelectedPersonalId] = useState<string>("none");
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Extraer metodoPago guardado en justificación
   const initialJustificacion = (initialData as any)?.justificacion || "";
@@ -70,6 +71,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   const defaultJustificacion = matchMetodo ? matchMetodo[2] : initialJustificacion;
 
   const form = useForm({
+    mode: "onChange",
     defaultValues: {
       codigo: initialData?.codigo || "",
       comprobanteUrl: initialData?.comprobanteUrl || "",
@@ -116,7 +118,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                               cajasList.find((c: any) => c.nombre.toLowerCase().includes("steven")) ||
                               cajasList[0];
           if (cajaDefault) {
-            form.setValue("cajaId", cajaDefault.id);
+            form.setValue("cajaId", cajaDefault.id, { shouldValidate: true });
           }
         }
       } catch (e) {
@@ -134,7 +136,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     })), [proveedores]);
 
   const projectOptions = useMemo(() => {
-    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General / Sin Proyecto" }];
+    const options: { value: string; label: string; subLabel?: string }[] = [{ value: "none", label: "Gasto General (Sin Proyecto)" }];
     proyectos.forEach(p => {
       const clientName = p.cliente?.razonSocial || p.cliente?.empresa || p.clienteNombre || '';
       options.push({
@@ -147,7 +149,6 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   }, [proyectos]);
 
   const selectedProjectId = form.watch("proyectoId");
-  const selectedProjectObj = proyectos.find(p => p.id === selectedProjectId);
 
   useEffect(() => {
     if (selectedProjectId && selectedProjectId !== "none") {
@@ -168,8 +169,7 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     }
   }, [selectedProjectId, form]);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const uploadFile = async (file: File) => {
     if (!file) return;
     setIsUploading(true);
     const formData = new FormData();
@@ -186,9 +186,23 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     }
   };
 
-  // Watchers para el cálculo de impuestos
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) uploadFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) uploadFile(file);
+  };
+
+  // Watchers para cálculo de impuestos
   const watchAplicaImpuestos = form.watch("aplicaImpuestos");
   const watchMonto = form.watch("montoTotal");
+  const watchConcepto = form.watch("concepto");
+  const watchCajaId = form.watch("cajaId");
 
   useEffect(() => {
     const monto = Number(watchMonto) || 0;
@@ -239,52 +253,52 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
     }
   };
 
-  const selectedCajaId = form.watch("cajaId");
-  const selectedCajaObj = cajas.find(c => c.id === selectedCajaId);
+  const selectedCajaObj = cajas.find(c => c.id === watchCajaId);
   const montoNum = Number(watchMonto) || 0;
   const saldoRestante = selectedCajaObj ? Number(selectedCajaObj.saldoDisponible) - montoNum : 0;
   const esInsuficiente = selectedCajaObj && saldoRestante < 0;
+
+  // Validación para deshabilitar botón Guardar gasto si faltan campos obligatorios
+  const isFormValid = Boolean(watchConcepto && watchConcepto.trim() && montoNum > 0 && watchCajaId);
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleLocalSubmit)} className="flex flex-col h-full bg-white w-full">     
         <ScrollArea className="flex-1 px-6 py-4">
-          <div className="max-w-2xl mx-auto space-y-4">
+          <div className="space-y-4 max-w-full">
             
-            {/* 1. ASIGNACIÓN DE PROYECTO / DESTINO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {/* FILA 1: Proyecto / Gasto General | Proveedor / Comercio */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
                 name="proyectoId"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                    <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">
-                      Proyecto o Gasto General
+                    <FormLabel className="text-xs font-semibold text-slate-700">
+                      Proyecto / gasto general
                     </FormLabel>
                     <Combobox
                       options={projectOptions}
                       value={field.value || "none"}
                       onChange={field.onChange}
-                      placeholder="Buscar proyecto o general..."
+                      placeholder="Seleccionar proyecto o general..."
                     />
-                    <p className="text-[9px] text-slate-400 font-medium">Elige la obra o deja en General si es oficina/flota.</p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
 
-              {/* Selector Rápido de Trabajador si hay Proyecto */}
+              {/* Selector Rápido de Técnico o Proveedor */}
               {selectedProjectId && selectedProjectId !== "none" ? (
-                <div className="space-y-1">
-                  <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider flex items-center gap-1">
-                    <Briefcase className="w-3 h-3 text-slate-600" /> Personal Técnico (Opcional)
+                <div className="space-y-1.5">
+                  <FormLabel className="text-xs font-semibold text-slate-700 flex items-center gap-1">
+                    <Briefcase className="w-3.5 h-3.5 text-slate-500" /> Personal técnico (Opcional)
                   </FormLabel>
                   {loadingPersonal ? (
-                    <div className="h-10 flex items-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-xl px-3 border">
+                    <div className="h-10 flex items-center gap-2 text-xs text-slate-400 bg-slate-50 rounded-lg px-3 border border-slate-200">
                       <Loader2 className="w-3.5 h-3.5 animate-spin" /> Consultando técnicos...
                     </div>
                   ) : (
-                    <>
                     <Select
                       value={selectedPersonalId}
                       onValueChange={(val: string | null) => {
@@ -294,28 +308,26 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                           const persona = personalProyectoList.find((p) => p.id === v);
                           if (persona) {
                             const monto = Number(persona.montoDiario) || 0;
-                            form.setValue("concepto", `Pago Jornal: ${persona.nombre} (${persona.rol || "Técnico"})`);
+                            form.setValue("concepto", `Pago Jornal: ${persona.nombre} (${persona.rol || "Técnico"})`, { shouldValidate: true });
                             form.setValue("categoriaDistribucion", "MANO_OBRA");
                             form.setValue("area", "OperacionesDeCampo");
-                            if (monto > 0) form.setValue("montoTotal", monto as any);
+                            if (monto > 0) form.setValue("montoTotal", monto as any, { shouldValidate: true });
                           }
                         }
                       }}
                     >
-                      <SelectTrigger className="h-10 bg-slate-50/70 border-slate-200 text-xs font-bold text-slate-800">
-                        <SelectValue placeholder="Seleccionar técnico..." />
+                      <SelectTrigger className="h-10 bg-white border-slate-200 text-xs font-normal text-slate-800">
+                        <SelectValue placeholder="Seleccionar técnico asignado..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        <SelectItem value="none" className="text-xs font-bold text-slate-400">-- Ninguno (Materiales / Viáticos) --</SelectItem>
+                        <SelectItem value="none" className="text-xs text-slate-400">-- Ninguno (Materiales / Otros) --</SelectItem>
                         {personalProyectoList.map((p) => (
-                          <SelectItem key={p.id} value={p.id} className="text-xs font-bold">
+                          <SelectItem key={p.id} value={p.id} className="text-xs">
                             {p.nombre} ({p.rol || "Técnico"}) — S/ {Number(p.montoDiario || 0).toFixed(2)}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[9px] text-slate-400 font-medium">Jornal fijado por Logística.</p>
-                    </>
                   )}
                 </div>
               ) : (
@@ -324,8 +336,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                   name="proveedorId"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">
-                        Proveedor / Comercio (Opcional)
+                      <FormLabel className="text-xs font-semibold text-slate-700">
+                        Proveedor / comercio
                       </FormLabel>
                       <Combobox
                         options={providerOptions}
@@ -340,206 +352,226 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
               )}
             </div>
 
-            {/* 2. CONCEPTO Y MONTO */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
-              <FormField
-                control={form.control}
-                name="concepto"
-                rules={{ required: "El concepto es obligatorio" }}
-                render={({ field }) => (
-                  <FormItem className="md:col-span-2">
-                    <FormLabel className="font-bold text-[10px] uppercase text-slate-600 tracking-wider">
-                      Concepto / Descripción del Gasto *
-                    </FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Ej: Combustible Duster, Compra de guantes, Peaje..." 
-                        {...field} 
-                        className="bg-white border-slate-200 h-11 font-bold text-xs" 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {/* FILA 2: Concepto / descripción del gasto */}
+            <FormField
+              control={form.control}
+              name="concepto"
+              rules={{ required: "El concepto es obligatorio" }}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-xs font-semibold text-slate-700">
+                    Concepto / descripción del gasto <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="Ej: Combustible camioneta Duster, Compra de herramientas, Peaje..." 
+                      {...field} 
+                      className="bg-white border-slate-200 h-10 text-xs font-medium placeholder:text-slate-400" 
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
+            {/* FILA 3: Monto total | Cuenta / caja de pago */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
               <FormField
                 control={form.control}
                 name="montoTotal"
                 rules={{ required: "Monto requerido" }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-black text-[10px] uppercase text-slate-700 tracking-wider">
-                      Monto Total (S/) *
+                    <FormLabel className="text-xs font-semibold text-slate-700">
+                      Monto total <span className="text-red-500">*</span>
                     </FormLabel>
                     <FormControl>
-                      <Input 
-                        type="number" 
-                        step="0.01"
-                        placeholder="0.00"
-                        value={field.value || ""}
-                        onChange={e => field.onChange(e.target.value)}
-                        className="bg-amber-50/50 border-amber-300 focus:border-amber-500 h-11 font-black text-base text-slate-900 text-right pr-3 font-mono" 
-                      />
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-slate-500 select-none">
+                          S/
+                        </span>
+                        <Input 
+                          type="number" 
+                          step="0.01"
+                          placeholder="0.00"
+                          value={field.value || ""}
+                          onChange={e => field.onChange(e.target.value)}
+                          className={cn(
+                            "h-10 pl-8 pr-3 font-semibold text-sm bg-white border-slate-200 transition-colors focus:border-slate-400",
+                            esInsuficiente && "border-red-300 bg-red-50/40"
+                          )} 
+                        />
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            </div>
 
-            {/* 3. CAJA DE PAGO Y COMPROBANTE */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <FormField
                 control={form.control}
                 name="cajaId"
                 rules={{ required: "Seleccione una cuenta de pago" }}
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-bold text-[10px] uppercase text-slate-600 tracking-wider flex items-center justify-between">
-                      <span className="flex items-center gap-1"><Wallet className="w-3.5 h-3.5 text-amber-600" /> Cuenta / Caja de Pago *</span>
+                    <div className="flex items-center justify-between">
+                      <FormLabel className="text-xs font-semibold text-slate-700">
+                        Cuenta / caja de pago <span className="text-red-500">*</span>
+                      </FormLabel>
                       {selectedCajaObj && (
-                        <span className={cn("text-[9px] font-black uppercase px-1.5 py-0.2 rounded", esInsuficiente ? "text-red-600 bg-red-50" : "text-emerald-700 bg-emerald-50")}>
-                          Disp: S/ {Number(selectedCajaObj.saldoDisponible).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                        <span className={cn(
+                          "text-[11px] font-medium transition-colors",
+                          esInsuficiente ? "text-red-600 font-semibold" : "text-emerald-600"
+                        )}>
+                          Disponible: S/ {Number(selectedCajaObj.saldoDisponible).toLocaleString("es-PE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </span>
                       )}
-                    </FormLabel>
+                    </div>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
-                        <SelectTrigger className="h-10 bg-white border-slate-200 text-xs font-bold">
-                          <SelectValue placeholder="Seleccionar caja..." />
+                        <SelectTrigger className="h-10 bg-white border-slate-200 text-xs font-normal">
+                          <SelectValue placeholder="Seleccionar caja de origen..." />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent className="bg-white">
-                        <SelectItem value="none" className="font-bold text-xs text-slate-400">Sin afectación de caja (A crédito)</SelectItem>
+                        <SelectItem value="none" className="text-xs text-slate-500">Sin afectación de caja (A crédito)</SelectItem>
                         {cajas.map((c) => (
-                          <SelectItem key={c.id} value={c.id} className="font-bold text-xs">
+                          <SelectItem key={c.id} value={c.id} className="text-xs">
                             <div className="flex items-center justify-between gap-3 w-full">
-                              <span className="uppercase">{c.nombre}</span>
-                              <span className="text-[10px] text-slate-400 font-mono">S/ {Number(c.saldoDisponible || 0).toFixed(2)}</span>
+                              <span>{c.nombre}</span>
+                              <span className="text-[11px] text-emerald-600 font-mono">
+                                S/ {Number(c.saldoDisponible || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
+                              </span>
                             </div>
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[9px] text-slate-400 font-medium">Caja General cargada por defecto.</p>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-
-              <div className="grid grid-cols-2 gap-2">
-                <FormField
-                  control={form.control}
-                  name="tipoComprobante"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">
-                        Comprobante
-                      </FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="bg-white border-slate-200 h-10 font-bold text-xs">
-                            <SelectValue placeholder="Tipo" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="BOLETA" className="font-bold text-xs">Boleta</SelectItem>
-                          <SelectItem value="FACTURA" className="font-bold text-xs">Factura</SelectItem>
-                          <SelectItem value="RECIBO_HONORARIOS" className="font-bold text-xs">RxH</SelectItem>
-                          <SelectItem value="TICKET" className="font-bold text-xs">Ticket / Varios</SelectItem>
-                          <SelectItem value="OTROS" className="font-bold text-xs">Otros</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="codigo"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="font-bold text-[10px] uppercase text-slate-500 tracking-wider">
-                        N° Doc (Opcional)
-                      </FormLabel>
-                      <FormControl>
-                        <Input placeholder="Ej: B001-123" {...field} className="bg-white border-slate-200 h-10 font-bold text-xs" />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </div>
             </div>
 
-            {/* BOTÓN DESPLEGABLE DE OPCIONES AVANZADAS */}
-            <div className="pt-1">
+            {/* FILA 4: Comprobante | N.° de documento */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="tipoComprobante"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-semibold text-slate-700">
+                      Comprobante
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="bg-white border-slate-200 h-10 text-xs font-normal">
+                          <SelectValue placeholder="Tipo de comprobante" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="BOLETA" className="text-xs">Boleta</SelectItem>
+                        <SelectItem value="FACTURA" className="text-xs">Factura</SelectItem>
+                        <SelectItem value="RECIBO_HONORARIOS" className="text-xs">Recibo por Honorarios (RxH)</SelectItem>
+                        <SelectItem value="TICKET" className="text-xs">Ticket / Varios</SelectItem>
+                        <SelectItem value="OTROS" className="text-xs">Otros</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="codigo"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-xs font-semibold text-slate-700">
+                      N.º de documento
+                    </FormLabel>
+                    <FormControl>
+                      <Input placeholder="Ej: B001-12345" {...field} className="bg-white border-slate-200 h-10 text-xs" />
+                    </FormControl>
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* SECCIÓN COLAPSABLE: Opciones avanzadas */}
+            <div className="pt-2">
               <button
                 type="button"
                 onClick={() => setShowAdvanced(!showAdvanced)}
-                className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-colors py-1"
+                className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors py-1 group"
               >
-                {showAdvanced ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                {showAdvanced ? "Ocultar Opciones Avanzadas" : "Opciones Avanzadas (Sustento PDF, IGV, Fechas, Estado)"}
+                {showAdvanced ? (
+                  <ChevronDown className="w-4 h-4 text-slate-500 group-hover:text-slate-800 transition-transform" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-slate-500 group-hover:text-slate-800 transition-transform" />
+                )}
+                <span>Opciones avanzadas</span>
               </button>
 
               {showAdvanced && (
-                <div className="mt-2.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 transition-all text-xs">
+                <div className="mt-3 p-4 bg-slate-50/70 border border-slate-200 rounded-xl space-y-4 transition-all">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {/* Fecha de emisión */}
                     <FormField
                       control={form.control}
                       name="fechaEmision"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold text-[9px] uppercase text-slate-500">Fecha Emisión</FormLabel>
+                          <FormLabel className="text-[11px] font-semibold text-slate-600">Fecha de emisión</FormLabel>
                           <FormControl>
-                            <Input type="date" {...field} className="bg-white border-slate-200 h-9 font-bold text-xs" />
+                            <Input type="date" {...field} className="bg-white border-slate-200 h-9 text-xs" />
                           </FormControl>
                         </FormItem>
                       )}
                     />
 
+                    {/* Estado del pago */}
                     <FormField
                       control={form.control}
                       name="estado"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold text-[9px] uppercase text-slate-500">Estado del Pago</FormLabel>
+                          <FormLabel className="text-[11px] font-semibold text-slate-600">Estado del pago</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-white border-slate-200 h-9 font-bold text-xs">
+                              <SelectTrigger className="bg-white border-slate-200 h-9 text-xs">
                                 <SelectValue placeholder="Estado" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="bg-white">
-                              <SelectItem value="PAGADO" className="font-bold text-xs text-emerald-700">EJECUTADO / PAGADO</SelectItem>
-                              <SelectItem value="SOLICITADO" className="font-bold text-xs text-amber-700">POR APROBAR</SelectItem>
-                              <SelectItem value="APROBADO" className="font-bold text-xs text-blue-700">APROBADO</SelectItem>
-                              <SelectItem value="PENDIENTE" className="font-bold text-xs text-slate-500">BORRADOR</SelectItem>
+                              <SelectItem value="PAGADO" className="text-xs text-emerald-700 font-medium">EJECUTADO / PAGADO</SelectItem>
+                              <SelectItem value="SOLICITADO" className="text-xs text-amber-700 font-medium">POR APROBAR</SelectItem>
+                              <SelectItem value="APROBADO" className="text-xs text-blue-700 font-medium">APROBADO</SelectItem>
+                              <SelectItem value="PENDIENTE" className="text-xs text-slate-600 font-medium">BORRADOR</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormItem>
                       )}
                     />
 
+                    {/* Categoría */}
                     <FormField
                       control={form.control}
                       name="categoriaDistribucion"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold text-[9px] uppercase text-slate-500">Categoría</FormLabel>
+                          <FormLabel className="text-[11px] font-semibold text-slate-600">Categoría</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="bg-white border-slate-200 h-9 font-bold text-xs">
+                              <SelectTrigger className="bg-white border-slate-200 h-9 text-xs">
                                 <SelectValue placeholder="Categoría" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent className="bg-white">
-                              <SelectItem value="OPERATIVO_VARIO" className="font-bold text-xs">Operativo Varios</SelectItem>
-                              <SelectItem value="LOGISTICA_MOVILIDAD" className="font-bold text-xs">Movilidad / Combustible</SelectItem>
-                              <SelectItem value="MANO_OBRA" className="font-bold text-xs">Mano de Obra / Jornales</SelectItem>
-                              <SelectItem value="MATERIALES" className="font-bold text-xs">Materiales y Ferretería</SelectItem>
-                              <SelectItem value="EQUIPOS" className="font-bold text-xs">Equipos y Herramientas</SelectItem>
+                              <SelectItem value="OPERATIVO_VARIO" className="text-xs">Operativo Varios</SelectItem>
+                              <SelectItem value="LOGISTICA_MOVILIDAD" className="text-xs">Movilidad / Combustible</SelectItem>
+                              <SelectItem value="MANO_OBRA" className="text-xs">Mano de Obra / Jornales</SelectItem>
+                              <SelectItem value="MATERIALES" className="text-xs">Materiales y Ferretería</SelectItem>
+                              <SelectItem value="EQUIPOS" className="text-xs">Equipos y Herramientas</SelectItem>
                             </SelectContent>
                           </Select>
                         </FormItem>
@@ -547,31 +579,78 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                     />
                   </div>
 
-                  {/* Subir comprobante adjunto */}
+                  {/* Zona de carga moderna: Archivo / sustento */}
                   <FormField
                     control={form.control}
                     name="comprobanteUrl"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-bold text-[9px] uppercase text-slate-500">Adjuntar Sustento / Foto / PDF</FormLabel>
+                        <FormLabel className="text-[11px] font-semibold text-slate-600">
+                          Archivo / sustento (PDF o Imagen)
+                        </FormLabel>
                         <FormControl>
-                          <div className="flex items-center gap-2">
-                            <Input 
+                          <div>
+                            <input 
+                              ref={fileInputRef}
                               type="file" 
                               onChange={handleFileChange} 
-                              className="h-9 cursor-pointer text-xs bg-white border-slate-200 flex-1"
-                              accept=".pdf,.xml,.jpg,.png"
+                              className="hidden"
+                              accept=".pdf,.xml,.jpg,.jpeg,.png"
                             />
-                            {isUploading && <Loader2 className="w-4 h-4 animate-spin text-slate-600" />}
-                            {field.value && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                className="h-9 text-[10px] font-bold border-blue-200 text-blue-700 bg-blue-50 shrink-0"
-                                onClick={() => window.open(getSecureUrl(field.value), '_blank')}
+                            
+                            {field.value ? (
+                              <div className="flex items-center justify-between p-3 bg-white border border-emerald-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <FileCheck className="w-4 h-4 text-emerald-600" />
+                                  <span className="text-xs text-slate-700 font-medium">Archivo adjuntado con éxito</span>
+                                </div>
+                                <div className="flex gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-8 text-xs font-medium text-blue-600 border-blue-200 hover:bg-blue-50"
+                                    onClick={() => window.open(getSecureUrl(field.value), '_blank')}
+                                  >
+                                    Ver archivo
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-xs text-slate-500 hover:text-slate-700"
+                                    onClick={() => fileInputRef.current?.click()}
+                                  >
+                                    Cambiar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div
+                                onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                                onDragLeave={() => setIsDragging(false)}
+                                onDrop={handleDrop}
+                                onClick={() => fileInputRef.current?.click()}
+                                className={cn(
+                                  "border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition-all bg-white hover:bg-slate-50 flex flex-col items-center justify-center gap-1.5",
+                                  isDragging ? "border-primary bg-primary/5" : "border-slate-200 hover:border-slate-300"
+                                )}
                               >
-                                Ver Adjunto
-                              </Button>
+                                {isUploading ? (
+                                  <div className="flex items-center gap-2 text-xs text-slate-600">
+                                    <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                                    <span>Subiendo archivo...</span>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <UploadCloud className="w-6 h-6 text-slate-400" />
+                                    <p className="text-xs font-medium text-slate-700">
+                                      Arrastra un archivo aquí o <span className="text-primary hover:underline">haz clic para seleccionar</span>
+                                    </p>
+                                    <p className="text-[10px] text-slate-400">Formatos soportados: PDF, PNG, JPG, XML (máx. 10MB)</p>
+                                  </>
+                                )}
+                              </div>
                             )}
                           </div>
                         </FormControl>
@@ -581,11 +660,11 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
 
                   {/* Toggle IGV si es Factura */}
                   {form.watch("tipoComprobante") === "FACTURA" && (
-                    <div className="flex items-center justify-between p-2.5 bg-white border border-slate-200 rounded-lg">
+                    <div className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg">
                       <div>
-                        <p className="text-[10px] font-bold text-slate-800 uppercase">Aplica Crédito Fiscal (IGV 18%)</p>
+                        <p className="text-xs font-semibold text-slate-800">Aplica para Crédito Fiscal (IGV 18%)</p>
                         {watchAplicaImpuestos && (
-                          <p className="text-[9px] text-slate-500">
+                          <p className="text-[11px] text-slate-500 font-mono mt-0.5">
                             Subtotal: S/ {form.watch("montoSubtotal")} | IGV: S/ {form.watch("montoIgv")}
                           </p>
                         )}
@@ -609,23 +688,31 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
           </div>
         </ScrollArea>
 
-        {/* PIE DEL MODAL */}
-        <div className="flex-shrink-0 flex items-center justify-between p-4 border-t border-slate-100 bg-white">
+        {/* FOOTER FIJO DENTRO DEL MODAL */}
+        <div className="flex-shrink-0 flex items-center justify-end gap-3 px-6 py-3.5 border-t border-slate-100 bg-white">
           <Button 
             type="button" 
-            variant="ghost" 
+            variant="outline" 
             onClick={onCancel} 
-            className="font-bold text-xs text-slate-500 hover:bg-slate-100 h-10 px-5 rounded-xl"
+            className="font-medium text-xs text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-slate-200 h-9 px-4 rounded-lg"
           >
             Cancelar
           </Button>
 
           <Button 
             type="submit" 
-            disabled={isSubmitting} 
-            className="font-bold text-xs bg-primary hover:bg-primary/90 text-white h-10 px-6 rounded-xl shadow-md disabled:opacity-50"
+            disabled={isSubmitting || !isFormValid} 
+            className="font-medium text-xs bg-primary hover:bg-primary/90 text-white h-9 px-5 rounded-lg shadow-sm disabled:opacity-50 transition-all"
           >
-            {isSubmitting ? "Guardar Gasto..." : initialData ? "Actualizar Gasto" : "Guardar Gasto"}
+            {isSubmitting ? (
+              <span className="flex items-center gap-1.5">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Guardando...
+              </span>
+            ) : initialData ? (
+              "Guardar gasto"
+            ) : (
+              "Guardar gasto"
+            )}
           </Button>
         </div>
       </form>

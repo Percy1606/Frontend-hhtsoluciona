@@ -35,6 +35,7 @@ import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { Gasto } from "@/types/finanzas";
 import { ModernDialog } from "@/components/ui/modern-dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { GastoForm } from "@/components/finanzas/gasto-form";
 import { GenericSecureDeleteModal } from "@/components/ui/generic-secure-delete-modal";
 import { toast } from "sonner";
@@ -798,24 +799,32 @@ export default function EgresosPage() {
         )}
       </div>
 
-      <ModernDialog
-        isOpen={isModalOpen}
-        onOpenChange={(open) => setIsModalOpen(open)}
-        title={editingGasto ? "Editar Gasto" : "Registrar Nuevo Gasto"}
-        maxWidth="sm:max-w-4xl"
-        className="max-h-[90vh] flex flex-col"
-      >
-        <div className="flex-1 overflow-y-auto pr-1">
-          <GastoForm 
-            initialData={editingGasto}
-            onSubmit={handleCreateOrUpdateGasto}
-            onCancel={() => {
-              setIsModalOpen(false);
-              setEditingGasto(null);
-            }}
-          />
-        </div>
-      </ModernDialog>
+      <Dialog open={isModalOpen} onOpenChange={(open) => {
+        setIsModalOpen(open);
+        if (!open) setEditingGasto(null);
+      }}>
+        <DialogContent className="sm:max-w-[920px] w-full p-0 border border-slate-200 shadow-2xl rounded-2xl overflow-hidden bg-white max-h-[90vh] flex flex-col">
+          <div className="px-6 py-4 border-b border-slate-100 bg-white shrink-0">
+            <h2 className="text-[20px] font-semibold text-slate-900 tracking-tight">
+              {editingGasto ? "Editar gasto" : "Registrar nuevo gasto"}
+            </h2>
+            <p className="text-xs text-slate-500 font-normal mt-0.5">
+              Registra y organiza los gastos asociados a proyectos y operaciones.
+            </p>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            <GastoForm 
+              initialData={editingGasto}
+              onSubmit={handleCreateOrUpdateGasto}
+              onCancel={() => {
+                setIsModalOpen(false);
+                setEditingGasto(null);
+              }}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <GenericSecureDeleteModal
         isOpen={deleteModalOpen}
