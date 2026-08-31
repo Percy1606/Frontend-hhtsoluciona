@@ -55,7 +55,8 @@ const gastoStatus: Record<string, { label: string, color: string }> = {
 
 export default function EgresosPage() {
   const searchParams = useSearchParams();
-  const highlightGastoId = searchParams.get("highlightGastoId") || "";
+  const highlightParam = searchParams.get("highlightGastoId") || "";
+  const [activeHighlightId, setActiveHighlightId] = useState<string>("");
   const { user } = useAuthStore();
   const { proyectos, fetchProyectos } = useOperacionesStore();
   const { quotes: globalQuotes, fetchQuotes } = useCRMStore();
@@ -100,10 +101,12 @@ export default function EgresosPage() {
   };
 
   const toggleProject = (id: string) => {
-    const next = new Set(expanded);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    setExpanded(next);
+    setExpanded(prev => {
+      if (prev.has(id)) {
+        return new Set(); // Si ya estaba abierta, se cierra
+      }
+      return new Set([id]); // Si se abre, es la única abierta
+    });
   };
 
   const fetchData = async () => {
@@ -137,18 +140,16 @@ export default function EgresosPage() {
     fetchCajas();
   }, []);
 
-  // Auto abrir la carpeta y el mes cuando highlightGastoId esté presente
+  // Auto abrir la carpeta y el mes cuando highlightParam esté presente y desvanecer a los 7 segundos
   useEffect(() => {
-    if (!highlightGastoId || gastos.length === 0) return;
+    if (!highlightParam || gastos.length === 0) return;
 
-    const targetGasto = gastos.find(g => g.id === highlightGastoId);
+    setActiveHighlightId(highlightParam);
+
+    const targetGasto = gastos.find(g => g.id === highlightParam);
     if (targetGasto) {
       const folderId = targetGasto.proyectoId || 'unassigned';
-      setExpanded(prev => {
-        const next = new Set(prev);
-        next.add(folderId);
-        return next;
-      });
+      setExpanded(new Set([folderId]));
 
       if (targetGasto.fechaEmision) {
         const date = new Date(targetGasto.fechaEmision);
@@ -161,13 +162,20 @@ export default function EgresosPage() {
 
       // Desplazamiento suave al elemento tras abrirse el contenedor
       setTimeout(() => {
-        const el = document.getElementById(`gasto-${highlightGastoId}`);
+        const el = document.getElementById(`gasto-${highlightParam}`);
         if (el) {
           el.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
       }, 400);
+
+      // Desvanecer el resalte tras 7 segundos
+      const timer = setTimeout(() => {
+        setActiveHighlightId("");
+      }, 7000);
+
+      return () => clearTimeout(timer);
     }
-  }, [highlightGastoId, gastos]);
+  }, [highlightParam, gastos]);
 
   const handleCreateOrUpdateGasto = async (data: any) => {
     try {
@@ -539,13 +547,13 @@ export default function EgresosPage() {
                   <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
                     {grupo.proyectoId !== 'unassigned' ? (
                       grupo.gastos.map((g, idx) => {
-                        const isHighlighted = highlightGastoId && g.id === highlightGastoId;
+                        const isHighlighted = activeHighlightId && g.id === activeHighlightId;
                         return (
                         <div 
                           key={g.id} 
                           id={`gasto-${g.id}`}
                           className={cn(
-                            "px-4 py-3 transition-all",
+                            "px-4 py-3 transition-all duration-700 ease-in-out",
                             idx < grupo.gastos.length - 1 ? "border-b border-slate-300 border-dashed" : "",
                             isHighlighted 
                               ? "bg-amber-100/90 border-2 border-amber-400 rounded-xl shadow-md my-1.5 ring-2 ring-amber-300/60" 
@@ -663,13 +671,13 @@ export default function EgresosPage() {
                               {isMonthOpen && (
                                 <div>
                                   {monthGroup.gastos.map((g: any, idx: number) => {
-                                    const isHighlighted = highlightGastoId && g.id === highlightGastoId;
+                                    const isHighlighted = activeHighlightId && g.id === activeHighlightId;
                                     return (
                                     <div 
                                       key={g.id} 
                                       id={`gasto-${g.id}`}
                                       className={cn(
-                                        "px-4 py-3 transition-all",
+                                        "px-4 py-3 transition-all duration-700 ease-in-out",
                                         idx < monthGroup.gastos.length - 1 ? "border-b border-slate-300 border-dashed" : "",
                                         isHighlighted 
                                           ? "bg-amber-100/90 border-2 border-amber-400 rounded-xl shadow-md my-1.5 ring-2 ring-amber-300/60" 
