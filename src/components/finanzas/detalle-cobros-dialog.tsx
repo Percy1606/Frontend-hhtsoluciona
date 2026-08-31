@@ -329,6 +329,21 @@ export default function DetalleCobrosDialog({ proyectoId, open, onClose, onUpdat
                   El Plan (Hitos)
                 </h3>
               </div>
+
+              {/* FORMA DE PAGO SUGERIDA EN CRM */}
+              {detalle?.cotizacionOrigen?.formaPago && (
+                <div className="p-3 bg-blue-50/80 border border-blue-200 rounded-xl space-y-1">
+                  <span className="text-[10px] font-bold text-blue-700 uppercase tracking-wide">
+                    Condición de Pago Pactada (CRM):
+                  </span>
+                  <p className="text-xs font-semibold text-slate-800 leading-snug">
+                    {detalle.cotizacionOrigen.formaPago}
+                  </p>
+                  <p className="text-[9px] text-blue-600 font-medium">
+                    * El total del servicio es S/ {ventaContratada.toLocaleString("es-PE", { minimumFractionDigits: 2 })}. Fraccione los hitos según esta condición.
+                  </p>
+                </div>
+              )}
               
               <div className="space-y-4">
                 {hitosPagosList.map((hito: any, i: number) => {
