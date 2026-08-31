@@ -137,6 +137,38 @@ export default function EgresosPage() {
     fetchCajas();
   }, []);
 
+  // Auto abrir la carpeta y el mes cuando highlightGastoId esté presente
+  useEffect(() => {
+    if (!highlightGastoId || gastos.length === 0) return;
+
+    const targetGasto = gastos.find(g => g.id === highlightGastoId);
+    if (targetGasto) {
+      const folderId = targetGasto.proyectoId || 'unassigned';
+      setExpanded(prev => {
+        const next = new Set(prev);
+        next.add(folderId);
+        return next;
+      });
+
+      if (targetGasto.fechaEmision) {
+        const date = new Date(targetGasto.fechaEmision);
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        setExpandedMonths(prev => ({
+          ...prev,
+          [monthKey]: true
+        }));
+      }
+
+      // Desplazamiento suave al elemento tras abrirse el contenedor
+      setTimeout(() => {
+        const el = document.getElementById(`gasto-${highlightGastoId}`);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 400);
+    }
+  }, [highlightGastoId, gastos]);
+
   const handleCreateOrUpdateGasto = async (data: any) => {
     try {
       const payload = {
@@ -506,8 +538,20 @@ export default function EgresosPage() {
                 {isOpen && (
                   <div className="border-t border-slate-100 bg-slate-50/50 max-h-[350px] overflow-y-auto">
                     {grupo.proyectoId !== 'unassigned' ? (
-                      grupo.gastos.map((g, idx) => (
-                        <div key={g.id} className={`px-4 py-3 transition-colors hover:bg-white ${idx < grupo.gastos.length - 1 ? 'border-b border-slate-300 border-dashed' : ''}`}>
+                      grupo.gastos.map((g, idx) => {
+                        const isHighlighted = highlightGastoId && g.id === highlightGastoId;
+                        return (
+                        <div 
+                          key={g.id} 
+                          id={`gasto-${g.id}`}
+                          className={cn(
+                            "px-4 py-3 transition-all",
+                            idx < grupo.gastos.length - 1 ? "border-b border-slate-300 border-dashed" : "",
+                            isHighlighted 
+                              ? "bg-amber-100/90 border-2 border-amber-400 rounded-xl shadow-md my-1.5 ring-2 ring-amber-300/60" 
+                              : "hover:bg-white"
+                          )}
+                        >
                           <div className="flex items-start justify-between mb-1.5">
                             <span className="font-black text-[10px] uppercase tracking-wide text-slate-700 leading-tight pr-2">
                               {g.codigo || 'S/N'} - {g.concepto.replace(/\[CONDICION:\s*CONTADO\]/gi, '').replace(/\[FECHA:[^\]]*\]/gi, '').trim()}
@@ -574,7 +618,7 @@ export default function EgresosPage() {
                             <span className="font-black text-[11px] text-slate-800 self-end">S/ {Number(g.montoTotal || 0).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                           </div>
                         </div>
-                      ))
+                      );})
                     ) : (
                       (() => {
                         const groupedByMonth = grupo.gastos.reduce((acc: any, g) => {
