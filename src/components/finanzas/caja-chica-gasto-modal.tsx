@@ -205,17 +205,20 @@ export function CajaChicaGastoModal({
     try {
       setSubmitting(true);
 
-      const areaAsignada = moduloOrigen === "logistica" || cajaUsuario.nombre.toLowerCase().includes("steven")
-        ? "LOGISTICA"
-        : "OPERACIONES";
+      const areaAsignada = (moduloOrigen === "logistica" || cajaUsuario.nombre.toLowerCase().includes("steven"))
+        ? "LogisticaYRecursos"
+        : "OperacionesDeCampo";
+
+      const tieneProyecto = values.proyectoId && values.proyectoId !== "none";
+      const clasificacionAsignada = tieneProyecto ? "PROYECTO" : "VENTA_SERVICIO";
 
       const payload = {
         concepto: values.concepto,
         montoTotal: monto,
-        proyectoId: values.proyectoId === "none" ? null : values.proyectoId,
+        proyectoId: tieneProyecto ? values.proyectoId : null,
         cajaId: cajaUsuario.id,
         tipo: "OPERATIVO",
-        clasificacion: "COSTO_DIRECTO",
+        clasificacion: clasificacionAsignada,
         tipoComprobante: values.tipoComprobante,
         fechaEmision: new Date().toISOString().split("T")[0],
         comprobanteUrl: comprobanteUrl || null,
