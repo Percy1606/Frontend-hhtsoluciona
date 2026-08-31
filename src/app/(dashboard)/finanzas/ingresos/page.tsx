@@ -621,8 +621,8 @@ export default function IngresosPage() {
       <ModernDialog
         isOpen={isModalOpen}
         onOpenChange={(open) => setIsModalOpen(open)}
-        title={editingFactura ? "Editar Factura" : "Registrar Nueva Factura"}
-        maxWidth="sm:max-w-3xl"
+        title={editingFactura ? "Editar factura" : "Registrar nueva factura"}
+        maxWidth="sm:max-w-[920px]"
         className="max-h-[90vh] flex flex-col"
       >
         <FacturaForm 

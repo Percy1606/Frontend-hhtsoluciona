@@ -144,23 +144,11 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
   }, [proyectos]);
 
   const selectedProjectId = form.watch("proyectoId");
-  const [projectInvoices, setProjectInvoices] = useState<any>(null);
-  const [loadingProjectInvoices, setLoadingProjectInvoices] = useState(false);
 
   useEffect(() => {
     if (selectedProjectId && selectedProjectId !== "none") {
       form.setValue("clasificacion", "PROYECTO");
       form.setValue("tipo", "PROYECTO");
-
-      setLoadingProjectInvoices(true);
-      api.get(`/finanzas/bandeja-proyectos/${selectedProjectId}/detalle`)
-        .then((res: any) => {
-          setProjectInvoices(res);
-        })
-        .catch(() => setProjectInvoices(null))
-        .finally(() => setLoadingProjectInvoices(false));
-    } else {
-      setProjectInvoices(null);
     }
   }, [selectedProjectId, form]);
 
@@ -302,49 +290,6 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                 )}
               />
             </div>
-
-            {/* TARJETA INFORMATIVA: Facturas y Cobros del Proyecto Seleccionado */}
-            {selectedProjectId && selectedProjectId !== "none" && (
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                    Facturación y Cobros del Proyecto
-                  </span>
-                  {loadingProjectInvoices && (
-                    <span className="flex items-center gap-1 text-[10px] text-slate-400">
-                      <Loader2 className="w-3 h-3 animate-spin" /> Cargando...
-                    </span>
-                  )}
-                </div>
-
-                {projectInvoices ? (
-                  <div className="grid grid-cols-3 gap-2 pt-1 border-t border-slate-200/60 text-center">
-                    <div className="bg-white p-2 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-slate-500 font-medium">Facturado</p>
-                      <p className="text-xs font-bold text-slate-800">
-                        S/ {Number(projectInvoices.totales?.totalFacturado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div className="bg-white p-2 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-emerald-600 font-medium">Cobrado</p>
-                      <p className="text-xs font-bold text-emerald-600">
-                        S/ {Number(projectInvoices.totales?.totalCobrado || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                    <div className="bg-white p-2 rounded-lg border border-slate-100">
-                      <p className="text-[10px] text-amber-600 font-medium">Por Cobrar</p>
-                      <p className="text-xs font-bold text-amber-600">
-                        S/ {Number(projectInvoices.totales?.saldoPorCobrar || 0).toLocaleString("es-PE", { minimumFractionDigits: 2 })}
-                      </p>
-                    </div>
-                  </div>
-                ) : !loadingProjectInvoices ? (
-                  <p className="text-[11px] text-slate-500 italic">
-                    Sin historial de facturas emitidas para este proyecto.
-                  </p>
-                ) : null}
-              </div>
-            )}
 
             {/* FILA 2: Concepto / descripción del gasto */}
             <FormField
