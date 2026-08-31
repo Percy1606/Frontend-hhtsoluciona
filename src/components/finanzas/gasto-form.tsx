@@ -111,16 +111,6 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
         setProyectos(Array.isArray(projectsRes) ? projectsRes : (projectsRes.data || []));
         const cajasList = Array.isArray(cajasRes) ? cajasRes : (cajasRes.data || []);
         setCajas(cajasList);
-
-        // Seleccionar Caja General por defecto
-        if (!form.getValues("cajaId") && cajasList.length > 0) {
-          const cajaDefault = cajasList.find((c: any) => c.nombre.toLowerCase().includes("general")) ||
-                              cajasList.find((c: any) => c.nombre.toLowerCase().includes("steven")) ||
-                              cajasList[0];
-          if (cajaDefault) {
-            form.setValue("cajaId", cajaDefault.id, { shouldValidate: true });
-          }
-        }
       } catch (e) {
         console.error("Error cargando datos para el formulario de gastos", e);
       }
@@ -529,6 +519,36 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                       )}
                     />
 
+                    {/* Fecha de vencimiento */}
+                    <FormField
+                      control={form.control}
+                      name="fechaVencimiento"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[11px] font-semibold text-slate-600">Fecha de vencimiento</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} className="bg-white border-slate-200 h-9 text-xs" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Fecha programada de pago */}
+                    <FormField
+                      control={form.control}
+                      name="fechaProgramadaPago"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-[11px] font-semibold text-slate-600">Fecha programada de pago</FormLabel>
+                          <FormControl>
+                            <Input type="date" {...field} className="bg-white border-slate-200 h-9 text-xs" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {/* Estado del pago */}
                     <FormField
                       control={form.control}
@@ -544,8 +564,8 @@ export function GastoForm({ initialData, onSubmit, onCancel }: GastoFormProps) {
                             </FormControl>
                             <SelectContent className="bg-white">
                               <SelectItem value="PAGADO" className="text-xs text-emerald-700 font-medium">EJECUTADO / PAGADO</SelectItem>
-                              <SelectItem value="SOLICITADO" className="text-xs text-amber-700 font-medium">POR APROBAR</SelectItem>
-                              <SelectItem value="APROBADO" className="text-xs text-blue-700 font-medium">APROBADO</SelectItem>
+                              <SelectItem value="SOLICITADO" className="text-xs text-amber-700 font-medium">POR APROBAR (CRÉDITO)</SelectItem>
+                              <SelectItem value="APROBADO" className="text-xs text-blue-700 font-medium">APROBADO (LISTO PARA PAGO)</SelectItem>
                               <SelectItem value="PENDIENTE" className="text-xs text-slate-600 font-medium">BORRADOR</SelectItem>
                             </SelectContent>
                           </Select>
