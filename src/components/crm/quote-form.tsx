@@ -292,7 +292,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
     <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-0">
-        <div className="p-6 space-y-8 overflow-y-auto max-h-[70vh]">
+        <div className="px-8 py-6 space-y-8 overflow-y-auto max-h-[72vh]">
           <div className="space-y-4">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -312,7 +312,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       value={field.value}
                       onChange={field.onChange}
                       placeholder="Escriba nombre o RUC del cliente..."
-                      className="border-slate-200 h-11"
+                      className="border-slate-200 h-11 bg-white"
                     />
                   </FormControl>
                   <FormMessage />
@@ -358,7 +358,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
             )}
 
             {selectedClient && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300">
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
                   <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
                     <Hash className="w-4 h-4 text-primary" />
@@ -368,13 +368,14 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                     <p className="text-sm font-bold text-slate-700">{selectedClient.ruc}</p>
                   </div>
                 </div>
+
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-start gap-3">
                   <div className="bg-white p-2 rounded-lg border border-slate-100 shadow-sm">
                     <User className="w-4 h-4 text-primary" />
                   </div>
                   <div>
-                    <p className="text-[9px] font-black uppercase text-slate-400">Persona de Contacto</p>
-                    <p className="text-sm font-bold text-slate-700">{selectedClient.contacto}</p>
+                    <p className="text-[9px] font-black uppercase text-slate-400">Contacto Directo</p>
+                    <p className="text-sm font-bold text-slate-700">{selectedClient.contacto || "No registrado"}</p>
                   </div>
                 </div>
               </div>
@@ -403,14 +404,14 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
 
           <Separator className="opacity-50" />
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             <h3 className="text-[11px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
               <FileText className="w-4 h-4" />
               Detalles de la Propuesta
             </h3>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-              <div className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50/50 p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+              <div className="space-y-5">
                 <FormField
                   control={form.control}
                   name="referencia"
@@ -420,7 +421,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       <FormControl>
                         <Input 
                           placeholder="Ej: Mantenimiento Preventivo de HVAC" 
-                          className="h-12 bg-slate-50 border-slate-200 font-bold text-sm focus:bg-white transition-colors"
+                          className="h-11 bg-white border-slate-200 font-bold text-sm focus:bg-white transition-colors" 
                           {...field} 
                         />
                       </FormControl>
@@ -437,7 +438,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       <FormControl>
                         <Input 
                           placeholder="Ej: 50% al inicio, 50% al finalizar" 
-                          className="h-12 bg-slate-50 border-slate-200 font-bold text-sm focus:bg-white transition-colors"
+                          className="h-11 bg-white border-slate-200 font-bold text-sm focus:bg-white transition-colors" 
                           {...field} 
                         />
                       </FormControl>
@@ -449,8 +450,8 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                 />
               </div>
 
-              <div className="space-y-6">
-                <div className="flex gap-4">
+              <div className="space-y-5">
+                <div className="flex gap-3">
                   <FormField
                     control={form.control}
                     name="moneda"
@@ -459,7 +460,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Moneda</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger className="h-12 bg-slate-50 border-slate-200 font-black text-sm">
+                            <SelectTrigger className="h-11 bg-white border-slate-200 font-black text-sm">
                               <SelectValue />
                             </SelectTrigger>
                           </FormControl>
@@ -484,12 +485,12 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                         <FormLabel className="text-[10px] font-bold uppercase text-slate-500">Inversión Total</FormLabel>
                         <FormControl>
                           <div className="relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary/50 font-black text-lg">
+                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/60 font-black text-base">
                               {form.watch("moneda") === 'PEN' ? 'S/' : '$'}
                             </span>
                             <Input 
                               type="text" 
-                              className="h-12 bg-blue-50/30 border-blue-100 font-black text-blue-700 text-lg pl-10 focus:bg-white transition-colors" 
+                              className="h-11 bg-white border-slate-200 font-black text-blue-700 text-base pl-9 focus:bg-white transition-colors" 
                               placeholder="0.00"
                               value={field.value || ""}
                               onChange={(e) => {
@@ -500,11 +501,9 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                                 const commas = (val.match(/,/g) || []).length;
                                 
                                 if (dots > 1 && commas === 0) {
-                                  // "160.480.00" -> keep only last dot
                                   const lastDot = val.lastIndexOf('.');
                                   val = val.substring(0, lastDot).replace(/\./g, '') + '.' + val.substring(lastDot + 1);
                                 } else if (commas > 1 && dots === 0) {
-                                  // "160,480,00" -> keep only last comma as dot
                                   const lastComma = val.lastIndexOf(',');
                                   val = val.substring(0, lastComma).replace(/,/g, '') + '.' + val.substring(lastComma + 1);
                                 } else if (dots > 0 && commas > 0) {
@@ -545,11 +544,11 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       >
                         <FormControl>
                           <SelectTrigger className={cn(
-                            "h-12 border-slate-200 font-black text-xs uppercase",
+                            "h-11 border-slate-200 font-black text-xs uppercase bg-white",
                             field.value === "Ganada" ? "bg-success/10 text-success border-success/20" :
                             field.value === "Perdida" ? "bg-error/10 text-error border-error/20" :
                             field.value === "Enviado" ? "bg-blue-50 text-blue-600 border-blue-200" :
-                            "bg-slate-50"
+                            "bg-white"
                           )}>
                             <SelectValue />
                           </SelectTrigger>
@@ -567,10 +566,10 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                 />
 
                 {(isQuoteWon || currentEstado === "Ganada") && (
-                  <div className="space-y-1.5 mt-4">
+                  <div className="space-y-1.5 mt-3">
                     <FormLabel className="text-[10px] font-black text-slate-500 uppercase ml-1">Líder del Proyecto Operativo</FormLabel>
                     <Select value={selectedLiderId} onValueChange={(val) => setSelectedLiderId(val || "")}>
-                      <SelectTrigger className="h-12 border-slate-200 bg-slate-50 font-bold text-xs uppercase rounded-xl">
+                      <SelectTrigger className="h-11 border-slate-200 bg-white font-bold text-xs uppercase rounded-xl">
                         <SelectValue placeholder="SELECCIONAR LÍDER" />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
@@ -579,21 +578,12 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[9px] text-slate-400 font-bold italic mt-1">
-                      * Cambiar el líder aquí actualizará al responsable principal en el proyecto operativo asignado.
-                    </p>
                   </div>
                 )}
               </div>
             </div>
           </div>
           
-          <Separator className="opacity-50" />
-
-          <Separator className="opacity-50" />
-
-
-
           <Separator className="opacity-50" />
 
           {/* SECCIÓN 4: ARCHIVO WORD/PDF */}
@@ -604,17 +594,17 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
             </h3>
             
             <div className={cn(
-              "border-2 border-dashed rounded-xl p-8 text-center transition-all duration-300",
-              selectedFile ? "border-success/30 bg-green-50/30" : "border-slate-200 hover:border-primary/30 hover:bg-slate-50/50"
+              "border-2 border-dashed rounded-2xl p-6 text-center transition-all duration-300 bg-white",
+              selectedFile ? "border-success/30 bg-green-50/20" : "border-slate-200 hover:border-primary/30 hover:bg-slate-50/50"
             )}>
               {!selectedFile ? (
-                <div className="flex flex-col items-center gap-3">
-                  <div className="bg-primary/10 p-4 rounded-full">
-                    <FileUp className="w-10 h-10 text-primary" />
+                <div className="flex flex-col items-center gap-2.5">
+                  <div className="bg-primary/10 p-3.5 rounded-full">
+                    <FileUp className="w-8 h-8 text-primary" />
                   </div>
                   <div>
                     {quote?.documentos && quote.documentos.length > 0 ? (
-                      <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg inline-flex items-center gap-2">
+                      <div className="mb-3 p-2.5 bg-blue-50 border border-blue-100 rounded-lg inline-flex items-center gap-2">
                         <FileText className="w-4 h-4 text-blue-600" />
                         <span className="text-[10px] font-black text-blue-700 uppercase">
                           Archivo Actual: {[...quote.documentos].sort((a, b) => parseInt(b.version || "0") - parseInt(a.version || "0"))[0].nombre}
@@ -622,7 +612,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                       </div>
                     ) : null}
                     <p className="text-sm font-black text-slate-700 uppercase">Selecciona el archivo de cotización</p>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold mt-1">Formatos admitidos: .docx (Word) o .pdf</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold mt-0.5">Formatos admitidos: .docx (Word) o .pdf</p>
                   </div>
                   <Input 
                     type="file" 
@@ -635,7 +625,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
                     type="button" 
                     variant="outline" 
                     onClick={() => document.getElementById('file-upload')?.click()}
-                    className="mt-2 font-black text-[10px] uppercase border-primary/20 text-primary hover:bg-primary hover:text-white h-9 px-6"
+                    className="mt-1.5 font-black text-[10px] uppercase border-primary/20 text-primary hover:bg-primary hover:text-white h-9 px-6"
                   >
                     Examinar Archivos
                   </Button>
@@ -666,7 +656,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
           </div>
         </div>
 
-        <div className="flex justify-end gap-3 p-6 border-t border-slate-100 bg-slate-50/80">
+        <div className="flex justify-end gap-3 px-8 py-4 border-t border-slate-100 bg-slate-50/80">
           <Button 
             type="button" 
             variant="ghost" 
@@ -679,7 +669,7 @@ export function QuoteForm({ quote, canManageFinances = false, onSubmit, onCancel
           <Button 
             type="submit" 
             disabled={isUploading || !selectedClientId}
-            className="bg-primary hover:bg-primary/90 text-white font-black px-10 shadow-lg shadow-primary/20 h-11 uppercase text-[10px] gap-2"
+            className="bg-primary hover:bg-primary/90 text-white font-black px-12 shadow-lg shadow-primary/20 h-11 uppercase text-[11px] gap-2 rounded-xl transition-all"
           >
             {isUploading ? (
               <span className="flex items-center gap-2">
