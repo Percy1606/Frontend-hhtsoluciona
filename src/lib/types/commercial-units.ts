@@ -24,7 +24,7 @@ export const COMMERCIAL_UNITS = {
     name: 'Unidad Comercial 2 – Desarrollo y Recuperación Estratégica',
     shortName: 'Unidad 2 (Clientes Estratégicos)',
     objective: 'Fidelizar, recuperar y vender sobre la cartera histórica registrada hasta el 31/07/2026.',
-    members: ['Javier', 'Angi', 'Mellani', 'Steven'],
+    members: ['Javier', 'Angi', 'Mellani', 'Steven', 'Mario'],
     color: 'blue'
   }
 };
@@ -33,10 +33,11 @@ export const ALL_ADVISORS: Record<string, CommercialAdvisor> = {
   Ariana: { name: 'Ariana', unit: 'UNIDAD_1', role: 'Prospección Nuevos Negocios', color: 'bg-emerald-600' },
   Brenda: { name: 'Brenda', unit: 'UNIDAD_1', role: 'Prospección Exclusiva', color: 'bg-teal-600' },
   Valentina: { name: 'Valentina', unit: 'UNIDAD_1', role: 'Seguimiento & Cierre Nuevos', color: 'bg-indigo-600' },
-  Javier: { name: 'Javier', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-blue-600' },
-  Angi: { name: 'Angi', unit: 'UNIDAD_2', role: 'Recuperación & Fidelización', color: 'bg-sky-600' },
+  Mario: { name: 'Mario', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico & Operaciones', color: 'bg-yellow-600' },
+  Steven: { name: 'Steven', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-amber-600' },
   Mellani: { name: 'Mellani', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-purple-600' },
-  Steven: { name: 'Steven', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-amber-600' }
+  Javier: { name: 'Javier', unit: 'UNIDAD_2', role: 'Desarrollo Estratégico', color: 'bg-blue-600' },
+  Angi: { name: 'Angi', unit: 'UNIDAD_2', role: 'Recuperación & Fidelización', color: 'bg-sky-600' }
 };
 
 export const UNIT_1_CUTOFF_DATE = new Date('2026-08-03T00:00:00.000Z');

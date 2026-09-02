@@ -76,7 +76,7 @@ const stageList = [
   "Negociación", "Orden de Servicio", "Ganado", "Perdido"
 ];
 
-const sellerList = ["Angi", "Valentina", "Ariana", "Brenda"];
+const activeSellerList = ["Mario", "Steven", "Mellani", "Javier", "Ariana", "Angi"];
 
 export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
   const router = useRouter();
@@ -333,9 +333,12 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white">
-                  {sellerList.map(s => (
+                  {activeSellerList.map(s => (
                     <SelectItem key={s} value={s}>{s}</SelectItem>
                   ))}
+                  {client.asignadoA && !activeSellerList.includes(client.asignadoA) && (
+                    <SelectItem value={client.asignadoA}>{client.asignadoA} (Histórico)</SelectItem>
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -528,7 +531,7 @@ export function ClientDetails({ client, isOpen, onClose }: ClientDetailsProps) {
                       <Select value={intUser} onValueChange={(val) => setIntUser(val || "")}>
                         <SelectTrigger className="h-9 text-xs bg-white"><SelectValue /></SelectTrigger>
                         <SelectContent className="bg-white">
-                          {sellerList.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                          {activeSellerList.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                         </SelectContent>
                       </Select>
                     </div>

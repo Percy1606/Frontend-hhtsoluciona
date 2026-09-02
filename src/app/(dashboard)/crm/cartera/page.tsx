@@ -326,11 +326,14 @@ export default function CarteraPage() {
                         <SelectValue placeholder="SELECCIONAR ASESOR" />
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200">
-                        <SelectItem value="Angi" className="font-black text-[10px] uppercase">Angi</SelectItem>
-                        <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
+                        <SelectItem value="Mario" className="font-black text-[10px] uppercase">MARIO</SelectItem>
+                        <SelectItem value="Steven" className="font-black text-[10px] uppercase">STEVEN</SelectItem>
+                        <SelectItem value="Mellani" className="font-black text-[10px] uppercase">MELLANI</SelectItem>
+                        <SelectItem value="Javier" className="font-black text-[10px] uppercase">JAVIER</SelectItem>
                         <SelectItem value="Ariana" className="font-black text-[10px] uppercase">ARIANA</SelectItem>
+                        <SelectItem value="Angi" className="font-black text-[10px] uppercase">ANGI</SelectItem>
+                        <SelectItem value="Valentina" className="font-black text-[10px] uppercase">VALENTINA</SelectItem>
                         <SelectItem value="Brenda" className="font-black text-[10px] uppercase">BRENDA</SelectItem>
-
                     </SelectContent>
                 </Select>
             </div>

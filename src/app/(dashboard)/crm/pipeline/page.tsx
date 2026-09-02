@@ -49,11 +49,14 @@ export default function PipelinePage() {
                 <SelectValue placeholder="SELECCIONAR ASESOR" />
               </SelectTrigger>
               <SelectContent className="bg-white border-slate-200 shadow-xl">
-                <SelectItem value="Angi" className="font-black uppercase text-[10px]">Angi</SelectItem>
-                <SelectItem value="Valentina" className="font-black uppercase text-[10px]">VALENTINA</SelectItem>
+                <SelectItem value="Mario" className="font-black uppercase text-[10px]">MARIO</SelectItem>
+                <SelectItem value="Steven" className="font-black uppercase text-[10px]">STEVEN</SelectItem>
+                <SelectItem value="Mellani" className="font-black uppercase text-[10px]">MELLANI</SelectItem>
+                <SelectItem value="Javier" className="font-black uppercase text-[10px]">JAVIER</SelectItem>
                 <SelectItem value="Ariana" className="font-black uppercase text-[10px]">ARIANA</SelectItem>
+                <SelectItem value="Angi" className="font-black uppercase text-[10px]">ANGI</SelectItem>
+                <SelectItem value="Valentina" className="font-black uppercase text-[10px]">VALENTINA</SelectItem>
                 <SelectItem value="Brenda" className="font-black uppercase text-[10px]">BRENDA</SelectItem>
-
               </SelectContent>
             </Select>
             {(filters.asignadoA || filters.searchQuery) && (

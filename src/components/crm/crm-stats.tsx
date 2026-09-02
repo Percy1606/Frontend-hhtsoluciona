@@ -292,10 +292,14 @@ export function CRMStats() {
 
   // Benchmarking Team
   const sellers = [
-    { name: 'Angi', color: 'bg-blue-600', role: 'Asesora' },
-    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
+    { name: 'Mario', color: 'bg-yellow-600', role: 'Asesor' },
+    { name: 'Steven', color: 'bg-amber-600', role: 'Asesor' },
+    { name: 'Mellani', color: 'bg-purple-600', role: 'Asesora' },
+    { name: 'Javier', color: 'bg-blue-600', role: 'Asesor' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
-    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },
+    { name: 'Angi', color: 'bg-sky-600', role: 'Asesora' },
+    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora Histórica' },
+    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora Histórica' },
   ];
 
   const sellerComparisonData = sellers.map(seller => {
@@ -535,10 +539,14 @@ export function CRMStats() {
                     </SelectTrigger>
                     <SelectContent className="bg-white border-slate-200 shadow-xl font-medium text-sm text-slate-700">
                       <SelectItem value="EQUIPO COMPLETO" className="text-slate-500 font-medium text-sm">Todo el Equipo Comercial</SelectItem>
+                      <SelectItem value="Mario">Mario</SelectItem>
+                      <SelectItem value="Steven">Steven</SelectItem>
+                      <SelectItem value="Mellani">Mellani</SelectItem>
+                      <SelectItem value="Javier">Javier</SelectItem>
+                      <SelectItem value="Ariana">Ariana</SelectItem>
                       <SelectItem value="Angi">Angi</SelectItem>
-                      <SelectItem value="Valentina">VALENTINA</SelectItem>
-                      <SelectItem value="Ariana">ARIANA</SelectItem>
-                      <SelectItem value="Brenda">BRENDA</SelectItem>
+                      <SelectItem value="Valentina">Valentina</SelectItem>
+                      <SelectItem value="Brenda">Brenda</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -901,9 +909,13 @@ export function CRMStats() {
                           <div 
                             className={cn(
                               "h-full rounded-full transition-all duration-1000",
-                              data.name === "Angi" ? "bg-blue-500" :
-                              data.name === "Valentina" ? "bg-violet-500" :
+                              data.name === "Mario" ? "bg-yellow-500" :
+                              data.name === "Steven" ? "bg-amber-500" :
+                              data.name === "Mellani" ? "bg-purple-500" :
+                              data.name === "Javier" ? "bg-blue-600" :
                               data.name === "Ariana" ? "bg-orange-500" :
+                              data.name === "Angi" ? "bg-sky-500" :
+                              data.name === "Valentina" ? "bg-violet-500" :
                               data.name === "Brenda" ? "bg-emerald-500" : "bg-teal-500"
                             )}
                             style={{ width: `${Math.max(5, percentage)}%` }}

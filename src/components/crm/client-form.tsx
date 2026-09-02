@@ -315,10 +315,15 @@ export function ClientForm({ client, onSubmit, onCancel }: ClientFormProps) {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent className="bg-white">
-                          <SelectItem value="Angi">Angi</SelectItem>
-                          <SelectItem value="Valentina">Valentina</SelectItem>
+                          <SelectItem value="Mario">Mario</SelectItem>
+                          <SelectItem value="Steven">Steven</SelectItem>
+                          <SelectItem value="Mellani">Mellani</SelectItem>
+                          <SelectItem value="Javier">Javier</SelectItem>
                           <SelectItem value="Ariana">Ariana</SelectItem>
-                          <SelectItem value="Brenda">Brenda</SelectItem>
+                          <SelectItem value="Angi">Angi</SelectItem>
+                          {client?.asignadoA && !['Mario', 'Steven', 'Mellani', 'Javier', 'Ariana', 'Angi'].includes(client.asignadoA) && (
+                            <SelectItem value={client.asignadoA}>{client.asignadoA} (Histórico)</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </FormItem>

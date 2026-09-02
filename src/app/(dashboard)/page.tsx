@@ -248,10 +248,14 @@ export default function DashboardPage() {
 
   // Equipo Comercial
   const sellers = [
-    { name: 'Angi', color: 'bg-blue-600', role: 'Asesora' },
-    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora' },
+    { name: 'Mario', color: 'bg-yellow-600', role: 'Asesor' },
+    { name: 'Steven', color: 'bg-amber-600', role: 'Asesor' },
+    { name: 'Mellani', color: 'bg-purple-600', role: 'Asesora' },
+    { name: 'Javier', color: 'bg-blue-600', role: 'Asesor' },
     { name: 'Ariana', color: 'bg-orange-600', role: 'Asesora' },
-    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora' },
+    { name: 'Angi', color: 'bg-sky-600', role: 'Asesora' },
+    { name: 'Valentina', color: 'bg-violet-600', role: 'Asesora Histórica' },
+    { name: 'Brenda', color: 'bg-emerald-600', role: 'Asesora Histórica' },
   ];
 
   const today = new Date();

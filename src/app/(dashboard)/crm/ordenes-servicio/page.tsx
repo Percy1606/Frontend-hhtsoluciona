@@ -275,9 +275,13 @@ export default function OrdenesServicioPage() {
               </SelectTrigger>
               <SelectContent className="bg-white">
                 <SelectItem value="todos" className="font-bold text-[10px] uppercase">TODOS</SelectItem>
+                <SelectItem value="Mario" className="font-bold text-[10px] uppercase">Mario</SelectItem>
+                <SelectItem value="Steven" className="font-bold text-[10px] uppercase">Steven</SelectItem>
+                <SelectItem value="Mellani" className="font-bold text-[10px] uppercase">Mellani</SelectItem>
+                <SelectItem value="Javier" className="font-bold text-[10px] uppercase">Javier</SelectItem>
+                <SelectItem value="Ariana" className="font-bold text-[10px] uppercase">Ariana</SelectItem>
                 <SelectItem value="Angi" className="font-bold text-[10px] uppercase">Angi</SelectItem>
                 <SelectItem value="Valentina" className="font-bold text-[10px] uppercase">Valentina</SelectItem>
-                <SelectItem value="Ariana" className="font-bold text-[10px] uppercase">Ariana</SelectItem>
                 <SelectItem value="Brenda" className="font-bold text-[10px] uppercase">Brenda</SelectItem>
               </SelectContent>
             </Select>
